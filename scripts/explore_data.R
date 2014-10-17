@@ -97,7 +97,7 @@ for (x_comp in 1:5) {
 # Loading plot ------------------------------------------------------------
 
 for (vector in 1:20){
-  plot(dat_pca$x[, vector], main=paste("Vector", vector), col=rep(1:12, each=24))  
+  plot(dat_pca$x[, vector], main=paste("Vector", vector), col=rep(1:12, each=24), type='o')  
 }
 
 
