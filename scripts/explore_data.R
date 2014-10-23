@@ -15,24 +15,68 @@ PlotLoadings <- function(y, title="Plot title") {
   plot(y, main=title, col=rep(1:12, each=24), type='o') 
 }
 
-PlotPeriodogram <- function(x, N, title="Plot title", vline=NA) {
+CalculatePeriodogram <- function(x){
   # Creates periodogram for spectral analysis.
-  # x is vector of data you want to check for rhythmicity
+  # 
+  # INPUT:
+  # x = vector of data you want to check for rhythmicity
+  # 
+  # OUTPUT:
+  # list with $freq being frequencies and periodogram values $periodogram
+  #
   # Uses fast fourier transform
   # Adopted from https://onlinecourses.science.psu.edu/stat510/node/71
   
   # BEGIN: do my FFT, extract only relevant ranges
   N <- length(x)
+  # Create my "unscaled" periodogram
   FF <- abs(fft(x) / sqrt(N)) ^ 2  # do my FFT. Fast Fourier Transform
+  
+  # Create my "scaled" periodogram. Scale constant is 4/n
+  scale.factor <- 4 / N
   # only need first (N/2) + 1 values of FFT result for periodogram
-  P <- FF[1:(N / 2 + 1)]
+  P <- scale.factor * FF[1:(N / 2 + 1)]
+  P.unscaled <- FF[1:(N / 2 + 1)]
+  
   # creates harmonic frequencies from 0 to 0.5 in steps of 1/12 for periodogram.
   # I only need from 0 to 0.5.
   f <- (0:(N / 2) / N)  
   # END: do my FFT, extract only relevant ranges
   
-  # Plot my periodogram
-  plot(f, P, type='l', main=title)
+  # Why can't R return two objects? Returning list instead...
+  return(list("freq"=f, "p.scaled"=P, "p.unscaled"=P.unscaled))
+}
+
+FindMaxFreqs <- function(freq, periodogram, n=5) {
+  # Given periodogram and frequency, return frequency at which
+  # maximum value of periodogram occurs
+  # 
+  # Input:
+  # f = frequency calculated from CalculatePeriodogram
+  # P = periodogram calculated from CalculatePeriodogram
+  # n = return the top n frequencies. Default 5
+  # 
+  # Output:
+  # max frequency
+  # 
+  max.vals <- sort(periodogram, decreasing=TRUE)[1:n]
+  max.indices <- match(max.vals, periodogram)
+  # Get freqs from indices
+  max.freqs <- freq[max.indices]
+  
+  return(max.freqs)
+}
+
+PlotPeriodogram <- function(freq, periodogram, title="Plot title", vline=NA) {
+  # Plots periodogram. 
+  # 
+  # Input: 
+  # f = "frequency" calculated from CalculatePeriodogram
+  # P = "periodogram" calculated from CalculatePeriodogram
+  # 
+  # Output:
+  # Periodogram plot
+  plot(freq, periodogram, type='l', main=title)
 }
 
 ShortenSampNames <- function(long.names, show="tissue") {
@@ -75,6 +119,7 @@ ShortenSampNames <- function(long.names, show="tissue") {
   })
   return(short.names)
 }
+
 
 
 # Load data, log transform ------------------------------------------------
@@ -149,14 +194,30 @@ T <- 24  # 24 hours in a period
 
 # Fit PCA component of interest: loop to try many different PCAs
 # user changeable range
-for (pca_vector in 8:20) {
+for (pca_vector in 1:20) {
   # Create response vector, which is loadings
   
   y <- dat_pca$x[, pca_vector]
   
   # BEGIN: plot periodograms to see which frequency has high activity
-  PlotPeriodogram(y, title=paste("Periodogram for PCA component:", pca_vector))
-  # spec.pgram(y, log="no", main=pca_component_string)
+  freq.and.periodogram <- CalculatePeriodogram(y)  # returns a list
+  freq <- freq.and.periodogram$freq
+  periodogram <- freq.and.periodogram$p.scaled
+  periodogram.unscaled <- freq.and.periodogram$p.unscaled
+  
+  # Calculate top 5 frequencies
+  max.freqs <- FindMaxFreqs(freq, periodogram)
+  
+  PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector))
+  # add vertical line at max frequency
+  max.f <- max.freqs[1]
+  # calculate period from frequency
+  max.T <- (1 / max.f) * 2  # multiply by 2 because samples are every 2 hours 
+  abline(v=max.f, col='blue', lwd=2)
+  # add text to show freq and period.
+  # x offset of +0.02 so you can see the text
+  text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"))
+  
   PlotLoadings(y, title=paste("Vector Loadings for PCA component:", pca_vector))
   # END: plot periodograms to see which frequency has high activity
   
@@ -172,12 +233,18 @@ for (pca_vector in 8:20) {
   # END: Linear fit for period of 24 hours
   
   # Print some statements to describe fit
-  print("*********************************")
-  print(paste0(pca_vector))
+  cat("*********************************\n")
+  cat(paste0("PCA ", pca_vector, "\n"))
   cat("\n")
+  
+  cat("Max freqs\n")
+  print(max.freqs)
+  
   print(anova(fit))
   cat("\n")
 }
+
+
  
 
 
