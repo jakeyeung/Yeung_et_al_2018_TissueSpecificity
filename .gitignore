@@ -1,6 +1,7 @@
 .Rproj.user
 .Rhistory
 .RData
-.Rproj
+*.Rproj
 plots/*
 microarray_data/*
+data/*
