@@ -120,6 +120,47 @@ ShortenSampNames <- function(long.names, show="tissue") {
   return(short.names)
 }
 
+MeanCenterAcrossGroups <- function(x, n.per.group=24) {
+  # Input:
+  # x = vector x of inputs across all samples, contains n.per.group
+  # elements per group. 
+  # Vector is ordered such that all elements
+  # in group i are together. 
+  # Counting n.per.group would
+  # reveal each group. 
+  # 
+  # Output:
+  # x.mean.center <- calculate mean of each group (i.e. mean
+  # of every group of n.per.group) and subtract each element
+  # in that group by its mean.
+  
+  N <- length(x)
+  x.mean.center <- rep(NA, length(x))
+  # BEGIN SANITY CHECK
+  # check that N / n.per.group gives no remainder
+  if (N %% n.per.group != 0) {
+    warning("Uneven number of elements per group.")
+  }
+  n.groups <- N / n.per.group  # should be an integer
+  # END SANITY CHECK
+  
+
+  for (i in 0:n.groups - 1) {
+    # loop from 0 to n.groups - 1 so that our start index
+    # loops like 1, 1 + n.per.group, 1 + 2 * n.per.group
+    # for example start.index = 1, 25, 49 ...
+    start.index <- i * n.per.group + 1
+    end.index <- start.index + n.per.group - 1
+    # get group e.g. x[1:24]
+    group <- x[start.index:end.index]
+    # subtract each element in group by mean(group)
+    group.mean.center <- group - mean(group)
+    # put into x.mean.center
+    x.mean.center[start.index:end.index] <- group.mean.center
+  }
+  
+  return(x.mean.center)
+}
 
 
 # Load data, log transform ------------------------------------------------
@@ -189,6 +230,9 @@ for (x_comp in 1:5) {
 
 # Which vector loadings have oscillating components? ----------------------
 
+# Optional: can MeanCenter the vector y to remove cross-tissue differences
+# and focus only on oscillations.
+
 N <- nrow(dat_pca$x)  # number of samples.
 T <- 24  # 24 hours in a period
 
@@ -198,6 +242,9 @@ for (pca_vector in 1:20) {
   # Create response vector, which is loadings
   
   y <- dat_pca$x[, pca_vector]
+  
+  # Optional: 
+  # y <- MeanCenterAcrossGroups(y)
   
   # BEGIN: plot periodograms to see which frequency has high activity
   freq.and.periodogram <- CalculatePeriodogram(y)  # returns a list
