@@ -162,12 +162,35 @@ MeanCenterAcrossGroups <- function(x, n.per.group=24) {
   return(x.mean.center)
 }
 
+GetTissueSpecificMatrix <- function(n.tissues, n.timepoints){
+  # set my tissue specific factors, matches my response y to a 
+  # specific tissue. 12 tissues, 24 time points
+  # n.tissues <- 12  # 12 conditions
+  # n.timepoints <- 24  # 24 time points
+  
+  # initialize first tissue vector, then cbind for next tissues
+  tissue.factors <- rep(0, n.tissues * n.timepoints)
+  tissue.factors[1:n.timepoints] <- rep(1, n.timepoints)
+  # print(length(tissue.factors))
+  
+  # do same for all other tissues, cbind to tissue.factors
+  for (c in 2:n.tissues){  # start at 2 because we did 1 already
+    start.i <- (c - 1) * n.timepoints + 1  # starts at 25, if c = 2
+    end.i <- start.i + n.timepoints - 1  # ends at 48, if c = 2 
+    t.fac <- rep(0, n.tissues * n.timepoints)
+    t.fac[start.i:end.i] <- rep(1, n.timepoints)
+    # print(length(t.fac))
+    tissue.factors <- cbind(tissue.factors, t.fac)
+  }
+  return(tissue.factors)
+}
 
 # Load data, log transform ------------------------------------------------
 
 # define dirs
 data_dir <- "microarray_data"
 fname <- "hogenesch_2014_rma.txt"    # data reprocessed by RMA package
+# fname <- "hogenesch_2014_rma.ensemblnames.txt"
 
 # load data
 data_path <- file.path(data_dir, fname)
@@ -176,13 +199,11 @@ dat <- read.table(data_path)
 print("Read data to memory.")
 
 # log2 transform
-dat_original <- dat
 dat <- log2(dat)
 
 # make more meaningful sample names
 # user changeable paramters: show="tissue.time" | "tissue" | "time"
-colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue.time")
-
+colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue")
 
 # Plot histogram and quantiles ----------------------------------------------------------
 
@@ -221,13 +242,13 @@ for (x_comp in 1:5) {
   # 1.
   #   # Color by time point
   #   colors.by.time <- rep(1:24, 12)
-  #   textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], newnames, cex=0.7, col=colors.by.time, 
+  #   textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], colnames(dat_pca$x), cex=0.7, col=colors.by.time, 
   #           main=paste("Component", x_comp, "vs.", y_comp))
   
   # 2. 
   # Color by tissue
   colors.by.tissue <- rep(1:12, each=24)
-  textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], newnames, cex=0.7, col=colors.by.tissue, 
+  textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], colnames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
            main=paste("Component", x_comp, "vs.", y_comp))
   
 }
@@ -254,7 +275,7 @@ for (x_comp in 14:19) {
   ii=1:nrow(dat_pca$x)
 #   ii=which(newnames=="Liver")
 
-  newnames.2=paste(newnames, rep(c(0:23)*2, 12))
+  newnames.2=paste(colnames(dat_pca$x), rep(c(0:23)*2, 12))
   
   r=max(range(c(dat_pca$x[ii, x_comp], dat_pca$x[ii, y_comp]))) * 1.2
 
@@ -263,72 +284,10 @@ for (x_comp in 14:19) {
 }
 
 # Which vector loadings have oscillating components? ----------------------
-
-# Optional: can MeanCenter the vector y to remove cross-tissue differences
-# and focus only on oscillations.
-
-N <- nrow(dat_pca$x)  # number of samples.
-T <- 24  # 24 hours in a period
-
-# Fit PCA component of interest: loop to try many different PCAs
-# user changeable range
-for (pca_vector in 14:20) {
-  # Create response vector, which is loadings
-  
-  y <- dat_pca$x[, pca_vector]
-  
-  # Optional: 
-  # y <- MeanCenterAcrossGroups(y)
-  
-  # BEGIN: plot periodograms to see which frequency has high activity
-  freq.and.periodogram <- CalculatePeriodogram(y)  # returns a list
-  freq <- freq.and.periodogram$freq
-  periodogram <- freq.and.periodogram$p.scaled
-  periodogram.unscaled <- freq.and.periodogram$p.unscaled
-  
-  # Calculate top 5 frequencies
-  max.freqs <- FindMaxFreqs(freq, periodogram)
-  
-  PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector))
-  # add vertical line at max frequency
-  max.f <- max.freqs[1]
-  # calculate period from frequency
-  max.T <- (1 / max.f) * 2  # multiply by 2 because samples are every 2 hours 
-  abline(v=max.f, col='blue', lwd=2)
-  # add text to show freq and period.
-  # x offset of +0.02 so you can see the text
-  text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"))
-  
-  PlotLoadings(y, title=paste("Vector Loadings for PCA component:", pca_vector))
-  # END: plot periodograms to see which frequency has high activity
-  
-  # BEGIN: Linear fit for period of 24 hours
-  # Create sequence of t = [0, 2, 4, ... (N - 1)]
-  t <- seq(0, 2 * N - 1, 2)
-  
-  # set my angular frequency
-  omega <- (2 * pi) / (T)
-  
-  # fit my lm using cos and sin with angular frequency
-  fit <- lm(y ~ cos(omega * t) + sin(omega * t))
-  # END: Linear fit for period of 24 hours
-  
-  # Print some statementsy to describe fit
-  cat("*********************************\n")
-  cat(paste0("PCA ", pca_vector, "\n"))
-  cat("\n")
-  
-  cat("Max freqs\n")
-  print(max.freqs)
-  
-  print(anova(fit))
-  cat("\n")
-}
-
-
-# Limma: multiple intercept fit -------------------------------------------
-
-# fit linear model: with multiple intercept but shared oscillating factor
+# We will fit two linear models:
+# 1) linear model with common intercept and common oscillating component
+# 2) linear model with tissue-specific intercept 
+# and common oscillating component
 
 # Optional: can MeanCenter the vector y to remove cross-tissue differences
 # and focus only on oscillations.
@@ -380,24 +339,11 @@ for (pca_vector in 1:20) {
   n.tissues <- 12  # 12 conditions
   n.timepoints <- 24  # 24 time points
   
-  # initialize first tissue vector, then cbind for next tissues
-  tissue.factors <- rep(0, n.tissues * n.timepoints)
-  tissue.factors[1:24] <- rep(1, n.timepoints)
-  # print(length(tissue.factors))
+  tissue.factors <- GetTissueSpecificMatrix(n.tissues, n.timepoints)
   
-  # do same for all other tissues, cbind to tissue.factors
-  for (c in 2:n.tissues){  # start at 2 because we did 1 already
-    start.i <- (c - 1) * n.timepoints + 1  # starts at 25, if c = 2
-    end.i <- start.i + n.timepoints - 1  # ends at 48, if c = 2 
-    t.fac <- rep(0, n.tissues * n.timepoints)
-    t.fac[start.i:end.i] <- rep(1, n.timepoints)
-    # print(length(t.fac))
-    tissue.factors <- cbind(tissue.factors, t.fac)
-  }
-  
-  print(dim(tissue.factors))
   # fit my lm using cos and sin with angular frequency
-  fit <- lm(y ~ 0 + tissue.factors + cos(omega * t) + sin(omega * t))
+  fit <- lm(y ~ cos(omega * t) + sin(omega * t))
+  fit.multi <- lm(y ~ 0 + tissue.factors + cos(omega * t) + sin(omega * t))
   # END: Linear fit for period of 24 hours
   
   # Print some statementsy to describe fit
@@ -405,12 +351,21 @@ for (pca_vector in 1:20) {
   cat(paste0("PCA ", pca_vector, "\n"))
   cat("\n")
   
-  print(fit$coefficients)
+  cat("Max freqs\n")
+  print(max.freqs)
+  
+  cat("Simple fit:\n")
   print(anova(fit))
   cat("\n")
+  
+  cat("Multi fit:\n")
+  print(anova(fit.multi))
+  cat("\n")
+  
+  cat("Comparing simple and multi fit:\n")
+  print(anova(fit, fit.multi))
+  cat("\n")
+  
 }
-
-
- 
 
 
