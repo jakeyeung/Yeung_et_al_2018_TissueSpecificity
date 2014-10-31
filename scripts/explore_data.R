@@ -188,7 +188,7 @@ GetTissueSpecificMatrix <- function(n.tissues, n.timepoints){
 # Load data, log transform ------------------------------------------------
 
 # define dirs
-data_dir <- "microarray_data"
+data_dir <- "data"
 fname <- "hogenesch_2014_rma.txt"    # data reprocessed by RMA package
 # fname <- "hogenesch_2014_rma.ensemblnames.txt"
 
@@ -197,9 +197,6 @@ data_path <- file.path(data_dir, fname)
 print(paste("Reading data from,", data_path, "May take a few a minutes."))
 dat <- read.table(data_path)
 print("Read data to memory.")
-
-# log2 transform
-dat <- log2(dat)
 
 # make more meaningful sample names
 # user changeable paramters: show="tissue.time" | "tissue" | "time"
@@ -219,11 +216,16 @@ colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue")
 
 # Calculate PCA and Screeplot ---------------------------------------------
 
-dat_standardize <- as.data.frame(scale(dat))
+dat <- as.data.frame(scale(dat))
 
-dat_pca <- prcomp(t(dat_standardize))
+dat_pca <- prcomp(t(dat))
 
 screeplot(dat_pca, type="lines", npcs = min(287, length(dat_pca$sdev)), log="y")
+
+
+# Garbage collection ------------------------------------------------------
+
+rm(dat)
 
 
 # Plot PCA: tissue components ----------------------------------------------------
@@ -242,13 +244,13 @@ for (x_comp in 1:5) {
   # 1.
   #   # Color by time point
   #   colors.by.time <- rep(1:24, 12)
-  #   textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], colnames(dat_pca$x), cex=0.7, col=colors.by.time, 
+  #   textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7, col=colors.by.time, 
   #           main=paste("Component", x_comp, "vs.", y_comp))
   
   # 2. 
   # Color by tissue
   colors.by.tissue <- rep(1:12, each=24)
-  textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], colnames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
+  textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
            main=paste("Component", x_comp, "vs.", y_comp))
   
 }
