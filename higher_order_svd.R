@@ -12,6 +12,7 @@ library(rTensor)
 functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'hosvd.R'))  # modified from rTensor v 1.1 by James Li
 source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
+source(file.path(functions.dir, 'PcaPlotFunctions.R'))  # for PCA and periodogram calcs
 
 # Functions ---------------------------------------------------------------
 
@@ -166,18 +167,70 @@ for (i in 1:10){
   plot(x, y, main=paste0('TIME: PCA ', i, ' vs. ', 'PCA ', i + 1), col=cols)
   labels <- rep(seq(0, 22, 2), 2)
   text(x, y, labels, pos=3, col=cols)
-  # plot(x, type="o", main=paste0('TIME: PCA ', i), col=cols)
 }
 
-# plot PCA 1 against all others
-i = 1
-x <- eigengenes.time[, i]
-for (j in 2:10){
-  y <- eigengenes.time[, j]
-  plot(x, y, main=paste0('TIME: PCA ', i, ' vs. ', 'PCA ', j), col=cols)
-  labels <- rep(seq(0, 22, 2), 2)
-  text(x, y, labels, pos=3, col=cols)
+# Which vector loadings have oscillating components? ----------------------
+# We will fit one linear models:
+# 1) linear model with common intercept and common oscillating component
+# and common oscillating component
+
+N <- 24  # number of samples.
+T <- 24  # 24 hours in a period
+
+# Fit PCA component of interest: loop to try many different PCAs
+# user changeable range
+for (pca_vector in 1:10) {
+  # Create response vector, which is loadings
+  
+  y <- eigengenes.time[, pca_vector]
+  
+  # BEGIN: plot periodograms to see which frequency has high activity
+  freq.and.periodogram <- CalculatePeriodogram(y)  # returns a list
+  freq <- freq.and.periodogram$freq
+  periodogram <- freq.and.periodogram$p.scaled
+  periodogram.unscaled <- freq.and.periodogram$p.unscaled
+  
+  # Calculate top 5 frequencies
+  max.freqs <- FindMaxFreqs(freq, periodogram)
+  
+  PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector))
+  # add vertical line at max frequency
+  max.f <- max.freqs[1]
+  # calculate period from frequency
+  max.T <- (1 / max.f) * 2  # multiply by 2 because samples are every 2 hours 
+  abline(v=max.f, col='blue', lwd=2)
+  # add text to show freq and period.
+  # x offset of +0.02 so you can see the text
+  text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"))
+  
+  PlotLoadings(y, title=paste("Vector Loadings for PCA component:", pca_vector))
+  # END: plot periodograms to see which frequency has high activity
+  
+  # BEGIN: Linear fit for period of 24 hours
+  # Create sequence of t = [0, 2, 4, ... (N - 1)]
+  t <- seq(0, 2 * N - 1, 2)
+  
+  # set my angular frequency
+  omega <- (2 * pi) / (T)
+  
+  # fit my lm using cos and sin with angular frequency
+  fit <- lm(y ~ cos(omega * t) + sin(omega * t))
+  # END: Linear fit for period of 24 hours
+  
+  # Print some statementsy to describe fit
+  cat("*********************************\n")
+  cat(paste0("PCA ", pca_vector, "\n"))
+  cat("\n")
+  
+  cat("Max freqs\n")
+  print(max.freqs)
+  
+  cat("Simple fit:\n")
+  print(anova(fit))
+  cat("\n")
+  
 }
+
 
 
 
