@@ -190,7 +190,6 @@ GetTissueSpecificMatrix <- function(n.tissues, n.timepoints){
 # define dirs
 data_dir <- "data"
 fname <- "hogenesch_2014_rma.txt"    # data reprocessed by RMA package
-# fname <- "hogenesch_2014_rma.ensemblnames.txt"
 
 # load data
 data_path <- file.path(data_dir, fname)
@@ -216,9 +215,7 @@ colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue")
 
 # Calculate PCA and Screeplot ---------------------------------------------
 
-dat <- as.data.frame(scale(dat))
-
-dat_pca <- prcomp(t(dat))
+dat_pca <- prcomp(t(dat), center=TRUE, scale.=TRUE)
 
 screeplot(dat_pca, type="lines", npcs = min(287, length(dat_pca$sdev)), log="y")
 
@@ -231,7 +228,7 @@ rm(dat)
 # Plot PCA: tissue components ----------------------------------------------------
 
 # Loop to plot scatter plot of PCA i versus PCA i + 1
-for (x_comp in 1:5) {
+for (x_comp in 1:3) {
 
   y_comp <- x_comp + 1  # plot x PCA component i on x-axis, PCA component i+1 on y-axis
   
@@ -261,7 +258,7 @@ for (x_comp in 1:5) {
 
 # Loop to plot scatter plot of PCA i versus PCA i + 1
 # FELIX: this is for the 'circadian; components
-for (x_comp in 14:19) {
+for (x_comp in 17:19) {
   
   y_comp <- x_comp + 1  # plot x PCA component i on x-axis, PCA component i+1 on y-axis
   
@@ -299,7 +296,7 @@ T <- 24  # 24 hours in a period
 
 # Fit PCA component of interest: loop to try many different PCAs
 # user changeable range
-for (pca_vector in 1:20) {
+for (pca_vector in 10:20) {
   # Create response vector, which is loadings
   
   y <- dat_pca$x[, pca_vector]
