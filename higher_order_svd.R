@@ -21,21 +21,25 @@ ScaleTissues <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   # there are N.TIMEPTS + N.TISSUES columns.
   # grouped by tissues, ordered by time
   
-  # number of datapoints in matrix
-  N <- nrow(dat) * ncol(dat)
-  # create empty dataframe with same col and row names
-  scaled.dat <- as.data.frame(matrix(rep(NA, N), nrow=nrow(dat), ncol=ncol(dat)))
-  rownames(scaled.dat) <- rownames(dat)
-  colnames(scaled.dat) <- colnames(dat)
-  
-  for (i in 1:NTISSUES){
+#   # number of datapoints in matrix
+#   N <- nrow(dat) * ncol(dat)
+#   # create empty dataframe with same col and row names
+#   scaled.dat <- as.data.frame(matrix(rep(NA, N), nrow=nrow(dat), ncol=ncol(dat)))
+#   rownames(scaled.dat) <- rownames(dat)
+#   colnames(scaled.dat) <- colnames(dat)
+  for (i in 1:N.TISSUES){
     print(i)
     start.index <- (i - 1) * N.TIMEPTS + 1  # 1, 25, 49...
     end.index <- i * N.TIMEPTS  # 24, 48 ...
-    scaled.dat[, start.index:end.index] <- t(scale(t(dat[, start.index:end.index])))
+    dat[, start.index:end.index] <- t(scale(t(dat[, start.index:end.index])))
   }
-  return scaled.dat
+  return(dat)
 }
+
+# dat.test <- as.data.frame(matrix(1:288*5, ncol=288, nrow=5))
+# dat.test.tiss <- ScaleTissues(dat.test, 24, 12)
+# print(dat.test[1, 1:24])
+# print(dat.test.tiss[1, 1:24])
 
 
 ScaleTime <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
@@ -46,20 +50,25 @@ ScaleTime <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   # all on same time point.
   # number of datapoints in matrix
   
-  N <- nrow(dat) * ncol(dat)
-  # create empty dataframe with same col and row names
-  scaled.dat <- as.data.frame(matrix(rep(NA, N), nrow=nrow(dat), ncol=ncol(dat)))
-  rownames(scaled.dat) <- rownames(dat)
-  colnames(scaled.dat) <- colnames(dat)
+#   N <- nrow(dat) * ncol(dat)
+#   # create empty dataframe with same col and row names
+#   scaled.dat <- as.data.frame(matrix(rep(NA, N), nrow=nrow(dat), ncol=ncol(dat)))
+#   rownames(scaled.dat) <- rownames(dat)
+#   colnames(scaled.dat) <- colnames(dat)
   
   for (i in 1:N.TIMEPTS){
     print(i)
     indices <- seq(i, N.TIMEPTS * N.TISSUES, N.TIMEPTS)
-    scaled.dat[, indices] <- t(scale(t(dat[, indices])))
+    dat[, indices] <- t(scale(t(dat[, indices])))
   }
-  return(scaled.dat)
+  return(dat)
 }
 
+# dat.test <- as.data.frame(matrix(1:288*5, ncol=288, nrow=5))
+# dat.test.time <- ScaleTime(dat.test)
+# i <- seq(1, 288, 24)
+# print(dat.test[1, i])
+# print(dat.test.time[1, i])
 
 # Define constants --------------------------------------------------------
 
@@ -89,15 +98,10 @@ dat.colnames <- colnames(dat)  # in case I lose it later
 
 # Scale by tissue and time ------------------------------------------------
 
-print(row.vec <- dat[1, ])
+# dat <- ScaleTissues(dat, N.TIMEPTS, N.TISSUES)
+# 
+# dat <- ScaleTime(dat, N.TIMEPTS, N.TISSUES)
 
-dat <- ScaleTissues(dat, N.TIMEPTS, N.TISSUES)
-
-print(row.vec.tissue.scaled <- dat[1, ])
-
-dat <- ScaleTime(dat, N.TIMEPTS, N.TISSUES)
-
-print(row.vec.time.scaled <- dat[1, ])
 
 # Convert to Tensor -------------------------------------------------------
 
@@ -106,7 +110,7 @@ print(row.vec.time.scaled <- dat[1, ])
 # mode 2: number of time points (N = 24)
 # mode 3: number of tissues (N = 12)
 
-tnsr <- fold(dat, rs=1, cs=c(2, 3), modes=c(nrow(dat), N.TIMEPTS, N.TISSUES))
+tnsr <- fold(as.matrix(dat), rs=1, cs=c(2, 3), modes=c(nrow(dat), N.TIMEPTS, N.TISSUES))
 
 # sanity check
 # Below is matrix exprs of row 1 gene. Rows are time. Columns are tissues.
@@ -133,7 +137,11 @@ lapply(tnsr.hosvd$U, dim)
 eigengenes.time <- tnsr.hosvd$U[[2]]
 eigengenes.tissue <- tnsr.hosvd$U[[3]]
 
-plot(eigengenes.time[, 1], eigengenes.time[, 2])
-plot(eigengenes.tissue[, 1], eigengenes.tissue[, 2])
+# plot(eigengenes.time[, 1], eigengenes.time[, 2])
+x <- eigengenes.tissue[, 1]
+y <- eigengenes.tissue[, 2]
+plot(x, y)
+tissue.labels <- dat.colnames[seq(1, 288, 24)]
+text(x, y, tissue.labels, pos=3)
 
 
