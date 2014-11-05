@@ -15,7 +15,7 @@ source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 
 # Functions ---------------------------------------------------------------
 
-ScaleTissues <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
+ScaleTissue <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   # scale tissues (grouped by every N.TIMEPTS per tissue)
   # dat: expression matrix. Rows are genes. Columns are samples 
   # there are N.TIMEPTS + N.TISSUES columns.
@@ -36,10 +36,6 @@ ScaleTissues <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   return(dat)
 }
 
-# dat.test <- as.data.frame(matrix(1:288*5, ncol=288, nrow=5))
-# dat.test.tiss <- ScaleTissues(dat.test, 24, 12)
-# print(dat.test[1, 1:24])
-# print(dat.test.tiss[1, 1:24])
 
 
 ScaleTime <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
@@ -64,11 +60,21 @@ ScaleTime <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   return(dat)
 }
 
+
+# Test functions work -----------------------------------------------------
+
 # dat.test <- as.data.frame(matrix(1:288*5, ncol=288, nrow=5))
-# dat.test.time <- ScaleTime(dat.test)
-# i <- seq(1, 288, 24)
-# print(dat.test[1, i])
-# print(dat.test.time[1, i])
+# dat.test.tiss <- ScaleTissue(dat.test, 24, 12)
+# print(dat.test[1, 1:24])
+# print(dat.test.tiss[1, 1:24])
+
+dat.test <- as.data.frame(matrix(1:288*5, ncol=288, nrow=5))
+dat.test.time <- ScaleTime(dat.test)
+dat.test.time.tissue <- ScaleTissue(dat.test.time)
+
+i <- seq(1, 288, 24)
+print(rowMeans(dat.test.time.tissue[1, 1:24]))
+print(rowMeans(dat.test.time.tissue[1, i]))
 
 # Define constants --------------------------------------------------------
 
@@ -98,9 +104,11 @@ dat.colnames <- colnames(dat)  # in case I lose it later
 
 # Scale by tissue and time ------------------------------------------------
 
-# dat <- ScaleTissues(dat, N.TIMEPTS, N.TISSUES)
-# 
-# dat <- ScaleTime(dat, N.TIMEPTS, N.TISSUES)
+# if you're looking at tissue, you scale by time.
+dat.tissue <- ScaleTime(dat, N.TIMEPTS, N.TISSUES)
+
+# if you're looking at time, you scale by tissue
+dat.time <- ScaleTissue(dat, N.TIMEPTS, N.TISSUES)
 
 
 # Convert to Tensor -------------------------------------------------------
@@ -110,21 +118,24 @@ dat.colnames <- colnames(dat)  # in case I lose it later
 # mode 2: number of time points (N = 24)
 # mode 3: number of tissues (N = 12)
 
-tnsr <- fold(as.matrix(dat), rs=1, cs=c(2, 3), modes=c(nrow(dat), N.TIMEPTS, N.TISSUES))
+tnsr.tissue <- fold(as.matrix(dat.tissue), rs=1, cs=c(2, 3), modes=c(nrow(dat), N.TIMEPTS, N.TISSUES))
+tnsr.time <- fold(as.matrix(dat.time), rs=1, cs=c(2, 3), modes=c(nrow(dat), N.TIMEPTS, N.TISSUES))
 
 # sanity check
 # Below is matrix exprs of row 1 gene. Rows are time. Columns are tissues.
-# tnsr[1, 1:N.TIMEPTS, 1:N.TISSUES]
+# tnsr.tissue[1, 1:N.TIMEPTS, 1:N.TISSUES]
 
 
 # Higher Order SVD --------------------------------------------------------
 
 # HOSVD, truncate after 100 because I get subscript out of bound errors?!
 
-tnsr.hosvd <- hosvd(tnsr, rank=c(N.TIMEPTS * N.TISSUES, N.TIMEPTS, N.TISSUES))
+tnsr.tissue.hosvd <- hosvd(tnsr.tissue, rank=c(N.TIMEPTS * N.TISSUES, N.TIMEPTS, N.TISSUES))
+tnsr.time.hosvd <- hosvd(tnsr.time, rank=c(N.TIMEPTS * N.TISSUES, N.TIMEPTS, N.TISSUES))
 
 # print dimensions of each orthogonal matrix, U
-lapply(tnsr.hosvd$U, dim)
+lapply(tnsr.tissue.hosvd$U, dim)
+lapply(tnsr.time.hosvd$U, dim)
 
 
 # Plot PCAs ---------------------------------------------------------------
@@ -134,14 +145,39 @@ lapply(tnsr.hosvd$U, dim)
 # tnsr.hosvd$U[[2]] is size 24 by 24  # "time-component eigengenes?"
 # tnsr.hosvd$U[[3]] is size 12 by 12  # "tissue-component eigengenes?"
 
-eigengenes.time <- tnsr.hosvd$U[[2]]
-eigengenes.tissue <- tnsr.hosvd$U[[3]]
+eigengenes.time <- tnsr.time.hosvd$U[[2]]
+eigengenes.tissue <- tnsr.tissue.hosvd$U[[3]]
+dim(eigengenes.time)
+dim(eigengenes.tissue)
 
-# plot(eigengenes.time[, 1], eigengenes.time[, 2])
-x <- eigengenes.tissue[, 1]
-y <- eigengenes.tissue[, 2]
-plot(x, y)
-tissue.labels <- dat.colnames[seq(1, 288, 24)]
-text(x, y, tissue.labels, pos=3)
+for (i in 1:10){
+  x <- eigengenes.tissue[, i]
+  y <- eigengenes.tissue[, i + 1]
+  plot(x, y, main=paste0('TISSUE: PCA ', i, ' vs. ', 'PCA ', i + 1))
+  labels <- dat.colnames[seq(1, 288, 24)]
+  text(x, y, labels, pos=3)
+}
+
+# colors for time. Repeat twice for 24 hour oscillations over 48 hrs
+cols <- rep(c('black', 'red', 'cyan', 'blue', 'lawngreen', 'burlywood'), 2)
+for (i in 1:10){
+  x <- eigengenes.time[, i]
+  y <- eigengenes.time[, i + 1]
+  plot(x, y, main=paste0('TIME: PCA ', i, ' vs. ', 'PCA ', i + 1), col=cols)
+  labels <- rep(seq(0, 22, 2), 2)
+  text(x, y, labels, pos=3, col=cols)
+  # plot(x, type="o", main=paste0('TIME: PCA ', i), col=cols)
+}
+
+# plot PCA 1 against all others
+i = 1
+x <- eigengenes.time[, i]
+for (j in 2:10){
+  y <- eigengenes.time[, j]
+  plot(x, y, main=paste0('TIME: PCA ', i, ' vs. ', 'PCA ', j), col=cols)
+  labels <- rep(seq(0, 22, 2), 2)
+  text(x, y, labels, pos=3, col=cols)
+}
+
 
 
