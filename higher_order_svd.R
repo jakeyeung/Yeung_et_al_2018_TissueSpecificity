@@ -11,6 +11,7 @@ library(rTensor)
 
 functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'hosvd.R'))  # modified from rTensor v 1.1 by James Li
+source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 
 # Functions ---------------------------------------------------------------
 
@@ -27,49 +28,35 @@ ScaleTissues <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   rownames(scaled.dat) <- rownames(dat)
   colnames(scaled.dat) <- colnames(dat)
   
-  for (row.i in 1:nrow(dat)){
-    row.vec <- dat[row.i, ]
-    for (i in 1:N.TISSUES){
-      start.index <- (i - 1) * N.TIMEPTS + 1  # start at 1, 25, 49 ...
-      end.index <- i * N.TIMEPTS  # ends at 24, 48, ...
-      # get vector of 1 tissue across all times
-      tissue.vec <- row.vec[start.index:end.index]
-      # scale, mean centre and scale
-      tissue.vec.scaled <- as.vector(scale(t(tissue.vec), scale=FALSE))
-      # update row.vec with new scaled value
-      row.vec[start.index:end.index] <- tissue.vec.scaled
-    }
-    scaled.dat[row.i, ] <- row.vec
+  for (i in 1:NTISSUES){
+    print(i)
+    start.index <- (i - 1) * N.TIMEPTS + 1  # 1, 25, 49...
+    end.index <- i * N.TIMEPTS  # 24, 48 ...
+    scaled.dat[, start.index:end.index] <- t(scale(t(dat[, start.index:end.index])))
   }
-  return(scaled.dat)
+  return scaled.dat
 }
 
-# test function
-dat.test <- as.data.frame(matrix(1:288*5, nrow=5, ncol=288))
-dat.test.tiss <- ScaleTissues(dat.test, 24, 12)
 
-
-
-ScaleTime <- function(dat, N.TIMEPTS, N.TISSUES){
+ScaleTime <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   # scale TIME
   # dat: expression matrix. Rows are genes. Columns are samples
   # there are N.TIMEPTS + N.TISSUES columns
   # grouped by tissues, so it's not as pretty to collect
   # all on same time point.
-  scaled.dat <- apply(dat, 1, function(row.vec){
-    for (i in 1:N.TIMEPTS){
-      # if grouped by tissues, to get time, we need
-      # to grab element at every 24 elements
-      indices <- seq(i, N.TIMEPTS * N.TISSUES, N.TIMEPTS)
-      time.vec <- row.vec[indices]
-      # scale
-      time.vec.scaled <- scale(time.vec)
-      # update row.vec
-      row.vec[indices] <- time.vec.scaled
-    }
-    return(row.vec)
-  })
-  str(scaled.dat)
+  # number of datapoints in matrix
+  
+  N <- nrow(dat) * ncol(dat)
+  # create empty dataframe with same col and row names
+  scaled.dat <- as.data.frame(matrix(rep(NA, N), nrow=nrow(dat), ncol=ncol(dat)))
+  rownames(scaled.dat) <- rownames(dat)
+  colnames(scaled.dat) <- colnames(dat)
+  
+  for (i in 1:N.TIMEPTS){
+    print(i)
+    indices <- seq(i, N.TIMEPTS * N.TISSUES, N.TIMEPTS)
+    scaled.dat[, indices] <- t(scale(t(dat[, indices])))
+  }
   return(scaled.dat)
 }
 
@@ -96,7 +83,7 @@ print("Read data to memory.")
 
 # Get Colnames ------------------------------------------------------------
 
-colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue")
+colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue.time")
 dat.colnames <- colnames(dat)  # in case I lose it later
 
 
