@@ -37,8 +37,6 @@ ScaleTissue <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   return(dat)
 }
 
-
-
 ScaleTime <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
   # scale TIME
   # dat: expression matrix. Rows are genes. Columns are samples
@@ -69,13 +67,13 @@ ScaleTime <- function(dat, N.TIMEPTS=24, N.TISSUES=12){
 # print(dat.test[1, 1:24])
 # print(dat.test.tiss[1, 1:24])
 
-dat.test <- as.data.frame(matrix(1:288*5, ncol=288, nrow=5))
-dat.test.time <- ScaleTime(dat.test)
-dat.test.time.tissue <- ScaleTissue(dat.test.time)
-
-i <- seq(1, 288, 24)
-print(rowMeans(dat.test.time.tissue[1, 1:24]))
-print(rowMeans(dat.test.time.tissue[1, i]))
+# dat.test <- as.data.frame(matrix(1:288*5, ncol=288, nrow=5))
+# dat.test.time <- ScaleTime(dat.test)
+# dat.test.time.tissue <- ScaleTissue(dat.test.time)
+# 
+# i <- seq(1, 288, 24)
+# print(rowMeans(dat.test.time.tissue[1, 1:24]))
+# print(rowMeans(dat.test.time.tissue[1, i]))
 
 # Define constants --------------------------------------------------------
 
@@ -129,10 +127,13 @@ tnsr.time <- fold(as.matrix(dat.time), rs=1, cs=c(2, 3), modes=c(nrow(dat), N.TI
 
 # Higher Order SVD --------------------------------------------------------
 
-# HOSVD, truncate after 100 because I get subscript out of bound errors?!
+# HOSVD is not unique
+tnsr.tissue.hosvd <- hosvd(tnsr.tissue, rank=c(N.TIMEPTS * N.TISSUES, N.TIMEPTS, N.TISSUES))  # ~few minutes
+tnsr.time.hosvd <- hosvd(tnsr.time, rank=c(N.TIMEPTS * N.TISSUES, N.TIMEPTS, N.TISSUES))  # few minutes
 
-tnsr.tissue.hosvd <- hosvd(tnsr.tissue, rank=c(N.TIMEPTS * N.TISSUES, N.TIMEPTS, N.TISSUES))
-tnsr.time.hosvd <- hosvd(tnsr.time, rank=c(N.TIMEPTS * N.TISSUES, N.TIMEPTS, N.TISSUES))
+# CP is often unique, but columns of U matrices are not orthnormal
+# tnsr.tissue.cp <- cp(tnsr.tissue, num_components=12)  # WARNING: kind of slow
+# tnsr.time.cp <- cp(tnsr.time, num_components=24)  # WARNING: SLOW +30 MIN
 
 # print dimensions of each orthogonal matrix, U
 lapply(tnsr.tissue.hosvd$U, dim)
@@ -146,10 +147,19 @@ lapply(tnsr.time.hosvd$U, dim)
 # tnsr.hosvd$U[[2]] is size 24 by 24  # "time-component eigengenes?"
 # tnsr.hosvd$U[[3]] is size 12 by 12  # "tissue-component eigengenes?"
 
+# take eigengenes from HOSVD 
 eigengenes.time <- tnsr.time.hosvd$U[[2]]
 eigengenes.tissue <- tnsr.tissue.hosvd$U[[3]]
+# take eigengenes from CP
+# eigengenes.time <- tnsr.time.cp$U[[2]]
+# eigengenes.tissue <- tnsr.tissue.cp$U[[3]]
+
 dim(eigengenes.time)
 dim(eigengenes.tissue)
+
+
+# Plot tissue PCAs 2D ------------------------------------------------------
+
 
 for (i in 1:10){
   x <- eigengenes.tissue[, i]
@@ -159,22 +169,31 @@ for (i in 1:10){
   text(x, y, labels, pos=3)
 }
 
+
+
+
+# Plot time PCAs 2D --------------------------------------------------------
+
+
 # colors for time. Repeat twice for 24 hour oscillations over 48 hrs
 cols <- rep(c('black', 'red', 'cyan', 'blue', 'lawngreen', 'burlywood'), 2)
 for (i in 1:10){
-  x <- eigengenes.time[, i]
+  x <- eigengenes.time[, 1]
   y <- eigengenes.time[, i + 1]
-  plot(x, y, main=paste0('TIME: PCA ', i, ' vs. ', 'PCA ', i + 1), col=cols)
+  plot(x, y, main=paste0('TIME: PCA ', 1, ' vs. ', 'PCA ', i + 1), col=cols)
   labels <- rep(seq(0, 22, 2), 2)
   text(x, y, labels, pos=3, col=cols)
 }
 
-# Which vector loadings have oscillating components? ----------------------
+
+# Plot 1D PCA plus periodogram --------------------------------------------
+
+
 # We will fit one linear models:
 # 1) linear model with common intercept and common oscillating component
 # and common oscillating component
 
-N <- 24  # number of samples.
+N <- 24  # number of samples == number of time periods in this case.
 T <- 24  # 24 hours in a period
 
 # Fit PCA component of interest: loop to try many different PCAs
