@@ -10,6 +10,7 @@ functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 source(file.path(functions.dir, 'PcaPlotFunctions.R'))  # for PCA and periodogram calcs
 source(file.path(functions.dir, 'FourierFunctions.R'))  # for Fourier stuff
+source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
 
 GetTopNValues <- function(x, N){
   # Return top N values from vector x
@@ -44,24 +45,39 @@ INTERVAL <- 2  # hours between samples
 # define dirs
 data_dir <- "data"
 fname <- "hogenesch_2014_rma.txt"    # data reprocessed by RMA package
-# fname <- "hogenesch_2014_rma.ensemblnames.txt"
+fname <- "hogenesch_2014_rma.genenames.txt"  # has duplicate gene names
 
 # load data
 data_path <- file.path(data_dir, fname)
 print(paste("Reading data from,", data_path, "May take a few a minutes."))
-dat <- read.table(data_path)
+dat <- read.table(data_path, header=TRUE)
 print("Read data to memory.")
+
+
+
+# If needed handle duplicate row names ------------------------------------
+
+rownames(dat) <- make.names(dat$gene, unique=TRUE)
+# genes <- array.exprs$gene
+# coords <- array.exprs$coordinates
+# probeid <- array.exprs$ID_REF
+
+drop.cols <- c("gene")
+dat <- dat[, !(names(dat) %in% drop.cols)]
+
+Peek(dat)  # expect gene names as row names, tissues in columns
 
 # Get Colnames ------------------------------------------------------------
 
 colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue.time")
-dat.colnames <- colnames(dat)  # in case I lose it later
+dat.colnames <- colnames(dat)  # in case I need it later
 dat.tissuenames <- dat.colnames[seq(1, 288, 24)]
 # tissue names are Adr18... remove the 18 from tissue names
 dat.tissuenames <- unname(sapply(dat.tissuenames, function(x){
   return(substr(x, 1, nchar(x) - 2))
 }))
 
+Peek(dat)  # sample names are more readable...
 
 # Project onto flat and rhythmic time components --------------------------
 
@@ -74,17 +90,20 @@ dat.time.projected <- ProjectToPeriodicTime(as.matrix(dat),
                                             OMEGA, 
                                             dat.tissuenames)
 
-Perform PCA -------------------------------------------------------------
 
-# We'll do this manually with SVD decomposition.
-dat.pca <- svd(scale(t(dat.time.projected)))
-plot(dat.pca$d^2)  # Manual screeplot. 
+
+# PCA ---------------------------------------------------------------------
+
+# SHOULD WE SCALE OR NOT? 
+# dat.pca <- svd(scale(t(dat.time.projected)))  # scaled
+dat.pca <- svd(t(dat.time.projected))  # not scaled
+plot(dat.pca$d^2, type='o')  # Manual screeplot. 
 print(lapply(dat.pca, dim))  # $u is 12x12, $v is k-genes x 12
 
 # You can check that this is equivalent to prcomp
 # dat.pca.check <- prcomp(scale(t(dat.time.projected)))
 # screeplot(dat.pca.check, npcs=length(dat.pca.check$sdev), type="lines")
-
+# summary(dat.pca.check)
 
 # Name U and V rows with samples and genes -------------------------------
 
@@ -93,11 +112,9 @@ rownames(dat.pca$v) <- rownames(dat)
 
 # Plot PCA ----------------------------------------------------------------
 
-for (i in 1:5){
-  # plotting real values: PCA 1 vs PCA 2 show Liver is different.
-  # dat.pca$u has no Imaginary part? Arg are all either pi or 0...
-  x <- dat.pca$u[, i]
-  y <- dat.pca$u[, i + 1]
+for (i in 1:10){
+  x <- Arg(dat.pca$u[, i])
+  y <- Arg(dat.pca$u[, i + 1])
   plot(x, y, main=paste0('TISSUE: PCA ', i, ' vs. ', 'PCA ', i + 1))
   labels <- dat.tissuenames
   text(x, y, labels, pos=3)
@@ -106,14 +123,14 @@ for (i in 1:5){
 # Find "modules" of important genes ---------------------------------------
 
 # limit to top N genes that give highest loadings...
-N.genes <- 500
+N.genes <- 100
 
 # get top N values from V. Therefore filter...
 # Value calculated from Modulus of elements in vector to take into account
 # both Re and Im
 
 for (PCA in 1:10){
-  top.N <- GetTopNValues(Mod(dat.pca$v[, PCA]), N.genes)
+  top.N <- GetTopNValues(Mod(dat.pca$v[, PCA]), N.genes)  # is it right to get the Mod for TopNValues?
   
   # filter expression matrix for only top contributing genes
   # recreate approximation of gene exprs with PCA
