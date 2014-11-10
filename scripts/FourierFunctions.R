@@ -27,7 +27,8 @@ CalculatePeriodogram <- function(x, is.matrix=FALSE){
     FF <- abs(fft(x) / sqrt(N)) ^ 2  # do my FFT. Fast Fourier Transform
   }
   else {
-    FF <- t(abs(mvfft(t(x))))
+    FF <- t(mvfft(t(x)))
+    # FF <- t(abs(mvfft(t(x))))
     # FF <- t(abs(mvfft(t(x)) / sqrt(N)) ^ 2)  # do my FFT. Fast Fourier Transform
   }
   # Create my "scaled" periodogram. Scale constant is 1/n
@@ -151,11 +152,11 @@ COLS <- 288
 n.timepts <- 24  # 24 time points per tissue
 n.tiss <- COLS / n.timepts
 P <- 24  # 24 hour period
-# w <- 2 * pi / P
+w <- 2 * pi / P
 # w <- 0
 # use a cosine or sine function with period of 24 hours
 t <- seq(from=0, by=2, length.out=COLS)  # 0 to 48 hours sampled every 2 hrs. 12 tissues
-y <- 3 * cos(w * t)
+y <- 3 * sin(w * t)
 # y <- rep(1:n.tiss, each=n.timepts)
 Y <- matrix(y, nrow=ROWS, ncol=COLS, byrow = TRUE)
 out.colnames <- make.unique(rep('COL', n.tiss))
