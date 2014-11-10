@@ -6,49 +6,10 @@
 
 # Functions ---------------------------------------------------------------
 
+functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 source(file.path(functions.dir, 'PcaPlotFunctions.R'))  # for PCA and periodogram calcs
-
-ProjectToPeriodicTime <- function(Y , N.TISSUES, N.TIMEPTS, INTERVAL, OMEGA, col.names){
-  # Project matrix of times to frequency domain
-  # ARGS:
-  #   Y: matrix of expression. Rows are genes. Columns contain tissues and time.
-  #      In this case, expect tissues clustered together, ordered by time.
-  #   col.names: column names of output Y's projected onto time. FALSE means no col.names
-  #   N.TISSUES: number of tissues
-  #   N.TIMEPTS: number of time points per tissue
-  #   INTERVAL: interval between time points. e.g. 2 if sampled every 2hrs
-  #   OMEGA: 2 * pi / PERIOD. Angular frequency. If omega = 0, matrix Y is 
-  #   normalized by time components (not oscillating)
-  # 
-  # RETURNS:
-  #   Y.time.projected: matrix of expression, projected onto the temporal axis.
-  
-  # track number of genes for dimension purposes
-  N.GENES <- nrow(Y)
-  # get times vector
-  times.vec <- seq(length.out = N.TIMEPTS, by = INTERVAL)
-  
-  # init output matrix
-  Y.time.projected <- matrix(NA, nrow=N.GENES, ncol=N.TISSUES)
-  
-  # identify row and colnames
-  rownames(Y.time.projected) <- rownames(Y)  # same row names
-  colnames(Y.time.projected) <- col.names  # from args  
-  
-  # BEGIN: project onto temporal axis
-  for (i in 1:N.TISSUES){
-    # get tissue.i across time
-    index.start <- (i - 1) * N.TIMEPTS + 1  # 1, 25, 49...
-    index.end <- i * N.TIMEPTS
-    Y.tissue.i <- Y[, index.start:index.end]  # all genes
-    # project tissues onto temporal axis
-    # if OMEGA = 0, it is equivalent to getting average of Y.tissue.i
-    T <- ((exp(1i * OMEGA * times.vec)) / (N.TIMEPTS))
-    Y.time.projected[, i] <- Y.tissue.i %*% (exp(1i * OMEGA * times.vec)) / (N.TIMEPTS)
-  }
-  return(Y.time.projected)
-}
+source(file.path(functions.dir, 'FourierFunctions.R'))  # for Fourier stuff
 
 GetTopNValues <- function(x, N){
   # Return top N values from vector x
@@ -69,23 +30,6 @@ GetTopNValues <- function(x, N){
   x.top$i <- which(x %in% x.top$vals)  # not ordered!
   return(x.top)
 }
-
-# Test function works -----------------------------------------------------
-
-# test ProjectToPeriodicTIme
-#
-# ROWS <- 3
-# COLS <- 9
-# TIMEPTS <- 3  # 3 time points per tissue
-# TISSUES <- COLS / TIMEPTS
-# Y <- matrix(seq(3 * 9), nrow=ROWS, ncol=COLS)
-# out.colnames <- make.unique(rep('COL', TISSUES))
-# rownames(Y) <- make.unique(rep('ROW', ROWS))
-# (Y.t <- ProjectToPeriodicTime(Y, N.TISSUES=TISSUES, N.TIMEPTS=TIMEPTS, INTERVAL=3, OMEGA=0, out.colnames))
-
-# # test GetTopNValues
-# x <- seq(from=50, to=1)
-# x.top <- GetTopNValues(x, 5)
 
 # Define constants --------------------------------------------------------
 
@@ -121,6 +65,7 @@ dat.tissuenames <- unname(sapply(dat.tissuenames, function(x){
 
 # Project onto flat and rhythmic time components --------------------------
 
+# RHYTHMIC
 OMEGA <- 2 * pi / PERIOD
 dat.time.projected <- ProjectToPeriodicTime(as.matrix(dat), 
                                             N.TISSUES, 
@@ -129,17 +74,16 @@ dat.time.projected <- ProjectToPeriodicTime(as.matrix(dat),
                                             OMEGA, 
                                             dat.tissuenames)
 
+Perform PCA -------------------------------------------------------------
 
+# We'll do this manually with SVD decomposition.
+dat.pca <- svd(scale(t(dat.time.projected)))
+plot(dat.pca$d^2)  # Manual screeplot. 
+print(lapply(dat.pca, dim))  # $u is 12x12, $v is k-genes x 12
 
-# Perform PCA -------------------------------------------------------------
-
-# check SVD and prcomp are spitting out same matrices
+# You can check that this is equivalent to prcomp
 # dat.pca.check <- prcomp(scale(t(dat.time.projected)))
 # screeplot(dat.pca.check, npcs=length(dat.pca.check$sdev), type="lines")
-
-dat.pca <- svd(scale(t(dat.time.projected)))
-plot(dat.pca$d^2)  # screeplot
-lapply(dat.pca, dim)
 
 
 # Name U and V rows with samples and genes -------------------------------
@@ -150,6 +94,8 @@ rownames(dat.pca$v) <- rownames(dat)
 # Plot PCA ----------------------------------------------------------------
 
 for (i in 1:5){
+  # plotting real values: PCA 1 vs PCA 2 show Liver is different.
+  # dat.pca$u has no Imaginary part? Arg are all either pi or 0...
   x <- dat.pca$u[, i]
   y <- dat.pca$u[, i + 1]
   plot(x, y, main=paste0('TISSUE: PCA ', i, ' vs. ', 'PCA ', i + 1))
@@ -157,11 +103,10 @@ for (i in 1:5){
   text(x, y, labels, pos=3)
 }
 
-
 # Find "modules" of important genes ---------------------------------------
 
 # limit to top N genes that give highest loadings...
-N.genes <- 200
+N.genes <- 500
 
 # get top N values from V. Therefore filter...
 # Value calculated from Modulus of elements in vector to take into account
@@ -196,6 +141,7 @@ dat.filtered <- dat.time.projected[top.N$i, ]
 heatmap(as.matrix(Arg(dat.filtered)), 
         Rowv=NA, 
         Colv=NA,
+        scale="none",
         main=paste('Original data'))
 
 
