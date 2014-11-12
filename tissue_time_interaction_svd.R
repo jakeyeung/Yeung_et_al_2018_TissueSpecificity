@@ -11,6 +11,45 @@ source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 source(file.path(functions.dir, 'PcaPlotFunctions.R'))  # for PCA and periodogram calcs
 source(file.path(functions.dir, 'FourierFunctions.R'))  # for Fourier stuff
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
+# PhaseToHsv package, loaded from github
+# install_github("naef-lab/PhaseHSV")
+library(PhaseHSV)
+
+PlotComplex <- function(complex.matrix, gene.list, labels,
+                        col="HSV", axis.min=-1.1, axis.max=1.1, 
+                        main='Plot title'){
+  # Plot genes on complex plane
+  # 
+  # ARGS:
+  # complex matrix Gene expression. Genes are rows, samples are columns.
+  #   expect rownames in complex matrix whcih are gene names (and match genelist)
+  # gene.list Optionally filter by gene list
+  # colors Colors, if "HSV" compute HSV from angles using PhaseToHsv
+  
+  if (missing(gene.list)){
+    dat <- complex.matrix  
+  } else {
+    dat <- complex.matrix[gene.list, ]
+  }
+  if (missing(labels)){
+    text.labels <- rownames(dat)  
+  } else {
+    text.labels <- labels
+  }
+  
+  plot.colors <- hsv(h=PhaseToHsv(Arg(dat), -pi, pi), s=1, v=1)
+    
+  plot(dat, col=plot.colors, 
+       xlim=c(axis.min, axis.max), 
+       ylim=c(axis.min, axis.max), 
+       pch=20,
+       main=main)
+  text(dat, 
+       labels=text.labels, 
+       pos=3)
+  abline(v=0)
+  abline(h=0)
+}
 
 GetTopNValues <- function(x, N){
   # Return top N values from vector x
@@ -129,7 +168,12 @@ N.genes <- 100
 # Value calculated from Modulus of elements in vector to take into account
 # both Re and Im
 
-for (PCA in 1:10){
+
+# Plot MATRIX, TISSUE and GENE Loadings -----------------------------------
+
+
+for (PCA in 1:5){
+  # --------- BEGIN: GET EIGEN-MATRICES ----------------- # 
   top.N <- GetTopNValues(Mod(dat.pca$u[, PCA]), N.genes)  # is it right to get the Mod for TopNValues?
   
   # filter expression matrix for only top contributing genes
@@ -142,49 +186,77 @@ for (PCA in 1:10){
   # get pca.matrix by outer product of eigengene and eigensample. 
   pca.matrix <- eigenvalue * outer(eigensample, eigengene)
   colnames(pca.matrix) <- dat.tissuenames
+
+  # set colors, HUES, SATURATIOn, VALUE (HSV)
+  # hues <- PhaseToHsv(Arg(pca.matrix), -pi, pi)
+  hues <- seq(from=0, to=1, length.out=100)
+  mycolors <- hsv(h=hues, s=1, v=1)
   
-  # order by phase angle
-  order.phase <- order(Arg(eigensample))
   y <- 1:length(eigengene)  # length of 12, genes are mix of these.
   x <- 1:length(eigensample)  # length of top.N. samples are mix of these.
-  image(x, y, Arg(pca.matrix[order.phase, ]), 
+  # --------- END: GET EIGEN-MATRICES ----------------- #
+  
+  # --------- BEGIN: PLOT MATRIX OF PHASE ANGLES ----------------- # 
+  # 
+  # order by phase angle
+  order.phase <- order(Arg(eigensample))
+  image(x, y, Arg(pca.matrix[order.phase, ]),
+        col=mycolors,
         main=paste('Phase angles: PCA:', PCA), 
         axes=FALSE, xlab="", ylab="")
   axis(1, at=x, labels=FALSE, tick=FALSE)
   axis(2, at=y, labels=FALSE, tick=FALSE)
   # Now draw the textual axis labels
   # gene labels
-  text(x, par("usr")[3] - 1,
-       labels=names(eigensample),
+  text(x, par("usr")[3] - 1.3,
+       labels=names(eigensample)[order.phase],
        srt=90, 
        pos=4,
        offset=0,
        xpd=TRUE, 
        cex=0.9) 
   # sample labels
-  text(par("usr")[1] - 5, y, 
+  text(par("usr")[1] - 3, y, 
        labels = names(eigengene), 
        srt=0, 
-       pos=3, 
+       pos=2, 
        offset=0,
        xpd=TRUE, 
        cex=1.5) 
+  # ---------- END: PLOT MATRIX OF PHASE ANGLES ------------------- # 
+  
+  # ---- BEGIN: PLOT TISSUE AND GENE LOADINGS ON COMPLEX PLANE ---- # 
+  # tissue loadings (eigengenes)
+  PlotComplex(eigengene, axis.min=-0.5, axis.max=0.5, ,
+              labels=dat.tissuenames,
+              main=paste('Tissue loadings PCA:', PCA))
+  
+  # gene loadings (eigensamples)
+  PlotComplex(eigensample, axis.min=-0.5, axis.max=0.5, 
+              labels=names(eigensample),
+              main=paste('Gene loadings PCA:', PCA))
+  
+  # ----- END: PLOT TISSUE AND GENE LOADINGS ON COMPLEX PLANE ----- # 
 }
 
-# # Clock Bmal
-# pca1.arg <- t(dat.pca$u[, 1] %*% d.v)
-# colnames(pca1.arg) <- dat.tissuenames
-Bmal1 <- pca1.arg["Arntl", ]
-Clock <- pca1.arg["Clock", ]
+# Clock Bmal
+colnames(pca.matrix) <- dat.tissuenames
+Bmal1 <- pca.matrix["Arntl", ]
+Clock <- pca.matrix["Clock", ]
 
 # Per1 Per2 Cry1
-Per1 <-  pca1.arg["Per1", ]
-Per2 <-  pca1.arg["Per2", ]
-Cry1 <- pca1.arg["Cry1", ]
+Per1 <-  pca.matrix["Per1", ]
+Per2 <-  pca.matrix["Per2", ]
+Cry1 <- pca.matrix["Cry1", ]
 
-plot(c(Bmal1, Per1), col=c(rep(c('red', 'blue'), each=12)), xlim=c(-0.2, 0.2), ylim=c(-1, 1))
+vec <- c(Bmal1, Per1, Per2, Cry1, Clock)
+labs <- rep(c("Bmal1", "Per1", "Per2", "Cry1", "Clock"), each=12)
+
+colors <- hsv(PhaseToHsv(Arg(vec), -pi, pi), 1, 0.75)
+plot(vec, col=colors, xlim=c(-1.1, 1/1), ylim=c(-1.1, 1.1), pch=20)
 abline(v=0)
 abline(h=0)
+text(vec, labels=labs, pos=3)
 # 
 
 
