@@ -95,8 +95,8 @@ dat.time.projected <- ProjectToPeriodicTime(as.matrix(dat),
 # PCA ---------------------------------------------------------------------
 
 # SHOULD WE SCALE OR NOT? 
-# dat.pca <- svd(scale(t(dat.time.projected)))  # scaled
-dat.pca <- svd(t(dat.time.projected))  # not scaled
+# dat.pca <- svd(t(scale(t(dat.time.projected))))  # scaled
+dat.pca <- svd(dat.time.projected)  # not scaled
 plot(dat.pca$d^2, type='o')  # Manual screeplot. 
 print(lapply(dat.pca, dim))  # $u is 12x12, $v is k-genes x 12
 
@@ -107,14 +107,14 @@ print(lapply(dat.pca, dim))  # $u is 12x12, $v is k-genes x 12
 
 # Name U and V rows with samples and genes -------------------------------
 
-rownames(dat.pca$u) <- dat.tissuenames
-rownames(dat.pca$v) <- rownames(dat)
+rownames(dat.pca$v) <- dat.tissuenames
+rownames(dat.pca$u) <- rownames(dat)
 
 # Plot PCA ----------------------------------------------------------------
 
 for (i in 1:10){
-  x <- Arg(dat.pca$u[, i])
-  y <- Arg(dat.pca$u[, i + 1])
+  x <- Arg(dat.pca$v[, i])
+  y <- Arg(dat.pca$v[, i + 1])
   plot(x, y, main=paste0('TISSUE: PCA ', i, ' vs. ', 'PCA ', i + 1))
   labels <- dat.tissuenames
   text(x, y, labels, pos=3)
@@ -130,41 +130,62 @@ N.genes <- 100
 # both Re and Im
 
 for (PCA in 1:10){
-  top.N <- GetTopNValues(Mod(dat.pca$v[, PCA]), N.genes)  # is it right to get the Mod for TopNValues?
+  top.N <- GetTopNValues(Mod(dat.pca$u[, PCA]), N.genes)  # is it right to get the Mod for TopNValues?
   
   # filter expression matrix for only top contributing genes
   # recreate approximation of gene exprs with PCA
-  v.truncated <- dat.pca$v[top.N$i, ]  # take v matrix, truncate for heatmap
-  d.row <- rep(0, length(dat.pca$d))
-  d.row[PCA] <- dat.pca$d[PCA]  # create row vector, all zeros except at diagonal
+  # Create this by outer product of eigengenes and eigensamples multiplied by eigenvalue
+  eigenvalue <- dat.pca$d[PCA]
+  eigengene <- dat.pca$v[, PCA]  # columns are eigengenes (genes are mix of these). v is 12x12
+  # eigensample is large (k by 12), filter to top top.N genes...
+  eigensample <- dat.pca$u[top.N$i, PCA]  # columns are eigensamples (samples are mix of these). u is top.N$i x 12
+  # get pca.matrix by outer product of eigengene and eigensample. 
+  pca.matrix <- eigenvalue * outer(eigensample, eigengene)
+  colnames(pca.matrix) <- dat.tissuenames
   
-  # approximate gene exprs with PCA. Multiply first diagonal with v, then multiply that by u
-  d.v <- d.row %*% t(v.truncated)
-  dat.by.pca <- dat.pca$u[, PCA] %*% d.v
-  # transpose it so genes are rows, tissues are columns
-  dat.by.pca <- t(dat.by.pca)  # N.genes by N.tissues matrix
-  
-  colnames(dat.by.pca) <- dat.tissuenames
-  
-  # plot dat heatplot in Amplitude and Phase
-  # phase
-  heatmap(as.matrix(Arg(dat.by.pca)), 
-          Rowv=NA, 
-          Colv=NA, 
-          main=paste('PCA:', PCA))  
+  # order by phase angle
+  order.phase <- order(Arg(eigensample))
+  y <- 1:length(eigengene)  # length of 12, genes are mix of these.
+  x <- 1:length(eigensample)  # length of top.N. samples are mix of these.
+  image(x, y, Arg(pca.matrix[order.phase, ]), 
+        main=paste('Phase angles: PCA:', PCA), 
+        axes=FALSE, xlab="", ylab="")
+  axis(1, at=x, labels=FALSE, tick=FALSE)
+  axis(2, at=y, labels=FALSE, tick=FALSE)
+  # Now draw the textual axis labels
+  # gene labels
+  text(x, par("usr")[3] - 1,
+       labels=names(eigensample),
+       srt=90, 
+       pos=4,
+       offset=0,
+       xpd=TRUE, 
+       cex=0.9) 
+  # sample labels
+  text(par("usr")[1] - 5, y, 
+       labels = names(eigengene), 
+       srt=0, 
+       pos=3, 
+       offset=0,
+       xpd=TRUE, 
+       cex=1.5) 
 }
-# our original gene expression...
-dat.filtered <- dat.time.projected[top.N$i, ]
-heatmap(as.matrix(Arg(dat.filtered)), 
-        Rowv=NA, 
-        Colv=NA,
-        scale="none",
-        main=paste('Original data'))
 
+# # Clock Bmal
+# pca1.arg <- t(dat.pca$u[, 1] %*% d.v)
+# colnames(pca1.arg) <- dat.tissuenames
+Bmal1 <- pca1.arg["Arntl", ]
+Clock <- pca1.arg["Clock", ]
 
+# Per1 Per2 Cry1
+Per1 <-  pca1.arg["Per1", ]
+Per2 <-  pca1.arg["Per2", ]
+Cry1 <- pca1.arg["Cry1", ]
 
-
-
+plot(c(Bmal1, Per1), col=c(rep(c('red', 'blue'), each=12)), xlim=c(-0.2, 0.2), ylim=c(-1, 1))
+abline(v=0)
+abline(h=0)
+# 
 
 
 
