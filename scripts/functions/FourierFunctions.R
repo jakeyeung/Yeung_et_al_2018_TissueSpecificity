@@ -129,7 +129,6 @@ ProjectToPeriodicTime <- function(Y , N.TISSUES, N.TIMEPTS, INTERVAL, OMEGA, col
     # we need to divide frequency by INTERVAL to account for sampling interval
     freq.adj <- Y.fft$freq / INTERVAL
     freq.i <- which(freq.adj == freq)
-    
     Y.time.projected[, i] <- as.matrix(Y.fft$p.scaled)[, freq.i]
     # print(i)
     # print(Y.tissue.i)
