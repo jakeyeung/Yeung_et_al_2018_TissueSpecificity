@@ -11,5 +11,15 @@ Peek <- function(dat, N=5){
   # 
   # OUTPUT
   #   print to user the first N rows and N columns of data
-  print(dat[1:N, 1:N])
+  if (N > nrow(dat)){
+    N.row <- nrow(dat)
+  } else {
+    N.row <- N
+  }
+  if (N > ncol(dat)){
+    N.col <- ncol(dat)
+  } else {
+    N.col <- N
+  }
+  print(dat[1:N.row, 1:N.col])
 }
