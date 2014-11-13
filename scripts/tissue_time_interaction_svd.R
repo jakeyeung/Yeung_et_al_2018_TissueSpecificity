@@ -71,6 +71,52 @@ GetTopNValues <- function(x, N){
   return(x.top)
 }
 
+PlotExprs <- function(cond.time.vec, 
+                      N.TIMEPTS, 
+                      INTERVAL,
+                      N.CONDS, 
+                      labels, 
+                      main='Plot title'){
+  # Plot expression across tissues over time.
+  # 
+  # ARGS:
+  # cond.time.vec Vector of multiple conditions over time.
+  # N.TIMEPTS Number of timepoints per tissue
+  # N.CONDS Number of tissues
+  # labels Tissue names
+  # main Plot title
+  # 
+  # RETURN:
+  # plot of exprs
+  
+  # create matrix from cond.time.vec
+  exprs.mat <- matrix(cond.time.vec, 
+                          ncol=N.TIMEPTS, 
+                          nrow=N.CONDS, 
+                          byrow=TRUE)
+  time.mat <- matrix(seq(from=0, by=INTERVAL, length.out=N.TIMEPTS), nrow=N.TIMEPTS, ncol=N.CONDS)
+  matplot(time.mat, t(exprs.mat), type=c("b"), pch=1, col=1:N.CONDS, main=main,
+          xlab='Time', ylab='Exprs')
+  legend("topleft", legend=labels, col=1:N.CONDS, pch=1) # optional legend
+}
+
+GetTissueNames <- function(tissue.names.all){
+  # Convert gene names Adr_CT22 to Adr for all tissue.names.all
+  # 
+  # Args:
+  # tissue.names.all List of names like Adr_CT22 ...
+  # 
+  # Returns:
+  # tissue.names List of names like Adr ...
+  
+  tissues.names <- strsplit(tissue.names.all, '_')
+  tissues.names <- unique(unlist(lapply(tissues.names, '[[', 1)))
+  return(tissues.names)
+} 
+
+# MAIN --------------------------------------------------------------------
+
+
 # Define constants --------------------------------------------------------
 
 N.TIMEPTS <- 24  # 24 time points, 2 hours per time point (over 48 hrs)
@@ -238,5 +284,88 @@ for (PCA in 1:5){
   
   # ----- END: PLOT TISSUE AND GENE LOADINGS ON COMPLEX PLANE ----- # 
 }
+
+
+# Load RNA-Seq data -------------------------------------------------------
+
+# Load data ---------------------------------------------------------------
+
+# define dirs
+fname.rnaseq <- "exprs_combined.genenames.txt"  # has duplicate gene names
+
+# load data
+data_path.rnaseq <- file.path(data_dir, fname.rnaseq)
+print(paste("Reading data from,", data_path.rnaseq, "May take a few a minutes."))
+dat.rnaseq <- read.table(data_path.rnaseq, header=TRUE)
+print("Read data to memory.")
+
+
+
+# If needed handle duplicate row names ------------------------------------
+
+rownames(dat.rnaseq) <- make.names(dat.rnaseq$Gene.ID, unique=TRUE)
+
+drop.cols <- c("Gene.ID")
+dat.rnaseq <- dat.rnaseq[, !(names(dat.rnaseq) %in% drop.cols)]
+
+Peek(dat.rnaseq)  # expect gene names as row names, tissues in columns
+
+
+# log2 normalize ----------------------------------------------------------
+
+epsilon <- 1
+dat.rnaseq <- log2(dat.rnaseq + epsilon)
+
+
+# Plot clock gene exprs for microarray and RNA-Seq. -----------------------
+
+top.N <- GetTopNValues(Mod(dat.pca$u[, 1]), 20)
+top.genes <- names(top.N$vals)
+
+# filter original exprs data by top.N genes
+dat.top.genes <- dat[top.genes, ]
+dat.rnaseq.top.genes <- dat.rnaseq[top.genes, ]
+  
+# define tissues
+tissues <- paste0(dat.tissuenames, '*')  # add * because we grep later
+tissues.rnaseq <- paste0(GetTissueNames(colnames(dat.rnaseq)), '*')
+
+# grep tissues like Adr*|Hrt*| ... | BS*
+dat.top.genes.tissuefilt <- dat.top.genes[, 
+                                          (grepl(paste(tissues, collapse="|"), 
+                                                  colnames(dat.top.genes)))]
+dat.rnaseq.top.genes.tissuefilt <- dat.rnaseq.top.genes[, 
+                                                        (grepl(paste(tissues.rnaseq, collapse="|"), 
+                                                                colnames(dat.rnaseq.top.genes)))]
+
+# replace Bfat with Bstm for rnaseq
+bfat.grepper <- paste0("BFat", '*')
+bstm.grepper <- paste0("Bstm", '*')
+bfat.indices <- which(grepl(bfat.grepper, colnames(dat.rnaseq.top.genes)))
+bstm.indices <- which(grepl(bstm.grepper, colnames(dat.rnaseq.top.genes)))
+dat.rnaseq.top.genes.tissuefilt[, c(bfat.indices, bstm.indices)] <- dat.rnaseq.top.genes.tissuefilt[, c(bstm.indices, bfat.indices)]
+
+# plot only genes with exprs in bith microarray and rnaseq
+genes.to.plot <- intersect(rownames(dat.top.genes.tissuefilt), 
+                           rownames(dat.rnaseq.top.genes.tissuefilt))
+
+for (gene in genes.to.plot){
+  # plot side by side.
+  par(mfrow=c(1, 2))
+  PlotExprs(dat.top.genes.tissuefilt[gene, ], 
+            N.TIMEPTS, 
+            INTERVAL,
+            length(tissues), 
+            labels=tissues,
+            main=paste('Microarray. Gene:', gene))
+  PlotExprs(dat.rnaseq.top.genes.tissuefilt[gene, ], 
+            N.TIMEPTS=8, 
+            INTERVAL=6,
+            length(tissues.rnaseq), 
+            labels=tissues.rnaseq,
+            main=paste('RNASeq. Gene:', gene))
+}
+
+
 
 
