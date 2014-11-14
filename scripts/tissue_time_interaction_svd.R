@@ -4,6 +4,10 @@
 # Fix periodicity in time component. SVD on tissues.
 
 
+# Constants ---------------------------------------------------------------
+
+epsilon <- 1  # RNA-Seq log2 transform to prevent infinities
+
 # Functions ---------------------------------------------------------------
 
 functions.dir <- 'scripts/functions'
@@ -95,9 +99,9 @@ PlotExprs <- function(cond.time.vec,
                           nrow=N.CONDS, 
                           byrow=TRUE)
   time.mat <- matrix(seq(from=0, by=INTERVAL, length.out=N.TIMEPTS), nrow=N.TIMEPTS, ncol=N.CONDS)
-  matplot(time.mat, t(exprs.mat), type=c("b"), pch=1, col=1:N.CONDS, main=main,
+  matplot(time.mat, t(exprs.mat), type=c("b"), pch=c(1:N.CONDS), col=1:N.CONDS, main=main,
           xlab='Time', ylab='Exprs')
-  legend("topleft", legend=labels, col=1:N.CONDS, pch=1) # optional legend
+  legend("topleft", legend=labels, col=1:N.CONDS, pch=c(1:N.CONDS)) # optional legend
 }
 
 GetTissueNames <- function(tissue.names.all){
@@ -217,7 +221,7 @@ N.genes <- 100
 
 # Plot MATRIX, TISSUE and GENE Loadings -----------------------------------
 
-
+par(mfrow=c(1,1))
 for (PCA in 1:5){
   # --------- BEGIN: GET EIGEN-MATRICES ----------------- # 
   top.N <- GetTopNValues(Mod(dat.pca$u[, PCA]), N.genes)  # is it right to get the Mod for TopNValues?
@@ -313,11 +317,12 @@ Peek(dat.rnaseq)  # expect gene names as row names, tissues in columns
 
 # log2 normalize ----------------------------------------------------------
 
-epsilon <- 1
 dat.rnaseq <- log2(dat.rnaseq + epsilon)
 
 
 # Plot clock gene exprs for microarray and RNA-Seq. -----------------------
+# In RNASeq, BFat and BStm need to be swapped so it matches order with microarray
+# easier for plotting visualization.
 
 top.N <- GetTopNValues(Mod(dat.pca$u[, 1]), 20)
 top.genes <- names(top.N$vals)
@@ -329,6 +334,9 @@ dat.rnaseq.top.genes <- dat.rnaseq[top.genes, ]
 # define tissues
 tissues <- paste0(dat.tissuenames, '*')  # add * because we grep later
 tissues.rnaseq <- paste0(GetTissueNames(colnames(dat.rnaseq)), '*')
+# swap BFat with BStm for rnaseq. BFat at 3rd index. Bstm at 4th index.
+tissues.rnaseq[c(3, 4)] <- tissues.rnaseq[c(4, 3)]
+tissues.rnaseq
 
 # grep tissues like Adr*|Hrt*| ... | BS*
 dat.top.genes.tissuefilt <- dat.top.genes[, 
@@ -343,7 +351,12 @@ bfat.grepper <- paste0("BFat", '*')
 bstm.grepper <- paste0("Bstm", '*')
 bfat.indices <- which(grepl(bfat.grepper, colnames(dat.rnaseq.top.genes)))
 bstm.indices <- which(grepl(bstm.grepper, colnames(dat.rnaseq.top.genes)))
+# swap data (but columns don't get swapped)
 dat.rnaseq.top.genes.tissuefilt[, c(bfat.indices, bstm.indices)] <- dat.rnaseq.top.genes.tissuefilt[, c(bstm.indices, bfat.indices)]
+# swap colnames
+colnames(dat.rnaseq.top.genes.tissuefilt)
+colnames(dat.rnaseq.top.genes.tissuefilt)[c(bfat.indices, bstm.indices)] <- colnames(dat.rnaseq.top.genes.tissuefilt)[c(bstm.indices, bfat.indices)]
+colnames(dat.rnaseq.top.genes.tissuefilt)
 
 # plot only genes with exprs in bith microarray and rnaseq
 genes.to.plot <- intersect(rownames(dat.top.genes.tissuefilt), 
