@@ -105,27 +105,31 @@ rna.seq.times <- paste0('*', rna.seq.times)
 array.exprs.subset <- array.exprs[, grepl(paste0(rna.seq.times, collapse='|'), colnames(array.exprs))]
 
 # plot scatter
-plot(unlist(rna.seq.exprs[common.genes, ]), unlist(array.exprs.subset[common.genes, ]))
+set.seed(0)
+random.sample <- sample(common.genes, 0.1 * length(common.genes))
+# plot(unlist(rna.seq.exprs[random.sample, ]), unlist(array.exprs.subset[random.sample, ]))
 
-# # use ggplot2, so we melt first then plot. We care about common genes only.
-# rna.melt <- melt(as.matrix(rna.seq.exprs[common.genes, ]))
-# array.melt <- melt(as.matrix(array.exprs.subset[common.genes, ]))
-# # check gene names are same
-# # all(rna.melt$Var1 == array.melt$Var1)  # TRUE
-# 
-# # combine rna and array into one df
-# rna.array.long <- data.frame("gene" = rna.melt$Var1, 
-#                              "sample" = rna.melt$Var2, 
-#                              "rna.exprs" = rna.melt$value, 
-#                              "array.exprs" = array.melt$value)
-# head(rna.array.long)
-# 
-# 
-# 
-# # ggplot(rna.array.long, aes(x=array.exprs, y=rna.exprs)) +
-# #   geom_point(shape=1)    # Use hollow circles
-# #   # geom_smooth(method=lm)   # Add linear regression line 
-# 
+# use ggplot2, so we melt first then plot. We care about common genes only.
+rna.melt <- melt(as.matrix(rna.seq.exprs[random.sample, ]))
+array.melt <- melt(as.matrix(array.exprs.subset[random.sample, ]))
+# check gene names are same
+# all(rna.melt$Var1 == array.melt$Var1)  # TRUE
+
+# combine rna and array into one df
+rna.array.long <- data.frame("gene" = rna.melt$Var1, 
+                             "sample" = rna.melt$Var2, 
+                             "rna.exprs" = rna.melt$value, 
+                             "array.exprs" = array.melt$value)
+head(rna.array.long)
+rm(rna.melt)
+rm(array.melt)
+
+
+
+ggplot(rna.array.long, aes(x=rna.exprs, y=array.exprs)) +
+  geom_point(shape=1, alpha=0.25)    # Use hollow circles
+  # geom_smooth(method=lm)   # Add linear regression line 
+
 
 
 
