@@ -106,7 +106,8 @@ array.exprs.subset <- array.exprs[, grepl(paste0(rna.seq.times, collapse='|'), c
 
 # plot scatter
 set.seed(0)
-random.sample <- sample(common.genes, 0.1 * length(common.genes))
+FRACTION.SAMPLES <- 0.05
+random.sample <- sample(common.genes, FRACTION.SAMPLES * length(common.genes))
 # plot(unlist(rna.seq.exprs[random.sample, ]), unlist(array.exprs.subset[random.sample, ]))
 
 # use ggplot2, so we melt first then plot. We care about common genes only.
@@ -120,16 +121,78 @@ rna.array.long <- data.frame("gene" = rna.melt$Var1,
                              "sample" = rna.melt$Var2, 
                              "rna.exprs" = rna.melt$value, 
                              "array.exprs" = array.melt$value)
+# make DF longer, melt rna and array exprs into a single column.
+rna.array.long <- melt(rna.array.long)
+colnames(rna.array.long) <- c("gene", "sample", "rnaseq.or.array", "exprs")
 head(rna.array.long)
-rm(rna.melt)
-rm(array.melt)
 
 
-
-ggplot(rna.array.long, aes(x=rna.exprs, y=array.exprs)) +
+# library(scales)     # Need the scales package
+ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "rna.exprs")],
+                            y=exprs[which(rnaseq.or.array == "array.exprs")])) +
   geom_point(shape=1, alpha=0.25)    # Use hollow circles
   # geom_smooth(method=lm)   # Add linear regression line 
+  # scale_x_continuous(trans=log2_trans())
 
 
+# Histogram and density ---------------------------------------------------
 
+
+# Add histogram of samples: RNA-Seq and Array
+ggplot(rna.array.long, aes(x=exprs, fill=rnaseq.or.array)) + 
+  geom_histogram(binwidth=0.5) +
+  facet_wrap(~ sample)
+
+# Density
+ggplot(rna.array.long, aes(x=exprs, fill=rnaseq.or.array)) + 
+  geom_density(alpha=0.5) +
+  facet_wrap(~ sample)
+
+
+# Scatterplot “replicates" ------------------------------------------------
+
+
+# Scatterplot: by "24 hour cycles"
+# create list of "replicate pairs", i.e. samples separated by 24 hrs
+period.pairs <- list()
+for (i in 1 : (length(rna.seq.times) / 2 - 1)) {
+  print(i)
+  period.pairs[[i]] <- list(rep1=rna.seq.times[i], rep2=rna.seq.times[i + 4]) 
+}
+
+pdf(file="plots/replicates.pdf")
+# plot rep1 with rep2: both RNA.Seq
+for (i in 1 : (length(rna.seq.times) / 2 - 1)) {
+  m <- ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "rna.exprs" & grepl(period.pairs[[i]]$rep1, sample))],
+                             y=exprs[which(rnaseq.or.array == "rna.exprs" & grepl(period.pairs[[i]]$rep2, sample))]))
+  m <-  m + geom_point(shape=1, alpha=0.05)    # Use hollow circles
+  m <- m + xlab(paste("Time:", period.pairs[[i]]$rep1, "hr"))
+  m <- m + ylab(paste("Time:", period.pairs[[i]]$rep2, "hr"))
+  m <- m + labs(title="RNA-Seq samples between 24 hours")
+  print(m)
+}
+
+# plot rep1 with rep2: both microarray
+for (i in 1 : (length(rna.seq.times) / 2 - 1)) {
+  m <- ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "array.exprs" & grepl(period.pairs[[i]]$rep1, sample))],
+                             y=exprs[which(rnaseq.or.array == "array.exprs" & grepl(period.pairs[[i]]$rep2, sample))]))
+  m <- m + geom_point(shape=1, alpha=0.05)    # Use hollow circles
+  m <- m + xlab(paste("Time:", period.pairs[[i]]$rep1, "hr"))
+  m <- m + ylab(paste("Time:", period.pairs[[i]]$rep2, "hr"))
+  m <- m + labs(title="Array between 24 hours")
+  print(m)
+}
+dev.off()
+
+
+# Boxplots ----------------------------------------------------------------
+
+
+m <- ggplot(rna.array.long, aes(x=sample, y=exprs))
+m <- m + geom_boxplot() + facet_wrap(~rnaseq.or.array)
+print(m)
+
+
+rm(rna.melt)
+rm(array.melt)
 
