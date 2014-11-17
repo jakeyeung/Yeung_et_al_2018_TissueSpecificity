@@ -378,7 +378,3 @@ for (gene in genes.to.plot){
             labels=tissues.rnaseq,
             main=paste('RNASeq. Gene:', gene))
 }
-
-
-
-
