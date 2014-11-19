@@ -17,7 +17,7 @@ N.ARRAY.INTERVAL <- 2
 # Define output directory (USER CHANGEABLE) -------------------------------
 
 plot_dir <- "plots"
-pdf_file <- "batch.bgcorrected.normalized.pdf"
+pdf_file <- "batch.bgcorrected.normalized.original.pdf"
 pdf_path <- file.path(plot_dir, pdf_file)
 
 
@@ -33,10 +33,10 @@ source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 # define dirs
 data_dir <- "data"
 fname.rna.seq <- "exprs_combined.genenames.txt"
-# fname.array <- "hogenesch_2014_rma.genenames.txt"
+fname.array <- "hogenesch_2014_rma.genenames.txt"
 # fname.array <- "all.hogenesch.seq.background.normalized.genenames.cut.filter.txt"
-fname.array <- "all.hogenesch.background.nonormalize.genenames.txt"  # normalize MANUALLY by setting NORMALIZE to TRUE
-NORMALIZE <- TRUE
+# fname.array <- "all.hogenesch.background.nonormalize.genenames.txt"  # normalize MANUALLY by setting NORMALIZE to TRUE
+NORMALIZE <- FALSE
 
 
 # load data: RNASeq and microarray ----------------------------------------
@@ -191,7 +191,6 @@ for (i in 1 : (length(rna.seq.times) / 2 - 1)) {
   m <- ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "array.exprs" & grepl(period.pairs[[i]]$rep1, sample))],
                              y=exprs[which(rnaseq.or.array == "array.exprs" & grepl(period.pairs[[i]]$rep2, sample))]))
   m <- m + geom_point(shape=1, alpha=0.05)    # Use hollow circles
-  m <- m + facet_wrap(~sample)
   m <- m + xlab(paste("Time:", period.pairs[[i]]$rep1, "hr"))
   m <- m + ylab(paste("Time:", period.pairs[[i]]$rep2, "hr"))
   m <- m + labs(title="Array between 24 hours")
