@@ -14,6 +14,13 @@ N.RNASEQ.INTERVAL <- 6
 N.ARRAY.TIMEPTS <- 24
 N.ARRAY.INTERVAL <- 2
 
+# Define output directory (USER CHANGEABLE) -------------------------------
+
+plot_dir <- "plots"
+pdf_file <- "batch.bgcorrected.normalized.pdf"
+pdf_path <- file.path(plot_dir, pdf_file)
+
+
 # Functions ---------------------------------------------------------------
 
 functions.dir <- 'scripts/functions'
@@ -23,11 +30,13 @@ source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 
 # define directories ------------------------------------------------------
 
-
 # define dirs
 data_dir <- "data"
 fname.rna.seq <- "exprs_combined.genenames.txt"
-fname.array <- "hogenesch_2014_rma.genenames.txt"
+# fname.array <- "hogenesch_2014_rma.genenames.txt"
+# fname.array <- "all.hogenesch.seq.background.normalized.genenames.cut.filter.txt"
+fname.array <- "all.hogenesch.background.nonormalize.genenames.txt"  # normalize MANUALLY by setting NORMALIZE to TRUE
+NORMALIZE <- TRUE
 
 
 # load data: RNASeq and microarray ----------------------------------------
@@ -72,11 +81,20 @@ drop.cols <- c("gene")
 array.exprs <- array.exprs[, !(names(array.exprs) %in% drop.cols)]
 Peek(array.exprs)
 
+# Normalize microarray ----------------------------------------------------
+
+if (NORMALIZE == TRUE){
+  library(preprocessCore)
+  array.exprs <- normalize.quantiles(as.matrix(array.exprs), copy=FALSE)
+}
+
 
 # Handle array exprs tissue names -----------------------------------------
 
 colnames(array.exprs) <- ShortenSampNames(colnames(array.exprs), show="tissue.time")
 Peek(array.exprs)
+
+pdf(file=pdf_path)
 
 # Plot densities ----------------------------------------------------------
 par(mfrow=c(1, 2))  # turn on side by side plot to visualize array and seq
@@ -127,12 +145,10 @@ colnames(rna.array.long) <- c("gene", "sample", "rnaseq.or.array", "exprs")
 head(rna.array.long)
 
 
-# library(scales)     # Need the scales package
-ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "rna.exprs")],
-                            y=exprs[which(rnaseq.or.array == "array.exprs")])) +
-  geom_point(shape=1, alpha=0.25)    # Use hollow circles
-  # geom_smooth(method=lm)   # Add linear regression line 
-  # scale_x_continuous(trans=log2_trans())
+m <- ggplot(rna.array.long, aes(y=exprs[which(rnaseq.or.array == "rna.exprs")],
+                            x=exprs[which(rnaseq.or.array == "array.exprs")]))
+m <- m + geom_point(shape=1, alpha=0.25)    # Use hollow circles
+print(m)  # to file
 
 
 # Histogram and density ---------------------------------------------------
@@ -156,11 +172,9 @@ ggplot(rna.array.long, aes(x=exprs, fill=rnaseq.or.array)) +
 # create list of "replicate pairs", i.e. samples separated by 24 hrs
 period.pairs <- list()
 for (i in 1 : (length(rna.seq.times) / 2 - 1)) {
-  print(i)
   period.pairs[[i]] <- list(rep1=rna.seq.times[i], rep2=rna.seq.times[i + 4]) 
 }
 
-pdf(file="plots/replicates.pdf")
 # plot rep1 with rep2: both RNA.Seq
 for (i in 1 : (length(rna.seq.times) / 2 - 1)) {
   m <- ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "rna.exprs" & grepl(period.pairs[[i]]$rep1, sample))],
@@ -177,22 +191,41 @@ for (i in 1 : (length(rna.seq.times) / 2 - 1)) {
   m <- ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "array.exprs" & grepl(period.pairs[[i]]$rep1, sample))],
                              y=exprs[which(rnaseq.or.array == "array.exprs" & grepl(period.pairs[[i]]$rep2, sample))]))
   m <- m + geom_point(shape=1, alpha=0.05)    # Use hollow circles
+  m <- m + facet_wrap(~sample)
   m <- m + xlab(paste("Time:", period.pairs[[i]]$rep1, "hr"))
   m <- m + ylab(paste("Time:", period.pairs[[i]]$rep2, "hr"))
   m <- m + labs(title="Array between 24 hours")
   print(m)
 }
-dev.off()
+
+# plot rep1 with rep1: RNA Seq vs Microarray
+for (t in rna.seq.times) {
+  m <- ggplot(rna.array.long, aes(x=exprs[which(rnaseq.or.array == "rna.exprs" & grepl(t, sample))],
+                                  y=exprs[which(rnaseq.or.array == "array.exprs" & grepl(t, sample))]))
+  m <-  m + geom_point(shape=1, alpha=0.05)    # Use hollow circles
+  m <- m + xlab(paste("RNA Exprs. Time:", t, "hr"))
+  m <- m + ylab(paste("Array Exprs. Time:", t, "hr"))
+  m <- m + labs(title=paste("RNA Exprs and Array exprs at", t, "hr"))
+  print(m)
+}
 
 
 # Boxplots ----------------------------------------------------------------
 
-
-m <- ggplot(rna.array.long, aes(x=sample, y=exprs))
+rna.array.long.filtered <- subset(rna.array.long)
+m <- ggplot(rna.array.long.filtered, aes(x=sample, y=exprs))
 m <- m + geom_boxplot() + facet_wrap(~rnaseq.or.array)
 print(m)
 
+rna.array.long.filtered <- subset(rna.array.long, rnaseq.or.array="array.exprs")
+m <- ggplot(rna.array.long.filtered, aes(x=sample, y=exprs))
+m <- m + geom_boxplot()
+print(m)
+
+dev.off()
 
 rm(rna.melt)
 rm(array.melt)
+
+print(paste("Plots saved in:", pdf_path))
 
