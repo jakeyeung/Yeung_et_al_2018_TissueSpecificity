@@ -61,13 +61,29 @@ MeanCenterAcrossGroups <- function(x, n.per.group=24) {
 
 # define dirs
 data_dir <- "data"
-fname <- "hogenesch_2014_rma.txt"    # data reprocessed by RMA package
+# fname <- "hogenesch_2014_rma.txt"    # data reprocessed by RMA package
+fname <- "hogenesch_2014_rma.genenames.colnameordered.txt"  # new with gene names
 
 # load data
 data_path <- file.path(data_dir, fname)
 print(paste("Reading data from,", data_path, "May take a few a minutes."))
-dat <- read.table(data_path)
+dat <- read.table(data_path, header=TRUE, sep='\t')
 print("Read data to memory.")
+
+# Handle duplicate rownames: MICROARRAY -------------------------------------
+
+# first column contained gene names
+rownames(dat) <- make.names(dat$gene, unique=TRUE)
+# genes <- dat$gene
+# coords <- dat$coordinates
+# probeid <- dat$ID_REF
+
+drop.cols <- c("gene")
+dat <- dat[, !(names(dat) %in% drop.cols)]
+# Peek(dat)
+
+
+# Get colnames ------------------------------------------------------------
 
 # make more meaningful sample names
 # user changeable paramters: show="tissue.time" | "tissue" | "time"
@@ -240,3 +256,11 @@ for (pca_vector in 10:20) {
 }
 
 
+# Get tissue-specific genes -----------------------------------------------
+
+PCA <- 2
+gene.loadings <- dat_pca$rotation[, PCA]
+# take top absolute values
+top.genes <- order(gene.loadings)[1:10]
+# print top genes
+rownames(dat_pca$rotation)[top.genes]
