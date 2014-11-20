@@ -157,33 +157,6 @@ Peek(coeff.mat)
 
 
 
-# Plot some genes for checking fit... -------------------------------------
-
-# random genes for Adr
-set.seed(0)
-random.genes <- sample(rownames(array.subset.common.g), 10)
-
-# add clock genes
-random.genes <- c(random.genes, 'Arntl', 'Per2', 'Per3', 'Dbp')
-
-# plot for one tissue only
-t <- 'Adr'
-t.grep <- paste0(t, '*')
-for (gene in random.genes){
-  intercept <- coeff.mat[gene, paste0(t, '_intercept')]
-  slope <- coeff.mat[gene, paste0(t, '_slope')]
-  plot(array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
-       rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
-#        xlim=c(0, max(array.subset.common.g[gene, 1:24])),
-#        ylim=c(0, max(rna.seq.exprs.common.g[gene, 1:24])),
-       main=paste(gene, 'Intercept=', intercept, 'Slope=', slope))
-  gfit <- lm(rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))] ~ array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))])
-    abline(intercept, slope, lty='dotted')
-  abline(gfit)
-# if you see two lines, one dotted and one solid, it means you did the fit wrong! They should be the same line.
-}
-
-
 # Adjust all microarray to RNAseq -----------------------------------------
 
 array.exprs.adjusted <- matrix(NA, nrow=nrow(array.common.g), ncol=ncol(array.common.g),
@@ -207,30 +180,102 @@ for (i in 1:N.TISSUES){
 Peek(array.exprs.adjusted)
 
 
+# Plot some genes for checking fit... -------------------------------------
+
+# Look at negative guys!
+negs <- which(array.exprs.adjusted < -18200, arr.ind = TRUE)
+genes.i <- unique(negs[, "row"])
+length(genes.i)
+
+# plot for one tissue only
+t <- 'Adr'
+t.grep <- paste0(t, '*')
+for (i in genes.i){
+  gene <- rownames(array.exprs.adjusted)[i]
+  intercept <- coeff.mat[gene, paste0(t, '_intercept')]
+  slope <- coeff.mat[gene, paste0(t, '_slope')]
+  plot(array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
+       rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
+       #        xlim=c(0, max(array.subset.common.g[gene, 1:24])),
+       #        ylim=c(0, max(rna.seq.exprs.common.g[gene, 1:24])),
+       main=paste(gene, 'Intercept=', intercept, 'Slope=', slope))
+  gfit <- lm(rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))] ~ array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))])
+  abline(intercept, slope, lty='dotted')
+  abline(gfit)
+  plot(array.exprs[gene, grepl(t.grep, colnames(array.subset.common.g))], main=paste(gene, t))
+  # if you see two lines, one dotted and one solid, it means you did the fit wrong! They should be the same line.
+}
+
+# random genes for Adr
+# set.seed(0)
+random.genes <- sample(rownames(array.subset.common.g), 10)
+
+# add clock genes
+random.genes <- c(random.genes, 'Arntl', 'Per2', 'Per3', 'Dbp')
+
+# plot for one tissue only
+t <- 'Adr'
+t.grep <- paste0(t, '*')
+for (gene in random.genes){
+  intercept <- coeff.mat[gene, paste0(t, '_intercept')]
+  slope <- coeff.mat[gene, paste0(t, '_slope')]
+  plot(array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
+       rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
+       #        xlim=c(0, max(array.subset.common.g[gene, 1:24])),
+       #        ylim=c(0, max(rna.seq.exprs.common.g[gene, 1:24])),
+       main=paste(gene, 'Intercept=', intercept, 'Slope=', slope))
+  gfit <- lm(rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))] ~ array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))])
+  abline(intercept, slope, lty='dotted')
+  abline(gfit)
+  # if you see two lines, one dotted and one solid, it means you did the fit wrong! They should be the same line.
+}
+
+
+
 # Scatterplot dat shit ----------------------------------------------------
 
 genes.subset <- sample(rownames(array.exprs.adjusted), 0.1 * nrow(array.exprs.adjusted))
 
-# x <- unlist(array.exprs[genes.subset, grepl(rna.seq.times, colnames(array.exprs.adjusted))])
-x <- unlist(array.exprs.adjusted[genes.subset, grepl(rna.seq.times, colnames(array.exprs.adjusted))])
+pdf('plots/adjust_scatter.pdf')
+par(mfrow=c(1, 1))
+# plot before
+x1 <- unlist(array.exprs[genes.subset, grepl(rna.seq.times, colnames(array.exprs.adjusted))])
 y <- unlist(rna.seq.exprs.common.g[genes.subset, grepl(rna.seq.times, colnames(rna.seq.exprs.common.g))])
-plot(x, y, xlab='Microarray adjusted', ylab='RNA-Seq', xlim=c(-30000, 1e5), ylim=c(0, 1e5))
+plot(log2(x1), log2(y), xlab='Microarray unadjusted (log2)', ylab='RNA-Seq (log2)', main='Scatter plot: before adjustment')
+x <- unlist(array.exprs.adjusted[genes.subset, grepl(rna.seq.times, colnames(array.exprs.adjusted))])
+plot(log2(x), log2(y), xlab='Microarray adjusted (log2)', ylab='RNA-Seq (log2)', main='Scatter plot: after adjustment')
+dev.off()
 
 
 # Plot replicates ---------------------------------------------------------
 
 # only loop til 50, sincei ts matching pair is 64
+pdf('plots/adjust_exprs_pairs.pdf')
+par(mfrow=c(3, 1))
 for (i in 1:(length(array.times) / 2)){
   t1 <- array.times[i]
   t2 <- array.times[i + 24 / ARRAY.INTERVAL]
+  # plot before as comparison
+  x1 <- unlist(array.exprs[genes.subset, grepl(paste0('*', t1), colnames(array.exprs.adjusted))])
+  y1 <- unlist(array.exprs[genes.subset, grepl(paste0('*', t2), colnames(array.exprs.adjusted))])
+  plot(log2(x1), log2(y1), xlab=paste(t1, 'CT time'), ylab=paste(t2, 'CT time'), main='Before adjustment (log2)')
+  # plot after
   x <- unlist(array.exprs.adjusted[genes.subset, grepl(paste0('*', t1), colnames(array.exprs.adjusted))])
   y <- unlist(array.exprs.adjusted[genes.subset, grepl(paste0('*', t2), colnames(array.exprs.adjusted))])
-  plot(log(x), log(y), xlab=t1, ylab=t2)
+  plot(log2(x), log2(y), xlab=paste(t1, 'CT time'), ylab=paste(t2, 'CT time'), main='After adjustment (log2)')
+  # plot rnaseq
+  t1.rnaseq <- 22
+  t2.rnaseq <- 46
+  x.rnaseq <- unlist(rna.seq.exprs.common.g[genes.subset, grepl(paste0('*', t1.rnaseq), colnames(rna.seq.exprs.common.g))])
+  y.rnaseq <- unlist(rna.seq.exprs.common.g[genes.subset, grepl(paste0('*', t2.rnaseq), colnames(rna.seq.exprs.common.g))])
+  plot(log2(x.rnaseq), log2(y.rnaseq), xlab=paste(t1.rnaseq, 'CT time'), ylab=paste(t2.rnaseq, 'CT time'), main='RNASeq (log2 DESeq-norm counts)')
 }
+dev.off()
 
 
 # Plot clock genes --------------------------------------------------------
 
+pdf('plots/before_after_adjusts_clock_genes.pdf')
 par(mfrow=c(3,1))
 clockgenes <- c('Dbp', 'Arntl', 'Clock', 'Per2', 'Per3', 'Cry2', 'Cry1')
 for (gene in clockgenes){
@@ -242,17 +287,16 @@ for (gene in clockgenes){
        col=rep(1:N.TISSUES, each=8))
 }
 par(mfrow=c(1,1))
-negs <- which(array.exprs.adjusted < -10000, arr.ind = TRUE)
-
+dev.off()
 
 # Plot tissue-specific genes ----------------------------------------------
 
+pdf('plots/before_after_adjusts_tissue_specific.pdf')
 par(mfrow=c(3,1))
 # LOC101056592 also tissue-specific but not found in RNA-Seq data
 tissue.genes <- c("Plbd1","Acacb","Hadh","Decr1","Acadl","Ech1","Acsl1","Cpt2","Acaa2")  # PCA 1 from explore_data.R
-tissue.genes <- c("Elovl1","Slc35b3","Fkbp15","Slc39a8","Sep15","Mospd2","Med11","Slco2a1","Arf6","Yipf6")  # PCA 2 from explore_data.R
+tissue.genes <- c(tissue.genes, "Elovl1","Slc35b3","Fkbp15","Slc39a8","Sep15","Mospd2","Med11","Slco2a1","Arf6","Yipf6")  # PCA 2 from explore_data.R
 for (gene in tissue.genes){
-  print(gene)
   plot(log2(array.exprs[gene, ]), main=paste(gene, 'log2 expression: array before adjustment'),
        col=rep(1:N.TISSUES, each=24))
   plot(log2(array.exprs.adjusted[gene, ]), main=paste(gene, 'log2 exprs: array after adjustment'),
@@ -261,3 +305,17 @@ for (gene in tissue.genes){
        col=rep(1:N.TISSUES, each=8))
 }
 par(mfrow=c(1,1))
+dev.off()
+
+genes <- c("Ap2s1")
+for (gene in genes){
+  plot(log2(array.exprs[gene, ]), main=paste(gene, 'log2 expression: array before adjustment'),
+       col=rep(1:N.TISSUES, each=24))
+  plot(log2(array.exprs.adjusted[gene, ]), main=paste(gene, 'log2 exprs: array after adjustment'),
+       col=rep(1:N.TISSUES, each=24))
+  plot(log2(rna.seq.exprs.common.g[gene, ]), main=paste(gene, 'log2 exprs: rnaseq'),
+       col=rep(1:N.TISSUES, each=8))
+}
+
+
+
