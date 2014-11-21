@@ -3,6 +3,7 @@
 # 2014-11-07
 # Fix periodicity in time component. SVD on tissues.
 
+library(wordcloud)  # for showing text without jumbling
 
 # Constants ---------------------------------------------------------------
 
@@ -48,6 +49,7 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
        ylim=c(axis.min, axis.max), 
        pch=20,
        main=main)
+  # textplot(Re(dat), Im(dat), text.labels)
   text(dat, 
        labels=text.labels, 
        pos=3)
@@ -133,39 +135,53 @@ INTERVAL <- 2  # hours between samples
 
 # define dirs
 data_dir <- "data"
-fname <- "hogenesch_2014_rma.genenames.txt"  # has duplicate gene names
+# fname <- "hogenesch_2014_rma.genenames.txt"  # has duplicate gene names. Column names of BFAT and BS are switched (compared to RNASeq)
+fname <- "hogenesch_2014_rma.genenames.colnameordered.txt"  # column names match RNAseq
+rdata.fname <- 'array.exprs.lm.adjusted.RData'  
+# load data, either by RData or from filename
+READ.FROM.TABLE <- FALSE
 
-# load data
-data_path <- file.path(data_dir, fname)
-print(paste("Reading data from,", data_path, "May take a few a minutes."))
-dat <- read.table(data_path, header=TRUE)
-print("Read data to memory.")
+if (READ.FROM.TABLE == FALSE){
+  print('Read from RData')
+  load(rdata.fname)
+  dat <- array.exprs.adjusted
+  dat[which(dat < 0)] <- 0
+  # log2 normalize it
+  dat <- log2(dat + 1)
+}
 
 
+if (READ.FROM.TABLE == TRUE){
+  data_path <- file.path(data_dir, fname)
+  print(paste("Reading data from,", data_path, "May take a few a minutes."))
+  dat <- read.table(data_path, header=TRUE)
+  print("Read data to memory.")
+  
+  # If needed handle duplicate row names ------------------------------------
+  
+  rownames(dat) <- make.names(dat$gene, unique=TRUE)
+  # genes <- array.exprs$gene
+  # coords <- array.exprs$coordinates
+  # probeid <- array.exprs$ID_REF
+  
+  drop.cols <- c("gene")
+  dat <- dat[, !(names(dat) %in% drop.cols)]
+  
+  Peek(dat)  # expect gene names as row names, tissues in columns
+  
+  # Get Colnames ------------------------------------------------------------
+  
+  colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue.time")
+  dat.colnames <- colnames(dat)  # in case I need it later
+  dat.tissuenames <- dat.colnames[seq(1, 288, 24)]
+  # tissue names are Adr18... remove the 18 from tissue names
+  dat.tissuenames <- unname(sapply(dat.tissuenames, function(x){
+    return(substr(x, 1, nchar(x) - 2))
+  }))
+  
+  Peek(dat)  # sample names are more readable...  
+}
 
-# If needed handle duplicate row names ------------------------------------
-
-rownames(dat) <- make.names(dat$gene, unique=TRUE)
-# genes <- array.exprs$gene
-# coords <- array.exprs$coordinates
-# probeid <- array.exprs$ID_REF
-
-drop.cols <- c("gene")
-dat <- dat[, !(names(dat) %in% drop.cols)]
-
-Peek(dat)  # expect gene names as row names, tissues in columns
-
-# Get Colnames ------------------------------------------------------------
-
-colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue.time")
-dat.colnames <- colnames(dat)  # in case I need it later
-dat.tissuenames <- dat.colnames[seq(1, 288, 24)]
-# tissue names are Adr18... remove the 18 from tissue names
-dat.tissuenames <- unname(sapply(dat.tissuenames, function(x){
-  return(substr(x, 1, nchar(x) - 2))
-}))
-
-Peek(dat)  # sample names are more readable...
 
 # Project onto flat and rhythmic time components --------------------------
 
@@ -346,17 +362,17 @@ dat.rnaseq.top.genes.tissuefilt <- dat.rnaseq.top.genes[,
                                                         (grepl(paste(tissues.rnaseq, collapse="|"), 
                                                                 colnames(dat.rnaseq.top.genes)))]
 
-# replace Bfat with Bstm for rnaseq
-bfat.grepper <- paste0("BFat", '*')
-bstm.grepper <- paste0("Bstm", '*')
-bfat.indices <- which(grepl(bfat.grepper, colnames(dat.rnaseq.top.genes)))
-bstm.indices <- which(grepl(bstm.grepper, colnames(dat.rnaseq.top.genes)))
-# swap data (but columns don't get swapped)
-dat.rnaseq.top.genes.tissuefilt[, c(bfat.indices, bstm.indices)] <- dat.rnaseq.top.genes.tissuefilt[, c(bstm.indices, bfat.indices)]
-# swap colnames
-colnames(dat.rnaseq.top.genes.tissuefilt)
-colnames(dat.rnaseq.top.genes.tissuefilt)[c(bfat.indices, bstm.indices)] <- colnames(dat.rnaseq.top.genes.tissuefilt)[c(bstm.indices, bfat.indices)]
-colnames(dat.rnaseq.top.genes.tissuefilt)
+# replace Bfat with Bstm for rnaseq. Only necessary if column names weren't switch from load data
+# bfat.grepper <- paste0("BFat", '*')
+# bstm.grepper <- paste0("Bstm", '*')
+# bfat.indices <- which(grepl(bfat.grepper, colnames(dat.rnaseq.top.genes)))
+# bstm.indices <- which(grepl(bstm.grepper, colnames(dat.rnaseq.top.genes)))
+# # swap data (but columns don't get swapped)
+# dat.rnaseq.top.genes.tissuefilt[, c(bfat.indices, bstm.indices)] <- dat.rnaseq.top.genes.tissuefilt[, c(bstm.indices, bfat.indices)]
+# # swap colnames
+# colnames(dat.rnaseq.top.genes.tissuefilt)
+# colnames(dat.rnaseq.top.genes.tissuefilt)[c(bfat.indices, bstm.indices)] <- colnames(dat.rnaseq.top.genes.tissuefilt)[c(bstm.indices, bfat.indices)]
+# colnames(dat.rnaseq.top.genes.tissuefilt)
 
 # plot only genes with exprs in bith microarray and rnaseq
 genes.to.plot <- intersect(rownames(dat.top.genes.tissuefilt), 
