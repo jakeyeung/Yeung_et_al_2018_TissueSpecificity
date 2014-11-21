@@ -30,31 +30,13 @@ PlotRnaMicroarrayFit <- function(tissue, gene, coeff.mat, array.exprs, rna.seq.e
     y <- as.matrix(rna.seq.exprs[gene, which(grepl(t.grep.rnaseq, colnames(rna.seq.exprs)))])
     plot(x, y, xlab='Array exprs',
          ylab='RNA exprs',
-         main=paste(gene, 'Intercept=', intercept, 'Slope=', slope))
-    print(paste(intercept, slope))
-    abline(intercept, slope)
-    gfit <- lm(y ~ x)
-    print(summary(gfit))
-    abline(gfit)
-    
-  }
-  if (yaxis == 'array'){
-    # plot for one tissue only
-    t.grep <- paste0(tissue)
-    t.grep.rnaseq <- paste0(rna.tissue)
-    
-    intercept <- coeff.mat[gene, paste0(tissue, '_intercept')]
-    slope <- coeff.mat[gene, paste0(tissue, '_slope')]
-    y <- array.exprs[gene, grepl(t.grep, colnames(array.exprs))]
-    x <- rna.seq.exprs[gene, grepl(t.grep.rnaseq, colnames(rna.seq.exprs))]
-    plot(unlist(x), 
-         unlist(y), 
-         xlab=('RNA exprs'),
-         ylab=('Microarray exprs'),
-         main=paste(gene, 'Intercept=', intercept, 'Slope=', slope))
-    gfit <- lm(array.exprs[gene, grepl(t.grep, colnames(array.exprs))] ~ rna.seq.exprs[gene, grepl(t.grep.rnaseq, colnames(rna.seq.exprs))])
+         main=paste(gene, 'Intercept=', signif(intercept, digits=3), 'Slope=', signif(slope, digits=3)))
     abline(intercept, slope, lty='dotted')
-    abline(gfit)
+    # print(length(y))
+    # print(length(x))
+    # gfit <- lm(y ~ x)
+    # abline(gfit)
+    
   }
 }
 
@@ -319,26 +301,19 @@ clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2',
 clockgenes <- c(clockgenes, 'Defb48', 'Svs1', 'Svs2', 'Svs5', 'Defb20', 'Adam7', 'Lcn8', 'Rnase10', 'Teddm1')
 for (gene in clockgenes){
   plot(log2(array.exprs[gene, ]), main=paste(gene, 'log2 expression: array before adjustment'),
-       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14))
-  #   plot(log2(array.exprs.adjusted[gene, ]), main=paste(gene, 'log2 exprs: array after adjustment'),
-  #        col=rep(1:N.TISSUES, each=24), type='b')
+       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", xlab=paste(tissue.names, collapse=" "))
   plot(log2.array.exprs.adjusted[gene, ], main=paste(gene, 'log2 exprs: array after adjustment'),
-       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14))
+       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", xlab=paste(tissue.names, collapse=" "))
   plot(log2(rna.seq.exprs.common.g[gene, ] + 1), main=paste(gene, 'log2 exprs: rnaseq'),
-       col=rep(1:N.TISSUES, each=8), type='b', ylim=c(0, 14))
+       col=rep(1:N.TISSUES, each=8), type='b', ylim=c(0, 14), ylab="log2 exprs", xlab=paste(tissue.names, collapse=" "))
 }
 par(mfrow=c(1,1))
 dev.off()
 
 # Plot some genes for checking fit... -------------------------------------
 
-# Look at negative guys!
-# negs <- which(array.exprs.adjusted < -18200, arr.ind = TRUE)
-# genes.i <- unique(negs[, "row"])
-# length(genes.i)
-
 pdf(fit.normal.log2.outpath)
-par(mfrow=c(1, 2))
+par(mfrow=c(2, 2))
 # plot for one tissue only
 t <- 'Liver'
 t.grep <- t
@@ -362,19 +337,27 @@ for (gene in clockgenes){
   # create plot symbols '*' if in x.rna.seq.i, '+' otherwise
   plot.symbols <- sapply(x.rna.seq.i, function(x){
     if (x == TRUE){
-      symbol <- 8
-    } else {
       symbol <- 1
+    } else {
+      symbol <- 8
     }
   })
   y <- slope * x + intercept
-  plot(x, y, main=paste("normal", gene, t), pch=c(plot.symbols), xlab="Observed microarray", ylab="Predicted expression")
+  y[which(y < 1)] <- 1 
+  
+  plot(x, y, main=paste("o=samp w/ RNASeq+array", gene), pch=c(plot.symbols), xlab="Observed microarray (normal)", ylab="Predicted expression (normal)")
   abline(h=0)
   
   # log 2 transform that shit
-  y[which(y < 1)] <- 1 
-  plot(log2(x), log2(y), main=paste("log2", gene, t), pch=c(plot.symbols), xlab="Observed microarray", ylab="Predicted expression")
+  
+  plot(log2(x), log2(y), main=paste("log2", gene, t), pch=c(plot.symbols), xlab="Observed microarray (log2)", ylab="Predicted expression (log2)")
   # if you see two lines, one dotted and one solid, it means you did the fit wrong! They should be the same line.
+  
+  # Plot dat original
+  PlotRnaMicroarrayFit(t, gene, coeff.mat, array.subset.common.g, rna.seq.exprs.common.g, "Liv")
+  
+  # Plot Microarray all of them
+  plot(x, pch=plot.symbols, main='Normal exprs cross samples', ylab="Normal microarray exprs", xlab="Sample Index")
 }
 dev.off()
 
