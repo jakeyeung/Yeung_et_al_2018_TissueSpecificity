@@ -49,10 +49,16 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
        ylim=c(axis.min, axis.max), 
        pch=20,
        main=main)
-  # textplot(Re(dat), Im(dat), text.labels)
-  text(dat, 
-       labels=text.labels, 
-       pos=3)
+  abline(v=0)
+  abline(h=0)
+  if (length(dat) < 20){
+      text(dat, 
+           labels=text.labels, 
+           pos=3)
+  }
+
+  
+  textplot(Re(dat), Im(dat), text.labels)
   abline(v=0)
   abline(h=0)
 }
@@ -351,7 +357,7 @@ dat.rnaseq.top.genes <- dat.rnaseq[top.genes, ]
 tissues <- paste0(dat.tissuenames, '*')  # add * because we grep later
 tissues.rnaseq <- paste0(GetTissueNames(colnames(dat.rnaseq)), '*')
 # swap BFat with BStm for rnaseq. BFat at 3rd index. Bstm at 4th index.
-tissues.rnaseq[c(3, 4)] <- tissues.rnaseq[c(4, 3)]
+# tissues.rnaseq[c(3, 4)] <- tissues.rnaseq[c(4, 3)]
 tissues.rnaseq
 
 # grep tissues like Adr*|Hrt*| ... | BS*
