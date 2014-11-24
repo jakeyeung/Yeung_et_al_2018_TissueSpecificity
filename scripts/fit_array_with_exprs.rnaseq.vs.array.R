@@ -89,41 +89,22 @@ Peek(array.exprs)
 # Get tissue names --------------------------------------------------------
 
 tissue.names <- GetTissueNames(colnames(array.exprs), dat.type="array")
-# tissue.names <- sapply(colnames(array.exprs), function(x){
-#   tissue <- substring(x, 1, nchar(x) - 2)
-# })
-# tissue.names <- unique(unname(tissue.names))
 
 
 # Get array times --------------------------------------------------------
 
 array.times <- GetTimes(colnames(array.exprs))
 
-# array.times <- sapply(colnames(array.exprs), function(x){
-#   time <- substring(x, nchar(x) - 1, nchar(x))
-#   return(time)
-# })
-# (array.times <- unique(array.times))
 
 # Get tissue names: RNASeq ------------------------------------------------
 
 tissue.names.rnaseq <- GetTissueNames(colnames(rna.seq.exprs), dat.type="rna.seq")
 
-# tissue.names.rnaseq <- sapply(colnames(rna.seq.exprs), function(x){
-#   tissue <- substring(x, 1, nchar(x) - 5)
-#   return(tissue)
-# })
-# tissue.names.rnaseq <- unique(tissue.names.rnaseq)
 
 
 # Get RNASeq times --------------------------------------------------------
 
 rna.seq.times <- GetTimes(colnames(rna.seq.exprs))
-
-# rna.seq.times <- unname(sapply(colnames(rna.seq.exprs), function(x){
-#   substr(x, nchar(x)-1, nchar(x))
-# }))
-# rna.seq.times <- unique(rna.seq.times)
 
 
 # Subset microarray for rna.seq.times -------------------------------------
