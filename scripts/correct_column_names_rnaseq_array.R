@@ -28,6 +28,10 @@ print(paste("Reading data from,", array.path, "May take a few a minutes."))
 array.exprs1 <- read.table(array.path, header=TRUE, sep='\t')  # has duplicate rownames
 print("Read data to memory.")
 
+
+# Get column names --------------------------------------------------------
+
+
 array.cnames <- ShortenSampNames(colnames(array.exprs1)[2:ncol(array.exprs1)], show="tissue.time")
 
 rna.cnames <- colnames(rna.seq.exprs1)[2:ncol(rna.seq.exprs1)]
@@ -35,6 +39,10 @@ rna.cnames <- colnames(rna.seq.exprs1)[2:ncol(rna.seq.exprs1)]
 t.names.array <- GetTissueNames(array.cnames, dat.type="array")
 
 t.names.rnaseq <- GetTissueNames(rna.cnames, dat.type="rna.seq")
+
+
+# Rename column names -----------------------------------------------------
+
 
 # BEGIN: rename tissue names in rnaseq to match array
 for (t.i in 1:length(t.names.array)){
@@ -51,11 +59,18 @@ for (t.i in 1:length(t.names.array)){
 print(rna.cnames)
 print(array.cnames)
 
+
+# Save to old column names ------------------------------------------------
+
+
 colnames(array.exprs1)[2:ncol(array.exprs1)] <- array.cnames
 colnames(rna.seq.exprs1)[2:ncol(rna.seq.exprs1)] <- rna.cnames
 
 # match first element of array with rna
 colnames(rna.seq.exprs1)[1] <- colnames(array.exprs1)[1]
+
+# Write to file -----------------------------------------------------------
+
 
 write.table(array.exprs1, file=array.output, quote=FALSE, sep="\t", row.names=FALSE)
 write.table(rna.seq.exprs1, file=rna.seq.output, quote=FALSE, sep="\t", row.names=FALSE)
