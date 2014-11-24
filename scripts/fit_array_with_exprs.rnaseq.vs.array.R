@@ -127,8 +127,7 @@ array.common.g <- as.matrix(array.exprs[common.genes, ])  # for interpolation la
 
 coeff.mat <- LmGeneTissue(array.subset.common.g, rna.seq.exprs.common.g, 
                            row.names=rownames(array.subset.common.g), 
-                           tissue.names, n.samps=N.SAMP.PER.TISSUE.RNASEQ, 
-                           coeff.mat=coeff.mat)
+                           tissue.names, n.samps=N.SAMP.PER.TISSUE.RNASEQ)
 
 
 # Adjust all microarray to RNAseq -----------------------------------------
