@@ -6,7 +6,7 @@
 # Define constants --------------------------------------------------------
 
 N.TISSUES <- 12
-RNA.SEQ.INTERVAL <- 8
+N.SAMP.PER.TISSUE.RNASEQ <- 8
 ARRAY.INTERVAL <- 2
 
 # Functions ---------------------------------------------------------------
@@ -144,15 +144,15 @@ array.subset.common.g <- as.matrix(array.subset[common.genes, ])
 rna.seq.exprs.common.g <- as.matrix(rna.seq.exprs[common.genes, ])
 array.common.g <- as.matrix(array.exprs[common.genes, ])  # for interpolation later.
 
-coeff.mat2 <- LmGeneTissue(array.subset.common.g, rna.seq.exprs.common.g, 
+coeff.mat <- LmGeneTissue(array.subset.common.g, rna.seq.exprs.common.g, 
                            row.names=rownames(array.subset.common.g), 
-                           tissue.names, n.samps=RNA.SEQ.INTERVAL, 
-                           coeff.mat=coeff.mat2)
+                           tissue.names, n.samps=N.SAMP.PER.TISSUE.RNASEQ, 
+                           coeff.mat=coeff.mat)
 
 
 # Adjust all microarray to RNAseq -----------------------------------------
 
-array.exprs.adjusted2 <- AdjustArrayToRnaSeq(array.common.g, coeff.mat2, tissue.names)
+array.exprs.adjusted <- AdjustArrayToRnaSeq(array.common.g, coeff.mat, tissue.names)
 
 # Create log2 transform ---------------------------------------------------
 
