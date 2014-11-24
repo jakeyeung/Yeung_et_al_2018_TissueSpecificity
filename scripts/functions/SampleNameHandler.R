@@ -43,3 +43,51 @@ ShortenSampNames <- function(long.names, show="tissue") {
   return(short.names)
 }
 
+GetTimes <- function(dat.colnames, n.digits=2){
+  # Parse colnames and extract times. e.g. Adr30 -> 30
+  # Expects colnames with times at last part of string. Default is last two characters.
+  
+  char.from.end <- n.digits - 1  # if n.digits=2, extract second last digit (n.digit - 1) to last digit
+  
+  times <- sapply(dat.colnames, function(colname, char.from.end){
+    time <- substring(colname, nchar(colname) - char.from.end, nchar(colname))
+  }, char.from.end)
+  return(unique(times))
+}
+
+GetTissueNames <- function(dat.colnames, dat.type){
+  # Parse colnames and extract tissue names. 
+  # e.g. Aorta62 -> Aorta or Adr_CT40 -> Adr
+  # Invariant is that there are constant number of digits from
+  # end of tissue name to end of string.
+  # 
+  # dat.type -> "rna.seq" or "array". 
+  # rna.seq has colnames like Adr_CT40
+  # array has colnames like Aorta62
+  
+  if (missing(dat.type)){
+    warning('dat.type must be either "rna.seq" or "array".')
+    return(NA)
+  }
+#   if (dat.type == "rna.seq"){
+#     tissues <- sapply(dat.colnames, function(colname){
+#         tissue <- substring(x, 1, nchar(x) - 5)
+#       return(tissue)
+#     })
+#   }
+#   else (dat.type == "array"{
+#     tissues <- sapply(dat.colnames, function(colname))
+#     tissue <- substring(x, 1, nchar(x) - 2)
+#   })
+  tissues <- sapply(dat.colnames, function(colname, dat.type){
+    if (dat.type == "rna.seq"){
+      tissue <- substring(colname, 1, nchar(colname) - 5)
+    } else if (dat.type == "array"){
+      tissue <- substring(colname, 1, nchar(colname) - 2)
+    }
+    return(tissue)
+  }, dat.type)
+  return(unique(tissues))
+}
+
+
