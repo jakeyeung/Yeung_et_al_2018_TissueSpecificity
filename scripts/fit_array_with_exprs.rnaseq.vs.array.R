@@ -141,35 +141,6 @@ log2.array.exprs.adjusted <- array.exprs.adjusted
 log2.array.exprs.adjusted[which(log2.array.exprs.adjusted < 0)] <- 0
 log2.array.exprs.adjusted <- log2(log2.array.exprs.adjusted + 1)
 
-# Plot stuff --------------------------------------------------------------
-
-
-# random genes for Adr
-# set.seed(0)
-random.genes <- sample(rownames(array.subset.common.g), 10)
-
-# add clock genes
-random.genes <- c(random.genes, 'Arntl', 'Per2', 'Per3', 'Dbp')
-
-# plot for one tissue only
-t <- 'Adr'
-t.grep <- t
-for (gene in random.genes){
-  intercept <- coeff.mat[gene, paste0(t, '_intercept')]
-  slope <- coeff.mat[gene, paste0(t, '_slope')]
-  plot(array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
-       rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))], 
-       #        xlim=c(0, max(array.subset.common.g[gene, 1:24])),
-       #        ylim=c(0, max(rna.seq.exprs.common.g[gene, 1:24])),
-       main=paste(gene, 'Intercept=', intercept, 'Slope=', slope))
-  gfit <- lm(rna.seq.exprs.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))] ~ array.subset.common.g[gene, grepl(t.grep, colnames(array.subset.common.g))])
-  abline(intercept, slope, lty='dotted')
-  abline(gfit)
-  # if you see two lines, one dotted and one solid, it means you did the fit wrong! They should be the same line.
-}
-
-
-
 # Scatterplot dat shit ----------------------------------------------------
 
 genes.subset <- sample(rownames(array.exprs.adjusted), 0.1 * nrow(array.exprs.adjusted))
