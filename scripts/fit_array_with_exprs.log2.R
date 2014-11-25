@@ -33,13 +33,13 @@ fname.array <- "hogenesch_2014_rma.genenames.colnameordered.txt"
 # Define output directories -----------------------------------------------
 
 plot_dir <- "plots"
-plot.tissue.array <- "Heart"
-plot.tissue.rna.seq <- "Hrt"
+plot.tissue.array <- "Lung"
+plot.tissue.rna.seq <- "Lun"
 scatter.outpath <- file.path(plot_dir, "scatter.rna.array.rnaseq.vs.array.log2.fit.pdf")
 scatter.replicates.outpath <- file.path(plot_dir, "scatter.replicates.rnaseq.vs.array2.log2.fit.pdf")
 clock.genes.outpath <- file.path(plot_dir, "clock.genes.outpath.rnaseq.vs.array2.log2.fit.pdf")
 tissue.genes.outpath <- file.path(plot_dir, "tissue.genes.outpath.rnaseq.vs.array2.log2.fit.pdf")
-fit.normal.log2.outpath <- file.path(plot_dir, "normal.log.plot.check.near.zero2.log2.fit.heart.pdf")
+fit.normal.log2.outpath <- file.path(plot_dir, "normal.log.plot.check.near.zero2.log2.fit.lung.pdf")
 tissue.genes.check.outpath <- file.path(plot_dir, "normal.log.plot.check.near.zero.tissue2.log2.fit.pdf")
 
 # load data: RNASeq and microarray ----------------------------------------
@@ -161,7 +161,7 @@ par(mfrow=c(1,1))
 dev.off()
 
 
-# PLOT DIAGNOSTIC PLOTS ---------------------------------------------------
+# PLOT DIAGNOSTIC PLOTS: clock genes ---------------------------------------------------
 
 PlotFitDiagnostics(array.common.g, 
                    array.subset, 

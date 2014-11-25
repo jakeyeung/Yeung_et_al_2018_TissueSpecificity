@@ -81,7 +81,11 @@ PlotFitDiagnostics <- function(array.exprs.full,
     plot(2^x.subset, 2^y.rna.seq, main=paste("RNASeq vs Array: normal scale"), xlab="Microarray normal scale", ylab="DESeq normalized counts")
     
     # Plot raw on log2 scale
-    plot(x.subset, y.rna.seq, main="RNASeq vs Array: log2 scale", xlab="Microarray log2 scale", ylab="DESeq normalized counts (log2)") 
+    plot(x.subset, y.rna.seq, 
+         main=paste(gene, 'Intercept=', signif(intercept, digits=3), 
+                    'Slope=', signif(slope, digits=3)), 
+         xlab="Microarray log2 scale", 
+         ylab="DESeq normalized counts (log2)") 
     abline(intercept, slope, lty='dotted')
     }
   dev.off() 
