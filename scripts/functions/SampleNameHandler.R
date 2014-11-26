@@ -66,19 +66,9 @@ GetTissueNames <- function(dat.colnames, dat.type){
   # array has colnames like Aorta62
   
   if (missing(dat.type)){
-    warning('dat.type must be either "rna.seq" or "array".')
-    return(NA)
+    warning('dat.type unspecified, defaulting to colnames of form: "Cere28"...')
+    dat.type <- "array"
   }
-#   if (dat.type == "rna.seq"){
-#     tissues <- sapply(dat.colnames, function(colname){
-#         tissue <- substring(x, 1, nchar(x) - 5)
-#       return(tissue)
-#     })
-#   }
-#   else (dat.type == "array"{
-#     tissues <- sapply(dat.colnames, function(colname))
-#     tissue <- substring(x, 1, nchar(x) - 2)
-#   })
   tissues <- sapply(dat.colnames, function(colname, dat.type){
     if (dat.type == "rna.seq"){
       tissue <- substring(colname, 1, nchar(colname) - 5)

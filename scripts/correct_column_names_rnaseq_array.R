@@ -1,3 +1,5 @@
+# November 24 2014
+# Jake Yeung
 # Correct column names between array and rna.seq
 
 # define directories ------------------------------------------------------
