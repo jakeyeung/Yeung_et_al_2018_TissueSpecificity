@@ -76,3 +76,51 @@ AdjustArrayToRnaSeq <- function(array.exprs, coeff.mat, tissue.names){
   return(array.exprs.adjusted)
 }
 
+ConstrainedFitWithNoise <- function(gene, array.subset, array.exprs, rna.seq, noise.function,
+                                    noise.params){
+  # functions
+  R.hat <- function(m, a, b) a * (m - b) # RNA to Microarray model.
+  S <- function(x) sum((R - R.hat(M, x[1], x[2])) ^ 2 / R.var)  # optimization equation
+  
+  # fit for every probe a weighted linear regression with weights of 1/var
+  R <- rna.seq[gene, ]
+  M <- array.subset[gene, ]
+  M.full <- array.exprs[gene, ]
+  
+  a.init <- 1.01  # expect to be > 1
+  b.init <- 0.5 * min(M.full)  # background some fraction of min exprs
+  
+  a.min <- 0
+  a.max <- 2^10
+  b.min <- 0  # background can't be negative
+  b.max <- min(M.full)  # background can't be larger than min exprs
+  
+  R.var <- noise.function(noise.params, R)
+  
+  a.b <- optim(c(a.init, b.init), S, method="L-BFGS-B",
+               lower=c(a.min, b.min),
+               upper=c(a.max, b.max))
+  a.hat <- a.b$par[1]
+  b.hat <- a.b$par[2]
+  conv <- a.b$convergence
+  
+  R.predict <- R.hat(M.full, a.hat, b.hat)
+  
+  # add to coeff.mat
+  # return(list(a.hat, b.hat, conv))
+  
+#   print(class(gene))
+#   print(class(a.hat))
+#   print(class(R.predict))
+#   return(list(array.adj=R.predict, 
+#               gene=gene,
+#               a.hat=a.hat, 
+#               b.hat=b.hat, 
+#               convergence=conv))
+#   coeff.mat[gene, "a.hat"] <- a.hat
+#   coeff.mat[gene, "b.hat"]  <- b.hat
+#   coeff.mat[gene, "convergence"] <- conv
+#   
+#   array.adj[gene, ] <- R.predict
+}
+
