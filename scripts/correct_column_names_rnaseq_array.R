@@ -6,26 +6,37 @@
 
 # define dirs
 data_dir <- "data"
-fname.rna.seq <- "exprs_combined.genenames.txt"
-fname.array <- "hogenesch_2014_rma.genenames.colnameordered.txt"
 
+# set input output from user
+args <- commandArgs(trailingOnly = TRUE)
+# get input and output path
+fname.rna.seq <- args[1]  # RNA Seq input with colnames needing to be fixed
+fname.array <- args[2]  # array input with colnames needing to be fixed
+rna.seq.output <- args[3]  # fixed rna seq out put file
+array.output <- args[4]  # fixed array output file
+
+# fname.rna.seq <- "exprs_combined.genenames.txt"
+# fname.array <- "hogenesch_2014_rma.genenames.colnameordered.txt"
+# fname.array  <- "hogenesch_2014_rma.probeids.annotated.cut.noNA.col.reordered.txt"
 
 # Define outputs ----------------------------------------------------------
 
-array.output <- file.path(data_dir, "array_exprs_colnames_fixed.txt")
-rna.seq.output <- file.path(data_dir, "rna_seq_deseq_counts_colnames_fixed.txt")
+# array.output <- file.path(data_dir, "array_exprs_colnames_fixed.test.txt")
+# rna.seq.output <- file.path(data_dir, "rna_seq_deseq_counts_colnames_fixed.test.txt")
 
 # load data: RNASeq and microarray ----------------------------------------
 
 
 # load data: rnaseq
-rna.seq.path <- file.path(data_dir, fname.rna.seq)
+# rna.seq.path <- file.path(data_dir, fname.rna.seq)
+rna.seq.path <- fname.rna.seq
 print(paste("Reading data from,", rna.seq.path, "May take a few a minutes."))
 rna.seq.exprs1 <- read.table(rna.seq.path, header=TRUE, sep='\t')
 print("Read data to memory.")
 
 # load data: microarray
-array.path <- file.path(data_dir, fname.array)
+# array.path <- file.path(data_dir, fname.array)
+array.path <- fname.array
 print(paste("Reading data from,", array.path, "May take a few a minutes."))
 array.exprs1 <- read.table(array.path, header=TRUE, sep='\t')  # has duplicate rownames
 print("Read data to memory.")
