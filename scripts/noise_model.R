@@ -5,19 +5,27 @@
 
 library(ggplot2)
 library(plyr)
+library(parallel)
 
 # Functions ---------------------------------------------------------------
 
 functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
 source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
+source(file.path(functions.dir, 'RegressionFunctions.R'))  # optim function
 
 # define directories ------------------------------------------------------
 
 # define dirs
 data.dir <- "data"
 fname.rna.seq <- "rna_seq_deseq_counts_colnames_fixed.txt"
-fname.array <- "array_exprs_colnames_fixed2.txt"
+fname.array <- "array_exprs_colnames_fixed.txt"
+clock.genes.fit.outpath <- file.path("plots", "clock.genes.noise.model.fit.pdf")
+clock.genes.outpath <- file.path("plots", "clock.genes.noise.model.before.after.pdf")
+array.before.after.outpath <- file.path("plots", "array.before.after.noise.model.pdf")
+rna.seq.array.outpath <- file.path("plots", "rna.seq.array.noise.model.pdf")
+scatterplot.mean.variance.outpath <- file.path("plots", "scatterplot.mean.variance.noise.model.log2.pdf")
+mean.var.fit.outpath <- file.path("plots", "scatterplot.mean.variance.parabola.fit.pdf")
 
 # Load file ---------------------------------------------------------------
 
@@ -75,13 +83,6 @@ for (j in 1:length(tissue.names)){
 }
 str(mean.var)
 
-# Plot ggplot2 ------------------------------------------------------------
-
-ggplot(mean.var.df, aes(x=mean, y=var)) + 
-  geom_point(alpha=0.005) + 
-  scale_x_log10() + 
-  scale_y_log10()
-
 # Make dataframe for ggplot2 ----------------------------------------------
 
 mean.var.df <- data.frame(mean=as.vector(mean.var$mean), var=as.vector(mean.var$var))
@@ -107,12 +108,9 @@ bin.var <- with(mean.var.df, (tapply(var, bins.order, function(x){
   return(var.quantiles)
 })))
 
-# remove last point
+# # remove last point
 bin.mean <- bin.mean[1:(length(bin.mean) - 1)]
 bin.var <- bin.var[1:(length(bin.var) - 1)]
-
-plot(bin.mean, bin.var, 
-     main=paste0(n.per.bin, " genes per bin. ", prob, " quantiles."))
 
 m0 <- 1
 b0 <- 0.1 
@@ -125,12 +123,20 @@ b.max <- Inf
 k.max <- Inf
 # Fit with constraint
 f.parab <- function(x, bin.mean) x[1] * ( bin.mean - x[2] ) ^ 2 + x[3]
-S.parab <- function(x) sum((bin.var - f(x, bin.mean)) ^ 2)
+S.parab <- function(x) sum((bin.var - f.parab(x, bin.mean)) ^ 2)
 fit <- optim(c(m0, b0, k0), S.parab, method="L-BFGS-B", lower=c(m.min, b.min, k.min), upper=c(m.max, b.max, k.max))
 str(fit)
 x <- bin.mean
 y <- f.parab(fit$par, bin.mean)
+
+# plot dat
+pdf(mean.var.fit.outpath)
+plot(bin.mean, bin.var, 
+     main=paste0('y=m(x-b)^2 + k. m=', signif(fit$par[1], 2), 
+                 ' b=', signif(fit$par[2], 2), 
+                 ' k=', signif(fit$par[3], 2)))
 lines(x, y)     
+dev.off()
 
 # Get mean exprs across samples -------------------------------------------
 
@@ -142,9 +148,22 @@ rna.seq.exprs.common.g <- rna.seq.exprs[common.genes, ]
 Peek(array.exprs.subset.common.g)
 Peek(rna.seq.exprs.common.g)
 
+# put all array exprs in normal scale
+array.exprs <- 2 ^ array.exprs  # normal scale
+
 # Take avg across samples
 array.avg.exprs <- apply(array.exprs.subset.common.g, 1, mean)
 rna.avg.exprs <- apply(rna.seq.exprs.common.g, 1, mean)
+
+
+# Plot ggplot2 ------------------------------------------------------------
+
+pdf(scatterplot.mean.variance.outpath)
+ggplot(mean.var.df, aes(x=mean, y=var)) + 
+  geom_point(alpha=0.005) + 
+  scale_x_log10() + 
+  scale_y_log10()
+dev.off()
 
 
 # Plot array and rna avg --------------------------------------------------
@@ -153,21 +172,44 @@ plot(array.avg.exprs,
      rna.avg.exprs,
      pch=46, cex=2, log="xy")
 
-# Fit noise model ---------------------------------------------------------
 
-# model: R = a ( m - b ), b < min(m) in linear scale
+# Clock genes --------------------------------------------------------
 
 clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2', 
                 'Bhlhe41', 'Nfil3', 'Cdkn1a', 'Lonrf3', 
                 'Tef', 'Usp2', 'Wee1', 'Dtx4', 'Asb12')
-                # 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
-# clockgenes <- c(clockgenes, 'Defb48', 'Svs1', 'Svs2', 'Svs5', 'Defb20', 'Adam7', 'Lcn8', 'Rnase10', 'Teddm1')
+clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
+clockgenes <- c(clockgenes, 'Defb48', 'Svs1', 'Svs2', 'Svs5', 'Defb20', 'Adam7', 'Lcn8', 'Rnase10', 'Teddm1')
 
-R.hat <- function(m, a, b) a * (m - b)
+# Fit noise model ---------------------------------------------------------
+
+# model: R = a ( m - b ), b < min(m) in linear scale
+
+# init coefficient matrix
+coeff.mat <- data.frame(a.hat=rep(NA, length(common.genes)), 
+                        b.hat=rep(NA, length(common.genes)), 
+                        convergence=rep(NA, length(common.genes)), 
+                        row.names=common.genes)
+# init adjusted array
+array.adj <- matrix(NA, nrow=length(common.genes), ncol=ncol(array.exprs), 
+                    dimnames=list(common.genes, colnames(array.exprs)))
+
+# array.adj <- mclapply(list(common.genes), ConstrainedFitWithNoise, 
+#                            array.subset=array.exprs.subset.common.g, 
+#                            array.full=array.exprs,
+#                            rna.seq=rna.seq.exprs.common.g, 
+#                            noise.function=f.parab, 
+#                            noise.params=fit$par)
+# array.adj <- array.adj[[1]]
+
+R.hat <- function(m, a, b) a * (m - b) # RNA to Microarray model.
+S <- function(x) sum((R - R.hat(M, x[1], x[2])) ^ 2 / R.var)  # optimization equation
+
+count <- 1
 for (gene in clockgenes){
   R <- rna.seq.exprs.common.g[gene, ]
   M <- array.exprs.subset.common.g[gene, ]
-  M.full <- 2^array.exprs[gene, ]
+  M.full <- array.exprs[gene, ]
   
   a.init <- 1.01  # expect to be > 1
   b.init <- 0.5 * min(M.full)  # background some fraction of min exprs
@@ -177,21 +219,7 @@ for (gene in clockgenes){
   b.min <- 0  # background can't be negative
   b.max <- min(M.full)  # background can't be larger than min exprs
   
-  # calculate variance fom loess, giving it R. If outside of
-  # interpolation range, set Ri = Rmin or Ri = Rmax
-  # min.R <- 321
-  # min.R <- min(fit$x)  # results in negative
-  # max.R <- max(fit$x)
-  
-  # R.adj <- R
-  # R.adj[which(R < min.R)] <- min.R
-  # R.adj[which(R > max.R)] <- max.R
-  
-  # R.var <- predict(fit, data.frame(bin.mean=unlist(R.adj)))
-  # R.var <- b0 + b1 * R + b2 * R ^ 2
   R.var <- f.parab(fit$par, R)
-
-  S <- function(x) sum((R - R.hat(M, x[1], x[2])) ^ 2 / R.var)
   
   a.b <- optim(c(a.init, b.init), S, method="L-BFGS-B",
                lower=c(a.min, b.min),
@@ -202,10 +230,87 @@ for (gene in clockgenes){
   
   R.predict <- R.hat(M.full, a.hat, b.hat)
   
+  # add to coeff.mat
+  coeff.mat[gene, "a.hat"] <- a.hat
+  coeff.mat[gene, "b.hat"]  <- b.hat
+  coeff.mat[gene, "convergence"] <- conv
+  
+  array.adj[gene, ] <- R.predict
+  count <- count + 1
+  if (count %% 10 == 0){
+    print(count)
+  }
+}
+
+
+
+# Plot clock genes fit ----------------------------------------------------
+
+
+pdf(clock.genes.fit.outpath)
+for (gene in clockgenes){
+  M <- array.exprs.subset.common.g[gene, ]
+  R <- rna.seq.exprs.common.g[gene, ]
+  a.hat <- coeff.mat[gene, "a.hat"]
+  b.hat <- coeff.mat[gene, "b.hat"]
+  M.full <- array.exprs[gene, ]
+  R.predict <- R.hat(M.full, a.hat, b.hat)
   plot(unlist(M), unlist(R), main=paste0("gene=", gene, 
                                          " a=", signif(a.hat, 2), 
                                          " b=", signif(b.hat, 2),
-                                         " min.predict=", signif(min(R.predict), 2),
-                                         " converge=", conv))
+                                         " min.predict=", signif(min(R.predict), 2)))
   lines(M.full, R.predict, lwd=3, col='red')
 }
+dev.off()
+
+
+# Plot before after adjust and RNASeq: Log2 -------------------------------
+
+N.TISSUES <- 12
+
+pdf(clock.genes.outpath)
+par(mfrow=c(3,1))
+for (gene in clockgenes){
+  # Array before adjustment
+  plot(unlist(log2(array.exprs[gene, ])), main=paste(gene, 'log2 expression: array before adjustment'),
+       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       xlab=paste(tissue.names, collapse=" "))
+  # Array after adjustment
+  plot(unlist(log2(array.adj[gene, ])), main=paste(gene, 'log2 exprs: array after adjustment'),
+       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       xlab=paste(tissue.names, collapse=" "))
+}
+par(mfrow=c(1,1))
+dev.off()
+
+
+# Plot before and after on same scale -------------------------------------
+
+pdf(array.before.after.outpath)
+for (gene in clockgenes){
+  # Array before adjustment
+  plot(unlist(log2(array.exprs[gene, ])), main=paste(gene, 'black=array before, red=array after'),
+       col=1, type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       xlab=paste(tissue.names, collapse=" "))
+  # Array after adjustment
+  lines(unlist(log2(array.adj[gene, ])),
+       col=2, pch=23, type='o')
+}
+dev.off()
+
+pdf(rna.seq.array.outpath)
+for (gene in clockgenes){
+  # RNA Seq
+  plot(unlist(log2(rna.seq.exprs.common.g[gene, ] + 1)), main=paste(gene, 'black=rnaseq, red=array after'),
+       col=1, type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       xlab=paste(tissue.names, collapse=" "))
+  lines(unlist(log2(array.adj[gene, common.samples])),
+        col=2, pch=23, type='o')
+}
+dev.off()
+
+
+
+
+
+
