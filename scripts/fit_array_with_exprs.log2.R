@@ -35,12 +35,14 @@ fname.array <- "hogenesch_2014_rma.genenames.colnameordered.txt"
 plot_dir <- "plots"
 plot.tissue.array <- "Lung"
 plot.tissue.rna.seq <- "Lun"
-scatter.outpath <- file.path(plot_dir, "scatter.rna.array.rnaseq.vs.array.log2.fit.pdf")
-scatter.replicates.outpath <- file.path(plot_dir, "scatter.replicates.rnaseq.vs.array2.log2.fit.pdf")
-clock.genes.outpath <- file.path(plot_dir, "clock.genes.outpath.rnaseq.vs.array2.log2.fit.pdf")
-tissue.genes.outpath <- file.path(plot_dir, "tissue.genes.outpath.rnaseq.vs.array2.log2.fit.pdf")
+scatter.outpath <- file.path(plot_dir, "scatter.rna.array.rnaseq.vs.array.log2.fit.2.pdf")
+scatter.replicates.outpath <- file.path(plot_dir, "scatter.replicates.rnaseq.vs.array2.log2.fit.2.pdf")
+clock.genes.outpath <- file.path(plot_dir, "clock.genes.outpath.rnaseq.vs.array2.log2.fit.2.pdf")
+tissue.genes.outpath <- file.path(plot_dir, "tissue.genes.outpath.rnaseq.vs.array2.log2.fit.2.pdf")
 fit.normal.log2.outpath <- file.path(plot_dir, "normal.log.plot.check.near.zero2.log2.fit.lung.pdf")
-tissue.genes.check.outpath <- file.path(plot_dir, "normal.log.plot.check.near.zero.tissue2.log2.fit.pdf")
+tissue.genes.check.outpath <- file.path(plot_dir, "normal.log.plot.check.near.zero.tissue2.log2.fit.2.pdf")
+rna.seq.vs.after.adj.overlay.outpath <- file.path(plot_dir, "rna.seq.vs.array.adj.log2.fit.2.pdf")
+before.vs.after.adj.overlay.outpath <- file.path(plot_dir, "before.vs.array.adj.log2.fit.2.pdf")
 
 # load data: RNASeq and microarray ----------------------------------------
 
@@ -158,6 +160,35 @@ for (gene in clockgenes){
        xlab=paste(tissue.names, collapse=" "))
 }
 par(mfrow=c(1,1))
+dev.off()
+
+
+# Plot clock genes: overlap -----------------------------------------------
+
+# plot rna-seq vs after adjustment
+
+pdf(rna.seq.vs.after.adj.overlay.outpath)
+for (gene in clockgenes){
+  # RNA Seq
+  rna.seq <- matrix(NA, nrow=1, ncol=ncol(array.exprs.adjusted), dimnames=list(gene, colnames(array.exprs.adjusted)))
+  rna.seq[gene, colnames(array.exprs.subset.common.g)] <- as.matrix(rna.seq.exprs.common.g[gene, ])
+  
+  plot(seq(1:length(rna.seq)), rna.seq, main=paste(gene, 'black=rnaseq, red=array after adjust'),
+       col=1, type='o', ylim=c(0, 14), ylab="log2 exprs", 
+       xlab=paste(tissue.names, collapse=" "))
+  lines(as.matrix(array.exprs.adjusted[gene, ]), col=2, pch=22, type='o')
+}
+dev.off()
+
+# plot before vs after adjustment
+pdf(before.vs.after.adj.overlay.outpath)
+for (gene in clockgenes){
+  # Array before adjustment
+  plot(t(as.matrix(array.exprs[gene, ])), main=paste(gene, 'black=array before adjust, red=array after adjust'),
+       col=1, type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       xlab=paste(tissue.names, collapse=" "))
+  lines(as.matrix(array.exprs.adjusted[gene, ]), col=2, pch=22, type='o')
+}
 dev.off()
 
 
