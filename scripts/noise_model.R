@@ -75,6 +75,12 @@ for (j in 1:length(tissue.names)){
 }
 str(mean.var)
 
+# Plot ggplot2 ------------------------------------------------------------
+
+ggplot(mean.var.df, aes(x=mean, y=var)) + 
+  geom_point(alpha=0.005) + 
+  scale_x_log10() + 
+  scale_y_log10()
 
 # Make dataframe for ggplot2 ----------------------------------------------
 
@@ -83,43 +89,55 @@ mean.var.df <- data.frame(mean=as.vector(mean.var$mean), var=as.vector(mean.var$
 
 # Bin and fit loess -------------------------------------------------------
 
-n.per.bin <- 1000
-bins <- factor(round_any(mean.var.df$mean, n.per.bin, floor))
-bins.order <- factor(floor(order(mean.var.df$mean) / n.per.bin))
-mean.var.df <- cbind(mean.var.df, bins)
-mean.var.df <- cbind(mean.var.df, bins.order)
+n.per.bin <- 2000
+
+mean.var.df <- mean.var.df[with(mean.var.df, order(mean)), ]
+mean.var.df$bins.order <- factor(round_any(seq(1:nrow(mean.var.df)), 1000))
+# bins.order <- factor(floor(order(mean.var.df$mean) / n.per.bin))
+# mean.var.df <- cbind(mean.var.df, bins.order)
 
 # Bin mean and bin variance: by order -------------------------------------
 
-# take average in each bin for variance and mean.
-# bin.mean <- with(mean.var.df, (tapply(mean, bins.order, mean)))
-# bin.var <- with(mean.var.df, (tapply(var, bins.order, mean)))
-
-prob <- 0.5
-
+prob='mean'
 bin.mean <- with(mean.var.df, (tapply(mean, bins.order, function(x){
-  mean.quantiles <- quantile(x, prob)
-  return(mean.quantiles)
+   mean.quantiles <- median(x)
 })))
 bin.var <- with(mean.var.df, (tapply(var, bins.order, function(x){
-  var.quantiles <- quantile(x, prob)
+  var.quantiles <- median(x)
   return(var.quantiles)
 })))
 
-plot(bin.mean, bin.var, main=paste0(n.per.bin, " genes per bin. ", prob, " quantiles."))
-fit.loess <- loess(bin.var ~ bin.mean)
-summary(fit.loess)
-x.loess <- sort(fit.loess$x)
-y.loess <- predict(fit.loess, x.loess)
-lines(x.loess, y.loess, col='red', lwd=3)
+# remove last point
+bin.mean <- bin.mean[1:(length(bin.mean) - 1)]
+bin.var <- bin.var[1:(length(bin.var) - 1)]
 
+plot(bin.mean, bin.var, 
+     main=paste0(n.per.bin, " genes per bin. ", prob, " quantiles."))
+
+m0 <- 1
+b0 <- 0.1 
+k0 <- 0.1
+m.min <- 0
+b.min <- -Inf
+k.min <- 0
+m.max <- Inf
+b.max <- Inf
+k.max <- Inf
+# Fit with constraint
+f.parab <- function(x, bin.mean) x[1] * ( bin.mean - x[2] ) ^ 2 + x[3]
+S.parab <- function(x) sum((bin.var - f(x, bin.mean)) ^ 2)
+fit <- optim(c(m0, b0, k0), S.parab, method="L-BFGS-B", lower=c(m.min, b.min, k.min), upper=c(m.max, b.max, k.max))
+str(fit)
+x <- bin.mean
+y <- f.parab(fit$par, bin.mean)
+lines(x, y)     
 
 # Get mean exprs across samples -------------------------------------------
 
 # Create subset and common genes so each microarray point has corresponding rnaseq
 common.genes <- intersect(rownames(array.exprs), rownames(rna.seq.exprs))
 common.samples <- intersect(colnames(array.exprs), colnames(rna.seq.exprs))
-array.exprs.subset.common.g <- 2^(array.exprs[common.genes, common.samples)  # normal scale
+array.exprs.subset.common.g <- 2^(array.exprs[common.genes, common.samples])  # normal scale
 rna.seq.exprs.common.g <- rna.seq.exprs[common.genes, ]
 Peek(array.exprs.subset.common.g)
 Peek(rna.seq.exprs.common.g)
@@ -134,8 +152,6 @@ rna.avg.exprs <- apply(rna.seq.exprs.common.g, 1, mean)
 plot(array.avg.exprs, 
      rna.avg.exprs,
      pch=46, cex=2, log="xy")
-
-
 
 # Fit noise model ---------------------------------------------------------
 
@@ -153,16 +169,28 @@ for (gene in clockgenes){
   M <- array.exprs.subset.common.g[gene, ]
   M.full <- 2^array.exprs[gene, ]
   
-  a.init <- 1  # expect to be > 1
+  a.init <- 1.01  # expect to be > 1
   b.init <- 0.5 * min(M.full)  # background some fraction of min exprs
   
-  a.min <- 2^-4
-  a.max <- 2^4
+  a.min <- 0
+  a.max <- 2^10
   b.min <- 0  # background can't be negative
   b.max <- min(M.full)  # background can't be larger than min exprs
   
-  R.var <- predict(fit.loess, data.frame(mean=unlist(R)))
+  # calculate variance fom loess, giving it R. If outside of
+  # interpolation range, set Ri = Rmin or Ri = Rmax
+  # min.R <- 321
+  # min.R <- min(fit$x)  # results in negative
+  # max.R <- max(fit$x)
   
+  # R.adj <- R
+  # R.adj[which(R < min.R)] <- min.R
+  # R.adj[which(R > max.R)] <- max.R
+  
+  # R.var <- predict(fit, data.frame(bin.mean=unlist(R.adj)))
+  # R.var <- b0 + b1 * R + b2 * R ^ 2
+  R.var <- f.parab(fit$par, R)
+
   S <- function(x) sum((R - R.hat(M, x[1], x[2])) ^ 2 / R.var)
   
   a.b <- optim(c(a.init, b.init), S, method="L-BFGS-B",
@@ -170,12 +198,14 @@ for (gene in clockgenes){
                upper=c(a.max, b.max))
   a.hat <- a.b$par[1]
   b.hat <- a.b$par[2]
+  conv <- a.b$convergence
   
-  # predict
   R.predict <- R.hat(M.full, a.hat, b.hat)
+  
   plot(unlist(M), unlist(R), main=paste0("gene=", gene, 
                                          " a=", signif(a.hat, 2), 
                                          " b=", signif(b.hat, 2),
-                                         " min.predict=", signif(min(R.predict))))
+                                         " min.predict=", signif(min(R.predict), 2),
+                                         " converge=", conv))
   lines(M.full, R.predict, lwd=3, col='red')
 }
