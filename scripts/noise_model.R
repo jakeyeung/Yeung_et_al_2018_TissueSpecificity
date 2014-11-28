@@ -15,6 +15,7 @@ functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
 source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 source(file.path(functions.dir, 'RegressionFunctions.R'))  # optim function
+source(file.path(functions.dir, 'GeneTissueCalculations.R'))
 
 # define directories ------------------------------------------------------
 
@@ -63,31 +64,9 @@ Peek(array.exprs)
 
 tissue.names <- GetTissueNames(colnames(rna.seq.exprs)) 
 
-
 # Calculate mean and variance for each gene per tissue --------------------
 
-N <- nrow(rna.seq.exprs) * length(tissue.names)  # one measurement for each gene for all tissues.
-mean.var <- list(mean=matrix(NA, nrow=nrow(rna.seq.exprs), ncol=length(tissue.names),
-                             dimnames = list(rownames(rna.seq.exprs), 
-                                             tissue.names)), 
-                 var=matrix(NA, nrow=nrow(rna.seq.exprs), ncol=length(tissue.names),
-                            dimnames = list(rownames(rna.seq.exprs), tissue.names)))
-
-for (j in 1:length(tissue.names)){
-  tissue <- tissue.names[j]
-  gene.tissue.exprs <- rna.seq.exprs[, grepl(tissue, colnames(rna.seq.exprs))]
-  # calculate mean and var, by row
-  exprs.mean <- apply(gene.tissue.exprs, 1, mean)
-  exprs.var <- apply(gene.tissue.exprs, 1, var)
-  # append to matrix 
-  mean.var$mean[, j] <- exprs.mean
-  mean.var$var[, j] <- exprs.var
-}
-str(mean.var)
-
-# Make dataframe for ggplot2 ----------------------------------------------
-
-mean.var.df <- data.frame(mean=as.vector(mean.var$mean), var=as.vector(mean.var$var))
+mean.var.df <- GetMeanVarByTissues(exprs=rna.seq.exprs, tissue.names)
 
 
 # Bin and fit loess -------------------------------------------------------
