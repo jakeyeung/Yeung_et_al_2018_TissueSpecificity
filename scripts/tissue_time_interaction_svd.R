@@ -143,9 +143,9 @@ INTERVAL <- 2  # hours between samples
 data_dir <- "data"
 # fname <- "hogenesch_2014_rma.genenames.txt"  # has duplicate gene names. Column names of BFAT and BS are switched (compared to RNASeq)
 fname <- "hogenesch_2014_rma.genenames.colnameordered.txt"  # column names match RNAseq
-rdata.fname <- 'array.exprs.lm.adjusted.RData'  
+# rdata.fname <- 'array.exprs.lm.adjusted.RData'  
 # load data, either by RData or from filename
-READ.FROM.TABLE <- FALSE
+READ.FROM.TABLE <- TRUE
 
 if (READ.FROM.TABLE == FALSE){
   print('Read from RData')
@@ -202,6 +202,9 @@ dat.time.projected <- ProjectToPeriodicTime(as.matrix(dat),
                                             dat.tissuenames)
 
 
+# Begin plots -------------------------------------------------------------
+
+pdf('plots/time.hsv.plots.pdf')
 
 # PCA ---------------------------------------------------------------------
 
@@ -220,6 +223,7 @@ print(lapply(dat.pca, dim))  # $u is 12x12, $v is k-genes x 12
 
 rownames(dat.pca$v) <- dat.tissuenames
 rownames(dat.pca$u) <- rownames(dat)
+
 
 # Plot PCA ----------------------------------------------------------------
 
@@ -341,7 +345,6 @@ Peek(dat.rnaseq)  # expect gene names as row names, tissues in columns
 
 dat.rnaseq <- log2(dat.rnaseq + epsilon)
 
-
 # Plot clock gene exprs for microarray and RNA-Seq. -----------------------
 # In RNASeq, BFat and BStm need to be swapped so it matches order with microarray
 # easier for plotting visualization.
@@ -400,3 +403,5 @@ for (gene in genes.to.plot){
             labels=tissues.rnaseq,
             main=paste('RNASeq. Gene:', gene))
 }
+
+dev.off()
