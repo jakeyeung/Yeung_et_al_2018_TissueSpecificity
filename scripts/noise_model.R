@@ -75,8 +75,6 @@ n.per.bin <- 150
 
 mean.var.df <- mean.var.df[with(mean.var.df, order(mean)), ]
 mean.var.df$bins.order <- factor(round_any(seq(1:nrow(mean.var.df)), n.per.bin))
-# bins.order <- factor(floor(order(mean.var.df$mean) / n.per.bin))
-# mean.var.df <- cbind(mean.var.df, bins.order)
 
 # Bin mean and bin variance: by order -------------------------------------
 
@@ -123,7 +121,7 @@ pdf(mean.var.fit.outpath)
 #                  ' c=', signif(fit$par[3], 2)))
 # #      xlim=c(0, 3000), ylim=c(0, 50000))
 # lines(x, y)
-x <- seq(min(rna.seq.exprs.common.g), max(rna.seq.exprs.common.g), 100)
+x <- seq(min(rna.seq.exprs), max(rna.seq.exprs), 100)
 y <- predict(fit, x)
 plot(x, y, col='red', lwd='2', type='l', main=paste0('Loess Fit. Bin size=', n.per.bin),
      xlab="bin.mean", ylab="bin.var",
