@@ -3,6 +3,8 @@
 # November 26 2014
 # Plot variance versus mean for each tissue and each gene.
 
+Rprof("profile1.out")
+
 library(ggplot2)
 library(plyr)
 library(parallel)
@@ -134,7 +136,8 @@ pdf(mean.var.fit.outpath)
 plot(bin.mean, bin.var, 
      main=paste0('y=m(x-b)^2 + k. m=', signif(fit$par[1], 2), 
                  ' b=', signif(fit$par[2], 2), 
-                 ' k=', signif(fit$par[3], 2)))
+                 ' k=', signif(fit$par[3], 2)),
+     xlim=c(0, 5000), ylim=c(0, 250000))
 lines(x, y)     
 dev.off()
 
@@ -206,7 +209,7 @@ R.hat <- function(m, a, b) a * (m - b) # RNA to Microarray model.
 S <- function(x) sum((R - R.hat(M, x[1], x[2])) ^ 2 / R.var)  # optimization equation
 
 count <- 1
-for (gene in clockgenes){
+for (gene in common.genes){
   R <- rna.seq.exprs.common.g[gene, ]
   M <- array.exprs.subset.common.g[gene, ]
   M.full <- array.exprs[gene, ]
@@ -237,11 +240,13 @@ for (gene in clockgenes){
   
   array.adj[gene, ] <- R.predict
   count <- count + 1
-  if (count %% 10 == 0){
+  if (count %% 1000 == 0){
     print(count)
   }
 }
 
+# save coeff.mat for later
+save(coeff.mat, file="coeff.mat.noise.model.RData")
 
 
 # Plot clock genes fit ----------------------------------------------------
@@ -279,6 +284,10 @@ for (gene in clockgenes){
   plot(unlist(log2(array.adj[gene, ])), main=paste(gene, 'log2 exprs: array after adjustment'),
        col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
+  # RNA Seq
+  plot(unlist(log2(rna.seq.exprs.common.g[gene, ] + 1)), main=paste(gene, 'log2 exprs: rnaseq'),
+       col=rep(1:N.TISSUES, each=8), type='b', ylim=c(0, 14), ylab="log2 exprs",
+       xlab=paste(tissue.names, collapse=" "))
 }
 par(mfrow=c(1,1))
 dev.off()
@@ -302,15 +311,31 @@ pdf(rna.seq.array.outpath)
 for (gene in clockgenes){
   # RNA Seq
   plot(unlist(log2(rna.seq.exprs.common.g[gene, ] + 1)), main=paste(gene, 'black=rnaseq, red=array after'),
-       col=1, type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       col=1, type='b', ylim=c(0, 14), ylab="log2 exprs",
        xlab=paste(tissue.names, collapse=" "))
   lines(unlist(log2(array.adj[gene, common.samples])),
         col=2, pch=23, type='o')
 }
 dev.off()
 
+# pdf(rna.seq.array.outpath2)
+# for (gene in clockgenes){
+#   # RNA Seq
+#   rna.seq <- matrix(NA, nrow=1, ncol=ncol(array.adj), dimnames=list(gene, colnames(array.adj)))
+#   rna.seq[gene, colnames(array.adj)] <- as.matrix(rna.seq.exprs.common.g[gene, ])
+#   
+#   plot(seq(1:length(rna.seq)), unlist(log2(rna.seq + 1)), main=paste(gene, 'black=rnaseq, red=array after'),
+#        col=1, type='b', ylim=c(0, 14), ylab="log2 exprs", 
+#        xlab=paste(tissue.names, collapse=" "))
+#   lines(unlist(log2(array.adj[gene, ])),
+#         col=2, pch=23, type='o')
+# }
+# dev.off()
 
 
+
+Rprof(NULL)
+summaryRprof("profile1.out", lines = "show")
 
 
 
