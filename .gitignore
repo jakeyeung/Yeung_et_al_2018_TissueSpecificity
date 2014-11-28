@@ -1,8 +1,11 @@
 .Rproj.user
 .Rhistory
-.RData
+*.RData
 *.Rproj
 plots/*
 microarray_data/*
 data/*
 *.Rhis
+old_data/*
+*.pdf
+*.out
