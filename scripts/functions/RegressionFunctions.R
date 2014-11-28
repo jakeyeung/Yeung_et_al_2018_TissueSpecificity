@@ -108,19 +108,6 @@ ConstrainedFitWithNoise <- function(gene, array.subset, array.exprs, rna.seq, no
   
   # add to coeff.mat
   # return(list(a.hat, b.hat, conv))
-  
-#   print(class(gene))
-#   print(class(a.hat))
-#   print(class(R.predict))
-#   return(list(array.adj=R.predict, 
-#               gene=gene,
-#               a.hat=a.hat, 
-#               b.hat=b.hat, 
-#               convergence=conv))
-#   coeff.mat[gene, "a.hat"] <- a.hat
-#   coeff.mat[gene, "b.hat"]  <- b.hat
-#   coeff.mat[gene, "convergence"] <- conv
-#   
-#   array.adj[gene, ] <- R.predict
 }
 
+FitLoessBins
