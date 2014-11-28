@@ -92,10 +92,10 @@ mean.var.df <- data.frame(mean=as.vector(mean.var$mean), var=as.vector(mean.var$
 
 # Bin and fit loess -------------------------------------------------------
 
-n.per.bin <- 2000
+n.per.bin <- 150
 
 mean.var.df <- mean.var.df[with(mean.var.df, order(mean)), ]
-mean.var.df$bins.order <- factor(round_any(seq(1:nrow(mean.var.df)), 1000))
+mean.var.df$bins.order <- factor(round_any(seq(1:nrow(mean.var.df)), n.per.bin))
 # bins.order <- factor(floor(order(mean.var.df$mean) / n.per.bin))
 # mean.var.df <- cbind(mean.var.df, bins.order)
 
@@ -111,34 +111,46 @@ bin.var <- with(mean.var.df, (tapply(var, bins.order, function(x){
 })))
 
 # # remove last point
-bin.mean <- bin.mean[1:(length(bin.mean) - 1)]
-bin.var <- bin.var[1:(length(bin.var) - 1)]
+# bin.mean <- bin.mean[1:(length(bin.mean) - 1)]
+# bin.var <- bin.var[1:(length(bin.var) - 1)]
 
-m0 <- 1
-b0 <- 0.1 
-k0 <- 0.1
-m.min <- 0
-b.min <- -Inf
-k.min <- 0
-m.max <- Inf
-b.max <- Inf
-k.max <- Inf
-# Fit with constraint
-f.parab <- function(x, bin.mean) x[1] * ( bin.mean - x[2] ) ^ 2 + x[3]
-S.parab <- function(x) sum((bin.var - f.parab(x, bin.mean)) ^ 2)
-fit <- optim(c(m0, b0, k0), S.parab, method="L-BFGS-B", lower=c(m.min, b.min, k.min), upper=c(m.max, b.max, k.max))
-str(fit)
-x <- bin.mean
-y <- f.parab(fit$par, bin.mean)
+# a0 <- 0.1
+# b0 <- 0.1
+# c0 <- 0.1
+# a.min <- -Inf
+# b.min <- -Inf
+# c.min <- -Inf
+# a.max <- Inf
+# b.max <- Inf
+# c.max <- Inf
+# # Fit with constraint
+# # f.parab <- function(x, bin.mean) x[1] * ( bin.mean - x[2] ) ^ 2 + x[3]
+# f.parab <- function(x, bin.mean) x[1] + x[2] * bin.mean + x[3] * bin.mean ^ 2
+# S.parab <- function(x) sum((bin.var - f.parab(x, bin.mean)) ^ 2)
+# fit <- optim(c(a0, b0, c0), S.parab, method="L-BFGS-B", lower=c(a.min, b.min, c.min), upper=c(a.max, b.max, c.max))
+# str(fit)
+# x <- bin.mean
+# y <- f.parab(fit$par, bin.mean)
+
+fit <- loess(bin.var ~ bin.mean,
+             control=loess.control(surface="direct"))
 
 # plot dat
 pdf(mean.var.fit.outpath)
-plot(bin.mean, bin.var, 
-     main=paste0('y=m(x-b)^2 + k. m=', signif(fit$par[1], 2), 
-                 ' b=', signif(fit$par[2], 2), 
-                 ' k=', signif(fit$par[3], 2)),
-     xlim=c(0, 5000), ylim=c(0, 250000))
-lines(x, y)     
+
+# plot(bin.mean, bin.var, 
+#      main=paste0('y=a + bx + cx^2. a=', signif(fit$par[1], 2), 
+#                  ' b=', signif(fit$par[2], 2), 
+#                  ' c=', signif(fit$par[3], 2)))
+# #      xlim=c(0, 3000), ylim=c(0, 50000))
+# lines(x, y)
+x <- seq(min(rna.seq.exprs.common.g), max(rna.seq.exprs.common.g), 100)
+y <- predict(fit, x)
+plot(x, y, col='red', lwd='2', type='l', main=paste0('Loess Fit. Bin size=', n.per.bin),
+     xlab="bin.mean", ylab="bin.var",
+     xlim=c(0, 3000), ylim=c(0, 50000))
+points(bin.mean, bin.var)
+
 dev.off()
 
 # Get mean exprs across samples -------------------------------------------
@@ -209,7 +221,7 @@ R.hat <- function(m, a, b) a * (m - b) # RNA to Microarray model.
 S <- function(x) sum((R - R.hat(M, x[1], x[2])) ^ 2 / R.var)  # optimization equation
 
 count <- 1
-for (gene in common.genes){
+for (gene in clockgenes){
   R <- rna.seq.exprs.common.g[gene, ]
   M <- array.exprs.subset.common.g[gene, ]
   M.full <- array.exprs[gene, ]
@@ -222,7 +234,8 @@ for (gene in common.genes){
   b.min <- 0  # background can't be negative
   b.max <- min(M.full)  # background can't be larger than min exprs
   
-  R.var <- f.parab(fit$par, R)
+  # R.var <- f.parab(fit$par, R)
+  R.var <- predict(fit, data.frame(bin.mean=unlist(R + 1)))  # add 1 to prevent negative variance estimates
   
   a.b <- optim(c(a.init, b.init), S, method="L-BFGS-B",
                lower=c(a.min, b.min),
@@ -246,7 +259,7 @@ for (gene in common.genes){
 }
 
 # save coeff.mat for later
-save(coeff.mat, file="coeff.mat.noise.model.RData")
+# save(coeff.mat, file="coeff.mat.noise.model.RData")
 
 
 # Plot clock genes fit ----------------------------------------------------
@@ -332,10 +345,6 @@ dev.off()
 # }
 # dev.off()
 
-
-
 Rprof(NULL)
 summaryRprof("profile1.out", lines = "show")
-
-
 
