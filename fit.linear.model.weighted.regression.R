@@ -2,6 +2,9 @@
 # Nov 28 2014
 # Fit linear model
 
+library(plyr)
+library(ggplot2)
+
 # Clock genes --------------------------------------------------------
 
 clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2', 
@@ -11,6 +14,12 @@ clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', '
 clockgenes <- c(clockgenes, 'Defb48', 'Svs1', 'Svs2', 'Svs5', 'Defb20', 'Adam7', 'Lcn8', 'Rnase10', 'Teddm1')
 
 
+# Tissue genes ------------------------------------------------------------
+
+tissuegenes <- c("Plbd1","Acacb","Hadh","Decr1","Acadl","Ech1","Acsl1","Cpt2","Acaa2")  # PCA 1 from explore_data.R
+tissuegenes <- c(tissue.genes, "Elovl1","Slc35b3","Fkbp15","Slc39a8","Sep15","Mospd2","Med11","Slco2a1","Arf6","Yipf6")  # PCA 2 from explore_data.R
+
+
 # Functions ---------------------------------------------------------------
 
 functions.dir <- 'scripts/functions'
@@ -18,6 +27,7 @@ source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Da
 source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 source(file.path(functions.dir, 'RegressionFunctions.R'))  # optim function
 source(file.path(functions.dir, 'GeneTissueCalculations.R'))
+source(file.path(functions.dir, 'PlotFunctions.R'))
 
 # Load file ---------------------------------------------------------------
 
@@ -67,13 +77,41 @@ Peek(array.exprs.subset.common.g)
 Peek(rna.seq.exprs.common.g)
 
 
+# Noise model: log2 scale -------------------------------------------------
+
+mean.var.df <- GetMeanVarByTissues(exprs=rna.seq.exprs, tissue.names)
+
+
+# Plot scatters and density -----------------------------------------------
+
+# ggplot(mean.var.df, aes(x=mean)) + geom_density()
+# ggplot(mean.var.df, aes(x=mean, y=var)) + geom_point(alpha=0.005)
+
+# Bin and fit loess -------------------------------------------------------
+
+n.per.bin <- 150
+
+mean.var.df <- mean.var.df[with(mean.var.df, order(mean)), ]
+mean.var.df$bins.order <- factor(round_any(seq(1:nrow(mean.var.df)), n.per.bin))
+
+# Bin mean and bin variance: by order -------------------------------------
+
+bin.mean <- with(mean.var.df, (tapply(mean, bins.order, function(x){
+  mean.quantiles <- median(x)
+})))
+bin.var <- with(mean.var.df, (tapply(var, bins.order, function(x){
+  var.quantiles <- median(x)
+  return(var.quantiles)
+})))
+
+
 
 # Linear regression -------------------------------------------------------
 
 coeff.mat <- matrix(0, nrow=length(common.genes), ncol=2,
                     dimnames=list(common.genes, 
                                   c("slope", "intercept")))
-for (gene in clockgenes){
+for (gene in common.genes){
   R <- unlist(rna.seq.exprs.common.g[gene, ])
   M <- unlist(array.exprs.subset.common.g[gene, ])
   fit <- lm(R ~ M)
@@ -112,14 +150,31 @@ for (gene in clockgenes){
 
 # Adjust my microarray ----------------------------------------------------
 
-array.adj <- matrix(NA, nrow=nrow(array.exprs), ncol=ncol(array.exprs), 
-                    dimnames=list(rownames(array.exprs), colnames(array.exprs)))
-for (gene in clockgenes){
+array.adj <- matrix(NA, nrow=length(common.genes), ncol=ncol(array.exprs), 
+                    dimnames=list(common.genes, colnames(array.exprs)))
+for (gene in common.genes){
   int <- coeff.mat[gene, "intercept"]
   slope <- coeff.mat[gene, "slope"]
   M.orig <- as.matrix(array.exprs[gene, ])
   M.adj <- slope * M.orig + int
   array.adj[gene, ] <- M.adj
 }
+save(array.adj, file='array.adj.lm.fit.log2.by.probe.RData')
+
+# Plot clock genes --------------------------------------------------------
+
+N.TISSUES <- 12
+pdf('plots/clock.genes.log2.lin.fit.by.probe.pdf')
+par(mfrow=c(3,1))
+for (gene in clockgenes){
+  PlotBeforeAfter(array.exprs, array.adj, rna.seq.exprs)
+}
+dev.off()
+
+pdf('plots/tissue.genes.log2.lin.fit.by.probe.pdf')
+for (gene in tissuegenes){
+  PlotBeforeAfter(array.exprs, array.adj, rna.seq.exprs)
+}
+dev.off()
 
 
