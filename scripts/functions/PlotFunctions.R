@@ -92,6 +92,7 @@ PlotFitDiagnostics <- function(array.exprs.full,
 }
 
 PlotBeforeAfter <- function(array.before, array.after, rna.seq){
+  par(mfrow=c(3,1))
   # Array before adjustment
   plot(as.numeric(array.exprs[gene, ]), main=paste(gene, 'log2 expression: array before adjustment'),
        col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", 
@@ -104,4 +105,5 @@ PlotBeforeAfter <- function(array.before, array.after, rna.seq){
   plot(as.numeric(rna.seq.exprs.common.g[gene, ]), main=paste(gene, 'log2 exprs: rnaseq'),
        col=rep(1:N.TISSUES, each=8), type='b', ylim=c(0, 14), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
+  par(mfrow=c(1,1))
 }
