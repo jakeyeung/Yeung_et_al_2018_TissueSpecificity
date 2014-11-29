@@ -108,3 +108,18 @@ for (gene in clockgenes){
   slope <- coeff.mat[gene, "slope"]
   abline(int, slope)
 }
+
+
+# Adjust my microarray ----------------------------------------------------
+
+array.adj <- matrix(NA, nrow=nrow(array.exprs), ncol=ncol(array.exprs), 
+                    dimnames=list(rownames(array.exprs), colnames(array.exprs)))
+for (gene in clockgenes){
+  int <- coeff.mat[gene, "intercept"]
+  slope <- coeff.mat[gene, "slope"]
+  M.orig <- as.matrix(array.exprs[gene, ])
+  M.adj <- slope * M.orig + int
+  array.adj[gene, ] <- M.adj
+}
+
+
