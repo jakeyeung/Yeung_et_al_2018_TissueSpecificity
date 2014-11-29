@@ -109,5 +109,3 @@ ConstrainedFitWithNoise <- function(gene, array.subset, array.exprs, rna.seq, no
   # add to coeff.mat
   # return(list(a.hat, b.hat, conv))
 }
-
-FitLoessBins
