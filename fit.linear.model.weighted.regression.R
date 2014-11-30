@@ -84,8 +84,8 @@ mean.var.df <- GetMeanVarByTissues(exprs=rna.seq.exprs, tissue.names)
 
 # Plot scatters and density -----------------------------------------------
 
-# ggplot(mean.var.df, aes(x=mean)) + geom_density()
-# ggplot(mean.var.df, aes(x=mean, y=var)) + geom_point(alpha=0.005)
+ggplot(mean.var.df, aes(x=mean)) + geom_density()
+ggplot(mean.var.df, aes(x=mean, y=var)) + geom_point(alpha=0.005) + scale_y_log10()
 
 # Bin and fit loess -------------------------------------------------------
 
@@ -108,7 +108,7 @@ bin.var <- with(mean.var.df, (tapply(var, bins.order, function(x){
 
 # Linear regression -------------------------------------------------------
 
-coeff.mat <- matrix(0, nrow=length(common.genes), ncol=2,
+coeff.mat <- matrix(NA, nrow=length(common.genes), ncol=2,
                     dimnames=list(common.genes, 
                                   c("slope", "intercept")))
 for (gene in common.genes){
@@ -125,6 +125,8 @@ coeff.mat[clockgenes, ]
 
 # log(r) = a log(m) + b
 
+pdf('plots/diagnostics.lm.fit.log2.probe.pdf')
+par(mfrow=c(2,1))
 for (gene in clockgenes){
   # create R vs M full 288, R = 0 for "missing" values... for plotting
   R.full <- matrix(0, nrow=1, ncol=ncol(array.exprs), 
@@ -134,18 +136,50 @@ for (gene in clockgenes){
   # create M and R for fitting...
   R <- as.matrix(rna.seq.exprs[gene, common.samples])
   M <- as.matrix(array.exprs.subset.common.g[gene, ])
-  # create plot symbols
-  plot.symbols <- matrix(8, nrow=1, ncol=ncol(array.exprs),
+  # create plot symbols. 8 = * = unobserved. 1 = o = observed.
+  unobs.symbol <- 8
+  obs.symbol <- 1
+  unobs.size <- 0.25
+  obs.size <- 1
+  plot.symbols <- matrix(unobs.symbol, nrow=1, ncol=ncol(array.exprs),
                          dimnames=list(gene, colnames(array.exprs)))
-  plot.symbols[gene, common.samples] <- 1
-  plot(M.full, R.full, main=paste(gene, "Microarray vs RNA-Seq"), 
-       xlab="Microarray (log2)", 
-       ylab="RNA-Seq (log2)",
-       pch=plot.symbols)
+  plot.symbols[gene, common.samples] <- obs.symbol
+  plot.cex <- sapply(plot.symbols, function(x){
+    if(x == unobs.symbol){
+      # 8 is unobserved 
+      return(unobs.size)  # make half size
+    } else {
+      # 1 is observed
+      return(obs.size)  # don't change size
+    }
+  })
   int <- coeff.mat[gene, "intercept"]
   slope <- coeff.mat[gene, "slope"]
+  plot(M.full, R.full, main=paste(gene, "slope=", int, "int=", slope), 
+       xlab="Microarray (log2)", 
+       ylab="RNA-Seq (log2)",
+       pch=plot.symbols,
+       cex=plot.cex)
   abline(int, slope)
+  # plot data on normal scale
+  m.norm <- 2^M.full
+  r.norm = 2^R.full - 1
+  # draw its line in normal scale
+  f.r.norm <- function(slope, int, m) 2^(int) * m ^ slope - 1
+  m.norm.predict <- seq(min(m.norm), max(m.norm), 10)
+  r.norm.predict <- f.r.norm(slope, int, m.norm.predict)
+  y.max <- max(c(r.norm, r.norm.predict))
+  
+  plot(m.norm, r.norm, main="norm. scale data. o=observed, *=unobserved",
+       xlab="Microarray (normal scale)",
+       ylab="RNA-seq (DESeq-normalized count",
+       pch=plot.symbols,
+       cex=plot.cex,
+       ylim=c(0, y.max))
+  lines(m.norm.predict, r.norm.predict)
 }
+par(mfrow=c(1,1))
+dev.off()
 
 
 # Adjust my microarray ----------------------------------------------------
@@ -167,14 +201,38 @@ N.TISSUES <- 12
 pdf('plots/clock.genes.log2.lin.fit.by.probe.pdf')
 par(mfrow=c(3,1))
 for (gene in clockgenes){
-  PlotBeforeAfter(array.exprs, array.adj, rna.seq.exprs)
+  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, y.max=16)
 }
 dev.off()
 
-pdf('plots/tissue.genes.log2.lin.fit.by.probe.pdf')
-for (gene in tissuegenes){
-  PlotBeforeAfter(array.exprs, array.adj, rna.seq.exprs)
+
+# Plot side by side: clock genes ------------------------------------------
+
+pdf('plots/clock.genes.log2.lin.fit.by.probe.rna.seq.side.by.side.pdf')
+for (gene in clockgenes){
+  PlotAgainstRnaSeq(gene, rna.seq.exprs, array.adj, common.samples, y.max=16)  
 }
 dev.off()
+
+# Plot tissue genes -------------------------------------------------------
+
+
+pdf('plots/tissue.genes.log2.lin.fit.by.probe.pdf')
+for (gene in tissuegenes){
+  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, y.max=16)
+}
+dev.off()
+
+
+
+# Plot side by side: tissue genes -----------------------------------------
+
+pdf('plots/tissue.genes.log2.lin.fit.by.probe.rna.seq.side.by.side.pdf')
+for (gene in tissuegenes){
+  PlotAgainstRnaSeq(gene, rna.seq.exprs, array.adj, common.samples, y.max=16)  
+}
+dev.off()
+
+
 
 
