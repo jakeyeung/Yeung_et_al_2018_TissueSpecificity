@@ -91,19 +91,31 @@ PlotFitDiagnostics <- function(array.exprs.full,
   dev.off() 
 }
 
-PlotBeforeAfter <- function(array.before, array.after, rna.seq){
+PlotBeforeAfter <- function(gene, array.before, array.after, rna.seq, y.max=14){
   par(mfrow=c(3,1))
   # Array before adjustment
   plot(as.numeric(array.exprs[gene, ]), main=paste(gene, 'log2 expression: array before adjustment'),
-       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, y.max), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
   # Array after adjustment
   plot(as.numeric(array.adj[gene, ]), main=paste(gene, 'log2 exprs: array after adjustment'),
-       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, y.max), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
   # RNA Seq
   plot(as.numeric(rna.seq.exprs.common.g[gene, ]), main=paste(gene, 'log2 exprs: rnaseq'),
-       col=rep(1:N.TISSUES, each=8), type='b', ylim=c(0, 14), ylab="log2 exprs", 
+       col=rep(1:N.TISSUES, each=8), type='b', ylim=c(0, y.max), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
   par(mfrow=c(1,1))
+}
+
+PlotAgainstRnaSeq <- function(gene, rna.seq, array.exprs.adjusted, 
+                              common.samples, y.max=14){
+  rna.seq.full <- matrix(NA, nrow=1, ncol=ncol(array.exprs.adjusted), 
+                    dimnames=list(gene, colnames(array.exprs.adjusted)))
+  rna.seq.full[gene, common.samples] <- as.matrix(rna.seq[gene, ])
+  
+  plot(seq(1:length(rna.seq.full)), rna.seq.full, main=paste(gene, 'black=rnaseq, red=array after adjust'),
+       col=1, type='b', ylim=c(0, y.max), ylab="log2 exprs", 
+       xlab=paste(tissue.names, collapse=" "))
+  lines(as.matrix(array.exprs.adjusted[gene, ]), col=2, pch=22, type='o', cex=0.25)
 }
