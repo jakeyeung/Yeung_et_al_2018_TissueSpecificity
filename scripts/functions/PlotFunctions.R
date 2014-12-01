@@ -91,7 +91,7 @@ PlotFitDiagnostics <- function(array.exprs.full,
   dev.off() 
 }
 
-PlotBeforeAfter <- function(gene, array.before, array.after, rna.seq, y.max=14){
+PlotBeforeAfter <- function(gene, array.before, array.after, rna.seq, y.max=14, N.TISSUES=12){
   par(mfrow=c(3,1))
   # Array before adjustment
   plot(as.numeric(array.exprs[gene, ]), main=paste(gene, 'log2 expression: array before adjustment'),
@@ -118,4 +118,83 @@ PlotAgainstRnaSeq <- function(gene, rna.seq, array.exprs.adjusted,
        col=1, type='b', ylim=c(0, y.max), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
   lines(as.matrix(array.exprs.adjusted[gene, ]), col=2, pch=22, type='o', cex=0.25)
+}
+
+GetFullR <- function(rna.seq.exprs, common.samples){
+  R.full <- matrix(0, nrow=1, ncol=ncol(array.exprs), 
+                   dimnames=list(gene, colnames(array.exprs)))
+  R.full[gene, common.samples] <- as.matrix(rna.seq.exprs[gene, common.samples])
+  return(R.full)
+}
+
+GetUnobsObsSymbol <- function(all.samples, common.samples, unobs=8, obs=1){
+  # create plot symbols. 8 = * = unobserved. 1 = o = observed.
+  unobs.symbol <- unobs
+  obs.symbol <- obs
+  plot.symbols <- matrix(unobs.symbol, nrow=1, ncol=ncol(array.exprs),
+                         dimnames=list(gene, colnames(array.exprs)))
+  plot.symbols[gene, common.samples] <- obs.symbol
+  return(plot.symbols)
+}
+
+PlotDiagnostics <- function(gene, array.exprs, rna.seq.exprs, 
+                            common.samples, slope, int){
+  # use full array.exprs, fill missing rna.seq.exprs with 0s and label with *
+  # slope and int comes from coeff.mat
+  # create R vs M full 288, R = 0 for "missing" values... for plotting
+  
+  # plot 2 by 1
+  par(mfrow=c(2,1))
+  
+  R.full <- matrix(0, nrow=1, ncol=ncol(array.exprs), 
+                   dimnames=list(gene, colnames(array.exprs)))
+  R.full[gene, common.samples] <- as.matrix(rna.seq.exprs[gene, common.samples])
+  M.full <- as.matrix(array.exprs[gene, ])
+  # create M and R for fitting...
+  R <- as.matrix(rna.seq.exprs[gene, common.samples])
+  M <- as.matrix(array.exprs.subset.common.g[gene, ])
+  # create plot symbols. 8 = * = unobserved. 1 = o = observed.
+  unobs.symbol <- 8
+  obs.symbol <- 1
+  unobs.size <- 0.25
+  obs.size <- 1
+  plot.symbols <- matrix(unobs.symbol, nrow=1, ncol=ncol(array.exprs),
+                         dimnames=list(gene, colnames(array.exprs)))
+  plot.symbols[gene, common.samples] <- obs.symbol
+  plot.cex <- sapply(plot.symbols, function(x){
+    if(x == unobs.symbol){
+      # 8 is unobserved 
+      return(unobs.size)  # make half size
+    } else {
+      # 1 is observed
+      return(obs.size)  # don't change size
+    }
+  })
+  # int <- coeff.mat[gene, "intercept"]
+  # slope <- coeff.mat[gene, "slope"]
+  plot(M.full, R.full, main=paste(gene, "slope=", int, "int=", slope), 
+       xlab="Microarray (log2)", 
+       ylab="RNA-Seq (log2)",
+       pch=plot.symbols,
+       cex=plot.cex)
+  abline(int, slope)
+  # plot data on normal scale
+  m.norm <- 2^M.full
+  r.norm = 2^R.full - 1
+  # draw its line in normal scale
+  # convert log(y) = a * log(x) + b to normal scale
+  f.r.norm <- function(slope, int, m) 2^(int) * m ^ slope - 1
+  m.norm.predict <- seq(min(m.norm), max(m.norm), 10)
+  r.norm.predict <- f.r.norm(slope, int, m.norm.predict)
+  y.max <- max(c(r.norm, r.norm.predict))
+  
+  plot(m.norm, r.norm, main="norm. scale data. o=observed, *=unobserved",
+       xlab="Microarray (normal scale)",
+       ylab="RNA-seq (DESeq-normalized count",
+       pch=plot.symbols,
+       cex=plot.cex,
+       ylim=c(0, y.max))
+  lines(m.norm.predict, r.norm.predict)
+  
+  par(mfrow=c(1,1))
 }

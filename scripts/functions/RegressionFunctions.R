@@ -109,3 +109,26 @@ ConstrainedFitWithNoise <- function(gene, array.subset, array.exprs, rna.seq, no
   # add to coeff.mat
   # return(list(a.hat, b.hat, conv))
 }
+
+FTestSigmoidLinearModels <- function(fit.lm, fit.sigmoid, pval=1e-10){
+  if (!is.na(fit.sigmoid)){
+    # has sigmoid fit, compare with linear fit with F test
+    f.test <- anova(fit.sigmoid, fit.lm)
+    f.test.pval <- f.test[["Pr(>F)"]][[2]]
+    if (f.test.pval < pval){
+      # it is "worth it" to add parameters and fit sigmoid
+      myfit <- fit.sigmoid
+      fit.used <- "sigmoid"
+    } else {
+      # just stick with linear
+      myfit <- fit.lm
+      fit.used <- "lm"
+    }
+  } else {
+    # sigmoid didn't work, suspect the data was not in a shape that allowed
+    # good convergence with a sigmoidal function. Stick with linear.
+    myfit <- fit.lm
+    fit.used <- "lm"
+  }
+  return(list(myfit=myfit, fit.used=fit.used))
+}
