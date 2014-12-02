@@ -4,11 +4,11 @@
 
 # Constants to change -----------------------------------------------------
 
-pval <- 0.5  # for F-test
-diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.saturation.fit.log2.probe.pdf'
-before.after.clock.plot.out <- 'plots/clockgenes.lm.saturation.fit.log2.probe.pdf'
-diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.saturation.fit.log2.probe.pdf'
-before.after.tissue.plot.out <- 'plots/tissuegenes.lm.saturation.fit.log2.probe.pdf'
+pval <- 1e-5  # for F-test
+diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.constrained.saturation.fit.log2.probe.pdf'
+before.after.clock.plot.out <- 'plots/clockgenes.lm.constrained.saturation.fit.log2.probe.pdf'
+diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.constrained.saturation.fit.log2.probe.pdf'
+before.after.tissue.plot.out <- 'plots/tissuegenes.lm.constrained.saturation.fit.log2.probe.pdf'
 
 # Functions ---------------------------------------------------------------
 
@@ -35,7 +35,6 @@ clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2',
                 'Tef', 'Usp2', 'Wee1', 'Dtx4', 'Asb12')
 clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
 clockgenes <- c(clockgenes, 'Defb48', 'Svs1', 'Svs2', 'Svs5', 'Defb20', 'Adam7', 'Lcn8', 'Rnase10', 'Teddm1')
-clockgenes <- c(clockgenes, "Sry")
 
 
 # Tissue genes ------------------------------------------------------------
@@ -88,7 +87,12 @@ tissue.names <- GetTissueNames(colnames(rna.seq.exprs))
 
 # log2 transform RNA-Seq --------------------------------------------------
 
-rna.seq.exprs <- log2(rna.seq.exprs + 1)
+# rna.seq.exprs <- log2(rna.seq.exprs + 1)
+
+# log2 transform microarray -----------------------------------------------
+
+array.exprs <- 2 ^ array.exprs
+
 # Create subset and common genes so each microarray point has corresponding rnaseq
 common.genes <- intersect(rownames(array.exprs), rownames(rna.seq.exprs))
 common.samples <- intersect(colnames(array.exprs), colnames(rna.seq.exprs))
@@ -101,18 +105,16 @@ Peek(rna.seq.exprs.common.g)
 
 # Fit saturation curve: 3 parameters --------------------------------------
 
+# define init vals
 max.val <- Inf  # expected
-# init vals
-b0 <- 2
-k0 <- 5  # large to begin in linear regime
-a0 <- 15  # 13 is saturation i expect initially (a0 + b0)
-# lower and upper bounds
-bmin <- 0
-kmin <- 0
-amin <- 0
-bmax <- 15
-amax <- 1000
-kmax <- 1000
+# init vals: saturation model
+b0 <- 2^4
+k0 <- 2^10  # large to begin in linear regime
+a0 <- 2^13  # 13 is saturation i expect initially (a0 + b0)
+
+# init vals: linear model
+slope0 <- 10
+int0 <- 10
 
 # init out list
 fit.list <- vector(mode="list", length=length(common.genes))
@@ -121,6 +123,20 @@ names(fit.list) <- common.genes
 for (gene in c(clockgenes, tissuegenes)){
   R.exprs <- unlist(rna.seq.exprs.common.g[gene, ])
   M.exprs <- unlist(array.exprs.subset.common.g[gene, ])
+  M.full <- unlist(array.exprs[gene, ])
+  # lower and upper bounds: saturation model
+  bmin <- 0
+  kmin <- 0
+  amin <- 0
+  bmax <- min(M.full) - 1
+  amax <- Inf
+  kmax <- Inf
+  # lower and upper bounds: 
+  slopemin <- 0
+  intmin <- 0
+  slopemax <- Inf
+  intmax <- min(M.full) - 1
+  
   fits <- tryCatch({
     
     fit.saturation <- nls(M.exprs ~ b + (a * R.exprs) / (k + R.exprs),
@@ -132,9 +148,18 @@ for (gene in c(clockgenes, tissuegenes)){
                                     b=bmin,
                                     k=kmin),
                          upper=list(a=amax,
-                                    a=bmax,
+                                    b=bmax,
                                     k=kmax))
-    fit.lm <- lm(M.exprs ~ R.exprs)
+    # fit.lm <- lm(M.exprs ~ R.exprs)
+    fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
+                  algorithm = "port",
+                  start=list(int=int0,
+                             slope=slope0),
+                  lower=list(int=intmin,
+                             slope=slopemin),
+                  upper=list(int=intmax,
+                             slope=slopemax))
+    
     fits <- list(saturation=fit.saturation,
                  lm=fit.lm)
     
@@ -143,13 +168,23 @@ for (gene in c(clockgenes, tissuegenes)){
     # print(paste('Error:', e))
     # error, try linear model
     fit.saturation <- NA
-    fit.lm <- lm(M.exprs ~ R.exprs)
+    # fit.lm <- lm(M.exprs ~ R.exprs)
+    fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
+                  algorithm = "port",
+                  start=list(int=int0,
+                             slope=slope0),
+                  lower=list(int=intmin,
+                             slope=slopemin),
+                  upper=list(int=intmax,
+                             slope=slopemax))
     return(list(saturation=fit.saturation, 
                 lm=fit.lm))
     
   })
   fit.list[gene] <- list(fits)
 }
+
+
 
 # F-test on saturation and linear fit ----------------------------------------
 
@@ -177,7 +212,7 @@ for (gene in clockgenes){
   # Get vector of predicted values
   x <- GetFullR(rna.seq.exprs, common.samples)
   y <- unlist(array.exprs[gene, ])
-  x.predict <- seq(min(x)*0.8, max(x)*1.2, 0.1)
+  x.predict <- seq(min(x)*0.8, max(x)*1.2, 10)
   if (fit.used == "saturation"){
     y.hat <- saturation(coef(myfit), x.predict)
   } else if (fit.used == "lm"){
@@ -191,15 +226,103 @@ for (gene in clockgenes){
   symbols <- GetUnobsObsSymbol(all.samples=colnames(array.exprs), common.samples, unobs=8, obs=1)
   sizes <- GetUnobsObsSymbol(all.samples=colnames(array.exprs), common.samples, unobs=0.25, obs=1)
   plot(x, y, main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
-       xlab="RNA-Seq DESeq-normalized counts (log2)",
-       ylab="Microarray log2")
-  lines(x.predict, y.hat)
-  plot(2^x - 1, 2^y, main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
        xlab="RNA-Seq DESeq-normalized counts",
        ylab="Microarray normal scale")
-  lines(2^x.predict - 1, 2^y.hat)
+  lines(x.predict, y.hat)
+  plot(log2(x + 1), log2(y), main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
+       xlab="RNA-Seq DESeq-normalized counts (log2)",
+       ylab="Microarray log2")
+  lines(log2(x.predict + 1), log2(y.hat))
+
 }
 dev.off()
 
 
+# Plot tissue genes: diagnostics ------------------------------------------
+
+pdf(diagnostics.tissue.plot.out)
+par(mfrow = c(2,1))
+for (gene in tissuegenes){
+  fit.select <- fit.select.list[[gene]]
+  fit.used <- fit.select$fit.used  # either saturation or lm
+  myfit <- fit.select$myfit
+  
+  # Get vector of predicted values
+  x <- GetFullR(rna.seq.exprs, common.samples)
+  y <- unlist(array.exprs[gene, ])
+  x.predict <- seq(min(x)*0.8, max(x)*1.2, 10)
+  if (fit.used == "saturation"){
+    y.hat <- saturation(coef(myfit), x.predict)
+  } else if (fit.used == "lm"){
+    y.hat <- linear(coef(myfit), x.predict)
+  } else {
+    warning("Neither saturation nor lm")
+  }
+  
+  # plot 
+  params.str <- paste0(signif(as.vector(coef(myfit)), 2), collapse=",")
+  symbols <- GetUnobsObsSymbol(all.samples=colnames(array.exprs), common.samples, unobs=8, obs=1)
+  sizes <- GetUnobsObsSymbol(all.samples=colnames(array.exprs), common.samples, unobs=0.25, obs=1)
+  plot(x, y, main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
+       xlab="RNA-Seq DESeq-normalized counts",
+       ylab="Microarray normal scale")
+  lines(x.predict, y.hat)
+  plot(log2(x + 1), log2(y), main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
+       xlab="RNA-Seq DESeq-normalized counts (log2)",
+       ylab="Microarray log2")
+  lines(log2(x.predict + 1), log2(y.hat))
+  
+}
+dev.off()
+
+# Adjust microarray -------------------------------------------------------
+
+array.adj <- matrix(NA, nrow=nrow(array.exprs), ncol=ncol(array.exprs),
+                    dimnames=list(rownames(array.exprs), 
+                                  colnames(array.exprs)))
+
+for (gene in c(clockgenes, tissuegenes)){
+  fit.used <- fit.select.list[[gene]][["fit.used"]]
+  myfit <- fit.select.list[[gene]][["myfit"]]  # either saturation or lm
+  
+  array.exprs.gene <- as.matrix(array.exprs[gene, ])
+  
+  if (fit.used == "saturation"){
+    b <- coef(myfit)["b"]  # microarray cannot be less than b (bg)
+    # adjust all microarray values less than A to A.
+    array.exprs.gene[which(array.exprs.gene < b)] <- b
+    array.adj.gene <- saturation.inv(coef(myfit), array.exprs.gene)
+    
+  } else if (fit.used == "lm"){
+    int <- coef(myfit)[[1]]
+    slope <- coef(myfit)[[2]]
+    # adjust all microarray values less than int to int (bg)
+    array.exprs.gene[which(array.exprs.gene < int)] <- int
+    if (is.na(slope)){
+      # if NA, assume it is infinity
+      slope <- Inf
+    }
+    array.adj.gene <- (array.exprs.gene - int) / slope
+  }
+  array.adj[gene, ] <- array.adj.gene
+}
+
+
+# Plot before and after clockgenes ----------------------------------------
+
+pdf(before.after.clock.plot.out)
+for (gene in clockgenes){
+  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, 
+                  y.max=y.max, convert.log2=TRUE)
+}
+dev.off()
+
+# Plot before and after tissuegenes ----------------------------------------
+
+pdf(before.after.tissue.plot.out)
+for (gene in tissuegenes){
+  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, 
+                  y.max=y.max, convert.log2=TRUE)
+}
+dev.off()
 
