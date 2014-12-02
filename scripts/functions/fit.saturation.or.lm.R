@@ -5,11 +5,13 @@
 # Constants to change -----------------------------------------------------
 
 pval <- 1.1  # for F-test
+y.max <- 25  # for plotting
 diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
 before.after.clock.plot.out <- 'plots/clockgenes.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
 side.by.side.clock.plot.out <- 'plots/clockgenes.rna.seq.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
 diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
 before.after.tissue.plot.out <- 'plots/tissuegenes.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
+side.by.side.tissue.plot.out <- 'plots/tissuegenes.rna.seq.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
 mean.var.fit.outpath <- 'plots/noise.model.mean.var.pdf'
 
 # Functions ---------------------------------------------------------------
@@ -401,7 +403,7 @@ dev.off()
 
 pdf(side.by.side.clock.plot.out)
 for (gene in clockgenes){
-  PlotAgainstRnaSeq(gene, log2(rna.seq.exprs.common.g + 1), log2(array.adj), common.samples, y.max=22)
+  PlotAgainstRnaSeq(gene, log2(rna.seq.exprs.common.g + 1), log2(array.adj + 1), common.samples, y.max=y.max)
 }
 dev.off()
 
@@ -414,3 +416,12 @@ for (gene in tissuegenes){
 }
 dev.off()
 
+
+# Plot before and after against RNASeq: tissue ----------------------------
+
+
+pdf(side.by.side.tissue.plot.out)
+for (gene in tissuegenes){
+  PlotAgainstRnaSeq(gene, log2(rna.seq.exprs.common.g + 1), log2(array.adj + 1), common.samples, y.max=y.max)
+}
+dev.off()
