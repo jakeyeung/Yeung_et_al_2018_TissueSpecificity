@@ -20,7 +20,12 @@ saturation.inv <- function(params, m) params[3] * (m - params[2]) / (params[2] +
 
 # LINEAR FUNCTIONS
 linear <- function(params, x) params[1] + params[2] * x
-linear.inv <- function(params, y) (y - params[1]) / params[2]
+linear.inv <- function(params, y) {
+  if (is.na(params[2])){
+    params[2] <- Inf
+  }
+  (y - params[1]) / params[2]
+}
 
 functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
@@ -36,6 +41,7 @@ clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2',
                 'Tef', 'Usp2', 'Wee1', 'Dtx4', 'Asb12')
 clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
 clockgenes <- c(clockgenes, 'Defb48', 'Svs1', 'Svs2', 'Svs5', 'Defb20', 'Adam7', 'Lcn8', 'Rnase10', 'Teddm1')
+clockgenes <- c(clockgenes, "Sry")  # known to not be expressed via RNASeq
 
 
 # Tissue genes ------------------------------------------------------------
@@ -155,11 +161,6 @@ dev.off()
 # define init vals
 max.val <- Inf  # expected
 
-# init vals: saturation model
-b0 <- 2^4
-k0 <- 2^10  # large to begin in linear regime
-a0 <- 2^13  # 13 is saturation i expect initially (a0 + b0)
-
 # init vals: linear model
 slope0 <- 10
 int0 <- 10
@@ -172,6 +173,7 @@ for (gene in c(clockgenes, tissuegenes)){
   R.exprs <- unlist(rna.seq.exprs.common.g[gene, ])
   M.exprs <- unlist(array.exprs.subset.common.g[gene, ])
   M.full <- unlist(array.exprs[gene, ])
+  
   # lower and upper bounds: saturation model
   bmin <- 0
   kmin <- 0
@@ -179,6 +181,10 @@ for (gene in c(clockgenes, tissuegenes)){
   bmax <- min(M.full) - 1
   amax <- Inf
   kmax <- Inf
+  # init vals: saturation model
+  b0 <- 2^4
+  k0 <- 2^7  # large to begin in linear regime
+  a0 <- amin + 10  # expect it close to amin
   # lower and upper bounds: 
   slopemin <- 0
   intmin <- 0
@@ -188,6 +194,11 @@ for (gene in c(clockgenes, tissuegenes)){
   R.var <- predict(fit.noise, R.exprs)
   # adjust R.var so all values less than 0 take on smallest non-negative number
   R.var.min <- min(R.var[which(R.var > 0)])
+  # if R.var.min is infinity, probably RNA-Seq has no expression, default weights to 1
+  if (is.infinite(R.var.min)){
+    warning(paste("Gene:", gene, "...adjusting infinites to 1 for variance."))
+    R.var.min <- 1
+  }
   R.var[which(R.var < 0)] <- R.var.min
   weights <- 1 / R.var
   
@@ -206,16 +217,23 @@ for (gene in c(clockgenes, tissuegenes)){
                                     k=kmax),
                          weights=weights)
     # fit.lm <- lm(M.exprs ~ R.exprs)
-    fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
-                  algorithm = "port",
-                  start=list(int=int0,
-                             slope=slope0),
-                  lower=list(int=intmin,
-                             slope=slopemin),
-                  upper=list(int=intmax,
-                             slope=slopemax),
-                  weights=weights)
-    
+    fit.lm <- tryCatch({
+      fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
+                    algorithm = "port",
+                    start=list(int=int0,
+                               slope=slope0),
+                    lower=list(int=intmin,
+                               slope=slopemin),
+                    upper=list(int=intmax,
+                               slope=slopemax),
+                    weights=weights)
+    }, error = function(e){
+      # probably infinite slope, just fit normal lm
+      fit.lm <- lm(M.exprs ~ R.exprs, 
+                   weights=weights)
+      return(fit.lm)
+    })
+
     fits <- list(saturation=fit.saturation,
                  lm=fit.lm)
     
@@ -225,15 +243,22 @@ for (gene in c(clockgenes, tissuegenes)){
     # error, try linear model
     fit.saturation <- NA
     # fit.lm <- lm(M.exprs ~ R.exprs)
-    fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
-                  algorithm = "port",
-                  start=list(int=int0,
-                             slope=slope0),
-                  lower=list(int=intmin,
-                             slope=slopemin),
-                  upper=list(int=intmax,
-                             slope=slopemax),
-                  weights=weights)
+    fit.lm <- tryCatch({
+      fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
+                    algorithm = "port",
+                    start=list(int=int0,
+                               slope=slope0),
+                    lower=list(int=intmin,
+                               slope=slopemin),
+                    upper=list(int=intmax,
+                               slope=slopemax),
+                    weights=weights)
+    }, error = function(e){
+      # probably infinite slope, just fit normal lm
+      fit.lm <- lm(M.exprs ~ R.exprs, 
+                   weights=weights)
+      return(fit.lm)
+    })
     return(list(saturation=fit.saturation, 
                 lm=fit.lm))
     
@@ -269,11 +294,12 @@ for (gene in clockgenes){
   # Get vector of predicted values
   x <- GetFullR(rna.seq.exprs, common.samples)
   y <- unlist(array.exprs[gene, ])
-  x.predict <- seq(min(x)*0.8, max(x)*1.2, 10)
+  # x.predict <- seq(min(x)*0.8, max(x)*1.2, length.out=10*length(x))
+  y.predict <- seq(min(y)*0.8, max(y), length.out=10*length(y))
   if (fit.used == "saturation"){
-    y.hat <- saturation(coef(myfit), x.predict)
+    x.hat <- saturation.inv(coef(myfit), y.predict)
   } else if (fit.used == "lm"){
-    y.hat <- linear(coef(myfit), x.predict)
+    x.hat <- linear.inv(coef(myfit), y.predict)
   } else {
     warning("Neither saturation nor lm")
   }
@@ -285,11 +311,11 @@ for (gene in clockgenes){
   plot(x, y, main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
        xlab="RNA-Seq DESeq-normalized counts",
        ylab="Microarray normal scale")
-  lines(x.predict, y.hat)
+  lines(x.hat, y.predict)
   plot(log2(x + 1), log2(y), main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
        xlab="RNA-Seq DESeq-normalized counts (log2)",
        ylab="Microarray log2")
-  lines(log2(x.predict + 1), log2(y.hat))
+  lines(log2(x.hat + 1), log2(y.predict))
 
 }
 dev.off()
@@ -345,25 +371,10 @@ for (gene in c(clockgenes, tissuegenes)){
   array.exprs.gene <- as.matrix(array.exprs[gene, ])
   
   if (fit.used == "saturation"){
-#     # microarray cannot be less than b
-#     b <- coef(myfit)["b"]  # microarray cannot be less than b (bg)
-#     # adjust all microarray values less than A to A.
-#     array.exprs.gene[which(array.exprs.gene < b)] <- b
-#     # microarray cannot be greater than a + b
-#     a <- coef(myfit)["a"]
-#     array.exprs.gene[which(array.exprs.gene > (a + b))]  <- a + b - 1  # no infinities
     array.adj.gene <- saturation.inv(coef(myfit), array.exprs.gene)
     
   } else if (fit.used == "lm"){
-    int <- coef(myfit)[[1]]
-    slope <- coef(myfit)[[2]]
-    # adjust all microarray values less than int to int (bg)
-    array.exprs.gene[which(array.exprs.gene < int)] <- int
-    if (is.na(slope)){
-      # if NA, assume it is infinity
-      slope <- Inf
-    }
-    array.adj.gene <- (array.exprs.gene - int) / slope
+    array.adj.gene <- linear.inv(coef(myfit), array.exprs.gene)
   }
   array.adj[gene, ] <- array.adj.gene
 }
