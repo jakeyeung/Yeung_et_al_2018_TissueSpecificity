@@ -4,11 +4,12 @@
 
 # Constants to change -----------------------------------------------------
 
-pval <- 1e-5  # for F-test
-diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.constrained.saturation.fit.log2.probe.pdf'
-before.after.clock.plot.out <- 'plots/clockgenes.lm.constrained.saturation.fit.log2.probe.pdf'
-diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.constrained.saturation.fit.log2.probe.pdf'
-before.after.tissue.plot.out <- 'plots/tissuegenes.lm.constrained.saturation.fit.log2.probe.pdf'
+pval <- 1.1  # for F-test
+diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
+before.after.clock.plot.out <- 'plots/clockgenes.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
+diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
+before.after.tissue.plot.out <- 'plots/tissuegenes.lm.constrained.weighted.saturation.fit.log2.probe.pdf'
+mean.var.fit.outpath <- 'plots/noise.model.mean.var.pdf'
 
 # Functions ---------------------------------------------------------------
 
@@ -84,7 +85,6 @@ Peek(array.exprs)
 tissue.names <- GetTissueNames(colnames(rna.seq.exprs)) 
 
 
-
 # log2 transform RNA-Seq --------------------------------------------------
 
 # rna.seq.exprs <- log2(rna.seq.exprs + 1)
@@ -102,11 +102,59 @@ Peek(array.exprs.subset.common.g)
 Peek(rna.seq.exprs.common.g)
 
 
+# Calculate MeanVariance by tissue ----------------------------------------
+
+mean.var.df <- GetMeanVarByTissues(exprs=rna.seq.exprs, tissue.names)
+
+# Bin and fit loess -------------------------------------------------------
+
+n.per.bin <- 150
+
+mean.var.df <- mean.var.df[with(mean.var.df, order(mean)), ]
+mean.var.df$bins.order <- factor(round_any(seq(1:nrow(mean.var.df)), n.per.bin))
+
+# Bin mean and bin variance: by order -------------------------------------
+
+bin.mean <- with(mean.var.df, (tapply(mean, bins.order, function(x){
+  mean.quantiles <- median(x)
+})))
+bin.var <- with(mean.var.df, (tapply(var, bins.order, function(x){
+  var.quantiles <- median(x)
+  return(var.quantiles)
+})))
+
+
+# Fit loess noise model ---------------------------------------------------
+
+fit.noise <- loess(bin.var ~ bin.mean,
+                   control=loess.control(surface="direct"))
+
+# Plot fit ----------------------------------------------------------------
+
+
+pdf(mean.var.fit.outpath)
+x <- seq(min(rna.seq.exprs.common.g), max(rna.seq.exprs.common.g), 100)  # plot full range
+y <- predict(fit.noise, x)
+plot(x, y, col='red', lwd='2', type='l', main=paste0('Loess Fit. Bin size=', n.per.bin),
+     xlab="bin.mean", ylab="bin.var",
+     xlim=c(0, 3000), ylim=c(0, 50000))
+points(bin.mean, bin.var)
+plot(x, y, col='red', lwd='2', type='l', main=paste0('Loess Fit. Bin size=', n.per.bin),
+     xlab="bin.mean", ylab="bin.var")
+points(bin.mean, bin.var)
+plot(x, y, col='red', lwd='2', type='l', main=paste0('Loess Fit. Bin size=', n.per.bin),
+     xlab="bin.mean", ylab="bin.var", log="xy")
+points(bin.mean, bin.var)
+
+dev.off()
+
+
 
 # Fit saturation curve: 3 parameters --------------------------------------
 
 # define init vals
 max.val <- Inf  # expected
+
 # init vals: saturation model
 b0 <- 2^4
 k0 <- 2^10  # large to begin in linear regime
@@ -127,7 +175,7 @@ for (gene in c(clockgenes, tissuegenes)){
   # lower and upper bounds: saturation model
   bmin <- 0
   kmin <- 0
-  amin <- 0
+  amin <- max(M.full) - bmin
   bmax <- min(M.full) - 1
   amax <- Inf
   kmax <- Inf
@@ -136,6 +184,12 @@ for (gene in c(clockgenes, tissuegenes)){
   intmin <- 0
   slopemax <- Inf
   intmax <- min(M.full) - 1
+  # get variance as weights
+  R.var <- predict(fit.noise, R.exprs)
+  # adjust R.var so all values less than 0 take on smallest non-negative number
+  R.var.min <- min(R.var[which(R.var > 0)])
+  R.var[which(R.var < 0)] <- R.var.min
+  weights <- 1 / R.var
   
   fits <- tryCatch({
     
@@ -149,7 +203,8 @@ for (gene in c(clockgenes, tissuegenes)){
                                     k=kmin),
                          upper=list(a=amax,
                                     b=bmax,
-                                    k=kmax))
+                                    k=kmax),
+                         weights=weights)
     # fit.lm <- lm(M.exprs ~ R.exprs)
     fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
                   algorithm = "port",
@@ -158,7 +213,8 @@ for (gene in c(clockgenes, tissuegenes)){
                   lower=list(int=intmin,
                              slope=slopemin),
                   upper=list(int=intmax,
-                             slope=slopemax))
+                             slope=slopemax),
+                  weights=weights)
     
     fits <- list(saturation=fit.saturation,
                  lm=fit.lm)
@@ -176,7 +232,8 @@ for (gene in c(clockgenes, tissuegenes)){
                   lower=list(int=intmin,
                              slope=slopemin),
                   upper=list(int=intmax,
-                             slope=slopemax))
+                             slope=slopemax),
+                  weights=weights)
     return(list(saturation=fit.saturation, 
                 lm=fit.lm))
     
@@ -288,9 +345,13 @@ for (gene in c(clockgenes, tissuegenes)){
   array.exprs.gene <- as.matrix(array.exprs[gene, ])
   
   if (fit.used == "saturation"){
-    b <- coef(myfit)["b"]  # microarray cannot be less than b (bg)
-    # adjust all microarray values less than A to A.
-    array.exprs.gene[which(array.exprs.gene < b)] <- b
+#     # microarray cannot be less than b
+#     b <- coef(myfit)["b"]  # microarray cannot be less than b (bg)
+#     # adjust all microarray values less than A to A.
+#     array.exprs.gene[which(array.exprs.gene < b)] <- b
+#     # microarray cannot be greater than a + b
+#     a <- coef(myfit)["a"]
+#     array.exprs.gene[which(array.exprs.gene > (a + b))]  <- a + b - 1  # no infinities
     array.adj.gene <- saturation.inv(coef(myfit), array.exprs.gene)
     
   } else if (fit.used == "lm"){
@@ -312,8 +373,14 @@ for (gene in c(clockgenes, tissuegenes)){
 
 pdf(before.after.clock.plot.out)
 for (gene in clockgenes){
-  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, 
-                  y.max=y.max, convert.log2=TRUE)
+  tryCatch({
+    PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, 
+                    y.max=y.max, convert.log2=TRUE)
+  }, warning=function(w){
+    print(paste(gene, w))
+    PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, 
+                    y.max=y.max, convert.log2=TRUE)
+  })
 }
 dev.off()
 
