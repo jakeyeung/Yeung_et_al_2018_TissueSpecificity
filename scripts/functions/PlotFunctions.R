@@ -91,18 +91,28 @@ PlotFitDiagnostics <- function(array.exprs.full,
   dev.off() 
 }
 
-PlotBeforeAfter <- function(gene, array.before, array.after, rna.seq, y.max=14, N.TISSUES=12){
+PlotBeforeAfter <- function(gene, array.before, array.after, rna.seq, y.max=14, convert.log2=FALSE, N.TISSUES=12){
   par(mfrow=c(3,1))
+  if (convert.log2 == FALSE){
+    array.before.gene <- as.numeric(array.before[gene, ])
+    array.after.gene <- as.numeric(array.after[gene, ])
+    rna.seq.gene <- as.numeric(rna.seq[gene, ])    
+  } else if (convert.log2 == TRUE){
+    array.before.gene <- log2(as.numeric(array.before[gene, ]))
+    array.after.gene <- log2(as.numeric(array.after[gene, ]) + 1)
+    rna.seq.gene <- log2(as.numeric(rna.seq[gene, ]) + 1)
+  }
+
   # Array before adjustment
-  plot(as.numeric(array.exprs[gene, ]), main=paste(gene, 'log2 expression: array before adjustment'),
+  plot(array.before.gene, main=paste(gene, 'log2 expression: array before adjustment'),
        col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, y.max), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
   # Array after adjustment
-  plot(as.numeric(array.adj[gene, ]), main=paste(gene, 'log2 exprs: array after adjustment'),
+  plot(array.after.gene, main=paste(gene, 'log2 exprs: array after adjustment'),
        col=rep(1:N.TISSUES, each=24), type='b', ylim=c(0, y.max), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
   # RNA Seq
-  plot(as.numeric(rna.seq.exprs.common.g[gene, ]), main=paste(gene, 'log2 exprs: rnaseq'),
+  plot(rna.seq.gene, main=paste(gene, 'log2 exprs: rnaseq'),
        col=rep(1:N.TISSUES, each=8), type='b', ylim=c(0, y.max), ylab="log2 exprs", 
        xlab=paste(tissue.names, collapse=" "))
   par(mfrow=c(1,1))
