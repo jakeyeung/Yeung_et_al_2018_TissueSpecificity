@@ -8,11 +8,15 @@ library(ggplot2)
 
 # Constants to change -----------------------------------------------------
 
-pval <- 1e-10  # for F-test
-diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.sigmoid.fit.log2.probe.pdf'
-before.after.clock.plot.out <- 'plots/clockgenes.lm.sigmoid.fit.log2.probe.pdf'
-diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.sigmoid.fit.log2.probe.pdf'
-before.after.tissue.plot.out <- 'plots/tissuegenes.lm.sigmoid.fit.log2.probe.pdf'
+pval <- 1e-100  # for F-test
+y.max <- 20
+diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.only.fit.log2.probe.pdf'
+before.after.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.pdf'
+side.by.side.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.against.rna.seq.pdf'
+diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.only.fit.log2.probe.pdf'
+before.after.tissue.plot.out <- 'plots/tissuegenes.lm.only.fit.log2.probe.pdf'
+side.by.side.tissue.plot.out <- 'plots/tissuegenes.lm.only.fit.log2.probe.against.rna.seq.pdf'
+
 
 # Functions ---------------------------------------------------------------
 
@@ -30,6 +34,13 @@ sigmoid.inv <- function(params, y) params[3] * ((params[1] - y) / (y - params[4]
 linear <- function(params, x) params[1] + params[2] * x
 linear.inv <- function(params, y) (y - params[1]) / params[2]
 
+functions.dir <- 'scripts/functions'
+source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
+source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
+source(file.path(functions.dir, 'RegressionFunctions.R'))  # optim function
+source(file.path(functions.dir, 'GeneTissueCalculations.R'))
+source(file.path(functions.dir, 'PlotFunctions.R'))
+
 # Clock genes --------------------------------------------------------
 
 clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2', 
@@ -44,16 +55,6 @@ clockgenes <- c(clockgenes, "Sry")
 
 tissuegenes <- c("Plbd1","Acacb","Hadh","Decr1","Acadl","Ech1","Acsl1","Cpt2","Acaa2")  # PCA 1 from explore_data.R
 tissuegenes <- c(tissuegenes, "Elovl1","Slc35b3","Fkbp15","Slc39a8","Sep15","Mospd2","Med11","Slco2a1","Arf6","Yipf6")  # PCA 2 from explore_data.R
-
-
-# Functions ---------------------------------------------------------------
-
-functions.dir <- 'scripts/functions'
-source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
-source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
-source(file.path(functions.dir, 'RegressionFunctions.R'))  # optim function
-source(file.path(functions.dir, 'GeneTissueCalculations.R'))
-source(file.path(functions.dir, 'PlotFunctions.R'))
 
 
 # Define dirs -------------------------------------------------------------
@@ -263,10 +264,18 @@ for (gene in c(clockgenes, tissuegenes)){
 
 pdf(before.after.clock.plot.out)
 for (gene in clockgenes){
-  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, y.max=16)
+  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, y.max=y.max)
 }
 dev.off()
 
+
+# Plot side by side -------------------------------------------------------
+
+pdf(side.by.side.clock.plot.out)
+for (gene in clockgenes){
+  PlotAgainstRnaSeq(gene, rna.seq.exprs.common.g, array.adj, common.samples, y.max=y.max)
+}
+dev.off()
 
 # Plot tissue genes: diagnostics -------------------------------------------
 
@@ -309,6 +318,15 @@ dev.off()
 
 pdf(before.after.tissue.plot.out)
 for (gene in tissuegenes){
-  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, y.max=16)
+  PlotBeforeAfter(gene, array.exprs, array.adj, rna.seq.exprs, y.max=y.max)
+}
+dev.off()
+
+
+# Plot side by side tissue genes ------------------------------------------
+
+pdf(side.by.side.tissue.plot.out)
+for (gene in tissuegenes){
+  PlotAgainstRnaSeq(gene, rna.seq.exprs.common.g, array.adj, common.samples, y.max=y.max)
 }
 dev.off()
