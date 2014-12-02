@@ -12,7 +12,7 @@ pval <- 1e-100  # for F-test
 y.max <- 25
 
 # plot outputs
-diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.only.fit.log2.probe.pdf'
+diagnostics.clock.plot.out <- 'plots/diagnostics.problematics.lm.only.fit.log2.probe.pdf'
 before.after.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.pdf'
 side.by.side.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.against.rna.seq.pdf'
 diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.only.fit.log2.probe.pdf'
@@ -108,6 +108,24 @@ tissue.names <- GetTissueNames(colnames(rna.seq.exprs))
 # log2 transform RNA-Seq --------------------------------------------------
 
 rna.seq.exprs <- log2(rna.seq.exprs + 1)
+
+# Remove genes that are not expressed across 96 samples -------------------
+
+min.exprs <- 5.5
+
+expressed <- apply(rna.seq.exprs, 1, function(x){
+  if (max(x) < min.exprs){
+    return(FALSE)
+  } else {
+    return(TRUE)
+  }
+})
+rna.seq.exprs <- rna.seq.exprs[which(expressed), ]
+
+
+# Create subsets ----------------------------------------------------------
+
+
 # Create subset and common genes so each microarray point has corresponding rnaseq
 common.genes <- intersect(rownames(array.exprs), rownames(rna.seq.exprs))
 common.samples <- intersect(colnames(array.exprs), colnames(rna.seq.exprs))
@@ -116,6 +134,7 @@ rna.seq.exprs.common.g <- rna.seq.exprs[common.genes, ]
 array.common.g <- array.exprs[common.genes, ]
 Peek(array.exprs.subset.common.g)
 Peek(rna.seq.exprs.common.g)
+
 
 
 # Fit sigmoidal curve: 4 params --------------------------------------------
@@ -204,12 +223,13 @@ for (gene in common.genes){
 pdf(diagnostics.clock.plot.out)
 par(mfrow = c(2,1))
 for (gene in clockgenes){
+# for (gene in c(lucky.genes, "BC006965")){
   fit.select <- fit.select.list[[gene]]
   fit.used <- fit.select$fit.used  # either sigmoid or lm
   myfit <- fit.select$myfit
   
   # Get vector of predicted values
-  x <- GetFullR(rna.seq.exprs, common.samples)
+  x <- GetFullR(gene, rna.seq.exprs, common.samples)
   y <- unlist(array.exprs[gene, ])
   x.predict <- seq(min(x)*0.8, max(x)*1.2, 0.1)
   if (fit.used == "sigmoid"){
@@ -266,7 +286,7 @@ for (gene in common.genes){
 }
 
 # Write microarray to output
-write.table(array.adj, file=array.adj.output, quote=FALSE, sep='\t')
+write.table(array.adj, file=array.adj.output, quote=FALSE, sep='\t', row.names=TRUE, col.names=NA)
 
 
 # Plot before and after clockgenes ----------------------------------------
