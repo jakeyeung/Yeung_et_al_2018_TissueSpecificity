@@ -107,9 +107,12 @@ bin.var <- with(mean.var.df, (tapply(var, bins.order, function(x){
 fit.noise <- loess(bin.var ~ bin.mean,
                    control=loess.control(surface="direct"))
 
+# Plot fit ----------------------------------------------------------------
+
+
 pdf(mean.var.fit.outpath)
 x <- seq(min(rna.seq.exprs.common.g), max(rna.seq.exprs.common.g), 100)  # plot full range
-y <- predict(fit, x)
+y <- predict(fit.noise, x)
 plot(x, y, col='red', lwd='2', type='l', main=paste0('Loess Fit. Bin size=', n.per.bin),
      xlab="bin.mean", ylab="bin.var",
      xlim=c(0, 3000), ylim=c(0, 50000))
@@ -129,8 +132,8 @@ dev.off()
 pdf(clock.genes.fit.outpath)
 for (gene in clockgenes){
   b0 <- 16
-  a0 <- 1.1
-  k0 <- 10
+  a0 <- 10000
+  k0 <- 10000
   init.vals <- c(a0, b0, k0)
   # microarray rnaseq model. 
   m <- function(r, a, b, k) b + (a * r / k) / ( 1 + r / k)
