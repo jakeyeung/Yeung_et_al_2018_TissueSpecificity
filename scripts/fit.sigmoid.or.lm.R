@@ -9,13 +9,18 @@ library(ggplot2)
 # Constants to change -----------------------------------------------------
 
 pval <- 1e-100  # for F-test
-y.max <- 20
+y.max <- 25
+
+# plot outputs
 diagnostics.clock.plot.out <- 'plots/diagnostics.clock.lm.only.fit.log2.probe.pdf'
 before.after.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.pdf'
 side.by.side.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.against.rna.seq.pdf'
 diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.only.fit.log2.probe.pdf'
 before.after.tissue.plot.out <- 'plots/tissuegenes.lm.only.fit.log2.probe.pdf'
 side.by.side.tissue.plot.out <- 'plots/tissuegenes.lm.only.fit.log2.probe.against.rna.seq.pdf'
+
+# table outputs
+array.adj.output <- 'data/array.adjusted.lm.log2.txt'
 
 
 # Functions ---------------------------------------------------------------
@@ -108,6 +113,7 @@ common.genes <- intersect(rownames(array.exprs), rownames(rna.seq.exprs))
 common.samples <- intersect(colnames(array.exprs), colnames(rna.seq.exprs))
 array.exprs.subset.common.g <- array.exprs[common.genes, common.samples]  # log2 scale
 rna.seq.exprs.common.g <- rna.seq.exprs[common.genes, ]
+array.common.g <- array.exprs[common.genes, ]
 Peek(array.exprs.subset.common.g)
 Peek(rna.seq.exprs.common.g)
 
@@ -141,7 +147,7 @@ Dmax <- Cmax
 fit.list <- vector(mode="list", length=length(common.genes))
 names(fit.list) <- common.genes
 
-for (gene in c(clockgenes, tissuegenes)){
+for (gene in common.genes){
   R.exprs <- unlist(rna.seq.exprs.common.g[gene, ])
   M.exprs <- unlist(array.exprs.subset.common.g[gene, ])
   fits <- tryCatch({
@@ -182,7 +188,7 @@ for (gene in c(clockgenes, tissuegenes)){
 
 fit.select.list <- vector(mode="list", length=length(common.genes))
 names(fit.select.list) <- common.genes
-for (gene in c(clockgenes, tissuegenes)){
+for (gene in common.genes){
   # check if sigmoid fit was performed...
   fit.sigmoid <- fit.list[[gene]][["sigmoid"]]
   fit.lm <- fit.list[[gene]][["lm"]]
@@ -232,10 +238,10 @@ dev.off()
 
 # Adjust microarray -------------------------------------------------------
 
-array.adj <- matrix(NA, nrow=nrow(array.exprs), ncol=ncol(array.exprs),
-                    dimnames=list(rownames(array.exprs), 
-                                  colnames(array.exprs)))
-for (gene in c(clockgenes, tissuegenes)){
+array.adj <- matrix(NA, nrow=nrow(array.common.g), ncol=ncol(array.common.g),
+                    dimnames=list(rownames(array.common.g), 
+                                  colnames(array.common.g)))
+for (gene in common.genes){
   fit.used <- fit.select.list[[gene]][["fit.used"]]
   myfit <- fit.select.list[[gene]][["myfit"]]  # either sigmoid or lm
   
@@ -258,6 +264,9 @@ for (gene in c(clockgenes, tissuegenes)){
   }
   array.adj[gene, ] <- array.adj.gene
 }
+
+# Write microarray to output
+write.table(array.adj, file=array.adj.output, quote=FALSE, sep='\t')
 
 
 # Plot before and after clockgenes ----------------------------------------
@@ -330,3 +339,8 @@ for (gene in tissuegenes){
   PlotAgainstRnaSeq(gene, rna.seq.exprs.common.g, array.adj, common.samples, y.max=y.max)
 }
 dev.off()
+
+
+# Write to table adjusted array exprs -------------------------------------
+
+
