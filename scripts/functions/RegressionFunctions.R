@@ -110,7 +110,7 @@ ConstrainedFitWithNoise <- function(gene, array.subset, array.exprs, rna.seq, no
   # return(list(a.hat, b.hat, conv))
 }
 
-FTestSigmoidLinearModels <- function(fit.lm, fit.sigmoid, pval=1e-10){
+FTestSigmoidLinearModels <- function(fit.lm, fit.sigmoid, pval=1e-10, complex.model="sigmoid"){
   if (!is.na(fit.sigmoid)){
     # has sigmoid fit, compare with linear fit with F test
     f.test <- anova(fit.sigmoid, fit.lm)
@@ -118,7 +118,7 @@ FTestSigmoidLinearModels <- function(fit.lm, fit.sigmoid, pval=1e-10){
     if (f.test.pval < pval){
       # it is "worth it" to add parameters and fit sigmoid
       myfit <- fit.sigmoid
-      fit.used <- "sigmoid"
+      fit.used <- complex.model
     } else {
       # just stick with linear
       myfit <- fit.lm
