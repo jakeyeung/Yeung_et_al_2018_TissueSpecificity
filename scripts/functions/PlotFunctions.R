@@ -130,7 +130,7 @@ PlotAgainstRnaSeq <- function(gene, rna.seq, array.exprs.adjusted,
   lines(as.matrix(array.exprs.adjusted[gene, ]), col=2, pch=22, type='o', cex=0.25)
 }
 
-GetFullR <- function(rna.seq.exprs, common.samples){
+GetFullR <- function(gene, rna.seq.exprs, common.samples){
   R.full <- matrix(0, nrow=1, ncol=ncol(array.exprs), 
                    dimnames=list(gene, colnames(array.exprs)))
   R.full[gene, common.samples] <- as.matrix(rna.seq.exprs[gene, common.samples])
