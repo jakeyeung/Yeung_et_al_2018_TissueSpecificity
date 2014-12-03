@@ -8,16 +8,16 @@ library(ggplot2)
 
 # Constants to change -----------------------------------------------------
 
-pval <- 1e-100  # for F-test
+pval <- 1e-5  # for F-test
 y.max <- 25
 
 # plot outputs
-diagnostics.clock.plot.out <- 'plots/diagnostics.problematics.lm.only.fit.log2.probe.pdf'
-before.after.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.pdf'
-side.by.side.clock.plot.out <- 'plots/clockgenes.lm.only.fit.log2.probe.against.rna.seq.pdf'
-diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.only.fit.log2.probe.pdf'
-before.after.tissue.plot.out <- 'plots/tissuegenes.lm.only.fit.log2.probe.pdf'
-side.by.side.tissue.plot.out <- 'plots/tissuegenes.lm.only.fit.log2.probe.against.rna.seq.pdf'
+diagnostics.clock.plot.out <- 'plots/diagnostics.clockgenes.lm.sigmoid.fit.log2.probe.pdf'
+before.after.clock.plot.out <- 'plots/clockgenes.lm.sigmoid.fit.log2.probe.pdf'
+side.by.side.clock.plot.out <- 'plots/clockgenes.lm.sigmoid.fit.log2.probe.against.rna.seq.pdf'
+diagnostics.tissue.plot.out <- 'plots/diagnostics.tissue.lm.sigmoid.fit.log2.probe.pdf'
+before.after.tissue.plot.out <- 'plots/tissuegenes.lm.sigmoid.fit.log2.probe.pdf'
+side.by.side.tissue.plot.out <- 'plots/tissuegenes.lm.sigmoid.fit.log2.probe.against.rna.seq.pdf'
 
 # table outputs
 array.adj.output <- 'data/array.adjusted.lm.log2.txt'
@@ -37,7 +37,12 @@ sigmoid.inv <- function(params, y) params[3] * ((params[1] - y) / (y - params[4]
 
 # LINEAR FUNCTIONS
 linear <- function(params, x) params[1] + params[2] * x
-linear.inv <- function(params, y) (y - params[1]) / params[2]
+linear.inv <- function(params, y) {
+  if (is.na(params[2])){
+    params[2] <- Inf
+  }
+  (y - params[1]) / params[2]
+}
 
 functions.dir <- 'scripts/functions'
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
@@ -111,16 +116,16 @@ rna.seq.exprs <- log2(rna.seq.exprs + 1)
 
 # Remove genes that are not expressed across 96 samples -------------------
 
-min.exprs <- 5.5
-
-expressed <- apply(rna.seq.exprs, 1, function(x){
-  if (max(x) < min.exprs){
-    return(FALSE)
-  } else {
-    return(TRUE)
-  }
-})
-rna.seq.exprs <- rna.seq.exprs[which(expressed), ]
+# min.exprs <- 5.5
+# 
+# expressed <- apply(rna.seq.exprs, 1, function(x){
+#   if (max(x) < min.exprs){
+#     return(FALSE)
+#   } else {
+#     return(TRUE)
+#   }
+# })
+# rna.seq.exprs <- rna.seq.exprs[which(expressed), ]
 
 
 # Create subsets ----------------------------------------------------------
@@ -152,6 +157,9 @@ Amax <- Dmin
 Bmax <- 5  # too high and the slope is super sensitive
 Cmax <- 100
 Dmax <- Cmax
+
+# init vals for linear model
+
 
 # test
 # gene <- "Per1"
@@ -223,7 +231,6 @@ for (gene in common.genes){
 pdf(diagnostics.clock.plot.out)
 par(mfrow = c(2,1))
 for (gene in clockgenes){
-# for (gene in c(lucky.genes, "BC006965")){
   fit.select <- fit.select.list[[gene]]
   fit.used <- fit.select$fit.used  # either sigmoid or lm
   myfit <- fit.select$myfit
@@ -359,8 +366,4 @@ for (gene in tissuegenes){
   PlotAgainstRnaSeq(gene, rna.seq.exprs.common.g, array.adj, common.samples, y.max=y.max)
 }
 dev.off()
-
-
-# Write to table adjusted array exprs -------------------------------------
-
 
