@@ -6,11 +6,14 @@
 
 pval <- 1.1  # for F-test between saturation model and linear model
 y.max <- 25  # for plotting
-diagnostics.plot.out <- 'plots/diagnostics.saturation.f.test.pdf'
-before.after.plot.out <- 'plots/before.after.saturation.f.test.pdf'
-side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.f.test.pdf'
+diagnostics.plot.out <- 'plots/diagnostics.saturation.pdf'
+before.after.plot.out <- 'plots/before.after.saturation.pdf'
+side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.pdf'
 
 mean.var.fit.outpath <- 'plots/mean.var.probes.pdf'
+
+array.adj.out <- 'data/array.adj.saturationfit.conservative.txt'
+fit.results.out <- 'data/saturation.fit.results.RData'
 
 # Functions ---------------------------------------------------------------
 
@@ -49,6 +52,20 @@ clockgenes <- c(clockgenes, "Sry")  # known to not be expressed via RNASeq
 
 tissuegenes <- c("Plbd1","Acacb","Hadh","Decr1","Acadl","Ech1","Acsl1","Cpt2","Acaa2")  # PCA 1 from explore_data.R
 tissuegenes <- c(tissuegenes, "Elovl1","Slc35b3","Fkbp15","Slc39a8","Sep15","Mospd2","Med11","Slco2a1","Arf6","Yipf6")  # PCA 2 from explore_data.R
+
+
+# Problem genes -----------------------------------------------------------
+
+problematicgenes <- c("Tmem59l", "Saysd1", "H2.Q1", "Col25a1", "Clec18a", "X4930427A07Rik", 
+                      "Ncan", "Crtam", "Fam43b", "Nphp4", "Nuf2", "Sox11", "Krt23", "Myo1h", 
+                      "Mas1", "Cd207", "Tgif2", "Sdsl", "Gm8659", "Fsd1", "X2510049J12Rik", 
+                      "X1600029I14Rik", "Syndig1l", "Cyp4x1", "E130309D14Rik", "Gm281", 
+                      "Wdr27", "Daw1", "Tnfsf9", "Myo16")
+
+problemgenes <- c(problematicgenes, 'Gm4793', 'Sumo1', 'Prima1', 'Cinp', 'Rnf180', 'Gja3', 'Tnf', 
+                  'Plin4', 'Rpl9', 'Dapl1', 'Tsc22d2', 'Clspn', 'Gnat3', 'Nupl2', 
+                  'Tmem213', 'Ssbp1', 'Zfp746', 'Abhd13', 'Gtpbp3', 'Adam5', 
+                  'Lonrf1', 'Gm16380', 'Kri1', 'Csnk2a1.ps', 'Dusp9')
 
 # Define dirs -------------------------------------------------------------
 
@@ -174,7 +191,7 @@ int0 <- 10
 fit.list <- vector(mode="list", length=length(common.genes))
 names(fit.list) <- common.genes
 
-for (gene in c(clockgenes, tissuegenes, problematicgenes)){
+for (gene in common.genes){
   R.exprs <- unlist(rna.seq.exprs.common.g[gene, ])
   M.exprs <- unlist(array.exprs.subset.common.g[gene, ])
   M.full <- unlist(array.exprs[gene, ])
@@ -245,12 +262,15 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
 }
 
 
+# Save fit results to .RData ----------------------------------------------
+
+save(fit.list, file = fit.results.out)
 
 # F-test on saturation and linear fit ----------------------------------------
 
 fit.select.list <- vector(mode="list", length=length(common.genes))
 names(fit.select.list) <- common.genes
-for (gene in c(clockgenes, tissuegenes, problematicgenes)){
+for (gene in common.genes){
   # check if saturation fit was performed...
   fit.saturation <- fit.list[[gene]][["saturation"]]
   fit.lm <- fit.list[[gene]][["lm"]]
@@ -258,6 +278,11 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
   fit.select <- FTestSigmoidLinearModels(fit.lm, fit.saturation, pval=pval, complex.model="saturation")
   fit.select.list[[gene]] <- fit.select
 }
+
+
+# Garbage collection ------------------------------------------------------
+
+rm(fit.list)
 
 # Plot clock genes: diagnostics -------------------------------------------
 
@@ -304,7 +329,7 @@ array.adj <- matrix(NA, nrow=nrow(array.exprs), ncol=ncol(array.exprs),
                     dimnames=list(rownames(array.exprs), 
                                   colnames(array.exprs)))
 
-for (gene in c(clockgenes, tissuegenes, problematicgenes)){
+for (gene in common.genes){
   fit.used <- fit.select.list[[gene]][["fit.used"]]
   myfit <- fit.select.list[[gene]][["myfit"]]  # either saturation or lm
   
@@ -318,6 +343,13 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
   }
   array.adj[gene, ] <- array.adj.gene
 }
+
+
+# Write to file -----------------------------------------------------------
+
+write.table(array.adj, file = array.adj.out, 
+            quote=FALSE, sep='\t',
+            row.names=TRUE, col.names=NA)
 
 # Plot before and after clockgenes ----------------------------------------
 
@@ -342,6 +374,3 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
   PlotAgainstRnaSeq(gene, log2(rna.seq.exprs.common.g + 1), log2(array.adj + 1), common.samples, y.max=y.max)
 }
 dev.off()
-
-
-
