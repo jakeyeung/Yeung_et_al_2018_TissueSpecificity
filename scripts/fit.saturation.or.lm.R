@@ -219,49 +219,22 @@ for (gene in c(clockgenes, tissuegenes)){
                                     b=bmax,
                                     k=kmax),
                          weights=weights)
-    # fit.lm <- lm(M.exprs ~ R.exprs)
-    fit.lm <- tryCatch({
-      fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
-                    algorithm = "port",
-                    start=list(int=int0,
-                               slope=slope0),
-                    lower=list(int=intmin,
-                               slope=slopemin),
-                    upper=list(int=intmax,
-                               slope=slopemax),
-                    weights=weights)
-    }, error = function(e){
-      # probably infinite slope, just fit normal lm
-      fit.lm <- lm(M.exprs ~ R.exprs, 
-                   weights=weights)
-      return(fit.lm)
-    })
-
+    fit.lm <- FitLmConstraint(M.exprs, R.exprs, weights, 
+                      int0, slope0, 
+                      intmin, slopemin, 
+                      intmax, slopemax)
+    
     fits <- list(saturation=fit.saturation,
                  lm=fit.lm)
     
   }, error = function(e) {
-    
-    # print(paste('Error:', e))
+    warning(paste(gene, 'Error:', e))
     # error, try linear model
     fit.saturation <- NA
-    # fit.lm <- lm(M.exprs ~ R.exprs)
-    fit.lm <- tryCatch({
-      fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
-                    algorithm = "port",
-                    start=list(int=int0,
-                               slope=slope0),
-                    lower=list(int=intmin,
-                               slope=slopemin),
-                    upper=list(int=intmax,
-                               slope=slopemax),
-                    weights=weights)
-    }, error = function(e){
-      # probably infinite slope, just fit normal lm
-      fit.lm <- lm(M.exprs ~ R.exprs, 
-                   weights=weights)
-      return(fit.lm)
-    })
+    fit.lm <- FitLmConstraint(M.exprs, R.exprs, weights,
+                              int0, slope0, 
+                              intmin, slopemin,
+                              intmax, slopemax)
     return(list(saturation=fit.saturation, 
                 lm=fit.lm))
     
@@ -295,7 +268,7 @@ for (gene in clockgenes){
   myfit <- fit.select$myfit
   
   # Get vector of predicted values
-  x <- GetFullR(rna.seq.exprs, common.samples)
+  x <- GetFullR(gene, rna.seq.exprs, common.samples)
   y <- unlist(array.exprs[gene, ])
   # x.predict <- seq(min(x)*0.8, max(x)*1.2, length.out=10*length(x))
   y.predict <- seq(min(y)*0.8, max(y), length.out=10*length(y))
