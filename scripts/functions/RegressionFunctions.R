@@ -110,14 +110,14 @@ ConstrainedFitWithNoise <- function(gene, array.subset, array.exprs, rna.seq, no
   # return(list(a.hat, b.hat, conv))
 }
 
-FTestSigmoidLinearModels <- function(fit.lm, fit.sigmoid, pval=1e-10, complex.model="sigmoid"){
-  if (!is.na(fit.sigmoid)){
+FTestSigmoidLinearModels <- function(fit.lm, fit.complex, pval=1e-10, complex.model="sigmoid"){
+  if (!all(is.na(fit.complex))){
     # has sigmoid fit, compare with linear fit with F test
-    f.test <- anova(fit.sigmoid, fit.lm)
+    f.test <- anova(fit.complex, fit.lm)
     f.test.pval <- f.test[["Pr(>F)"]][[2]]
     if (f.test.pval < pval){
       # it is "worth it" to add parameters and fit sigmoid
-      myfit <- fit.sigmoid
+      myfit <- fit.complex
       fit.used <- complex.model
     } else {
       # just stick with linear
@@ -131,4 +131,29 @@ FTestSigmoidLinearModels <- function(fit.lm, fit.sigmoid, pval=1e-10, complex.mo
     fit.used <- "lm"
   }
   return(list(myfit=myfit, fit.used=fit.used))
+}
+
+FitLmConstraint <- function(M.exprs, R.exprs, weights, 
+                            int0, slope0, 
+                            intmin, slopemin, 
+                            intmax, slopemax){
+  # fit model y = b + a * x with constraints.
+  # if error, then do y = b + a * x without constraints.
+  fit.lm <- tryCatch({
+    fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
+                  algorithm = "port",
+                  start=list(int=int0,
+                             slope=slope0),
+                  lower=list(int=intmin,
+                             slope=slopemin),
+                  upper=list(int=intmax,
+                             slope=slopemax),
+                  weights=weights)
+  }, error = function(e){
+    warning(e)  # print error message as a warning message.
+    fit.lm <- lm(M.exprs ~ R.exprs, 
+                 weights=weights)
+    return(fit.lm)
+  })
+  return(fit.lm)
 }
