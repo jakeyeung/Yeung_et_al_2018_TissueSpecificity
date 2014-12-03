@@ -4,11 +4,11 @@
 
 # Constants to change -----------------------------------------------------
 
-pval <- 1.1  # for F-test
+pval <- 1.1  # for F-test between saturation model and linear model
 y.max <- 25  # for plotting
-diagnostics.plot.out <- 'plots/diagnostics.saturation.pdf'
-before.after.plot.out <- 'plots/before.after.saturation.pdf'
-side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.pdf'
+diagnostics.plot.out <- 'plots/diagnostics.saturation.f.test.pdf'
+before.after.plot.out <- 'plots/before.after.saturation.f.test.pdf'
+side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.f.test.pdf'
 
 mean.var.fit.outpath <- 'plots/mean.var.probes.pdf'
 
@@ -194,7 +194,7 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
   slopemin <- 0
   intmin <- 0
   slopemax <- Inf
-  intmax <- min(M.full)
+  intmax <- min(M.full) * bg.factor
   # get variance as weights
   M.var <- predict(fit.noise, M.exprs)
   # adjust M.var so all values less than 0 take on smallest non-negative number
@@ -221,49 +221,22 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
                                      b=bmax,
                                      k=kmax),
                           weights=weights)
-    # fit.lm <- lm(M.exprs ~ R.exprs)
-    fit.lm <- tryCatch({
-      fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
-                    algorithm = "port",
-                    start=list(int=int0,
-                               slope=slope0),
-                    lower=list(int=intmin,
-                               slope=slopemin),
-                    upper=list(int=intmax,
-                               slope=slopemax),
-                    weights=weights)
-    }, error = function(e){
-      # probably infinite slope, just fit normal lm
-      fit.lm <- lm(M.exprs ~ R.exprs, 
-                   weights=weights)
-      return(fit.lm)
-    })
+    fit.lm <- FitLmConstraint(M.exprs, R.exprs, weights, 
+                              int0, slope0, 
+                              intmin, slopemin, 
+                              intmax, slopemax)
     
     fits <- list(saturation=fit.saturation,
                  lm=fit.lm)
     
   }, error = function(e) {
-    
-    # print(paste('Error:', e))
-    # error, try linear model
     fit.saturation <- NA
     # fit.lm <- lm(M.exprs ~ R.exprs)
-    fit.lm <- tryCatch({
-      fit.lm <- nls(M.exprs ~ int + slope * R.exprs,
-                    algorithm = "port",
-                    start=list(int=int0,
-                               slope=slope0),
-                    lower=list(int=intmin,
-                               slope=slopemin),
-                    upper=list(int=intmax,
-                               slope=slopemax),
-                    weights=weights)
-    }, error = function(e){
-      # probably infinite slope, just fit normal lm
-      fit.lm <- lm(M.exprs ~ R.exprs, 
-                   weights=weights)
-      return(fit.lm)
-    })
+    fit.lm <- FitLmConstraint(M.exprs, R.exprs, weights, 
+                              int0, slope0, 
+                              intmin, slopemin, 
+                              intmax, slopemax)
+    
     return(list(saturation=fit.saturation, 
                 lm=fit.lm))
     
