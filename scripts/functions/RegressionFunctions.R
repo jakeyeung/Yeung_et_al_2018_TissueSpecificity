@@ -157,3 +157,19 @@ FitLmConstraint <- function(M.exprs, R.exprs, weights,
   })
   return(fit.lm)
 }
+
+PvalFromFit <- function(fit){
+  # From lm fit, get a pvalue from beta distribution of R squared value.
+  # http://www.combustion-modeling.com/downloads/beta-distribution-for-testing-r-squared.pdf
+  # for more details
+  # 
+  # Args:
+  # fit from lm
+  # 
+  # returns:
+  # pval from beta distribution of R squared value.
+  p <- summary(fit)$df[1]  # number of parameters in your model
+  n.minus.p <- summary(fit)$df[2]  # number of data points minus parameters
+  pval <- pbeta(R.squared, (p - 1)/2, n.minus.p / 2, lower.tail = FALSE, log.p = FALSE)
+  return(pval)
+}
