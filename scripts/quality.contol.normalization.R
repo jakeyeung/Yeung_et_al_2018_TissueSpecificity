@@ -13,7 +13,7 @@ source(file.path(scripts.dir, funcs.dir, "ReplaceNegs.R"))
 
 # define dirs
 data.dir <- "data"
-normalized.array.fname <- "array.adj.saturationfit.conservative.probes.selected.txt"
+normalized.array.fname <- "array.adj.saturationfit.conservative.slope.adj.txt"
 normalized.array.path <- file.path(data.dir, normalized.array.fname)
 rna.seq.fname <- "rna_seq_deseq_counts_colnames_fixed.txt"
 rna.seq.path <- file.path(data.dir, rna.seq.fname)
@@ -22,9 +22,6 @@ rna.seq.path <- file.path(data.dir, rna.seq.fname)
 
 normalized.array <- read.table(normalized.array.path)
 rna.seq.exprs <- read.table(rna.seq.path, header=TRUE, sep='\t')
-
-
-# Handle rnaseq -----------------------------------------------------------
 
 # Handle duplicate rownames: RNASEQ ------------------------------------
 
@@ -63,9 +60,9 @@ cat(paste0(problem.genes, collapse='", "'))
 
 # Replace negative values with 0 ------------------------------------------
 
-for (gene in problem.genes){
-  normalized.array[gene, ] <- ReplaceNegs(normalized.array[gene, ])
-}
+# for (gene in problem.genes){
+#   normalized.array[gene, ] <- ReplaceNegs(normalized.array[gene, ])
+# }
 
 # Plot density in log2 ----------------------------------------------------
 
