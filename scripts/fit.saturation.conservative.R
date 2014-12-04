@@ -14,6 +14,7 @@ mean.var.fit.outpath <- 'plots/mean.var.probes.pdf'
 
 array.adj.out <- 'data/array.adj.saturationfit.conservative.txt'
 fit.results.out <- 'data/saturation.fit.results.RData'
+fit.select.results.out <- 'data/saturation.fit.select.results.RData'
 
 # Functions ---------------------------------------------------------------
 
@@ -56,23 +57,31 @@ tissuegenes <- c(tissuegenes, "Elovl1","Slc35b3","Fkbp15","Slc39a8","Sep15","Mos
 
 # Problem genes -----------------------------------------------------------
 
+# interesting cases
 problematicgenes <- c("Tmem59l", "Saysd1", "H2.Q1", "Col25a1", "Clec18a", "X4930427A07Rik", 
                       "Ncan", "Crtam", "Fam43b", "Nphp4", "Nuf2", "Sox11", "Krt23", "Myo1h", 
                       "Mas1", "Cd207", "Tgif2", "Sdsl", "Gm8659", "Fsd1", "X2510049J12Rik", 
                       "X1600029I14Rik", "Syndig1l", "Cyp4x1", "E130309D14Rik", "Gm281", 
                       "Wdr27", "Daw1", "Tnfsf9", "Myo16")
 
-problemgenes <- c(problematicgenes, 'Gm4793', 'Sumo1', 'Prima1', 'Cinp', 'Rnf180', 'Gja3', 'Tnf', 
-                  'Plin4', 'Rpl9', 'Dapl1', 'Tsc22d2', 'Clspn', 'Gnat3', 'Nupl2', 
-                  'Tmem213', 'Ssbp1', 'Zfp746', 'Abhd13', 'Gtpbp3', 'Adam5', 
-                  'Lonrf1', 'Gm16380', 'Kri1', 'Csnk2a1.ps', 'Dusp9')
+# problem genes from array data without probe selection
+# problematicgenes <- c(problematicgenes, 'Gm4793', 'Sumo1', 'Prima1', 'Cinp', 'Rnf180', 'Gja3', 'Tnf', 
+#                   'Plin4', 'Rpl9', 'Dapl1', 'Tsc22d2', 'Clspn', 'Gnat3', 'Nupl2', 
+#                   'Tmem213', 'Ssbp1', 'Zfp746', 'Abhd13', 'Gtpbp3', 'Adam5', 
+#                   'Lonrf1', 'Gm16380', 'Kri1', 'Csnk2a1.ps', 'Dusp9')
+
+# problem genes from array data with probe selection
+problematicgenes <- c("Abhd13", "Adam5", "Cinp", "Clspn", "Csnk2a1.ps", 
+                      "Dapl1", "Dusp9", "Gja3", "Gm16380", "Gm4793", "Gnat3", "Gtpbp3", 
+                      "Kri1", "Lonrf1", "Nupl2", "Plin4", "Prima1", "Rnf180", "Rpl9", 
+                      "Ssbp1", "Tmem213", "Tnf", "Tsc22d2", "Zfp746")
 
 # Define dirs -------------------------------------------------------------
 
 # define dirs
 data.dir <- "data"
 fname.rna.seq <- "rna_seq_deseq_counts_colnames_fixed.txt"
-fname.array <- "array_exprs_colnames_fixed.txt"
+fname.array <- "array_exprs_colnames_fixed.best.probe.selected.txt"
 
 # Load file ---------------------------------------------------------------
 
@@ -169,7 +178,6 @@ points(bin.mean, bin.var)
 plot(x, y, col='red', lwd='2', type='l', main=paste0('Loess Fit. Bin size=', n.per.bin),
      xlab="bin.mean", ylab="bin.var", log="xy")
 points(bin.mean, bin.var)
-
 dev.off()
 
 
@@ -184,7 +192,7 @@ x.factor <- 1.2
 bg.factor <- 0.8
 
 # init vals: linear model
-slope0 <- 10
+slope0 <- 0.5
 int0 <- 10
 
 # init out list
@@ -261,7 +269,6 @@ for (gene in common.genes){
   fit.list[gene] <- list(fits)
 }
 
-
 # Save fit results to .RData ----------------------------------------------
 
 save(fit.list, file = fit.results.out)
@@ -279,6 +286,7 @@ for (gene in common.genes){
   fit.select.list[[gene]] <- fit.select
 }
 
+save(fit.select.list, file = fit.select.results.out)
 
 # Garbage collection ------------------------------------------------------
 
@@ -374,3 +382,8 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
   PlotAgainstRnaSeq(gene, log2(rna.seq.exprs.common.g + 1), log2(array.adj + 1), common.samples, y.max=y.max)
 }
 dev.off()
+
+
+# Garbage collect ---------------------------------------------------------
+
+rm(fit.select.list)
