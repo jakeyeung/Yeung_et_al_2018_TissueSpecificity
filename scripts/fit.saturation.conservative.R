@@ -273,6 +273,10 @@ for (gene in common.genes){
 
 save(fit.list, file = fit.results.out)
 
+# Garbage collection ------------------------------------------------------
+
+rm(fit.list)
+
 # F-test on saturation and linear fit ----------------------------------------
 
 fit.select.list <- vector(mode="list", length=length(common.genes))
@@ -288,9 +292,9 @@ for (gene in common.genes){
 
 save(fit.select.list, file = fit.select.results.out)
 
-# Garbage collection ------------------------------------------------------
+# Garbage collect ---------------------------------------------------------
 
-rm(fit.list)
+rm(fit.select.list)
 
 # Plot clock genes: diagnostics -------------------------------------------
 
@@ -383,7 +387,3 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
 }
 dev.off()
 
-
-# Garbage collect ---------------------------------------------------------
-
-rm(fit.select.list)
