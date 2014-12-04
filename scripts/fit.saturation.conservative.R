@@ -6,15 +6,15 @@
 
 pval <- 1.1  # for F-test between saturation model and linear model
 y.max <- 25  # for plotting
-diagnostics.plot.out <- 'plots/diagnostics.saturation.pdf'
-before.after.plot.out <- 'plots/before.after.saturation.pdf'
-side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.pdf'
+diagnostics.plot.out <- 'plots/diagnostics.saturation.slope.adj.0.3.pdf'
+before.after.plot.out <- 'plots/before.after.saturation.slope.adj.0.3.pdf'
+side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.slope.adj.0.3.pdf'
 
 mean.var.fit.outpath <- 'plots/mean.var.probes.pdf'
 
-array.adj.out <- 'data/array.adj.saturationfit.conservative.txt'
-fit.results.out <- 'data/saturation.fit.results.RData'
-fit.select.results.out <- 'data/saturation.fit.select.results.RData'
+array.adj.out <- 'data/array.adj.saturationfit.conservative.slope.adj.0.3.txt'
+fit.results.out <- 'data/saturation.fit.results.slope.adj.0.3.RData'
+fit.select.results.out <- 'data/saturation.fit.select.results.slope.adj.0.3.RData'
 
 # Functions ---------------------------------------------------------------
 
@@ -181,6 +181,25 @@ points(bin.mean, bin.var)
 dev.off()
 
 
+# Crazy loop to find best starting slope. ---------------------------------
+
+slopes <- seq(0.01, by=0.02, length.out=100)
+slope.n.neg.genes <- data.frame(n.neg.genes=rep(NA, length(slopes)), row.names=slopes)
+for (slope0 in slopes){
+  fit.results.out.slope <- paste0('data/sat.fit.', slope0, '.RData')
+  fit.select.results.out.slope <- paste0('data/sat.fit.select.', slope0, '.RData')
+  array.adj.out.slope <- paste0('data/array.adj.', slope0, '.txt')
+  diagnostics.plot.out.slope <- paste0('plots/diagnostics.plot.', slope0, '.pdf')
+  n.neg.genes <- FitSaturationCurveFindProblemGenes(slope0, 
+                                                    fit.results.out.slope,
+                                                    fit.select.results.out.slope,
+                                                    array.adj.out.slope,
+                                                    diagnostics.plot.out.slope)
+  print(paste(n.neg.genes, 'negative genes.'))
+  slope.n.neg.genes[toString(slope0), 1] <- n.neg.genes
+}
+
+
 
 # Fit saturation curve: 3 parameters --------------------------------------
 
@@ -192,7 +211,7 @@ x.factor <- 1.2
 bg.factor <- 0.8
 
 # init vals: linear model
-slope0 <- 0.5
+# slope0 <- 0.3
 int0 <- 10
 
 # init out list
@@ -224,13 +243,13 @@ for (gene in common.genes){
   M.var <- predict(fit.noise, M.exprs)
   # adjust M.var so all values less than 0 take on smallest non-negative number
   M.var.min <- min(M.var[which(M.var > 0)])
-  # if R.var.min is infinity, probably RNA-Seq has no expression, default weights to 1
+  # if M.var.min is infinity, probably RNA-Seq has no expression, default weights to 1
   if (is.infinite(M.var.min)){
     warning(paste("Gene:", gene, "...adjusting infinites to 1 for variance."))
     M.var.min <- 1
   }
-  M.var[which(M.var < 0)] <- R.var.min
-  weights <- 1 / R.var
+  M.var[which(M.var < 0)] <- M.var.min
+  weights <- 1 / M.var
   
   fits <- tryCatch({
     
@@ -273,10 +292,6 @@ for (gene in common.genes){
 
 save(fit.list, file = fit.results.out)
 
-# Garbage collection ------------------------------------------------------
-
-rm(fit.list)
-
 # F-test on saturation and linear fit ----------------------------------------
 
 fit.select.list <- vector(mode="list", length=length(common.genes))
@@ -291,10 +306,6 @@ for (gene in common.genes){
 }
 
 save(fit.select.list, file = fit.select.results.out)
-
-# Garbage collect ---------------------------------------------------------
-
-rm(fit.select.list)
 
 # Plot clock genes: diagnostics -------------------------------------------
 
@@ -363,6 +374,62 @@ write.table(array.adj, file = array.adj.out,
             quote=FALSE, sep='\t',
             row.names=TRUE, col.names=NA)
 
+
+# Check for problematic genes ---------------------------------------------
+
+# How many have negative values? ------------------------------------------
+
+negs <- apply(array.adj, 1, function(x){
+  if (min(x) < 0){
+    return(1)
+  } else {
+    return(0)
+  }
+})
+
+problem.genes <- names(negs[which(negs == 1)])
+
+print(paste('slope:', slope0, 'has', length(problem.genes), 'problem genes.'))
+
+# Plot diagnostics for problem genes --------------------------------------
+
+pdf(diagnostics.plot.out)
+par(mfrow = c(2,1))
+for (gene in c(problem.genes)){
+  fit.select <- fit.select.list[[gene]]
+  fit.used <- fit.select$fit.used  # either saturation or lm
+  myfit <- fit.select$myfit
+  
+  # Get vector of predicted values
+  x <- GetFullR(gene, rna.seq.exprs, common.samples)
+  y <- unlist(array.exprs[gene, ])
+  # x.predict <- seq(min(x)*0.8, max(x)*1.2, length.out=10*length(x))
+  y.predict <- seq(min(y)*0.8, max(y), length.out=10*length(y))
+  if (fit.used == "saturation"){
+    x.hat <- saturation.inv(coef(myfit), y.predict)
+  } else if (fit.used == "lm"){
+    x.hat <- linear.inv(coef(myfit), y.predict)
+  } else {
+    warning("Neither saturation nor lm")
+  }
+  
+  # plot 
+  params.str <- paste0(signif(as.vector(coef(myfit)), 2), collapse=",")
+  symbols <- GetUnobsObsSymbol(all.samples=colnames(array.exprs), common.samples, unobs=8, obs=1)
+  sizes <- GetUnobsObsSymbol(all.samples=colnames(array.exprs), common.samples, unobs=0.25, obs=1)
+  plot(x, y, main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
+       xlab="RNA-Seq DESeq-normalized counts",
+       ylab="Microarray normal scale")
+  lines(x.hat, y.predict)
+  plot(log2(x + 1), log2(y), main=paste0("Gene=", gene, " Params=", params.str), pch=symbols, cex=sizes,
+       xlab="RNA-Seq DESeq-normalized counts (log2)",
+       ylab="Microarray log2")
+  lines(log2(x.hat + 1), log2(y.predict))
+  
+}
+dev.off()
+
+
 # Plot before and after clockgenes ----------------------------------------
 
 pdf(before.after.plot.out)
@@ -387,3 +454,10 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
 }
 dev.off()
 
+Garbage collect ---------------------------------------------------------
+
+rm(fit.select.list)
+
+Garbage collection ------------------------------------------------------
+
+rm(fit.list)
