@@ -14,6 +14,7 @@ funcs.dir <- file.path('scripts', 'functions')
 source(file.path(funcs.dir, 'SampleNamehandler.R'))  # for shortening sample names
 source(file.path(funcs.dir, 'PcaPlotFunctions.R'))  # for visualizing PCA, periodoigrams
 source(file.path(funcs.dir, 'FourierFunctions.R'))  # for periodoigrams
+source(file.path(funcs.dir, 'GetTissueSpecificMatrix.R'))  # as name says
 
 MeanCenterAcrossGroups <- function(x, n.per.group=24) {
   # Input:
