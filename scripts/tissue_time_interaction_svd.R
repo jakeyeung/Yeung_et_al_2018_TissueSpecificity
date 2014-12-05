@@ -187,26 +187,11 @@ if (READ.FROM.TABLE == FALSE){
   
   Peek(dat)  # sample names are more readable...  
 } else {
+  # else: for after array adj, the colnames and rownames are all fixed and
+  # easily readable without processing afterwards...
   dat <- read.table(file.path(data_dir, fname))
   
-  # How many have negative values? ------------------------------------------
-  
-  negs <- apply(dat, 1, function(x){
-    if (min(x) < 0){
-      return(1)
-    } else {
-      return(0)
-    }
-  })
-  problem.genes <- names(negs[which(negs == 1)])
-  rm(negs)
-  
-  
-  # Remove problem genes from analysis --------------------------------------
-  
-  genes <- rownames(dat)
-  filtered.genes <- genes[which(!genes %in% problem.genes)]
-  dat <- dat[filtered.genes, ]
+  dat <- RemoveProblemGenes(dat)
   
   # log2 transform
   dat <- log2(dat + 1)
