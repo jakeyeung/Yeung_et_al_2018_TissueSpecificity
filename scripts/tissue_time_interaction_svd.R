@@ -5,10 +5,6 @@
 
 library(wordcloud)  # for showing text without jumbling
 
-# Constants ---------------------------------------------------------------
-
-epsilon <- 1  # RNA-Seq log2 transform to prevent infinities
-
 # Functions ---------------------------------------------------------------
 
 functions.dir <- 'scripts/functions'
@@ -16,6 +12,7 @@ source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 source(file.path(functions.dir, 'PcaPlotFunctions.R'))  # for PCA and periodogram calcs
 source(file.path(functions.dir, 'FourierFunctions.R'))  # for Fourier stuff
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
+source(file.path(functions.dir, 'GetTissueTimes.R'))  # for getting tissue times for adjusted data
 # PhaseToHsv package, loaded from github
 # install_github("naef-lab/PhaseHSV")
 library(PhaseHSV)
@@ -43,7 +40,7 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   }
   
   plot.colors <- hsv(h=PhaseToHsv(Arg(dat), -pi, pi), s=1, v=1)
-    
+  
   plot(dat, col=plot.colors, 
        xlim=c(axis.min, axis.max), 
        ylim=c(axis.min, axis.max), 
@@ -52,13 +49,16 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   abline(v=0)
   abline(h=0)
   if (length(dat) < 20){
-      text(dat, 
-           labels=text.labels, 
-           pos=3)
+    text(dat, 
+         labels=text.labels, 
+         pos=3)
   }
-
   
-  textplot(Re(dat), Im(dat), text.labels)
+  
+  textplot(Re(dat), Im(dat), text.labels, main=main,
+           xlim=c(axis.min, axis.max),
+           ylim=c(axis.min, axis.max),
+           cex=0.6)
   abline(v=0)
   abline(h=0)
 }
@@ -103,9 +103,9 @@ PlotExprs <- function(cond.time.vec,
   
   # create matrix from cond.time.vec
   exprs.mat <- matrix(cond.time.vec, 
-                          ncol=N.TIMEPTS, 
-                          nrow=N.CONDS, 
-                          byrow=TRUE)
+                      ncol=N.TIMEPTS, 
+                      nrow=N.CONDS, 
+                      byrow=TRUE)
   time.mat <- matrix(seq(from=0, by=INTERVAL, length.out=N.TIMEPTS), nrow=N.TIMEPTS, ncol=N.CONDS)
   matplot(time.mat, t(exprs.mat), type=c("b"), pch=c(1:N.CONDS), col=1:N.CONDS, main=main,
           xlab='Time', ylab='Exprs')
@@ -126,6 +126,7 @@ GetTissueNames <- function(tissue.names.all){
   return(tissues.names)
 } 
 
+
 # MAIN --------------------------------------------------------------------
 
 
@@ -135,17 +136,19 @@ N.TIMEPTS <- 24  # 24 time points, 2 hours per time point (over 48 hrs)
 N.TISSUES <- 12  # 12 tissues
 PERIOD <- 24  # 24 hours
 INTERVAL <- 2  # hours between samples
-
+epsilon <- 1  # RNA-Seq log2 transform to prevent infinities
+hsv.plots.out <- 'plots/time.hsv.plots.adj.pdf'
 
 # Load data ---------------------------------------------------------------
 
 # define dirs
 data_dir <- "data"
 # fname <- "hogenesch_2014_rma.genenames.txt"  # has duplicate gene names. Column names of BFAT and BS are switched (compared to RNASeq)
-fname <- "hogenesch_2014_rma.genenames.colnameordered.txt"  # column names match RNAseq
+# fname <- "hogenesch_2014_rma.genenames.colnameordered.txt"  # column names match RNAseq
+fname <- "array.adj.0.07.txt"
 # rdata.fname <- 'array.exprs.lm.adjusted.RData'  
 # load data, either by RData or from filename
-READ.FROM.TABLE <- TRUE
+READ.FROM.TABLE <- "direct"  # TRUE, FALSE, neither.
 
 if (READ.FROM.TABLE == FALSE){
   print('Read from RData')
@@ -154,10 +157,7 @@ if (READ.FROM.TABLE == FALSE){
   dat[which(dat < 0)] <- 0
   # log2 normalize it
   dat <- log2(dat + 1)
-}
-
-
-if (READ.FROM.TABLE == TRUE){
+} else if (READ.FROM.TABLE == TRUE){
   data_path <- file.path(data_dir, fname)
   print(paste("Reading data from,", data_path, "May take a few a minutes."))
   dat <- read.table(data_path, header=TRUE)
@@ -186,6 +186,33 @@ if (READ.FROM.TABLE == TRUE){
   }))
   
   Peek(dat)  # sample names are more readable...  
+} else {
+  dat <- read.table(file.path(data_dir, fname))
+  
+  # How many have negative values? ------------------------------------------
+  
+  negs <- apply(dat, 1, function(x){
+    if (min(x) < 0){
+      return(1)
+    } else {
+      return(0)
+    }
+  })
+  problem.genes <- names(negs[which(negs == 1)])
+  rm(negs)
+  
+  
+  # Remove problem genes from analysis --------------------------------------
+  
+  genes <- rownames(dat)
+  filtered.genes <- genes[which(!genes %in% problem.genes)]
+  dat <- dat[filtered.genes, ]
+  
+  # log2 transform
+  dat <- log2(dat + 1)
+  
+  Peek(dat)
+  dat.tissuenames <- GetTissues(samp.names=colnames(dat))
 }
 
 
@@ -204,7 +231,7 @@ dat.time.projected <- ProjectToPeriodicTime(as.matrix(dat),
 
 # Begin plots -------------------------------------------------------------
 
-pdf('plots/time.hsv.plots.pdf')
+pdf(hsv.plots.out)
 
 # PCA ---------------------------------------------------------------------
 
@@ -230,7 +257,7 @@ rownames(dat.pca$u) <- rownames(dat)
 for (i in 1:10){
   x <- Arg(dat.pca$v[, i])
   y <- Arg(dat.pca$v[, i + 1])
-  plot(x, y, main=paste0('TISSUE: PCA ', i, ' vs. ', 'PCA ', i + 1))
+  plot(x, y, main=paste0('Args: TISSUE: PCA ', i, ' vs. ', 'PCA ', i + 1))
   labels <- dat.tissuenames
   text(x, y, labels, pos=3)
 }
@@ -290,7 +317,7 @@ for (PCA in 1:5){
        pos=4,
        offset=0,
        xpd=TRUE, 
-       cex=0.9) 
+       cex=0.5) 
   # sample labels
   text(par("usr")[1] - 3, y, 
        labels = names(eigengene), 
@@ -349,7 +376,7 @@ dat.rnaseq <- log2(dat.rnaseq + epsilon)
 # In RNASeq, BFat and BStm need to be swapped so it matches order with microarray
 # easier for plotting visualization.
 
-top.N <- GetTopNValues(Mod(dat.pca$u[, 1]), 20)
+top.N <- GetTopNValues(Mod(dat.pca$u[, 1]), 100)
 top.genes <- names(top.N$vals)
 
 # filter original exprs data by top.N genes
