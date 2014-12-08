@@ -60,6 +60,7 @@ IsSimple <- function(fit, simple.df=3, complex.df=4){
   return(FALSE)
 }
 
+
 # Define dirs -------------------------------------------------------------
 
 # define dirs
@@ -167,11 +168,17 @@ for (gene in c(clockgenes, tissuegenes)){
   if (ftest.pval < pval.threshold) {
     # low pvalue, it is worth it to use a complex model
     fit <- fit.complex
-  } else
+    # get pval for complex model by comparing with model containing only intercepts
+    fit.flat <- lm(exprs ~ 0 + experiment, data = dat.gene.tiss)
+    ftest.flat <- anova(fit.flat, fit.complex)
+    pval <- ftest.flat["Pr(>F)"][[1]][2]
+  } else {
     # stick with simple model
     fit <- fit.simple
-  
-  pval <- PvalFromFit(fit)
+    fit.flat <- lm(exprs ~ 1, data = dat.gene.tiss)
+    ftest.flat <- anova(fit.flat, fit.complex)
+    pval <- ftest.flat["Pr(>F)"][[1]][2]
+  }
   
   fit.list[[gene]] <- list(fit=fit, pval=pval)
   
@@ -191,10 +198,12 @@ pval.df <- na.omit(pval.df)
 
 # Plot top genes ----------------------------------------------------------
 
-top.genes <- rownames(pval.df[with(pval.df, order(pvals)), ])
+pval.df.ordered <- pval.df[with(pval.df, order(pvals)), ]
+top.genes <- pval.df.ordered$gene
 
 pdf(fit.plot)
 for (gene in top.genes){
+  pval <- pval.df.ordered[gene, ]$pvals
   dat.gene.tiss <- subset(dat[dat$gene == gene, ], tissue=="Adr")
   dat.gene.tiss <- dat.gene.tiss[order(dat.gene.tiss$time), ]
   
@@ -209,7 +218,7 @@ for (gene in top.genes){
   t.rnaseq <- dat.gene.tiss[dat.gene.tiss$experiment=="rnaseq", ]$time
   
   # Plot GIVENS
-  plot(t.combined, y.combined, main=gene)
+  plot(t.combined, y.combined, main=paste(gene, "Pval:", signif(pval, 2)))
   points(t.rnaseq, y.rnaseq, pch='*')
   
   # BEGIN: get and plot y.models
