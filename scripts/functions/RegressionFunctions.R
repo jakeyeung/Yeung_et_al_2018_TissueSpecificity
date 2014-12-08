@@ -170,6 +170,7 @@ PvalFromFit <- function(fit){
   # pval from beta distribution of R squared value.
   p <- summary(fit)$df[1]  # number of parameters in your model
   n.minus.p <- summary(fit)$df[2]  # number of data points minus parameters
+  R.squared <- summary(fit)$r.squared[[1]]  # R.squared value of fit
   pval <- pbeta(R.squared, (p - 1)/2, n.minus.p / 2, lower.tail = FALSE, log.p = FALSE)
   return(pval)
 }
