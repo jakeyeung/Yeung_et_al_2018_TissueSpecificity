@@ -1,7 +1,16 @@
 # tissue.time.svd.integrated.R
 # Jake Yeung
-# Dec 2015
+# Dec 5 2015
 # Combine RNA-Seq wih microarray: do Fourier analysis
+
+
+# Functions ---------------------------------------------------------------
+
+scripts.dir <- "scripts"
+funcs.dir <- file.path(scripts.dir, "functions")
+source(file.path(funcs.dir, "DataHandlingFunctions.R"))
+source(file.path(funcs.dir, "GetTissueTimes.R"))
+source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 
 # Define dirs -------------------------------------------------------------
 
@@ -18,6 +27,11 @@ rna.seq.path <- file.path(data.dir, rna.seq.fname)
 normalized.array <- read.table(normalized.array.path)
 rna.seq.exprs <- read.table(rna.seq.path, header=TRUE, sep='\t')
 
+
+# Handle array ------------------------------------------------------------
+
+normalized.array <- RemoveProblemGenes(normalized.array)
+
 # Handle duplicate rownames: RNASEQ ------------------------------------
 
 rownames(rna.seq.exprs) <- make.names(rna.seq.exprs$gene, unique=TRUE)
@@ -27,6 +41,13 @@ rna.seq.exprs <- rna.seq.exprs[, !(names(rna.seq.exprs) %in% drop.cols)]
 
 Peek(rna.seq.exprs)  # expect gene names as row names, tissues in columns
 
+
+# Define common genes -----------------------------------------------------
+
+filtered.genes <- intersect(rownames(normalized.array), rownames(rna.seq.exprs))
+
+normalized.array <- normalized.array[filtered.genes, ]
+rna.seq.exprs <- rna.seq.exprs[filtered.genes, ]
 
 # Combine RNA-Seq with Array ----------------------------------------------
 
@@ -51,3 +72,4 @@ long.rnaseq <- data.frame(gene=rep(filtered.genes, length(tissues) * length(time
 dat <- rbind(long.array, long.rnaseq)
 
 str(dat)
+

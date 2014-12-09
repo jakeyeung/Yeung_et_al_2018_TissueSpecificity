@@ -138,9 +138,9 @@ ProjectToPeriodicTime <- function(Y , N.TISSUES, N.TIMEPTS, INTERVAL, OMEGA, col
 
 # test ProjectToPeriodicTIme
 #
-SHOWTHIS <- FALSE
+SHOWTHIS <- TRUE
 if (SHOWTHIS == TRUE){
-  ROWS <- 3
+  ROWS <- 12
   COLS <- 288
   n.timepts <- 24  # 24 time points per tissue
   n.tiss <- COLS / n.timepts
@@ -149,11 +149,17 @@ if (SHOWTHIS == TRUE){
   # w <- 0
   # use a cosine or sine function with period of 24 hours
   t <- seq(from=0, by=2, length.out=COLS)  # 0 to 48 hours sampled every 2 hrs. 12 tissues
-  y <- 3 * sin(w * t)
+  y <- 3 * sin(w * t + pi / 2)
   # y <- rep(1:n.tiss, each=n.timepts)
   Y <- matrix(y, nrow=ROWS, ncol=COLS, byrow = TRUE)
   out.colnames <- make.unique(rep('COL', n.tiss))
   rownames(Y) <- make.unique(rep('ROW', ROWS))
   (Y.t <- ProjectToPeriodicTime(Y, N.TISSUES=n.tiss, N.TIMEPTS=n.timepts, INTERVAL=2, OMEGA=w, out.colnames))
   (Mod(Y.t)) 
+  (Y.t)
+  
+  # DO SVD
+  Y.t[6:12] <- 2 * Y.t[6:12]
+  s <- svd(Y.t)
+  
 }
