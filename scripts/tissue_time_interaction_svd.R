@@ -13,6 +13,7 @@ source(file.path(functions.dir, 'PcaPlotFunctions.R'))  # for PCA and periodogra
 source(file.path(functions.dir, 'FourierFunctions.R'))  # for Fourier stuff
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
 source(file.path(functions.dir, 'GetTissueTimes.R'))  # for getting tissue times for adjusted data
+source(file.path(functions.dir, 'RemoveProblemGenes.R'))  # for getting tissue times for adjusted data
 # PhaseToHsv package, loaded from github
 # install_github("naef-lab/PhaseHSV")
 library(PhaseHSV)
