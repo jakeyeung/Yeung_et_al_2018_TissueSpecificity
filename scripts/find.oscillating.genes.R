@@ -30,6 +30,7 @@ source(file.path(scripts.dir, funcs.dir, "GetTissueTimes.R"))  # get tissue and 
 source(file.path(scripts.dir, funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "RegressionFunctions.R"))
 
+
 # oscillating function
 oscillate <- function(params, omega, t){
   params[1] + params[2] * cos(omega * t) + params[3] * sin(omega * t)
@@ -240,4 +241,3 @@ for (gene in top.genes){
          col=c("red", "blue", "orange"))  
 }
 dev.off()
-                                   
