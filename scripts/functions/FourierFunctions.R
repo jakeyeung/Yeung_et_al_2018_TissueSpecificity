@@ -130,14 +130,6 @@ ProjectToPeriodicTime <- function(Y , N.TISSUES, N.TIMEPTS, INTERVAL, OMEGA, col
     freq.adj <- Y.fft$freq / INTERVAL
     freq.i <- which(freq.adj == freq)
     Y.time.projected[, i] <- as.matrix(Y.fft$p.scaled)[, freq.i]
-    # print(i)
-    # print(Y.tissue.i)
-    # project tissues onto temporal axis
-    # if OMEGA = 0, it is equivalent to getting average of Y.tissue.i
-    # T <- exp(-1i * OMEGA * times.vec) / length(times.vec)
-    # Y.time.projected[, i] <- Y.tissue.i %*% T
-    # print(T)
-    # print(Y.time.projected[, i])
   }
   return(Y.time.projected)
 }
