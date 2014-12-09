@@ -14,6 +14,7 @@ source(file.path(functions.dir, 'FourierFunctions.R'))  # for Fourier stuff
 source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Data
 source(file.path(functions.dir, 'GetTissueTimes.R'))  # for getting tissue times for adjusted data
 source(file.path(functions.dir, 'RemoveProblemGenes.R'))  # for getting tissue times for adjusted data
+source(file.path(functions.dir, 'GetTopNValues.R'))  # getting top genes for PCA
 # PhaseToHsv package, loaded from github
 # install_github("naef-lab/PhaseHSV")
 library(PhaseHSV)
@@ -62,26 +63,6 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
            cex=0.6)
   abline(v=0)
   abline(h=0)
-}
-
-GetTopNValues <- function(x, N){
-  # Return top N values from vector x
-  # 
-  # ARGS:
-  # x: vector
-  # N: top N values to return
-  # 
-  # RETURNS:
-  # x.top: list with components
-  #   vals: top N values
-  #   i: indices of the top N values
-  
-  # init list
-  x.top <- list(vals=NULL, i=NULL)
-  
-  x.top$vals <- head(sort(x, decreasing=TRUE), N)
-  x.top$i <- which(x %in% x.top$vals)  # not ordered!
-  return(x.top)
 }
 
 PlotExprs <- function(cond.time.vec, 
