@@ -16,6 +16,8 @@ source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 
 # define dirs
 data.dir <- "data"
+unadj.array.fname <- "array_exprs_colnames_fixed.best.probe.selected.txt"
+unadj.array.path <- file.path(data.dir, unadj.array.fname)
 normalized.array.fname <- "array.adj.0.07.txt"
 normalized.array.path <- file.path(data.dir, normalized.array.fname)
 rna.seq.fname <- "rna_seq_deseq_counts_colnames_fixed.txt"
@@ -24,9 +26,26 @@ rna.seq.path <- file.path(data.dir, rna.seq.fname)
 
 # Load file ---------------------------------------------------------------
 
+unadj.array <- read.table(unadj.array.path, header=TRUE, sep='\t')
 normalized.array <- read.table(normalized.array.path)
 rna.seq.exprs <- read.table(rna.seq.path, header=TRUE, sep='\t')
 
+
+
+# Handle array unadjusted -------------------------------------------------
+
+# first column contained gene names
+rownames(unadj.array) <- make.names(unadj.array$gene, unique=TRUE)
+
+drop.cols <- c("gene")
+unadj.array <- unadj.array[, !(names(unadj.array) %in% drop.cols)]
+Peek(unadj.array)
+
+
+# Transform to normal scale -----------------------------------------------
+
+
+unadj.array <- 2^unadj.array
 
 # Handle array ------------------------------------------------------------
 
@@ -48,6 +67,7 @@ filtered.genes <- intersect(rownames(normalized.array), rownames(rna.seq.exprs))
 
 normalized.array <- normalized.array[filtered.genes, ]
 rna.seq.exprs <- rna.seq.exprs[filtered.genes, ]
+unadj.array <- unadj.array[filtered.genes, ]
 
 # Combine RNA-Seq with Array ----------------------------------------------
 
@@ -63,13 +83,29 @@ long.array <- data.frame(gene=rep(filtered.genes, length(tissues) * length(times
                          experiment=as.factor("array"),
                          exprs=unlist(normalized.array))
 
+long.array.unadj <- data.frame(gene=rep(filtered.genes, length(tissues) * length(times.array)),
+                               tissue=as.factor(rep(tissues, each=(length(filtered.genes) * length(times.array)))),
+                               time=as.numeric(rep(times.array, each=length(filtered.genes))),
+                               experiment=as.factor("unadj.array"),
+                               exprs=unlist(unadj.array))
+
 long.rnaseq <- data.frame(gene=rep(filtered.genes, length(tissues) * length(times.rnaseq)),
                           tissue=rep(tissues, each=(length(filtered.genes) * length(times.rnaseq))),
                           time=as.numeric(rep(times.rnaseq, each=length(filtered.genes))),
                           experiment=as.factor("rnaseq"),
                           exprs=unlist(rna.seq.exprs))
 
-dat <- rbind(long.array, long.rnaseq)
+dat <- rbind(long.array, long.rnaseq, long.array.unadj)
 
 str(dat)
+
+# Plot expression of a gene
+mygene <- "Serpina1b"
+tissues <- c("Aorta", "Liver", "BFAT", "WFAT", "Mus")
+experiments <- c("rnaseq")
+
+dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues & experiment %in% experiments))
+
+ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=tissue)) + geom_point() + geom_line() + ggtitle(mygene)
+
 
