@@ -138,7 +138,7 @@ ProjectToPeriodicTime <- function(Y , N.TISSUES, N.TIMEPTS, INTERVAL, OMEGA, col
 
 # test ProjectToPeriodicTIme
 #
-SHOWTHIS <- TRUE
+SHOWTHIS <- FALSE
 if (SHOWTHIS == TRUE){
   ROWS <- 12
   COLS <- 288
