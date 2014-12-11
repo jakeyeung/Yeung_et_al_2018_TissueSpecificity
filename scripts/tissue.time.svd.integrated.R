@@ -44,8 +44,7 @@ Peek(unadj.array)
 
 # Transform to normal scale -----------------------------------------------
 
-
-unadj.array <- 2^unadj.array
+unadj.array <- as.data.frame((2^unadj.array))
 
 # Handle array ------------------------------------------------------------
 
@@ -99,13 +98,22 @@ dat <- rbind(long.array, long.rnaseq, long.array.unadj)
 
 str(dat)
 
+
+# Collect garbage ---------------------------------------------------------
+
+rm(long.array, long.array.unadj, long.rnaseq)
+
+
+# Plot expressions --------------------------------------------------------
+
+
+
 # Plot expression of a gene
 mygene <- "Serpina1b"
-tissues <- c("Aorta", "Liver", "BFAT", "WFAT", "Mus")
-experiments <- c("rnaseq")
+tissues <- c("Mus")
+experiments <- c("rnaseq", "array", "unadj.array")
 
 dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues & experiment %in% experiments))
 
-ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=tissue)) + geom_point() + geom_line() + ggtitle(mygene)
-
+ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + geom_point(size=4) + geom_line() + ggtitle(paste(mygene, experiments))
 
