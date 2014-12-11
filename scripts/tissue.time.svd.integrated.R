@@ -107,14 +107,16 @@ rm(long.array, long.array.unadj, long.rnaseq)
 # Plot expressions --------------------------------------------------------
 
 # Plot expression of a gene
-mygene <- "Serpina1b"
-tissues <- c("Mus")
-experiments <- c("rnaseq", "array", "unadj.array")
+mygene <- "Svs4"
+tissues <- GetTissues(colnames(array.normalized)) 
+tissues.sub <- c("Adr", "Kidney", "WFAT")
+experiments <- c("array", "rnaseq")  # array, rnaseq, unadj.array
 
-dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues & experiment %in% experiments))
+dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues.sub & experiment %in% experiments))
 
 ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + 
   geom_point(size=4) + 
   geom_line() + 
-  ggtitle(paste(mygene, experiments))
+  ggtitle(paste(mygene))
+
 
