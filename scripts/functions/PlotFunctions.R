@@ -1,3 +1,53 @@
+PlotComplex <- function(complex.matrix, gene.list, labels,
+                        col="HSV", axis.min=-1.1, axis.max=1.1, 
+                        main='Plot title', 
+                        add.text.plot="TRUE"){
+  # Plot genes on complex plane
+  # 
+  # ARGS:
+  # complex matrix Gene expression. Genes are rows, samples are columns.
+  #   expect rownames in complex matrix whcih are gene names (and match genelist)
+  # gene.list Optionally filter by gene list
+  # colors Colors, if "HSV" compute HSV from angles using PhaseToHsv
+  
+  if (missing(gene.list)){
+    dat <- complex.matrix  
+  } else {
+    dat <- complex.matrix[gene.list, ]
+  }
+  if (missing(labels)){
+    text.labels <- rownames(dat)  
+  } else {
+    text.labels <- labels
+  }
+  
+  plot.colors <- hsv(h=PhaseToHsv(Arg(dat), -pi, pi), s=1, v=1)
+  
+  plot(dat, col=plot.colors, 
+       xlim=c(axis.min, axis.max), 
+       ylim=c(axis.min, axis.max), 
+       pch=20,
+       main=main)
+  abline(v=0)
+  abline(h=0)
+  if (length(dat) < 20){
+    text(dat, 
+         labels=text.labels, 
+         pos=3)
+  }
+  
+  if (add.text.plot){
+    textplot(Re(dat), Im(dat), text.labels, main=main,
+             xlim=c(axis.min, axis.max),
+             ylim=c(axis.min, axis.max),
+             cex=0.6)
+    abline(v=0)
+    abline(h=0) 
+  }
+}
+
+
+
 PlotRnaMicroarrayFit <- function(tissue, gene, coeff.mat, array.exprs, rna.seq.exprs, rna.tissue){
   # Plotting function when fitting array with expression RNA Seq with microarray.
   # 
