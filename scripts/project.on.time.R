@@ -14,6 +14,33 @@ source(file.path(funcs.dir, "FourierFunctions.R"))
 source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "PlotFunctions.R"))  # for plotting complex functions
 
+OuterComplex <- function(u, v){
+  # Given two complex vectors, get the outer product.
+  # 
+  # given u = x + i*y and v = x2 + i*y2, we want to get
+  # u * Conj(v) = (x + i*y) * (x2 - i*y2) = x*x2 - y*y2 - 1i (x*y2 - x2*y)
+  # 
+  # Note in R: using outer(u, v) returns (x + i*y) * (x2 + i*y2) which
+  # is not equivalent.
+  # 
+  # Args:
+  # u -> complex number/vector
+  # v -> complex number/vector
+  # 
+  # Returns
+  # o -> outer product of u and v (u * Conj(v))
+  # 
+  o <- u %*% Conj(v)
+  return(o)
+}
+
+GetMaxAcrossSets <- function(...){
+  datasets <- list(...)
+  max.across.sets <- max(sapply(datasets, function(x){
+    max(Mod(x))
+  }))
+}
+
 GetTopGenes <- function(dat, N="all"){
   # Args:
   # 
@@ -131,25 +158,24 @@ top.genes.rnaseq <- GetTopGenes(rna.seq.exprs.time, N=100)
 top.genes.intersect <- intersect(top.genes.unadj, top.genes.normalized)
 top.genes.intersect <- intersect(top.genes.intersect, top.genes.rnaseq)
 
-for (gene in top.genes.intersect){
-  max <- max(Mod(array.unadj.time[gene, ]))
-  PlotComplex(array.unadj.time, c(gene), 
-              labels = tissues, 
-              axis.min = -max, 
-              axis.max = max, 
-              main = gene, 
-              add.text.plot = FALSE)
-}
 
-for (gene in top.genes.intersect){
-  
-  
-  # lapply: dat is dat, name is experiment (for title)
-  lapply(list(list(dat=array.unadj.time, name="array.unadj"),
-              list(dat=array.normalized.time, name="array.normalized"),
-              list(dat=rna.seq.exprs.time, name="rnaseq")),
-         function(x, gene, labels){
-           max <- max(Mod(x$dat[gene, ]))
+# Plot genes: separate PDF for each dataset -------------------------------
+
+
+# Plot top genes: separate PDF for each data set.
+lapply(list(list(dat=array.unadj.time, name="array.unadj"),
+            list(dat=array.normalized.time, name="array.normalized"),
+            list(dat=rna.seq.exprs.time, name="rnaseq")),
+       function(x, gene.list, labels, 
+                array.unadj.time, array.normalized.time, rna.seq.exprs.time){
+         pdf(file.path("plots", paste0(x$name, ".pdf")))
+         for (gene in gene.list){
+           array.unadj.exprs <- array.unadj.time[gene, ]
+           array.normalized.exprs <- array.normalized.time[gene, ]
+           rna.seq.exprs <- rna.seq.exprs.time[gene, ]
+           max <- GetMaxAcrossSets(array.unadj.exprs, 
+                                   array.normalized.exprs, 
+                                   rna.seq.exprs)
            min <- -max
            PlotComplex(x$dat,
                        gene,
@@ -158,33 +184,120 @@ for (gene in top.genes.intersect){
                        min,
                        max,
                        main=paste(gene, x$name),
-                       add.text.plot=FALSE)
-         }, 
-         gene=c(gene),
-         labels=tissues)
-}
+                       add.text.plot=FALSE) 
+         }
+         dev.off()
+       }, 
+       gene.list=top.genes.intersect,
+       labels=tissues,
+       array.unadj.time=array.unadj.time,
+       array.normalized.time=array.normalized.time,
+       rna.seq.exprs.time=rna.seq.exprs.time)
 
-# array.unadj.time.mean <- sort(apply(array.unadj.time, 1, function(x){
-#   return(median(Mod(x)))
-# }), decreasing = TRUE)
-# 
-# (top.genes.unadj <- names(array.unadj.time.mean[1:20]))
-# 
-# for (gene in top.genes.unadj){
-#   max <- max(Mod(array.unadj.time[gene, ]))
-#   PlotComplex(array.unadj.time, c(gene), labels = tissues, 
-#               axis.min = -max, axis.max = max, main = gene, add.text.plot = FALSE)
-# }
-# 
-# array.adj.time.mean <- sort(apply(array.normalized.time, 1, function(x){
-#   return(median(Mod(x)))
-# }), decreasing = TRUE)
-# 
-# (top.genes.adj <- names(array.adj.time.mean[1:20]))
-# 
-# for (gene in top.genes.adj){
-#   max <- max(Mod(array.unadj.time[gene, ]))
-#   PlotComplex(array.unadj.time, c(gene), labels = tissues, 
-#               axis.min = -max, axis.max = max, main = gene, add.text.plot = FALSE)
-# }
+
+# Plot genes: ONE pdf for all 3 datasets ----------------------------------
+
+
+# Plot top genes: ONE pdf (subplots) for all 3 datasets.
+pdf(file.path("plots", "top.genes.complex.pdf"))
+par(mfrow = c(2,2))
+for (gene in top.genes.intersect){
+  lapply(list(list(dat=array.unadj.time, name="array.unadj"),
+              list(dat=array.normalized.time, name="array.normalized"),
+              list(dat=rna.seq.exprs.time, name="rnaseq")),
+         function(x, gene, labels, 
+                  array.unadj.time, array.normalized.time, rna.seq.exprs.time){
+           array.unadj.exprs <- array.unadj.time[gene, ]
+           array.normalized.exprs <- array.normalized.time[gene, ]
+           rna.seq.exprs <- rna.seq.exprs.time[gene, ]
+           max <- GetMaxAcrossSets(array.unadj.exprs, 
+                                   array.normalized.exprs, 
+                                   rna.seq.exprs)
+           # add a factor to max so it's not on the "edge"
+           max <- 1.2 * max
+           min <- -max
+           
+           PlotComplex(x$dat,
+                       gene,
+                       labels,
+                       col="HSV",
+                       min,
+                       max,
+                       main=paste(gene, x$name),
+                       add.text.plot=FALSE) 
+         },
+         gene = gene,
+         labels = tissues,
+         array.unadj.time = array.unadj.time,
+         array.normalized.time = array.normalized.time,
+         rna.seq.exprs.time = rna.seq.exprs.time)
+  frame()  # plot blank to fill in the 2x2 matrix of subplots.
+}
+dev.off()
+
+
+
+# Do SVD to see how the vector breaks down... -----------------------------
+
+s.unadj <- svd(array.unadj.time)
+s.norm <- svd(array.normalized.time)
+s.rnaseq <- svd(rna.seq.exprs.time)
+s.norm.orig <- svd(as.matrix(array.normalized))
+
+# Plot my screeplots
+lapply(list(list(dat=s.unadj, name="array.unadj"),
+            list(dat=s.norm, name="array.normalized"),
+            list(dat=s.rnaseq, name="rnaseq")), 
+       function(lst){
+         x <- lst$dat
+         main <- paste("Screeplot", lst$name)
+         plot(x$d / sum(x$d), type='o', main=main, 
+              xlab="Singular values",
+              ylab=expression(D[ii] / sum(D_ii)))
+})
+
+
+# Add rownames and colnames to my SVDs ------------------------------------
+
+rownames(s.unadj$u)  <- rownames(array.unadj.time)
+rownames(s.norm$u) <- rownames(array.normalized.time)
+rownames(s.rnaseq$u) <- rownames(rna.seq.exprs.time)
+rownames(s.norm.orig$u) <- rownames(array.normalized)
+
+rownames(s.unadj$v) <- colnames(array.unadj.time)
+rownames(s.norm$v) <- colnames(array.normalized.time)
+rownames(s.rnaseq$v) <- colnames(rna.seq.exprs.time)
+rownames(s.norm.orig$v) <- colnames(array.normalized)
+
+
+
+# Let’s look at clock genes... --------------------------------------------
+
+clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2', 
+                'Bhlhe41', 'Nfil3', 'Cdkn1a', 'Lonrf3', 
+                'Tef', 'Usp2', 'Wee1', 'Dtx4', 'Asb12')
+clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
+
+gene <- c("Nr1d1")
+tissue <- "Liver"
+component <- 1
+s <- s.norm
+orig <- array.normalized.time
+n.components <- ncol(orig)
+
+(exprs.complex <- orig[gene, tissue])
+
+exprs.uv.vector <- vector(length = n.components)
+for (component in seq(1, n.components)){
+  # exprs.uv <- s$d[component] * outer(s$u[gene, component], s$v[tissue, component])
+  # exprs.uv <- s$u[gene, component] * s$d[component] * Conj(s$v[tissue, component])
+  exprs.uv <- s$u[gene, component] * OuterComplex(s$d[component], s$v[tissue, component])
+  exprs.uv.vector[component] <- exprs.uv
+}
+print(sum(exprs.uv.vector))
+
+
+
+
+
 
