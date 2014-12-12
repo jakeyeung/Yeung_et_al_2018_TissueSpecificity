@@ -81,32 +81,37 @@ colnames(dat.svd$v) <- colnames(dat.time.projected)
 
 # Get top 100 genes -------------------------------------------------------
 
+pdf("plots/entropy.gene.loadings.pdf")
 top.n <- 100
-tops <- GetTopNValues(Mod(dat.svd$u[, component]), top.n)
-top.genes <- names(dat.svd$u[names(tops$vals), component])
-
-# Calculate entropy measure -----------------------------------------------
-# get "relative abundance" measurement for each gene across eigensamples
-p.total <- apply(dat.svd$u, 1, function(M){
-  p.gene <- sum(Mod(M) ^ 2)
-  return(p.gene)
-})
-
-# get matrix normalized by p.total
-p <- Mod(dat.svd$u) ^ 2 / p.total
-p <- p[complete.cases(p), ]
-
-H <- apply(p, 1, function(x){
-  # Calculate entropy
-  sum(x * log(1 / x)) 
-})
-
-par(mfrow = c(2, 1))
-plot(density(H), xlim=c(0, 2.5))
-abline(v = mean(H))
-abline(v = median(H), col='blue')
-
-plot(density(H[top.genes]), xlim=c(0, 2.5))
-abline(v = mean(H[top.genes]))
-abline(v = median(H[top.genes]), col='blue')
-par(mfrow = c(1, 1))
+components <- seq(1, length(dat.svd$d))
+for (component in components){
+  tops <- GetTopNValues(Mod(dat.svd$u[, component]), top.n)
+  top.genes <- names(dat.svd$u[names(tops$vals), component])
+  
+  # Calculate entropy measure -----------------------------------------------
+  # get "relative abundance" measurement for each gene across eigensamples
+  p.total <- apply(dat.svd$u, 1, function(M){
+    p.gene <- sum(Mod(M) ^ 2)
+    return(p.gene)
+  })
+  
+  # get matrix normalized by p.total
+  p <- Mod(dat.svd$u) ^ 2 / p.total
+  p <- p[complete.cases(p), ]
+  
+  H <- apply(p, 1, function(x){
+    # Calculate entropy
+    sum(x * log(1 / x)) 
+  })
+  
+  par(mfrow = c(2, 1))
+  plot(density(H), xlim=c(0, 2.5), main=paste("Density of H across all genes"))
+  abline(v = mean(H))
+  abline(v = median(H), col='blue')
+  
+  plot(density(H[top.genes]), xlim=c(0, 2.5), main=paste("Density of H across top", top.n, "genes. Component", component))
+  abline(v = mean(H[top.genes]))
+  abline(v = median(H[top.genes]), col='blue')
+  
+  dev.off() 
+}
