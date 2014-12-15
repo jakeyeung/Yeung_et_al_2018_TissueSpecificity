@@ -1,6 +1,7 @@
 PlotComplex <- function(complex.matrix, gene.list, labels,
                         col="HSV", axis.min=-1.1, axis.max=1.1, 
                         main='Plot title', 
+                        rotate=0,
                         add.text.plot="TRUE"){
   # Plot genes on complex plane
   # 
@@ -9,6 +10,12 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   #   expect rownames in complex matrix whcih are gene names (and match genelist)
   # gene.list Optionally filter by gene list
   # colors Colors, if "HSV" compute HSV from angles using PhaseToHsv
+  # axis.min: x and y axis min
+  # axis.max: x and y axis max
+  # main: title
+  # rotate: rotate counter clockwise by how many radians? This gives start.angle
+  # add.text.plot: add an optional text plot: useful if your gene list is huge.
+  
   
   if (missing(gene.list)){
     dat <- complex.matrix  
@@ -20,6 +27,10 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   } else {
     text.labels <- labels
   }
+  
+  # rotate 
+  rotation <- complex(modulus = 1, argument = rotate)
+  dat <- dat * rotation
   
   plot.colors <- hsv(h=PhaseToHsv(Arg(dat), -pi, pi), s=1, v=1)
   
