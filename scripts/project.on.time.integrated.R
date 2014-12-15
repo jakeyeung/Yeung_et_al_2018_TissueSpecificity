@@ -21,7 +21,7 @@ PlotVectorArrows <- function(complex.vector, main="plot title", arrow.size=0.5){
   # plot of sum of vector of complex numbers reaching its "destination" (i.e. sum of complex.vector)
   max <- 1.5*max(Mod(complex.vector))
   # plot "destination"
-  plot(sum(complex.vector), xlim=c(-max, max), ylim=c(-max, max))
+  points(sum(complex.vector), xlim=c(-max, max), ylim=c(-max, max))
   abline(h=0)
   abline(v=0)
   
@@ -156,18 +156,31 @@ tissue <- "Liver"
 n.components <- length(s$d)
 
 outer.prods <- vector(length = n.components)
+outer.prods <- list()
 
-for (component in seq(1, n.components)){
-  outer.prod <- s$d[component] * OuterComplex(s$u[gene, component], s$v[tissue, component])
-  outer.prods[component] <- outer.prod
+for (gene in clockgenes){
+  for (tissue in tissues){
+    outer.prod.vector <- vector(length=n.components)
+    for (component in seq(1, n.components)){
+      outer.prod <- s$d[component] * OuterComplex(s$u[gene, component], s$v[tissue, component]) 
+      outer.prod.vector[component] <- outer.prod
+    }
+    outer.prods[[gene]][[tissue]] <- outer.prod.vector
+  }  
 }
-print(sum(outer.prods))
-print(Y.gcs[gene, tissue])
-
 
 
 # Plot as sum of vectors --------------------------------------------------
 
-PlotVectorArrows(outer.prods, arrow.size = 0.1)
+for (gene in clockgenes){
+  max <- max(sapply(outer.prods[[gene]], function(x){
+    max(Mod(x))
+  }))
+  plot(0, type="n", xlab="", ylab="", xlim=c(-max, max), ylim=c(-max, max), main=gene)
+  for (tissue in tissues){
+    PlotVectorArrows(outer.prods[[gene]][[tissue]], arrow.size = 0.1)
+  }
+}
+
 
 
