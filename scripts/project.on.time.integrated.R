@@ -11,6 +11,33 @@ source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 source(file.path(funcs.dir, "PlotFunctions.R"))  # for plotting complex functions
 
+PlotVectorArrows <- function(complex.vector, main="plot title", arrow.size=0.5){
+  # Plot vector of complex numbers as additive arrows.
+  # 
+  # Args: 
+  # complex.vector: vector of complex numbers whose sum means something...
+  #
+  # Returns:
+  # plot of sum of vector of complex numbers reaching its "destination" (i.e. sum of complex.vector)
+  max <- 1.5*max(Mod(complex.vector))
+  # plot "destination"
+  plot(sum(complex.vector), xlim=c(-max, max), ylim=c(-max, max))
+  abline(h=0)
+  abline(v=0)
+  
+  # plot sum of arrows
+  x0 <- 0  # start from origin
+  y0 <- 0  # start from origin
+  for (i in seq(1, length(complex.vector))){
+    complex.val <- complex.vector[i]
+    x1 <- x0 + Re(complex.val)
+    y1 <- y0 + Im(complex.val)
+    arrows(x0, y0, x1, y1, length=arrow.size)
+    # redefine new starts as end of vector.
+    x0 <- x1
+    y0 <- y1
+  }
+}
 
 # Define dirs -------------------------------------------------------------
 
@@ -98,11 +125,49 @@ clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2',
 clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
 
 for (gene in clockgenes){
+  exprs <- Y.gcs[gene, ]
   max <- max(Mod(exprs))
-  PlotComplex(Y.gcs, gene.list = c(gene), 
-              labels = tissues, col = "HSV", 
+  PlotComplex(exprs, 
+              labels = tissues, 
+              col = "HSV", 
               axis.min = -max, 
               axis.max = max, 
               main = gene, 
+              rotate = pi / 2,
               add.text.plot = FALSE)
 }
+
+
+# Let’s SVD this ----------------------------------------------------------
+
+s <- svd(Y.gcs)
+
+
+# Rowname colname of SVD --------------------------------------------------
+
+rownames(s$u) <- filtered.genes
+rownames(s$v) <- tissues
+
+
+# Add up outer products ---------------------------------------------------
+
+gene <- "Arntl"
+tissue <- "Liver"
+n.components <- length(s$d)
+
+outer.prods <- vector(length = n.components)
+
+for (component in seq(1, n.components)){
+  outer.prod <- s$d[component] * OuterComplex(s$u[gene, component], s$v[tissue, component])
+  outer.prods[component] <- outer.prod
+}
+print(sum(outer.prods))
+print(Y.gcs[gene, tissue])
+
+
+
+# Plot as sum of vectors --------------------------------------------------
+
+PlotVectorArrows(outer.prods, arrow.size = 0.1)
+
+
