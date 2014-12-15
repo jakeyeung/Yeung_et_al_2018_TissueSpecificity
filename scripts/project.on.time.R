@@ -87,10 +87,6 @@ array.unadj <- array.unadj[, !(names(array.unadj) %in% drop.cols)]
 Peek(array.unadj)
 
 
-# Transform to normal scale -----------------------------------------------
-
-array.unadj <- as.data.frame((2^array.unadj))
-
 # Handle array ------------------------------------------------------------
 
 array.normalized <- RemoveProblemGenes(array.normalized)
@@ -104,6 +100,11 @@ rna.seq.exprs <- rna.seq.exprs[, !(names(rna.seq.exprs) %in% drop.cols)]
 
 Peek(rna.seq.exprs)  # expect gene names as row names, tissues in columns
 
+# Transform to log2 scale -----------------------------------------------
+
+# array.unadj <- as.data.frame((2^array.unadj))
+array.normalized <- as.data.frame(log2(array.normalized + 1))
+rna.seq.exprs <- as.data.frame(log2(rna.seq.exprs + 1))
 
 # Define common genes -----------------------------------------------------
 
@@ -112,7 +113,6 @@ filtered.genes <- intersect(rownames(array.normalized), rownames(rna.seq.exprs))
 array.normalized <- array.normalized[filtered.genes, ]
 rna.seq.exprs <- rna.seq.exprs[filtered.genes, ]
 array.unadj <- array.unadj[filtered.genes, ]
-
 
 
 # Do SVD ------------------------------------------------------------------
@@ -279,6 +279,7 @@ clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2',
 clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
 
 gene <- c("Nr1d1")
+# gene <- rownames(array.normalized.time)
 tissue <- "Liver"
 component <- 1
 s <- s.norm
@@ -288,10 +289,11 @@ n.components <- ncol(orig)
 (exprs.complex <- orig[gene, tissue])
 
 exprs.uv.vector <- vector(length = n.components)
+
 for (component in seq(1, n.components)){
   # exprs.uv <- s$d[component] * outer(s$u[gene, component], s$v[tissue, component])
   # exprs.uv <- s$u[gene, component] * s$d[component] * Conj(s$v[tissue, component])
-  exprs.uv <- s$u[gene, component] * OuterComplex(s$d[component], s$v[tissue, component])
+  exprs.uv <- s$d[component] * OuterComplex(s$u[gene, component], s$v[tissue, component])
   exprs.uv.vector[component] <- exprs.uv
 }
 print(sum(exprs.uv.vector))
