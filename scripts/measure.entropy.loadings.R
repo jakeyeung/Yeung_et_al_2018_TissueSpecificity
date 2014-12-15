@@ -68,7 +68,7 @@ dat.time.projected <- ProjectToPeriodicTime(as.matrix(array.dat),
 
 # SVD decomposition -------------------------------------------------------
 
-dat.svd <- svd(Mod(dat.time.projected))  # not scaled
+dat.svd <- svd(dat.time.projected)  # not scaled
 plot(dat.svd$d^2, type='o')  # Manual screeplot. 
 print(lapply(dat.svd, dim))  # $u is 12x12, $v is k-genes x 12
 
@@ -76,12 +76,13 @@ print(lapply(dat.svd, dim))  # $u is 12x12, $v is k-genes x 12
 # Get column and row names ------------------------------------------------
 
 rownames(dat.svd$u) <- rownames(dat.time.projected)
-colnames(dat.svd$v) <- colnames(dat.time.projected)
+rownames(dat.svd$v) <- colnames(dat.time.projected)
 
 
 # Get top 100 genes -------------------------------------------------------
 
 pdf("plots/entropy.gene.loadings.pdf")
+plot(dat.svd$d, type='o')
 top.n <- 100
 components <- seq(1, length(dat.svd$d))
 for (component in components){
@@ -111,7 +112,6 @@ for (component in components){
   
   plot(density(H[top.genes]), xlim=c(0, 2.5), main=paste("Density of H across top", top.n, "genes. Component", component))
   abline(v = mean(H[top.genes]))
-  abline(v = median(H[top.genes]), col='blue')
-  
-  dev.off() 
+  abline(v = median(H[top.genes]), col='blue') 
 }
+dev.off() 
