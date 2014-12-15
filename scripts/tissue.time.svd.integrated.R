@@ -4,6 +4,11 @@
 # Combine RNA-Seq wih microarray: do Fourier analysis
 
 
+# Define constants --------------------------------------------------------
+
+tissues <- GetTissues(colnames(array.normalized)) 
+
+
 # Functions ---------------------------------------------------------------
 
 scripts.dir <- "scripts"
@@ -107,10 +112,9 @@ rm(long.array, long.array.unadj, long.rnaseq)
 # Plot expressions --------------------------------------------------------
 
 # Plot expression of a gene
-mygene <- "Svs4"
-tissues <- GetTissues(colnames(array.normalized)) 
-tissues.sub <- c("Adr", "Kidney", "WFAT")
-experiments <- c("array", "rnaseq")  # array, rnaseq, unadj.array
+mygene <- "Sparc"
+tissues.sub <- c("Adr", "Aorta", "Kidney", "WFAT")
+experiments <- c("rnaseq")  # array, rnaseq, unadj.array
 
 dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues.sub & experiment %in% experiments))
 
@@ -118,5 +122,4 @@ ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment))
   geom_point(size=4) + 
   geom_line() + 
   ggtitle(paste(mygene))
-
 
