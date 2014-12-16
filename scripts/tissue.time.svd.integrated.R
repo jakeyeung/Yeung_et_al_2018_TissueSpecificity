@@ -111,15 +111,57 @@ rm(long.array, long.array.unadj, long.rnaseq)
 
 # Plot expressions --------------------------------------------------------
 
+
+# Load genes from file ----------------------------------------------------
+
+modules <- seq(5)
+N <- 20  # get top 100 genes
+
+for (module in modules){
+  fname <- file.path("results", paste0("module_", module, "_genes.txt"))
+  outfile <- file.path("plots", paste0("module_", module, "_genes.exprs.pdf"))
+  pdf(outfile)
+  gene.list <- system(paste("cut -f1", fname), intern = TRUE)[1:N]
+  for (gene in gene.list){
+    dat.sub <- subset(dat, (gene == gene & experiment == "array"))
+    m <- ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + 
+      geom_point(size=4) + 
+      geom_line() + 
+      ggtitle(paste(mygene)) 
+    print(m)
+  }
+  dev.off()
+}
+
 # Plot expression of a gene
-mygene <- "Sparc"
-tissues.sub <- c("Adr", "Aorta", "Kidney", "WFAT")
-experiments <- c("rnaseq")  # array, rnaseq, unadj.array
+# cool genes from module 1 of SVD analysis...
+gene.list <- c("Serpine1", "Lonrf1", "Asb12", "Spon2", "Pnpla3", "Dhrs9", "Cys1", "Tspan4", "Svs5", "Fam124b", "Lcn9", "Rorc", "Crisp1")
+# tissues.sub <- c("Adr", "Aorta", "Kidney", "WFAT")
+tissues.sub <- tissues
+experiments <- c("array")  # array, rnaseq, unadj.array
 
-dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues.sub & experiment %in% experiments))
+for (mygene in gene.list){
+  dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues.sub & experiment %in% experiments))
+  m <- ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + 
+      geom_point(size=4) + 
+      geom_line() + 
+      ggtitle(paste(mygene)) 
+  print(m)
+}
 
-ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + 
-  geom_point(size=4) + 
-  geom_line() + 
-  ggtitle(paste(mygene))
+# plot top genes from module 2 of SVD analysis
+gene.list <- c("Lcn8", "Gpx5", "Ly6g5b", "Lcn9", "Cst8", "Defb47", "Ly6g5c")
+tissues.sub <- tissues
+experiments <- c("array", "rnaseq")
+
+for (mygene in gene.list){
+  dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues.sub & experiment %in% experiments))
+  m <- ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + 
+    geom_point(size=4) + 
+    geom_line() + 
+    ggtitle(paste(mygene)) 
+  print(m)
+}
+
+
 
