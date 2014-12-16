@@ -11,17 +11,22 @@ source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 source(file.path(funcs.dir, "PlotFunctions.R"))  # for plotting complex functions
 
-PlotVectorArrows <- function(complex.vector, main="plot title", arrow.size=0.5){
+PlotVectorArrows <- function(complex.vector, exprs,
+                             main="plot title", 
+                             arrow.size=0.5,
+                             dot.size=3){
   # Plot vector of complex numbers as additive arrows.
+  # Please plot a blank plot first then run this.
+  # e.g. plot(0, type="n", xlab="", ylab="", xlim=c(-max, max), ylim=c(-max, max), main=gene)
   # 
   # Args: 
   # complex.vector: vector of complex numbers whose sum means something...
+  # exprs: complex number representing original expression
   #
   # Returns:
   # plot of sum of vector of complex numbers reaching its "destination" (i.e. sum of complex.vector)
-  max <- 1.5*max(Mod(complex.vector))
   # plot "destination"
-  points(sum(complex.vector), xlim=c(-max, max), ylim=c(-max, max))
+  points(exprs, cex=dot.size)
   abline(h=0)
   abline(v=0)
   
@@ -151,15 +156,19 @@ rownames(s$v) <- tissues
 
 # Add up outer products ---------------------------------------------------
 
-gene <- "Arntl"
-tissue <- "Liver"
+# gene <- "Arntl"
+# tissue <- "Liver"
 n.components <- length(s$d)
+n.components <- 3
 
 outer.prods <- vector(length = n.components)
 outer.prods <- list()
 
-for (gene in clockgenes){
-  for (tissue in tissues){
+gene.list <- clockgenes
+tissue.subset <- c("Liver", "Heart", "BS")
+
+for (gene in gene.list){
+  for (tissue in tissue.subset){
     outer.prod.vector <- vector(length=n.components)
     for (component in seq(1, n.components)){
       outer.prod <- s$d[component] * OuterComplex(s$u[gene, component], s$v[tissue, component]) 
@@ -172,15 +181,18 @@ for (gene in clockgenes){
 
 # Plot as sum of vectors --------------------------------------------------
 
-for (gene in clockgenes){
-  max <- max(sapply(outer.prods[[gene]], function(x){
-    max(Mod(x))
+for (gene in gene.list){
+  jmax <- 3 * sum(sapply(outer.prods[[gene]], function(x){
+      max(Mod(x))
   }))
-  plot(0, type="n", xlab="", ylab="", xlim=c(-max, max), ylim=c(-max, max), main=gene)
-  for (tissue in tissues){
-    PlotVectorArrows(outer.prods[[gene]][[tissue]], arrow.size = 0.1)
+  plot(0, type="n", xlab="", ylab="", xlim=c(-jmax, jmax), ylim=c(-jmax, jmax), main=gene)
+  for (tissue in tissue.subset){
+    exprs <- Y.gcs[gene, tissue]
+    PlotVectorArrows(outer.prods[[gene]][[tissue]], exprs, arrow.size = 0.1, dot.size=1.5)
   }
 }
+
+
 
 
 
