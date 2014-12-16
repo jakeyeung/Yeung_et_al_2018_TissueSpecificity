@@ -196,7 +196,9 @@ for (gene in gene.list){
 
 # Look at U and V matrices separately. ------------------------------------
 
-components <- c(1)
+components <- c(1, 2, 3, 4, 5)
+
+# intersect.genes <- filtered.genes
 
 for (component in components){
   top.genes <- GetTopNValues(Mod(s$u[, component]), N = 100)  # list of $vals $i
@@ -207,6 +209,10 @@ for (component in components){
   # outer.prod.mat <- outer.prod.mat[order.phase, ]
   outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat)
   PlotArgsMatrix(outer.prod.mat, main=paste("Component:", component))
+  # intersect.genes <- intersect(intersect.genes, names(top.genes$vals))
+  print(paste('-------------------Module', component))
+  cat(paste0(names(top.genes$vals), collapse = '\n'))
+  cat('\n')
 }
 
 
