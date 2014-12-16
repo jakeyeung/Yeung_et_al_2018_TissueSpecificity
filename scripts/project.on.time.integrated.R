@@ -12,6 +12,23 @@ source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 source(file.path(funcs.dir, "PlotFunctions.R"))  # for plotting complex functions
 source(file.path(funcs.dir, "GetTopNValues.R"))
 
+WriteGenesToFile <- function(named.vector, outfile){
+  # Write a named vector to file. First column genes, second column values.
+  # 
+  # Args:
+  # named.vector: vector that has values and is named (e.g. output of GetTopNValues, $vals)
+  # fileConn <- file(outfile)
+  for (i in seq(length(named.vector))){
+    value <- named.vector[i]
+    gene <- names(value)
+    row <- paste0(c(gene, value), collapse = "\t")
+    row <- paste0(c(row, "\n"), collapse = "")
+    # writeLines(row, fileConn)
+    cat(row, file=outfile, append=TRUE)
+  }
+  # close(fileConn)
+}
+
 PlotVectorArrows <- function(complex.vector, exprs,
                              main="plot title", 
                              arrow.size=0.5,
@@ -201,6 +218,7 @@ components <- c(1, 2, 3, 4, 5)
 # intersect.genes <- filtered.genes
 
 for (component in components){
+  outfile <- paste0("results/module_", component, "_genes.txt")
   top.genes <- GetTopNValues(Mod(s$u[, component]), N = 100)  # list of $vals $i
   # only take top.genes from U (makes it smaller, for visualization purposes)
   outer.prod.mat <- s$d[component] * OuterComplex(s$u[top.genes$i, component, drop = FALSE], t(s$v[, component]))
@@ -210,9 +228,12 @@ for (component in components){
   outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat)
   PlotArgsMatrix(outer.prod.mat, main=paste("Component:", component))
   # intersect.genes <- intersect(intersect.genes, names(top.genes$vals))
-  print(paste('-------------------Module', component))
-  cat(paste0(names(top.genes$vals), collapse = '\n'))
-  cat('\n')
+#   print(paste('-------------------Module', component))
+#   cat(paste0(names(top.genes$vals), collapse = '\n'))
+#   cat('\n')
+  # write all genes to file (ordered by values)
+  top.genes.all <- GetTopNValues(Mod(s$u[, component]), N = length(s$u[, component]))
+  WriteGenesToFile(top.genes.all$vals, outfile)
 }
 
 
