@@ -269,3 +269,40 @@ PlotDiagnostics <- function(gene, array.exprs, rna.seq.exprs,
   
   par(mfrow=c(1,1))
 }
+
+PlotArgsMatrix <- function(complex.mat, colors, main = "Title"){
+  if (missing(colors)){
+    hues <- seq(from=0, to=1, length.out=100)
+    colors <- hsv(h=hues, s=1, v=1)
+  }
+  # --------- BEGIN: PLOT MATRIX OF PHASE ANGLES ----------------- # 
+  # 
+  # order by phase angle
+  y <- 1:ncol(complex.mat)  # length of 12, genes are mix of these.
+  x <- 1:nrow(complex.mat)  # length of top.N. samples are mix of these.
+  par(mar=c(6.1, 5.1, 4.1, 2.1))
+  image(x, y, Arg(complex.mat),
+        col=colors,
+        main=main, 
+        axes=FALSE, xlab="", ylab="")
+  axis(1, at=x, labels=FALSE, tick=FALSE)
+  axis(2, at=y, labels=FALSE, tick=FALSE)
+  # Now draw the textual axis labels
+  # gene labels
+  text(x, par("usr")[3] - 1.5,
+       labels=rownames(complex.mat),
+       srt=90, 
+       pos=4,
+       offset=0,
+       xpd=TRUE, 
+       cex=0.5) 
+  # sample labels
+  text(par("usr")[1] - .3, y, 
+       labels = colnames(complex.mat), 
+       srt=0, 
+       pos=2, 
+       offset=0,
+       xpd=TRUE, 
+       cex=1.5) 
+  # ---------- END: PLOT MATRIX OF PHASE ANGLES ------------------- # 
+}
