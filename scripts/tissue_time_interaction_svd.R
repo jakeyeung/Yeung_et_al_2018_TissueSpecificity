@@ -15,6 +15,7 @@ source(file.path(functions.dir, 'DataHandlingFunctions.R'))  # for peeking at Da
 source(file.path(functions.dir, 'GetTissueTimes.R'))  # for getting tissue times for adjusted data
 source(file.path(functions.dir, 'RemoveProblemGenes.R'))  # for getting tissue times for adjusted data
 source(file.path(functions.dir, 'GetTopNValues.R'))  # getting top genes for PCA
+source(file.path(functions.dir, 'OuterComplex.R'))
 # PhaseToHsv package, loaded from github
 # install_github("naef-lab/PhaseHSV")
 library(PhaseHSV)
@@ -254,7 +255,7 @@ for (PCA in 1:5){
   # eigensample is large (k by 12), filter to top top.N genes...
   eigensample <- dat.pca$u[top.N$i, PCA]  # columns are eigensamples (samples are mix of these). u is top.N$i x 12
   # get pca.matrix by outer product of eigengene and eigensample. 
-  pca.matrix <- eigenvalue * outer(eigensample, eigengene)
+  pca.matrix <- eigenvalue * OuterComplex(eigensample, t(eigengene))  # POSSIBLE BUG: OUTER IS COMPLEX!
   colnames(pca.matrix) <- dat.tissuenames
 
   # set colors, HUES, SATURATIOn, VALUE (HSV)
