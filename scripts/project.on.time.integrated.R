@@ -10,6 +10,7 @@ source(file.path(funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 source(file.path(funcs.dir, "PlotFunctions.R"))  # for plotting complex functions
+source(file.path(funcs.dir, "GetTopNValues.R"))
 
 PlotVectorArrows <- function(complex.vector, exprs,
                              main="plot title", 
@@ -193,6 +194,20 @@ for (gene in gene.list){
 }
 
 
+# Look at U and V matrices separately. ------------------------------------
+
+components <- c(1)
+
+for (component in components){
+  top.genes <- GetTopNValues(Mod(s$u[, component]), N = 100)  # list of $vals $i
+  # only take top.genes from U (makes it smaller, for visualization purposes)
+  outer.prod.mat <- s$d[component] * OuterComplex(s$u[top.genes$i, component, drop = FALSE], t(s$v[, component]))
+  # sort by phase angles
+  # order.phase <- order(Arg(outer.prod.mat))
+  # outer.prod.mat <- outer.prod.mat[order.phase, ]
+  outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat)
+  PlotArgsMatrix(outer.prod.mat, main=paste("Component:", component))
+}
 
 
 
