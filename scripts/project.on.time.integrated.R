@@ -2,6 +2,8 @@
 # Dec 15 2014
 # Project on time: but this time we do it INTEGRATED.
 
+library(PhaseHSV)  # install_github("naef-lab/PhaseHSV") if you don't have it
+
 # Functions ---------------------------------------------------------------
 
 scripts.dir <- "scripts"
