@@ -2,7 +2,10 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
                         col="HSV", axis.min=-1.1, axis.max=1.1, 
                         main='Plot title', 
                         rotate=0,
-                        add.text.plot="TRUE"){
+                        add.text.plot="TRUE",
+                        jpch=20,
+                        threshold=0,
+                        verbose=FALSE){
   # Plot genes on complex plane
   # 
   # ARGS:
@@ -15,7 +18,11 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   # main: title
   # rotate: rotate counter clockwise by how many radians? This gives start.angle
   # add.text.plot: add an optional text plot: useful if your gene list is huge.
-  
+  # jpch: pch plot symbols '.' for dot, 1 for circles, 20 for filled circles.
+  # threshold: if many datapoints, show text label only if magnitude is greater than threshold
+  # 
+  # requires wordcloud package for textplot function
+  library(wordcloud)  # install.packages("wordcloud")
   
   if (missing(gene.list)){
     dat <- complex.matrix  
@@ -37,14 +44,22 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   plot(dat, col=plot.colors, 
        xlim=c(axis.min, axis.max), 
        ylim=c(axis.min, axis.max), 
-       pch=20,
+       pch=jpch,
        main=main)
   abline(v=0)
   abline(h=0)
-  if (length(dat) < 20){
-    text(dat, 
-         labels=text.labels, 
-         pos=3)
+  
+  # too many data points, only show labels for "large" datapoints
+  filter.i <- which(Mod(dat) > threshold)
+  text.labels[filter.i]
+  text(dat[filter.i],
+       labels=text.labels[filter.i], 
+       pos=3)
+  
+  if (verbose){
+    cat(paste0(text.labels[filter.i], collapse='", "'))
+    # cat(paste0(text.labels[filter.i], collapse="\n"))
+    cat("\n")
   }
   
   if (add.text.plot){

@@ -13,6 +13,8 @@ source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 source(file.path(funcs.dir, "PlotFunctions.R"))  # for plotting complex functions
 source(file.path(funcs.dir, "GetTopNValues.R"))
+source(file.path(funcs.dir, "OuterComplex.R"))
+source(file.path(funcs.dir, "OrderPhaseMatrix.R"))
 
 WriteGenesToFile <- function(named.vector, outfile){
   # Write a named vector to file. First column genes, second column values.
@@ -213,7 +215,9 @@ for (gene in gene.list){
 }
 
 
-# Look at U and V matrices separately. ------------------------------------
+
+# Get heat map of components ----------------------------------------------
+
 
 components <- c(1, 2, 3, 4, 5)
 
@@ -235,8 +239,38 @@ for (component in components){
 #   cat('\n')
   # write all genes to file (ordered by values)
   top.genes.all <- GetTopNValues(Mod(s$u[, component]), N = length(s$u[, component]))
-  WriteGenesToFile(top.genes.all$vals, outfile)
+  # WriteGenesToFile(top.genes.all$vals, outfile)  # super SLOW damn R
 }
 
 
+# Look at U and V matrices separately -------------------------------------
 
+for (component in components){
+  print(paste('Plotting component', component))
+  eigengene <- s$v[, component]
+  max <- max(Mod(eigengene))
+  PlotComplex(eigengene, 
+              axis.min=-max, 
+              axis.max=max,
+              labels=tissues, 
+              col = "HSV",
+              main=paste("Tissue loadings for singular values:", component),
+              rotate= pi / 2,
+              add.text.plot = FALSE,
+              jpch=20,
+              threshold=0)
+  
+  eigensample <- s$u[, component]
+  max <- max(Mod(eigensample))
+  PlotComplex(eigensample, 
+              axis.min=-max, 
+              axis.max=max,
+              labels=filtered.genes, 
+              col = "HSV",
+              main=paste("Gene loadings for singular values:", component),
+              rotate= pi / 2,
+              add.text.plot = FALSE,
+              jpch=1,
+              threshold = 0.75 * max,
+              verbose=TRUE)
+}
