@@ -12,6 +12,17 @@ source(file.path(funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "RemoveProblemGenes.R"))
 
+PlotGenes <- function(gene.list, dat, tissues, experiments, title=""){
+  for (mygene in gene.list){
+    dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues & experiment %in% experiments))
+    m <- ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + 
+      geom_point(size=4) + 
+      geom_line() + 
+      ggtitle(paste(title, mygene))
+    print(m)
+  }
+}
+
 # Define dirs -------------------------------------------------------------
 
 # define dirs
@@ -162,5 +173,17 @@ rm(long.array, long.array.unadj, long.rnaseq)
 #   print(m)
 # }
 
+# plot some genes
+gene.list <- c("Dbp", "Spint4", "Arntl", "Npas2")
+tissues.sub <- tissues
+experiments <- c("array", "rnaseq")
 
+for (mygene in gene.list){
+  dat.sub <- subset(dat, (gene==mygene & tissue %in% tissues.sub & experiment %in% experiments))
+  m <- ggplot(dat.sub, aes(x=time, y=log2(exprs + 1), colour=tissue, shape=experiment)) + 
+    geom_point(size=4) + 
+    geom_line() + 
+    ggtitle(paste(mygene)) 
+  print(m)
+}
 
