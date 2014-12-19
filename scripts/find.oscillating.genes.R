@@ -30,6 +30,25 @@ source(file.path(scripts.dir, funcs.dir, "GetTissueTimes.R"))  # get tissue and 
 source(file.path(scripts.dir, funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "RegressionFunctions.R"))
 
+# Fit complex model
+model.complex <- function(df){
+  lm(exprs ~ 0 + experiment + cos(omega * time) + sin(omega * time), 
+     data = df)
+}
+
+# Fit flat model
+model.flat <- function(df){
+  fit.flat <- lm(exprs ~ 0 + experiment, data =df)
+}
+
+# find rhythmic
+FindRhythmic <- function(df){
+  fit.complex <- model.complex(df)
+  fit.flat <- model.flat(df)
+  ftest.flat.or.rhythmic <- anova(fit.flat, fit.complex)
+  pval <- ftest.flat.or.rhythmic["Pr(>F)"][[1]][2]  
+  return(list(pval=pval, fit=fit.complex))
+}
 
 # oscillating function
 oscillate <- function(params, omega, t){
@@ -152,38 +171,28 @@ rm(long.array, long.rnaseq)
 fit.list <- vector(mode="list", length=length(filtered.genes))
 names(fit.list) <- filtered.genes
 
-for (gene in c(clockgenes, tissuegenes)){
-  dat.gene.tiss <- subset(dat[dat$gene == gene, ], tissue=="Adr")
-  dat.gene.tiss <- dat.gene.tiss[order(dat.gene.tiss$time), ]
-  # all negatives go to 0
-  dat.gene.tiss$exprs[which(dat.gene.tiss$exprs < 0)] <- 0
-  fit.complex <- lm(exprs ~ 0 + experiment + cos(omega * time) + sin(omega * time), 
-                    data = dat.gene.tiss)
-  fit.simple <- lm(exprs ~ cos(omega * time) + sin(omega * time), 
-                   data = dat.gene.tiss)
-  
-  # model selection
-  ftest <- anova(fit.simple, fit.complex)
-  ftest.pval <- ftest["Pr(>F)"][[1]][2]
-  
-  if (ftest.pval < pval.threshold) {
-    # low pvalue, it is worth it to use a complex model
-    fit <- fit.complex
-    # get pval for complex model by comparing with model containing only intercepts
-    fit.flat <- lm(exprs ~ 0 + experiment, data = dat.gene.tiss)
-    ftest.flat <- anova(fit.flat, fit.complex)
-    pval <- ftest.flat["Pr(>F)"][[1]][2]
-  } else {
-    # stick with simple model
-    fit <- fit.simple
-    fit.flat <- lm(exprs ~ 1, data = dat.gene.tiss)
-    ftest.flat <- anova(fit.flat, fit.complex)
-    pval <- ftest.flat["Pr(>F)"][[1]][2]
-  }
-  
-  fit.list[[gene]] <- list(fit=fit, pval=pval)
-  
+
+for (jtissue in c("Liver")){
+  dat.tiss <- subset(dat, tissue %in% c(jtissue) & gene %in% clockgenes)
+  fit.out <- dlply(dat.tiss, .(gene), FindRhythmic)
 }
+
+# THIS IS SUPER SLOW.
+# for (gene in c(clockgenes, tissuegenes)){
+#   dat.gene.tiss <- subset(dat[dat$gene == gene, ], tissue=="Adr")
+#   dat.gene.tiss <- dat.gene.tiss[order(dat.gene.tiss$time), ]
+#   # all negatives go to 0
+#   dat.gene.tiss$exprs[which(dat.gene.tiss$exprs < 0)] <- 0
+#   fit.complex <- lm(exprs ~ 0 + experiment + cos(omega * time) + sin(omega * time), 
+#                     data = dat.gene.tiss)
+#   # low pvalue, it is worth it to use a complex model
+#   fit <- fit.complex
+#   # get pval for complex model by comparing with model containing only intercepts
+#   fit.flat <- lm(exprs ~ 0 + experiment, data = dat.gene.tiss)
+#   ftest.flat <- anova(fit.flat, fit.complex)
+#   pval <- ftest.flat["Pr(>F)"][[1]][2]
+#   fit.list[[gene]] <- list(fit=fit, pval=pval)
+# }
 
 
 # Get top genes -----------------------------------------------------------
