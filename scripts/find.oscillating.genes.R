@@ -211,7 +211,7 @@ for (jtissue in tissues){
   dat.tiss <- subset(dat, tissue %in% c(jtissue))
   # fit.out <- dlply(dat.tiss, .(gene), FindRhythmic)
   fit.out <- dlply(dat.tiss, .(gene), GetAmpPhase)
-  fit.list[jtissue] <- fit.out
+  fit.list[[jtissue]] <- fit.out
 }
 
 # Consolidate into a dataframe
