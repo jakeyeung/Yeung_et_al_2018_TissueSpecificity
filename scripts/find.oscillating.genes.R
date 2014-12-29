@@ -31,23 +31,56 @@ source(file.path(scripts.dir, funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "RegressionFunctions.R"))
 
 # Fit complex model
-model.complex <- function(df){
+FitComplexModel <- function(df){
   lm(exprs ~ 0 + experiment + cos(omega * time) + sin(omega * time), 
      data = df)
 }
 
+# Get parameters from complex model
+GetParamsComplexModel <- function(myfit){
+  model.params <- coef(myfit)
+  return(list(intercept.array = model.params[1],
+              intercept.rnaseq = model.params[2],
+              a = model.params[3],
+              b = model.params[4]))
+}
+
 # Fit flat model
-model.flat <- function(df){
+FitFlatModel <- function(df){
   fit.flat <- lm(exprs ~ 0 + experiment, data =df)
+}
+
+# Get pval
+GetFtestPval <- function(myfit){
+  pval <- myfit["Pr(>F)"][[1]][2]
+  return(pval)
 }
 
 # find rhythmic
 FindRhythmic <- function(df){
-  fit.complex <- model.complex(df)
-  fit.flat <- model.flat(df)
+  fit.complex <- FitComplexModel(df)
+  fit.flat <- FitFlatModel(df)
   ftest.flat.or.rhythmic <- anova(fit.flat, fit.complex)
-  pval <- ftest.flat.or.rhythmic["Pr(>F)"][[1]][2]  
+  pval <- GetFtestPval(ftest.flat.or.rhythmic)
   return(list(pval=pval, fit=fit.complex))
+}
+
+# get amplitude and phase
+GetAmpPhase <- function(df){
+  fit.complex <- FitComplexModel(df)
+  fit.flat <- FitFlatModel(df)
+  ftest.flat.or.rhythmic <- anova(fit.flat, fit.complex)
+  pval <- GetFtestPval(ftest.flat.or.rhythmic)
+  params <- GetParamsComplexModel(fit.complex)  # model = intercept.array + intercept.rnaseq + acos(t) + bsin(t)
+  amp <- sqrt(params[["a"]] ^ 2 + params[["b"]] ^ 2)
+  phase <- atan(params[["b"]] / params[["a"]])
+  int.array <- params[["intercept.array"]]
+  int.rnaseq <- params[["intercept.rnaseq"]]
+  return(list(pval=pval,
+         amp=amp, 
+         phase=phase, 
+         int.array=int.array, 
+         int.rnaseq=int.rnaseq))
 }
 
 # oscillating function
@@ -168,14 +201,21 @@ rm(long.array, long.rnaseq)
 
 # Do my lm fit ------------------------------------------------------------
 
-fit.list <- vector(mode="list", length=length(filtered.genes))
-names(fit.list) <- filtered.genes
+fit.list <- vector(mode="list", length=length(tissues))
+names(fit.list) <- tissues
 
 
-for (jtissue in c("Liver")){
-  dat.tiss <- subset(dat, tissue %in% c(jtissue) & gene %in% clockgenes)
-  fit.out <- dlply(dat.tiss, .(gene), FindRhythmic)
+for (jtissue in tissues){
+  print(paste0("Fitting models for tissue: ", jtissue))
+  # dat.tiss <- subset(dat, tissue %in% c(jtissue) & gene %in% clockgenes)
+  dat.tiss <- subset(dat, tissue %in% c(jtissue))
+  # fit.out <- dlply(dat.tiss, .(gene), FindRhythmic)
+  fit.out <- dlply(dat.tiss, .(gene), GetAmpPhase)
+  fit.list[jtissue] <- fit.out
 }
+
+# Consolidate into a dataframe
+
 
 # THIS IS SUPER SLOW.
 # for (gene in c(clockgenes, tissuegenes)){
