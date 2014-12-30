@@ -344,7 +344,44 @@ rm(df.temp)
 
 # Plot amplitude distributions --------------------------------------------
 
-ggplot(fits.df, aes(x = amp, fill = tissue)) + geom_density() + facet_wrap(~tissue) + scale_x_log10()
+ggplot(subset(fits.df, pval <= 1e-5), aes(x = amp, fill = tissue)) + 
+  geom_density() + 
+  facet_wrap(~tissue) + 
+  scale_x_log10()
+
+
+# Get top rhythmic genes --------------------------------------------------
+
+fits.df.subset <- subset(fits.df, pval < 1e-5)
+
+# order by tissue, then by decreasing amp
+fits.df.subset <- fits.df.subset[order(fits.df.subset$tissue, 
+                                       -fits.df.subset$amp), ]
+
+# Get top 20 genes (by amplitude) for each tissue
+top.n <- 20
+
+fits.df.subset.top.n <- data.frame(tissue = character(),
+                                   gene = character(),
+                                   amp = character(),
+                                   phase = character(),
+                                   pval = character())
+
+for (jtissue in tissues){
+  tissue.temp <- head(subset(fits.df.subset, tissue == jtissue), n=top.n)
+  fits.df.subset.top.n <- rbind(fits.df.subset.top.n, tissue.temp)
+}
+
+head(fits.df.subset.top.n)
+tail(fits.df.subset.top.n)
+
+# summmarise
+ddply(fits.df.subset.top.n, .(tissue), summarise, 
+      count = length(amp), 
+      avg = mean(amp), 
+      min = min(amp),
+      max = max(amp))
+
 
 # Get top oscillating genes -----------------------------------------------
 
