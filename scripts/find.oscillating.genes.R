@@ -283,6 +283,18 @@ for (gene in filtered.genes){
 }
 
 
+# Plot distribution of amplitudes -----------------------------------------
+
+amplitudes <- vector(mode="list", length(tissues))
+names(amplitudes) <- tissues
+
+for (tissue in tissues){
+  amplitudes.temp <- lapply(fit.list[[tissue]], function(x){
+    return(x[["amp"]])
+  })
+  amplitudes[[tissue]] <- amplitudes.temp
+}
+
 # Get top oscillating genes -----------------------------------------------
 
 # Do it by tissues
@@ -291,8 +303,9 @@ rhythmic.genes <- vector(mode="list", length(tissues))
 names(rhythmic.genes) <- tissues
 
 for (tissue in tissues){
+  # stolen from: http://stackoverflow.com/questions/14771029/filter-values-from-list-in-r
   rhythmic.genes.temp <- lapply(fit.list[[tissue]], GetRhythmicGene, 
-                                pval.threshold, amp.threshold) == TRUE
+                                pval.threshold, amp.threshold=0.1) == TRUE
   # Keep only element that are "TRUE"
   rhythmic.genes.temp <- names(fit.list[[tissue]])[rhythmic.genes.temp]
   rhythmic.genes[[tissue]] <- rhythmic.genes.temp
