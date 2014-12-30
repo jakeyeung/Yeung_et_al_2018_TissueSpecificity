@@ -352,14 +352,14 @@ ggplot(subset(fits.df, pval <= 1e-5), aes(x = amp, fill = tissue)) +
 
 # Get top rhythmic genes --------------------------------------------------
 
-fits.df.subset <- subset(fits.df, pval < 1e-5)
+fits.df.subset <- subset(fits.df, pval < 1e-6)
 
 # order by tissue, then by decreasing amp
 fits.df.subset <- fits.df.subset[order(fits.df.subset$tissue, 
                                        -fits.df.subset$amp), ]
 
-# Get top 20 genes (by amplitude) for each tissue
-top.n <- 20
+# Get top 50 genes (by amplitude) for each tissue
+top.n <- 50
 
 fits.df.subset.top.n <- data.frame(tissue = character(),
                                    gene = character(),
@@ -375,12 +375,24 @@ for (jtissue in tissues){
 head(fits.df.subset.top.n)
 tail(fits.df.subset.top.n)
 
-# summmarise
-ddply(fits.df.subset.top.n, .(tissue), summarise, 
-      count = length(amp), 
-      avg = mean(amp), 
-      min = min(amp),
-      max = max(amp))
+# summmarise by tissue
+tissues.sum <- ddply(fits.df.subset.top.n, .(tissue), summarise, 
+                    count = length(amp), 
+                    avg = mean(amp), 
+                    min = min(amp),
+                    max = max(amp))
+
+# summarise by gene
+r.genes.sum <- ddply(fits.df.subset.top.n, .(gene), summarise,
+                                count = length(amp),
+                                avg = mean(amp),
+                                min = min(amp),
+                                max = max(amp))
+
+# order by counts
+r.genes.sum <- r.genes.sum[order(-r.genes.sum$count), ]
+
+head(r.genes.sum)
 
 
 # Get top oscillating genes -----------------------------------------------
