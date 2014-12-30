@@ -3,6 +3,11 @@
 # find.oscillating.genes.R
 # Dec 4 2014
 
+# Adjustable parameters ---------------------------------------------------
+
+outfile <- "data/oscillating_genes.txt"
+gene.header <- "gene"
+params.header <- c("amp", "phase", "int.array", "int.rnaseq")
 
 # Define constants --------------------------------------------------------
 
@@ -83,6 +88,11 @@ GetAmpPhase <- function(df){
          int.rnaseq=int.rnaseq))
 }
 
+# list to textfile
+ListToTextfile <- function(mylist, myfile, ncols=5){
+  lapply(mylist, write, myfile, append=TRUE, ncolumns=ncols)
+}
+
 # oscillating function
 oscillate <- function(params, omega, t){
   params[1] + params[2] * cos(omega * t) + params[3] * sin(omega * t)
@@ -111,6 +121,18 @@ IsSimple <- function(fit, simple.df=3, complex.df=4){
                     "or", complex.df, "parameters. 
                     It has", n.params, ". Defaulting to FALSE."))
   return(FALSE)
+}
+
+GetHeader <- function(gene.header, params.header, tissues){
+  # Create column names for each parameter in complex fit for each tissue
+  # First element in header is gene.header.
+  
+  # Make header like Tissue:Parameter
+  params.tissue.header <- paste0(rep(tissues, each = length(params.header)), ":", params.header)
+  
+  # Add gene to it and return
+  header <- c(gene.header, params.tissue.header)
+  return(header)
 }
 
 
@@ -205,7 +227,9 @@ fit.list <- vector(mode="list", length=length(tissues))
 names(fit.list) <- tissues
 
 
+# Takes ~30 minutes
 for (jtissue in tissues){
+  print(Sys.time())
   print(paste0("Fitting models for tissue: ", jtissue))
   # dat.tiss <- subset(dat, tissue %in% c(jtissue) & gene %in% clockgenes)
   dat.tiss <- subset(dat, tissue %in% c(jtissue))
@@ -214,8 +238,31 @@ for (jtissue in tissues){
   fit.list[[jtissue]] <- fit.out
 }
 
-# Consolidate into a dataframe
 
+# Write list to textfile --------------------------------------------------
+
+# Write header
+myheader <- GetHeader(gene.header, params.header, tissues)
+write(myheader, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
+
+# slow, takes about 2 minutes
+for (gene in filtered.genes){
+  # init vector
+  writerow <- character(length(myheader))
+  writerow[1] <- gene  # first column is gene
+  index.start <- 2  # begin tissue parameters at column 2
+  index.jump <- length(params.header) + 1  # step after each loop to write to next part of vector
+  index.end <- index.start + length(params.header)
+  for (tissue in tissues){
+    writerow.temp <- unlist(fit.list[[tissue]][[gene]], use.names = FALSE)
+    # Append to vector
+    writerow[index.start:index.end] <- writerow.temp
+    index.start <- index.start + index.jump
+    index.end <- index.end + index.jump
+  }
+  # write to file
+  write(writerow, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
+}
 
 # THIS IS SUPER SLOW.
 # for (gene in c(clockgenes, tissuegenes)){
