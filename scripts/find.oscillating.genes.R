@@ -11,7 +11,8 @@ params.header <- c("amp", "phase", "int.array", "int.rnaseq")
 
 # Define constants --------------------------------------------------------
 
-pval.threshold <- 1e-3
+pval.threshold <- 1e-5
+amp.threshold <- 1.5
 T <- 24  # hours
 omega <- 2 * pi / T
 
@@ -135,6 +136,23 @@ GetHeader <- function(gene.header, params.header, tissues){
   return(header)
 }
 
+IsRhythmic <- function(fit.params, pval.threshold, amp.threshold=0){
+  # Given parameters from complex fit (we know pval and amp) return TRUE
+  # if it passes threshold. Return FALSE otherwise.
+  pval <- fit.params[["pval"]]
+  amp <- fit.params[["amp"]]
+  if (pval <= pval.threshold & amp >= amp.threshold){
+    return(TRUE)
+  } 
+  return (FALSE)
+}
+
+GetRhythmicGene <- function(fit.params, pval.threshold, amp.threshold){
+  if (IsRhythmic(fit.params, pval.threshold, amp.threshold)){
+    return(TRUE)
+  }
+  return(FALSE)
+}
 
 # Define dirs -------------------------------------------------------------
 
@@ -263,6 +281,23 @@ for (gene in filtered.genes){
   # write to file
   write(writerow, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
 }
+
+
+# Get top oscillating genes -----------------------------------------------
+
+# Do it by tissues
+
+rhythmic.genes <- vector(mode="list", length(tissues))
+names(rhythmic.genes) <- tissues
+
+for (tissue in tissues){
+  rhythmic.genes.temp <- lapply(fit.list[[tissue]], GetRhythmicGene, 
+                                pval.threshold, amp.threshold) == TRUE
+  # Keep only element that are "TRUE"
+  rhythmic.genes.temp <- names(fit.list[[tissue]])[rhythmic.genes.temp]
+  rhythmic.genes[[tissue]] <- rhythmic.genes.temp
+}
+
 
 # THIS IS SUPER SLOW.
 # for (gene in c(clockgenes, tissuegenes)){
