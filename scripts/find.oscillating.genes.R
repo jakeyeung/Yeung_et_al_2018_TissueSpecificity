@@ -154,6 +154,21 @@ GetRhythmicGene <- function(fit.params, pval.threshold, amp.threshold){
   return(FALSE)
 }
 
+GetFitInfo <- function(fit.list.tissue.gene, param){
+  return(fit.list.tissue.gene[[param]])
+}
+
+GetParamsVector <- function(fit.list.tissue, param="amp"){
+  # Get parameters such as amp, phase, pval, int.array, int.rnaseq
+  # across all tissues.
+  # 
+  # param = "amp" | "pval" | "phase" | "int.array" | "int.rnaseq"
+  #
+  # Returns list of lists, one of each tissue
+  params.vector <- lapply(fit.list.tissue, GetFitInfo, param)
+  return(unlist(params.vector))
+}
+
 # Define dirs -------------------------------------------------------------
 
 # define dirs
@@ -281,9 +296,12 @@ for (gene in filtered.genes){
   # write to file
   write(writerow, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
 }
+rm(writerow.temp)
 
 
 # Plot distribution of amplitudes -----------------------------------------
+
+GetFitInfo(fit.list[[tissue]])
 
 amplitudes <- vector(mode="list", length(tissues))
 names(amplitudes) <- tissues
@@ -294,6 +312,39 @@ for (tissue in tissues){
   })
   amplitudes[[tissue]] <- amplitudes.temp
 }
+rm(amplitudes.temp)
+
+
+# Create data frame for ggplot --------------------------------------------
+
+fits.df <- data.frame(tissue=character(),
+                      gene=character(),
+                      amp=character(),
+                      phase=character(),
+                      pval=character())
+
+params <- c("amp", "phase", "pval")
+for (tissue in tissues){
+  df.temp <- data.frame(tissue = rep(tissue, length(filtered.genes)), 
+                        gene = names(fit.list[[tissue]]),
+                        amp = vector(length = length(filtered.genes)),
+                        phase = vector(length = length(filtered.genes)),
+                        pval = vector(length = length(filtered.genes)))
+  
+  for (jparam in params){
+    params.vector <- GetParamsVector(fit.list[[tissue]], param = jparam)
+    # append to df
+    df.temp[[jparam]] <- params.vector
+  }
+  # row append
+  fits.df <- rbind(fits.df, df.temp)
+}
+rm(df.temp)
+
+
+# Plot amplitude distributions --------------------------------------------
+
+ggplot(fits.df, aes(x = amp, fill = tissue)) + geom_density() + facet_wrap(~tissue) + scale_x_log10()
 
 # Get top oscillating genes -----------------------------------------------
 
