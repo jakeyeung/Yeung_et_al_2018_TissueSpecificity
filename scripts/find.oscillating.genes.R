@@ -169,6 +169,45 @@ GetParamsVector <- function(fit.list.tissue, param="amp"){
   return(unlist(params.vector))
 }
 
+PlotAcrossTissues <- function(dat, fit.list, jgene){
+  # Plot expression across tissues for a gene.
+  # TODO: Find a way to incorporate fit.list parameters into the data
+  
+  dat.sub <- subset(dat, gene == jgene)
+  
+  # Create new labels
+  labels <- character(length(levels(dat.sub$tissue)))  # init
+  i <- 1  # index
+  
+  for (tissue in levels(dat.sub$tissue)){
+    params <- fit.list[[tissue]][[jgene]]
+    pval <- signif(params[["pval"]], 2)
+    amp <- signif(params[["amp"]], 2)
+    phase <- signif(params[["phase"]], 2)
+    int.array <- signif(params[["int.array"]], 2)
+    int.rnaseq <- signif(params[["int.rnaseq"]], 2)
+    
+    label <- paste0(c(tissue, 
+                    paste0("pval=", pval), 
+                    paste0("amp=", amp),
+                    paste0("phase=", phase),
+                    paste0("int.array=", int.array),
+                    paste0("int.rnaseq=", int.rnaseq)),
+                    collapse = "_")
+    
+    labels[i] <- label
+    i <- i + 1
+  }
+  
+  dat.sub$label <- labels
+  
+  m <- ggplot(dat.sub, aes(x = time, y = exprs, 
+                           group = experiment, 
+                           colour = experiment))
+  m <- m + geom_point() + geom_line() + facet_wrap(~tissue)
+  return(m)
+}
+
 # Define dirs -------------------------------------------------------------
 
 # define dirs
@@ -375,6 +414,10 @@ for (jtissue in tissues){
 head(fits.df.subset.top.n)
 tail(fits.df.subset.top.n)
 
+
+# Summarize by tissue and genes -------------------------------------------
+
+
 # summmarise by tissue
 tissues.sum <- ddply(fits.df.subset.top.n, .(tissue), summarise, 
                     count = length(amp), 
@@ -395,51 +438,24 @@ r.genes.sum <- r.genes.sum[order(-r.genes.sum$count), ]
 head(r.genes.sum)
 
 
-# Get top oscillating genes -----------------------------------------------
+# Plot distribution of counts ---------------------------------------------
 
-# Do it by tissues
+ggplot(r.genes.sum, aes(x = count)) + geom_histogram() 
 
-rhythmic.genes <- vector(mode="list", length(tissues))
-names(rhythmic.genes) <- tissues
 
-for (tissue in tissues){
-  # stolen from: http://stackoverflow.com/questions/14771029/filter-values-from-list-in-r
-  rhythmic.genes.temp <- lapply(fit.list[[tissue]], GetRhythmicGene, 
-                                pval.threshold, amp.threshold=0.1) == TRUE
-  # Keep only element that are "TRUE"
-  rhythmic.genes.temp <- names(fit.list[[tissue]])[rhythmic.genes.temp]
-  rhythmic.genes[[tissue]] <- rhythmic.genes.temp
+
+# Plot selected genes -----------------------------------------------------
+
+my.genes <- r.genes.sum$gene
+
+dat.sub.temp <- subset(dat, gene %in% my.genes)  # for speed?
+
+for (gene in my.genes){
+  m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene)
+  print(m)
 }
 
-
-# THIS IS SUPER SLOW.
-# for (gene in c(clockgenes, tissuegenes)){
-#   dat.gene.tiss <- subset(dat[dat$gene == gene, ], tissue=="Adr")
-#   dat.gene.tiss <- dat.gene.tiss[order(dat.gene.tiss$time), ]
-#   # all negatives go to 0
-#   dat.gene.tiss$exprs[which(dat.gene.tiss$exprs < 0)] <- 0
-#   fit.complex <- lm(exprs ~ 0 + experiment + cos(omega * time) + sin(omega * time), 
-#                     data = dat.gene.tiss)
-#   # low pvalue, it is worth it to use a complex model
-#   fit <- fit.complex
-#   # get pval for complex model by comparing with model containing only intercepts
-#   fit.flat <- lm(exprs ~ 0 + experiment, data = dat.gene.tiss)
-#   ftest.flat <- anova(fit.flat, fit.complex)
-#   pval <- ftest.flat["Pr(>F)"][[1]][2]
-#   fit.list[[gene]] <- list(fit=fit, pval=pval)
-# }
-
-
-# Get top genes -----------------------------------------------------------
-
-pval.df <- data.frame(pvals=rep(NA, length(filtered.genes)), gene=filtered.genes, row.names=filtered.genes)
-
-for (gene in c(clockgenes, tissuegenes)){
-  pval <- fit.list[[gene]][["pval"]]
-  pval.df[gene, "pvals"] <- pval 
-}
-
-pval.df <- na.omit(pval.df)
+rm(dat.sub.temp)
 
 # Plot top genes ----------------------------------------------------------
 
