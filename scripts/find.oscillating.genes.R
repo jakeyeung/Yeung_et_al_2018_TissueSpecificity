@@ -176,8 +176,8 @@ PlotAcrossTissues <- function(dat, fit.list, jgene){
   dat.sub <- subset(dat, gene == jgene)
   
   # Create new labels
-  labels <- character(length(levels(dat.sub$tissue)))  # init
-  i <- 1  # index
+  labels <- vector(mode = "list", length = length(levels(dat.sub$tissue)))  # init
+  names(labels) <- levels(dat.sub$tissue)
   
   for (tissue in levels(dat.sub$tissue)){
     params <- fit.list[[tissue]][[jgene]]
@@ -187,24 +187,42 @@ PlotAcrossTissues <- function(dat, fit.list, jgene){
     int.array <- signif(params[["int.array"]], 2)
     int.rnaseq <- signif(params[["int.rnaseq"]], 2)
     
-    label <- paste0(c(tissue, 
-                    paste0("pval=", pval), 
-                    paste0("amp=", amp),
-                    paste0("phase=", phase),
-                    paste0("int.array=", int.array),
-                    paste0("int.rnaseq=", int.rnaseq)),
-                    collapse = "_")
+#     label <- paste0(c(tissue, 
+#                     paste0("pval=", pval), 
+#                     paste0("amp=", amp),
+#                     paste0("phase=", phase),
+#                     "\n",
+#                     paste0("int.array=", int.array),
+#                     paste0("int.rnaseq=", int.rnaseq)),
+#                     collapse = ",")
     
-    labels[i] <- label
+    label <- paste0(c(tissue, 
+                      paste0("pval=", pval), 
+                      "\n",
+                      paste0("amp=", amp),
+                      "\n",
+                      paste0("phase=", phase)),
+                      collapse = ",")
+    
+    labels[[tissue]] <- label
+  }
+  
+  tissue.labels <- character(length(dat.sub$tissue))
+  i <- 1
+  for (tissue.label in dat.sub$tissue){
+    tissue.labels[i] <- labels[[dat.sub$tissue[i]]]
     i <- i + 1
   }
   
-  dat.sub$label <- labels
+  dat.sub$label <- tissue.labels
   
   m <- ggplot(dat.sub, aes(x = time, y = exprs, 
                            group = experiment, 
                            colour = experiment))
-  m <- m + geom_point() + geom_line() + facet_wrap(~tissue)
+  m <- m + geom_point() + 
+    geom_line() + 
+    facet_wrap(~label) +
+    ggtitle(jgene)
   return(m)
 }
 
@@ -450,10 +468,13 @@ my.genes <- r.genes.sum$gene
 
 dat.sub.temp <- subset(dat, gene %in% my.genes)  # for speed?
 
+pdf("plots/rhythmic_genes_across_tissues.pdf")
 for (gene in my.genes){
+  print(paste("Plotting expression across tissues. Gene:", gene))
   m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene)
   print(m)
 }
+dev.off()
 
 rm(dat.sub.temp)
 
