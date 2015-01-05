@@ -317,23 +317,30 @@ rm(long.array, long.rnaseq)
 
 
 # Do my lm fit ------------------------------------------------------------
+# slow: about 8 minutes
 
-fit.list <- vector(mode="list", length=length(tissues))
+# try out parallel loop
+library(foreach)
+library(doParallel)
+#setup parallel backend to use 12 processors
+cl<-makeCluster(12)
+registerDoParallel(cl)
+
+print('Begin fitting lm models')
+print(Sys.time())
+fit.list <- foreach(i = 1:length(tissues), 
+                     .packages="plyr") %dopar% {
+                       jtissue <- tissues[i]
+                       dat.tiss <- subset(dat, tissue %in% c(jtissue))
+                       fit.out <- dlply(dat.tiss, .(gene), GetAmpPhase)
+                     }
 names(fit.list) <- tissues
+print(Sys.time())
+print('End fitting lm models')
 
-# Takes ~30 minutes
-for (jtissue in tissues){
-  print(Sys.time())
-  print(paste0("Fitting models for tissue: ", jtissue))
-  dat.tiss <- subset(dat, tissue %in% c(jtissue) & gene %in% clockgenes)
-  # dat.tiss <- subset(dat, tissue %in% c(jtissue))
-  # fit.out <- dlply(dat.tiss, .(gene), FindRhythmic)
-  fit.out <- dlply(dat.tiss, .(gene), GetAmpPhase)
-  fit.list[[jtissue]] <- fit.out
-}
+# Write list to textfile -- ------------------------------------------------
 
-# Write list to textfile --------------------------------------------------
-
+print(paste("Writing fit results to file.", Sys.time()))
 # Write header
 myheader <- GetHeader(gene.header, params.header, tissues)
 write(myheader, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
@@ -357,7 +364,7 @@ for (gene in filtered.genes){
   write(writerow, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
 }
 rm(writerow.temp)
-
+print(paste("Done writing fit results to file.", Sys.time()))
 
 # Create data frame for ggplot --------------------------------------------
 
@@ -393,11 +400,6 @@ ggplot(subset(fits.df, pval <= pval.threshold), aes(x = amp, fill = tissue)) +
   geom_density() + 
   facet_wrap(~tissue)
 dev.off()
-
-
-# Plot phase distributions ------------------------------------------------
-
-pdf('plots/amplitude_distirbutions')
 
 
 # Plot phase distributions ------------------------------------------------
