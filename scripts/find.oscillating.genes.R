@@ -14,6 +14,13 @@ outfile <- "data/oscillating_genes.txt"
 gene.header <- "gene"
 params.header <- c("amp", "phase", "int.array", "int.rnaseq")
 
+# plot outputs
+amp.dist.plot <- 'plots/amplitude_distributions_across_tissues.pdf'
+phase.dist.plot <- 'plots/phase_distributions_across_tissues.pdf'
+count.dist.plot <- 'plots/distribution_of_tissue_specificness_rhythmic_genes.pdf'
+tissue.specific.dist.plot <- 'plots/number_of_tissue_specific_rhythmic_genes.pdf'
+rhythmic.genes.plots <- 'plots/rhythmic_genes_across_tissues.pdf'
+
 # Define constants --------------------------------------------------------
 
 pval.threshold <- 1e-6
@@ -238,10 +245,6 @@ rna.seq.fname <- "rna_seq_deseq_counts_colnames_fixed.txt"
 rna.seq.path <- file.path(data.dir, rna.seq.fname)
 
 
-# Define plot files -------------------------------------------------------
-
-fit.plot <- "plots/fourier.analysis.top.oscillators.pdf"
-
 # Load file ---------------------------------------------------------------
 
 normalized.array <- read.table(normalized.array.path)
@@ -389,7 +392,7 @@ rm(df.temp)
 
 # Plot amplitude distributions --------------------------------------------
 
-pdf('plots/amplitude_distributions_across_tissues.pdf')
+pdf(amp.dist.plot)
 ggplot(subset(fits.df, pval <= pval.threshold), aes(x = amp, fill = tissue)) + 
   geom_density() + 
   facet_wrap(~tissue)
@@ -398,7 +401,7 @@ dev.off()
 
 # Plot phase distributions ------------------------------------------------
 
-pdf('plots/phase_distributions_across_tissues.pdf')
+pdf(phase.dist.plot)
 ggplot(subset(fits.df, pval <= pval.threshold), aes(x = phase, fill = tissue)) + 
   geom_density() + 
   facet_wrap(~tissue)
@@ -481,7 +484,7 @@ head(r.genes.sum)
 
 # Plot distribution of counts ---------------------------------------------
 
-pdf("plots/distribution_of_tissue_specificness_rhythmic_genes.pdf")
+pdf(count.dist.plot)
 ggplot(r.genes.sum, aes(x = count)) + 
   geom_histogram() + 
   scale_x_discrete(name="Number of tissues showing rhythmicity for a gene") + 
@@ -508,7 +511,7 @@ subset.periph$tissue <- factor(subset.periph$tissue, levels = subset.periph.summ
 
 # now plot
 
-pdf("plots/number_of_tissue_specific_rhythmic_genes.pdf")
+pdf(tissue.specific.dist.plot)
 ggplot(subset.periph, aes(x = tissue)) + geom_bar(stat = "bin") + ggtitle("Number of tissue-specific rhythmic genes across tissues")
 dev.off()
 
@@ -519,7 +522,7 @@ my.genes <- r.genes.sum$gene
 dat.sub.temp <- subset(dat, gene %in% my.genes)  # for speed?
 
 print(paste('Printing top genes.', Sys.time()))
-pdf("plots/rhythmic_genes_across_tissues.pdf")
+pdf(rhythmic.genes.plots)
 # slow takes about 15 minutes depending on how many genes you got...
 gene.count <- 0
 for (gene in my.genes){
