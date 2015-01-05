@@ -5,6 +5,8 @@
 
 library(ggplot2)
 library(plyr)
+library(foreach)  # for parallelization
+library(doParallel)  # for parallelization
 
 # Adjustable parameters ---------------------------------------------------
 
@@ -174,9 +176,13 @@ GetParamsVector <- function(fit.list.tissue, param="amp"){
   return(unlist(params.vector))
 }
 
-PlotAcrossTissues <- function(dat, fit.list, jgene){
+PlotAcrossTissues <- function(dat, fit.list, jgene, jtitle){
   # Plot expression across tissues for a gene.
   # TODO: Find a way to incorporate fit.list parameters into the data
+  
+  if (missing(jtitle){
+    jtitle <- jgene
+  })
   
   dat.sub <- subset(dat, gene == jgene)
   
@@ -191,15 +197,6 @@ PlotAcrossTissues <- function(dat, fit.list, jgene){
     phase <- signif(params[["phase"]], 2)
     int.array <- signif(params[["int.array"]], 2)
     int.rnaseq <- signif(params[["int.rnaseq"]], 2)
-    
-#     label <- paste0(c(tissue, 
-#                     paste0("pval=", pval), 
-#                     paste0("amp=", amp),
-#                     paste0("phase=", phase),
-#                     "\n",
-#                     paste0("int.array=", int.array),
-#                     paste0("int.rnaseq=", int.rnaseq)),
-#                     collapse = ",")
     
     label <- paste0(c(tissue, 
                       paste0("pval=", pval), 
@@ -227,7 +224,7 @@ PlotAcrossTissues <- function(dat, fit.list, jgene){
   m <- m + geom_point() + 
     geom_line() + 
     facet_wrap(~label) +
-    ggtitle(jgene)
+    ggtitle(jtitle)
   return(m)
 }
 
@@ -319,9 +316,6 @@ rm(long.array, long.rnaseq)
 # Do my lm fit ------------------------------------------------------------
 # slow: about 8 minutes
 
-# try out parallel loop
-library(foreach)
-library(doParallel)
 #setup parallel backend to use 12 processors
 cl<-makeCluster(12)
 registerDoParallel(cl)
@@ -524,13 +518,54 @@ my.genes <- r.genes.sum$gene
 
 dat.sub.temp <- subset(dat, gene %in% my.genes)  # for speed?
 
+print(paste('Printing top genes.', Sys.time()))
 pdf("plots/rhythmic_genes_across_tissues.pdf")
 # slow takes about 15 minutes depending on how many genes you got...
+gene.count <- 0
 for (gene in my.genes){
-  print(paste("Plotting expression across tissues. Gene:", gene))
-  m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene)
+  if (gene.count %% 100 == 0){
+    print(paste0(gene.count, "/", length(my.genes), " ", Sys.time()))
+  }
+  gene.count <- gene.count + 1
+  
+  count <- r.genes.sum[r.genes.sum$gene == gene, "count"]
+  jtitle <- paste(gene, "rhythmic in", count, "tissues")
+  
+  m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene, jtitle)
   print(m)
 }
 dev.off()
+print(paste('Done printing top genes.', Sys.time()))
 
 rm(dat.sub.temp)
+
+# parallelization fail
+
+# #setup parallel backend to use 30 processors
+# cl<-makeCluster(30)
+# registerDoParallel(cl)
+# 
+# print(paste("Getting plots for", length(my.genes), "genes.", Sys.time()))
+# m.list <- foreach(i = 1:length(my.genes),
+#                   .packages="ggplot2") %dopar% {
+#                     jgene = my.genes[i]
+#                     # get number of tissues found rhythmic for jgene: use it in title
+#                     count <- r.genes.sum[r.genes.sum$gene == jgene, "count"]
+#                     jtitle <- paste(jgene, "rhythmic in", count, "tissues")
+#                     m <- PlotAcrossTissues(dat.sub.temp, fit.list, jgene, jtitle)
+#                     m
+#                   }
+# print(paste("Done getting plots.", Sys.time()))
+# 
+# fit.list <- foreach(i = 1:length(tissues), 
+#                     .packages="plyr") %dopar% {
+#                       jtissue <- tissues[i]
+#                       dat.tiss <- subset(dat, tissue %in% c(jtissue))
+#                       fit.out <- dlply(dat.tiss, .(gene), GetAmpPhase)
+#                     }
+# 
+# # print to pdf file
+# pdf("plots/rhythmic_genes_across_tissues2.pdf")
+# lapply(m.list, print)
+# dev.off()
+# rm(m.list)
