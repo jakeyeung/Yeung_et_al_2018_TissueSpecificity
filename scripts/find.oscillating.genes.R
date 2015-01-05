@@ -3,6 +3,9 @@
 # find.oscillating.genes.R
 # Dec 4 2014
 
+library(ggplot2)
+library(plyr)
+
 # Adjustable parameters ---------------------------------------------------
 
 outfile <- "data/oscillating_genes.txt"
@@ -37,7 +40,7 @@ source(file.path(scripts.dir, funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "RegressionFunctions.R"))
 
 # Fit complex model
-FitComplexModel <- function(df){
+FitComplexModel <- function(df, omega = 2 * pi / 24){
   lm(exprs ~ 0 + experiment + cos(omega * time) + sin(omega * time), 
      data = df)
 }
@@ -78,8 +81,10 @@ GetAmpPhase <- function(df){
   ftest.flat.or.rhythmic <- anova(fit.flat, fit.complex)
   pval <- GetFtestPval(ftest.flat.or.rhythmic)
   params <- GetParamsComplexModel(fit.complex)  # model = intercept.array + intercept.rnaseq + acos(t) + bsin(t)
-  amp <- sqrt(params[["a"]] ^ 2 + params[["b"]] ^ 2)
-  phase <- atan(params[["b"]] / params[["a"]])
+  # for amp and phase calculation: see http://www.intmath.com/analytic-trigonometry/6-express-sin-sum-angles.php
+  amp <- unname(sqrt(params[["a"]] ^ 2 + params[["b"]] ^ 2))
+  phase <- unname(atan2(params[["a"]], params[["b"]]))
+  # phase <- atan(params[["b"]] / params[["a"]])
   int.array <- params[["intercept.array"]]
   int.rnaseq <- params[["intercept.rnaseq"]]
   return(list(pval=pval,
@@ -316,18 +321,16 @@ rm(long.array, long.rnaseq)
 fit.list <- vector(mode="list", length=length(tissues))
 names(fit.list) <- tissues
 
-
 # Takes ~30 minutes
 for (jtissue in tissues){
   print(Sys.time())
   print(paste0("Fitting models for tissue: ", jtissue))
-  # dat.tiss <- subset(dat, tissue %in% c(jtissue) & gene %in% clockgenes)
-  dat.tiss <- subset(dat, tissue %in% c(jtissue))
+  dat.tiss <- subset(dat, tissue %in% c(jtissue) & gene %in% clockgenes)
+  # dat.tiss <- subset(dat, tissue %in% c(jtissue))
   # fit.out <- dlply(dat.tiss, .(gene), FindRhythmic)
   fit.out <- dlply(dat.tiss, .(gene), GetAmpPhase)
   fit.list[[jtissue]] <- fit.out
 }
-
 
 # Write list to textfile --------------------------------------------------
 
@@ -354,22 +357,6 @@ for (gene in filtered.genes){
   write(writerow, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
 }
 rm(writerow.temp)
-
-
-# Plot distribution of amplitudes -----------------------------------------
-
-GetFitInfo(fit.list[[tissue]])
-
-amplitudes <- vector(mode="list", length(tissues))
-names(amplitudes) <- tissues
-
-for (tissue in tissues){
-  amplitudes.temp <- lapply(fit.list[[tissue]], function(x){
-    return(x[["amp"]])
-  })
-  amplitudes[[tissue]] <- amplitudes.temp
-}
-rm(amplitudes.temp)
 
 
 # Create data frame for ggplot --------------------------------------------
@@ -408,6 +395,21 @@ ggplot(subset(fits.df, pval <= pval.threshold), aes(x = amp, fill = tissue)) +
 dev.off()
 
 
+# Plot phase distributions ------------------------------------------------
+
+pdf('plots/amplitude_distirbutions')
+
+
+# Plot phase distributions ------------------------------------------------
+
+pdf('plots/phase_distributions_across_tissues.pdf')
+ggplot(subset(fits.df, pval <= pval.threshold), aes(x = phase, fill = tissue)) + 
+  geom_density() + 
+  facet_wrap(~tissue)
+dev.off()
+
+
+
 # Get top rhythmic genes --------------------------------------------------
 
 fits.df.subset <- subset(fits.df, pval < pval.threshold)
@@ -423,10 +425,9 @@ amp.summary <- ddply(fits.df.subset, .(tissue), summarise,
                      pval.med = median(pval),
                      amp.min = min(amp),
                      amp.max = max(amp),
-                     amp.med = median(amp))
+                     amp.med = median(amp),
+                     amp.quantile = quantile(amp, prob = 0.75))
 
-# Get top 50 genes (by amplitude) for each tissue
-top.n <- 50
 
 fits.df.subset.top.n <- data.frame(tissue = character(),
                                    gene = character(),
@@ -435,12 +436,20 @@ fits.df.subset.top.n <- data.frame(tissue = character(),
                                    pval = character())
 
 for (jtissue in tissues){
-  tissue.temp <- head(subset(fits.df.subset, tissue == jtissue), n=top.n)
+  amp.quantile <- amp.summary[amp.summary$tissue == jtissue, "amp.quantile"]
+  tissue.temp <- subset(fits.df.subset, tissue == jtissue & amp >= amp.quantile)
   fits.df.subset.top.n <- rbind(fits.df.subset.top.n, tissue.temp)
 }
 
 head(fits.df.subset.top.n)
 tail(fits.df.subset.top.n)
+
+
+# Plot amplitudes ---------------------------------------------------------
+
+ggplot(subset(fits.df.subset.top.n, pval <= pval.threshold), aes(x = amp, fill = tissue)) + 
+  geom_density() + 
+  facet_wrap(~tissue)
 
 
 # Summarize by tissue and genes -------------------------------------------
@@ -449,28 +458,63 @@ tail(fits.df.subset.top.n)
 # summmarise by tissue
 tissues.sum <- ddply(fits.df.subset.top.n, .(tissue), summarise, 
                     count = length(amp), 
-                    avg = mean(amp), 
-                    min = min(amp),
-                    max = max(amp))
+                    avg.amp = mean(amp), 
+                    min.amp = min(amp),
+                    max.amp = max(amp),
+                    min.pval = min(pval),
+                    max.pval = max(pval))
+(tissues.sum)
 
 # summarise by gene
-r.genes.sum <- ddply(fits.df.subset.top.n, .(gene), summarise,
-                                count = length(amp),
-                                avg = mean(amp),
-                                min = min(amp),
-                                max = max(amp))
+r.genes.sum <- ddply(fits.df.subset.top.n, 
+                     .(gene), 
+                     summarise,
+                     count = length(amp),
+                     avg.amp = mean(amp),
+                     min.amp = min(amp),
+                     max.amp = max(amp),
+                     min.pval = min(pval),
+                     max.pval = max(pval))
 
-# order by counts
-r.genes.sum <- r.genes.sum[order(-r.genes.sum$count), ]
+# order by counts (descending), followed by min.pval (ascending), followed by max amp (descending)
+r.genes.sum <- r.genes.sum[order(-r.genes.sum$count, r.genes.sum$min.pval, -r.genes.sum$max.amp), ]
 
+str(r.genes.sum)
 head(r.genes.sum)
 
 
 # Plot distribution of counts ---------------------------------------------
 
-ggplot(r.genes.sum, aes(x = count)) + geom_histogram() 
+pdf("plots/distribution_of_tissue_specificness_rhythmic_genes.pdf")
+ggplot(r.genes.sum, aes(x = count)) + 
+  geom_histogram() + 
+  scale_x_discrete(name="Number of tissues showing rhythmicity for a gene") + 
+  scale_y_continuous(name="Number of genes")
+dev.off()
 
 
+# Plot distribution of tissues for counts == 1 ----------------------------
+
+# peripheral genes: genes where rhythmic only in one tissue but not others.
+peripheral.genes <- subset(r.genes.sum, count == 1)$gene
+
+subset.periph <- subset(fits.df.subset.top.n, gene %in% peripheral.genes)
+
+subset.periph.summ <- ddply(subset.periph, .(tissue), summarise, count = length(gene))
+
+subset.periph.summ <- subset.periph.summ[order(subset.periph.summ$count, decreasing = TRUE), ]
+
+(subset.periph.summ$tissue)
+
+# relevel tissues by decreasing counts
+
+subset.periph$tissue <- factor(subset.periph$tissue, levels = subset.periph.summ$tissue)
+
+# now plot
+
+pdf("plots/number_of_tissue_specific_rhythmic_genes.pdf")
+ggplot(subset.periph, aes(x = tissue)) + geom_bar(stat = "bin") + ggtitle("Number of tissue-specific rhythmic genes across tissues")
+dev.off()
 
 # Plot selected genes -----------------------------------------------------
 
@@ -479,6 +523,7 @@ my.genes <- r.genes.sum$gene
 dat.sub.temp <- subset(dat, gene %in% my.genes)  # for speed?
 
 pdf("plots/rhythmic_genes_across_tissues.pdf")
+# slow takes about 15 minutes depending on how many genes you got...
 for (gene in my.genes){
   print(paste("Plotting expression across tissues. Gene:", gene))
   m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene)
@@ -487,48 +532,3 @@ for (gene in my.genes){
 dev.off()
 
 rm(dat.sub.temp)
-
-# Plot top genes ----------------------------------------------------------
-
-pval.df.ordered <- pval.df[with(pval.df, order(pvals)), ]
-top.genes <- pval.df.ordered$gene
-
-pdf(fit.plot)
-for (gene in top.genes){
-  pval <- pval.df.ordered[gene, ]$pvals
-  dat.gene.tiss <- subset(dat[dat$gene == gene, ], tissue=="Adr")
-  dat.gene.tiss <- dat.gene.tiss[order(dat.gene.tiss$time), ]
-  
-  fit <- fit.list[[gene]][["fit"]]
-  
-  # Get vectors for plotting
-  y.combined <- dat.gene.tiss$exprs
-  t.combined <- dat.gene.tiss$time
-  y.array <- dat.gene.tiss[dat.gene.tiss$experiment=="array", ]$exprs
-  t.array <- dat.gene.tiss[dat.gene.tiss$experiment=="array", ]$time
-  y.rnaseq <- dat.gene.tiss[dat.gene.tiss$experiment=="rnaseq", ]$exprs
-  t.rnaseq <- dat.gene.tiss[dat.gene.tiss$experiment=="rnaseq", ]$time
-  
-  # Plot GIVENS
-  plot(t.combined, y.combined, main=paste(gene, "Pval:", signif(pval, 2)))
-  points(t.rnaseq, y.rnaseq, pch='*')
-  
-  # BEGIN: get and plot y.models
-  t <- seq(18, 64, length.out = 100)  # tspan
-  # get fit parameters: first ask if simple or complex
-  if (IsSimple(fit)){
-    y.model.combined <- oscillate(params = coef(fit), omega, t)  
-    lines(t, y.model.combined, col='red')
-  } else {
-    # take 1st intercept, 3 and 4 are cos and sin coefficients
-    y.model.array <- oscillate(params = coef(fit)[c(1, 3, 4)], omega, t)
-    y.model.rnaseq <- oscillate(params = coef(fit)[c(2, 3, 4)], omega, t)    
-    lines(t, y.model.array, col='blue')
-    lines(t, y.model.rnaseq, col='orange')
-  }
-  legend("topleft", c("combined.fit", "array.fit", "rnaseq.fit"),
-         lty=c(1,1),
-         lwd=c(2.5, 2.5),
-         col=c("red", "blue", "orange"))  
-}
-dev.off()
