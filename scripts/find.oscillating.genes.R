@@ -11,7 +11,7 @@ params.header <- c("amp", "phase", "int.array", "int.rnaseq")
 
 # Define constants --------------------------------------------------------
 
-pval.threshold <- 1e-5
+pval.threshold <- 1e-6
 amp.threshold <- 1.5
 T <- 24  # hours
 omega <- 2 * pi / T
@@ -401,19 +401,29 @@ rm(df.temp)
 
 # Plot amplitude distributions --------------------------------------------
 
-ggplot(subset(fits.df, pval <= 1e-5), aes(x = amp, fill = tissue)) + 
+pdf('plots/amplitude_distributions_across_tissues.pdf')
+ggplot(subset(fits.df, pval <= pval.threshold), aes(x = amp, fill = tissue)) + 
   geom_density() + 
-  facet_wrap(~tissue) + 
-  scale_x_log10()
+  facet_wrap(~tissue)
+dev.off()
 
 
 # Get top rhythmic genes --------------------------------------------------
 
-fits.df.subset <- subset(fits.df, pval < 1e-6)
+fits.df.subset <- subset(fits.df, pval < pval.threshold)
 
 # order by tissue, then by decreasing amp
 fits.df.subset <- fits.df.subset[order(fits.df.subset$tissue, 
                                        -fits.df.subset$amp), ]
+
+# get median amp for each tissue
+amp.summary <- ddply(fits.df.subset, .(tissue), summarise, 
+                     pval.min = min(pval),
+                     pval.max = max(pval),
+                     pval.med = median(pval),
+                     amp.min = min(amp),
+                     amp.max = max(amp),
+                     amp.med = median(amp))
 
 # Get top 50 genes (by amplitude) for each tissue
 top.n <- 50
