@@ -258,9 +258,8 @@ GetFitTitle <- function(dat, fit.list, jgene){
   if (!missing(jgene)){
     dat <- subset(dat, gene == jgene) 
   } else {
-    jgene <- unique(dat$gene)
+    jgene <- as.character(unique(dat$gene))
   }
-  
   # Create new labels
   labels <- vector(mode = "list", length = length(levels(dat$tissue)))  # init
   names(labels) <- levels(dat$tissue)
@@ -280,7 +279,6 @@ GetFitTitle <- function(dat, fit.list, jgene){
                       "\n",
                       paste0("phase=", phase)),
                     collapse = ",")
-    
     labels[[tissue]] <- label
   }
   
