@@ -315,7 +315,7 @@ GetPlotTitles <- function(jgene, count.df){
   # count.df: df with a column of "gene" containing gene name and 
   # column of "count" containing number of tissues which show rhythmicity.
   count <- count.df[count.df$gene == jgene, "count"]
-  plot.title <- paste(jgene, "rhytjmic in", count, "tissues")
+  plot.title <- paste(jgene, "rhythmic in", count, "tissues")
   return(plot.title)
 }
 
@@ -618,9 +618,26 @@ dat.sub.temp.split <- split(dat.sub.temp, f = dat.sub.temp$gene)
 dat.sub.temp.split <- lapply(dat.sub.temp.split, GetFitTitle, fit.list)
 plot.titles <- sapply(my.genes, GetPlotTitles, count.df = r.genes.sum)
 
-pdf('plots/test.pdf')
-mclapply(as.vector(my.genes, mode = "list"), function(x) PlotTissues(dat.sub.temp.split[[x]], plot.titles[[x]]), mc.cores = 24)
+pdf('plots/rhythmic_across_tissues.pdf')
+start.time <- Sys.time()
+mclapply(as.vector(my.genes, mode = "list"), function(x) PlotTissues(dat.sub.temp.split[[x]], plot.titles[[x]]), 
+         mc.cores = 24)
+print(paste("Time for plotting", length(my.genes), ":", Sys.time() - start.time))
 dev.off()
+
+# plot projections 
+pdf('plots/projections.pdf')
+for (gene in my.genes){
+  PlotComplex(dat.proj[gene, ], 
+              labels = colnames(dat.proj),
+              add.text.plot = FALSE,
+              main = plot.titles[[gene]])
+}
+dev.off()
+
+
+rm(dat.sub.temp)
+rm(dat.sub.temp.split)
 
 # print(paste('Printing top genes.', Sys.time()))
 # pdf(rhythmic.genes.plots)
@@ -676,10 +693,6 @@ dev.off()
 #   PlotComplex(dat.proj[jgene, ], labels = tissues, add.text.plot = FALSE, main = jtitle)
 # }
 # dev.off()
-
-rm(dat.sub.temp)
-rm(dat.sub.temp2)
-rm(m.list)
 
 stopCluster(cl)
 unregister()
