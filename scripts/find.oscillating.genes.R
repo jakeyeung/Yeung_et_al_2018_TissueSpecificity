@@ -5,8 +5,9 @@
 
 library(ggplot2)
 library(plyr)
-library(foreach)  # for parallelization
-library(doParallel)  # for parallelization
+# library(foreach)  # for parallelization
+# library(doParallel)  # for parallelization
+library(parallel)
 
 # Adjustable parameters ---------------------------------------------------
 
@@ -190,13 +191,13 @@ GetParamsVector <- function(fit.list.tissue, param="amp"){
   return(unlist(params.vector))
 }
 
-PlotAcrossTissues <- function(dat, fit.list, jgene, jtitle){
+PlotAcrossTissues <- function(dat, fit.list, jgene, jtitle, parallel = FALSE){
   # Plot expression across tissues for a gene.
   # TODO: Find a way to incorporate fit.list parameters into the data
   
-  if (missing(jtitle){
+  if (missing(jtitle)){
     jtitle <- jgene
-  })
+  }
   
   dat.sub <- subset(dat, gene == jgene)
   
@@ -232,24 +233,39 @@ PlotAcrossTissues <- function(dat, fit.list, jgene, jtitle){
   
   dat.sub$label <- tissue.labels
   
-  m <- ggplot(dat.sub, aes(x = time, y = exprs, 
-                           group = experiment, 
-                           colour = experiment))
-  m <- m + geom_point() + 
-    geom_line() + 
-    facet_wrap(~label) +
-    ggtitle(jtitle)
-  return(m)
+  if (parallel == TRUE){
+    ggplot(dat.sub, aes(x = time, y = exprs, 
+                             group = experiment, 
+                             colour = experiment)) + 
+      geom_point() + 
+      geom_line() + 
+      facet_wrap(~label) +
+      ggtitle(jtitle)
+    
+  } else{
+    m <- ggplot(dat.sub, aes(x = time, y = exprs, 
+                             group = experiment, 
+                             colour = experiment))
+    m <- m + geom_point() + 
+      geom_line() + 
+      facet_wrap(~label) +
+      ggtitle(jtitle)
+    return(m) 
+  }
 }
 
 GetFitTitle <- function(dat, fit.list, jgene){
-  dat.sub <- subset(dat, gene == jgene)
+  if (!missing(jgene)){
+    dat <- subset(dat, gene == jgene) 
+  } else {
+    jgene <- unique(dat$gene)
+  }
   
   # Create new labels
-  labels <- vector(mode = "list", length = length(levels(dat.sub$tissue)))  # init
-  names(labels) <- levels(dat.sub$tissue)
+  labels <- vector(mode = "list", length = length(levels(dat$tissue)))  # init
+  names(labels) <- levels(dat$tissue)
   
-  for (tissue in levels(dat.sub$tissue)){
+  for (tissue in levels(dat$tissue)){
     params <- fit.list[[tissue]][[jgene]]
     pval <- signif(params[["pval"]], 2)
     amp <- signif(params[["amp"]], 2)
@@ -268,15 +284,39 @@ GetFitTitle <- function(dat, fit.list, jgene){
     labels[[tissue]] <- label
   }
   
-  tissue.labels <- character(length(dat.sub$tissue))
+  tissue.labels <- character(length(dat$tissue))
   i <- 1
-  for (tissue.label in dat.sub$tissue){
-    tissue.labels[i] <- labels[[dat.sub$tissue[i]]]
+  for (tissue.label in dat$tissue){
+    tissue.labels[i] <- labels[[dat$tissue[i]]]
     i <- i + 1
   }
   
-  dat.sub$label <- tissue.labels
-  return(dat.sub)
+  dat$label <- tissue.labels
+  return(dat)
+}
+
+PlotTissues <- function(df, jtitle){
+  # df should be subsetted so only one gene is present
+  # (use split to do then you can lapply or mapply)
+  # 
+  # df should also have label, which can be obtained from
+  # GetFitTitle()
+  ggplot(df, aes(x = time, y = exprs, 
+                      group = experiment, 
+                      colour = experiment)) + 
+    geom_point() + 
+    geom_line() + 
+    facet_wrap(~label) +
+    ggtitle(jtitle)
+}
+
+GetPlotTitles <- function(jgene, count.df){
+  # jgene: gene of interest
+  # count.df: df with a column of "gene" containing gene name and 
+  # column of "count" containing number of tissues which show rhythmicity.
+  count <- count.df[count.df$gene == jgene, "count"]
+  plot.title <- paste(jgene, "rhytjmic in", count, "tissues")
+  return(plot.title)
 }
 
 unregister <- function() {
@@ -568,29 +608,46 @@ dev.off()
 
 # Plot selected genes -----------------------------------------------------
 
-my.genes <- r.genes.sum$gene
+my.genes <- as.character(r.genes.sum$gene)
 
 dat.sub.temp <- subset(dat, gene %in% my.genes)  # for speed?
+dat.sub.temp$gene <- factor(dat.sub.temp$gene)
+dat.sub.temp.split <- split(dat.sub.temp, f = dat.sub.temp$gene)
 
-print(paste('Printing top genes.', Sys.time()))
-pdf(rhythmic.genes.plots)
-# slow takes about 15 minutes for 900 genes 
-gene.count <- 0
-for (gene in my.genes){
-  if (gene.count %% 100 == 0){
-    print(paste0(gene.count, "/", length(my.genes), " ", Sys.time()))
-  }
-  gene.count <- gene.count + 1
-  
-  count <- r.genes.sum[r.genes.sum$gene == gene, "count"]
-  jtitle <- paste(gene, "rhythmic in", count, "tissues")
-  
-  m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene, jtitle)
-  print(m)
-  PlotComplex(dat.proj[gene, ], labels = tissues, add.text.plot = FALSE, main = jtitle)
-}
+# mapply my list of dataframes
+dat.sub.temp.split <- lapply(dat.sub.temp.split, GetFitTitle, fit.list)
+plot.titles <- sapply(my.genes, GetPlotTitles, count.df = r.genes.sum)
+
+pdf('plots/test.pdf')
+mclapply(as.vector(my.genes, mode = "list"), function(x) PlotTissues(dat.sub.temp.split[[x]], plot.titles[[x]]), mc.cores = 24)
 dev.off()
-print(paste('Done printing top genes.', Sys.time()))
+
+# print(paste('Printing top genes.', Sys.time()))
+# pdf(rhythmic.genes.plots)
+# # slow takes about 15 minutes for 900 genes 
+# gene.count <- 0
+# for (gene in my.genes){
+#   if (gene.count %% 100 == 0){
+#     print(paste0(gene.count, "/", length(my.genes), " ", Sys.time()))
+#   }
+#   gene.count <- gene.count + 1
+#   
+#   count <- r.genes.sum[r.genes.sum$gene == gene, "count"]
+#   jtitle <- paste(gene, "rhythmic in", count, "tissues")
+#   
+#   m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene, jtitle)
+#   print(m)
+#   PlotComplex(dat.proj[gene, ], labels = tissues, add.text.plot = FALSE, main = jtitle)
+# }
+# dev.off()
+# print(paste('Done printing top genes.', Sys.time()))
+
+# # try mclapply
+# m.list <- mcmapply(PlotAcrossTissues, 
+#                    jgene = my.genes.subset, 
+#                    jtitle = my.genes.subset, 
+#                    MoreArgs = list(dat = dat.sub.temp, fit.list = fit.list, parallel = TRUE),
+#                    mc.cores = 30)
 
 
 # print(paste("Getting plots for", length(my.genes), "genes.", Sys.time()))
