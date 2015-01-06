@@ -639,61 +639,6 @@ dev.off()
 rm(dat.sub.temp)
 rm(dat.sub.temp.split)
 
-# print(paste('Printing top genes.', Sys.time()))
-# pdf(rhythmic.genes.plots)
-# # slow takes about 15 minutes for 900 genes 
-# gene.count <- 0
-# for (gene in my.genes){
-#   if (gene.count %% 100 == 0){
-#     print(paste0(gene.count, "/", length(my.genes), " ", Sys.time()))
-#   }
-#   gene.count <- gene.count + 1
-#   
-#   count <- r.genes.sum[r.genes.sum$gene == gene, "count"]
-#   jtitle <- paste(gene, "rhythmic in", count, "tissues")
-#   
-#   m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene, jtitle)
-#   print(m)
-#   PlotComplex(dat.proj[gene, ], labels = tissues, add.text.plot = FALSE, main = jtitle)
-# }
-# dev.off()
-# print(paste('Done printing top genes.', Sys.time()))
-
-# # try mclapply
-# m.list <- mcmapply(PlotAcrossTissues, 
-#                    jgene = my.genes.subset, 
-#                    jtitle = my.genes.subset, 
-#                    MoreArgs = list(dat = dat.sub.temp, fit.list = fit.list, parallel = TRUE),
-#                    mc.cores = 30)
-
-
-# print(paste("Getting plots for", length(my.genes), "genes.", Sys.time()))
-# m.list <- foreach(i = 1:length(my.genes),
-#                   .packages="ggplot2") %dopar% {
-#                     jgene = my.genes[i]
-#                     # get number of tissues found rhythmic for jgene: use it in title
-#                     count <- r.genes.sum[r.genes.sum$gene == jgene, "count"]
-#                     jtitle <- paste(jgene, "rhythmic in", count, "tissues")
-#                     dat.sub.temp2 <- GetFitTitle(dat = dat.sub.temp, fit.list, jgene)
-#                     ggplot(dat.sub.temp2, aes(x = time, y = exprs, 
-#                                         group = experiment, 
-#                                         colour = experiment)) +
-#                       geom_point() +
-#                       geom_line() +
-#                       facet_wrap(~label) +
-#                       ggtitle(jtitle)
-#                   }
-# print(paste("Done getting plots.", Sys.time()))
-# 
-# # Write m.list to file. Plot oscillating genes, then plot complex
-# pdf(rhythmic.genes.plots)
-# for (i in 1:length(my.genes)){
-#   jgene <- my.genes[i]
-#   print(m.list[i])
-#   PlotComplex(dat.proj[jgene, ], labels = tissues, add.text.plot = FALSE, main = jtitle)
-# }
-# dev.off()
-
 stopCluster(cl)
 unregister()
 gc()
