@@ -620,7 +620,7 @@ pdf('plots/rhythmic_across_tissues.pdf')
 start.time <- Sys.time()
 mclapply(as.vector(my.genes, mode = "list"), function(x) PlotTissues(dat.sub.temp.split[[x]], plot.titles[[x]]), 
          mc.cores = 24)
-print(paste("Time for plotting", length(my.genes), ":", Sys.time() - start.time))
+print(Sys.time() - start.time)
 dev.off()
 
 # plot projections 
