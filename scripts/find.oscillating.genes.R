@@ -21,6 +21,11 @@ count.dist.plot <- 'plots/distribution_of_tissue_specificness_rhythmic_genes.pdf
 tissue.specific.dist.plot <- 'plots/number_of_tissue_specific_rhythmic_genes.pdf'
 rhythmic.genes.plots <- 'plots/rhythmic_genes_across_tissues.pdf'
 
+# parallel processing
+#setup parallel backend to use 30 processors
+cl<-makeCluster(30)
+registerDoParallel(cl)
+
 # Define constants --------------------------------------------------------
 
 pval.threshold <- 1e-6
@@ -47,6 +52,8 @@ source(file.path(scripts.dir, funcs.dir, "ReplaceNegs.R"))
 source(file.path(scripts.dir, funcs.dir, "GetTissueTimes.R"))  # get tissue and times
 source(file.path(scripts.dir, funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "RegressionFunctions.R"))
+source(file.path(scripts.dir, funcs.dir, "MergeAndProject.R"))
+
 
 # Fit complex model
 FitComplexModel <- function(df, omega = 2 * pi / 24){
@@ -235,6 +242,48 @@ PlotAcrossTissues <- function(dat, fit.list, jgene, jtitle){
   return(m)
 }
 
+GetFitTitle <- function(dat, fit.list, jgene){
+  dat.sub <- subset(dat, gene == jgene)
+  
+  # Create new labels
+  labels <- vector(mode = "list", length = length(levels(dat.sub$tissue)))  # init
+  names(labels) <- levels(dat.sub$tissue)
+  
+  for (tissue in levels(dat.sub$tissue)){
+    params <- fit.list[[tissue]][[jgene]]
+    pval <- signif(params[["pval"]], 2)
+    amp <- signif(params[["amp"]], 2)
+    phase <- signif(params[["phase"]], 2)
+    int.array <- signif(params[["int.array"]], 2)
+    int.rnaseq <- signif(params[["int.rnaseq"]], 2)
+    
+    label <- paste0(c(tissue, 
+                      paste0("pval=", pval), 
+                      "\n",
+                      paste0("amp=", amp),
+                      "\n",
+                      paste0("phase=", phase)),
+                    collapse = ",")
+    
+    labels[[tissue]] <- label
+  }
+  
+  tissue.labels <- character(length(dat.sub$tissue))
+  i <- 1
+  for (tissue.label in dat.sub$tissue){
+    tissue.labels[i] <- labels[[dat.sub$tissue[i]]]
+    i <- i + 1
+  }
+  
+  dat.sub$label <- tissue.labels
+  return(dat.sub)
+}
+
+unregister <- function() {
+  env <- foreach:::.foreachGlobals
+  rm(list=ls(name=env), pos=env)
+}
+
 # Define dirs -------------------------------------------------------------
 
 # define dirs
@@ -289,6 +338,11 @@ normalized.array <- log2(normalized.array + 1)
 rna.seq.exprs <- log2(rna.seq.exprs + 1)
 
 
+# Project to frequency domain ---------------------------------------------
+
+dat.proj <- MergeAndProject(normalized.array, rna.seq.exprs, T = 24)
+
+
 # Merge data into long format ---------------------------------------------
 
 tissues <- GetTissues(colnames(normalized.array))
@@ -318,10 +372,6 @@ rm(long.array, long.rnaseq)
 
 # Do my lm fit ------------------------------------------------------------
 # slow: about 8 minutes
-
-#setup parallel backend to use 12 processors
-cl<-makeCluster(12)
-registerDoParallel(cl)
 
 print('Begin fitting lm models')
 print(Sys.time())
@@ -440,6 +490,7 @@ for (jtissue in tissues){
   fits.df.subset.top.n <- rbind(fits.df.subset.top.n, tissue.temp)
 }
 
+rm(tissue.temp)
 head(fits.df.subset.top.n)
 tail(fits.df.subset.top.n)
 
@@ -523,7 +574,7 @@ dat.sub.temp <- subset(dat, gene %in% my.genes)  # for speed?
 
 print(paste('Printing top genes.', Sys.time()))
 pdf(rhythmic.genes.plots)
-# slow takes about 15 minutes depending on how many genes you got...
+# slow takes about 15 minutes for 900 genes 
 gene.count <- 0
 for (gene in my.genes){
   if (gene.count %% 100 == 0){
@@ -536,18 +587,12 @@ for (gene in my.genes){
   
   m <- PlotAcrossTissues(dat.sub.temp, fit.list, gene, jtitle)
   print(m)
+  PlotComplex(dat.proj[gene, ], labels = tissues, add.text.plot = FALSE, main = jtitle)
 }
 dev.off()
 print(paste('Done printing top genes.', Sys.time()))
 
-rm(dat.sub.temp)
 
-# parallelization fail
-
-# #setup parallel backend to use 30 processors
-# cl<-makeCluster(30)
-# registerDoParallel(cl)
-# 
 # print(paste("Getting plots for", length(my.genes), "genes.", Sys.time()))
 # m.list <- foreach(i = 1:length(my.genes),
 #                   .packages="ggplot2") %dopar% {
@@ -555,20 +600,30 @@ rm(dat.sub.temp)
 #                     # get number of tissues found rhythmic for jgene: use it in title
 #                     count <- r.genes.sum[r.genes.sum$gene == jgene, "count"]
 #                     jtitle <- paste(jgene, "rhythmic in", count, "tissues")
-#                     m <- PlotAcrossTissues(dat.sub.temp, fit.list, jgene, jtitle)
-#                     m
+#                     dat.sub.temp2 <- GetFitTitle(dat = dat.sub.temp, fit.list, jgene)
+#                     ggplot(dat.sub.temp2, aes(x = time, y = exprs, 
+#                                         group = experiment, 
+#                                         colour = experiment)) +
+#                       geom_point() +
+#                       geom_line() +
+#                       facet_wrap(~label) +
+#                       ggtitle(jtitle)
 #                   }
 # print(paste("Done getting plots.", Sys.time()))
 # 
-# fit.list <- foreach(i = 1:length(tissues), 
-#                     .packages="plyr") %dopar% {
-#                       jtissue <- tissues[i]
-#                       dat.tiss <- subset(dat, tissue %in% c(jtissue))
-#                       fit.out <- dlply(dat.tiss, .(gene), GetAmpPhase)
-#                     }
-# 
-# # print to pdf file
-# pdf("plots/rhythmic_genes_across_tissues2.pdf")
-# lapply(m.list, print)
+# # Write m.list to file. Plot oscillating genes, then plot complex
+# pdf(rhythmic.genes.plots)
+# for (i in 1:length(my.genes)){
+#   jgene <- my.genes[i]
+#   print(m.list[i])
+#   PlotComplex(dat.proj[jgene, ], labels = tissues, add.text.plot = FALSE, main = jtitle)
+# }
 # dev.off()
-# rm(m.list)
+
+rm(dat.sub.temp)
+rm(dat.sub.temp2)
+rm(m.list)
+
+stopCluster(cl)
+unregister()
+gc()

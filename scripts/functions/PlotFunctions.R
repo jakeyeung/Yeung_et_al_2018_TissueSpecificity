@@ -1,5 +1,5 @@
 PlotComplex <- function(complex.matrix, gene.list, labels,
-                        col="HSV", axis.min=-1.1, axis.max=1.1, 
+                        axis.min, axis.max, col="HSV",
                         main='Plot title', 
                         rotate=0,
                         add.text.plot="TRUE",
@@ -33,6 +33,11 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
     text.labels <- rownames(dat)  
   } else {
     text.labels <- labels
+  }
+  if (missing(axis.min) & missing(axis.max)){
+    jmax <- max(Mod(complex.matrix))
+    axis.min = -jmax
+    axis.max = jmax
   }
   
   # rotate 
