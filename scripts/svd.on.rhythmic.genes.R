@@ -76,8 +76,18 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
   if (normalize){
     # Normalize across omegas
     # Multiply by mean
-    jmean <- mean(subset(df, experiment == "rnaseq")$exprs)  # rnaseq exprs more reliable than microarray.
-    my.transformed <- (my.transformed / sum.transforms) * jmean
+#     jmean <- mean(subset(df, experiment == "rnaseq")$exprs)  # rnaseq exprs more reliable than microarray.
+#     factor <- jmean
+    
+    # if median is 0, then set factor to 0, otherwise 1
+    factor <- 1
+    cutoff <- 5
+    jmedian <- median(subset(df, experiment == "rnaseq")$exprs)
+    if (jmedian <= cutoff){
+      factor <- 0
+    }
+    
+    my.transformed <- (my.transformed / sum.transforms) * factor
   } 
   
   data.frame(exprs.transformed = my.transformed)
@@ -172,14 +182,14 @@ rna.seq.exprs <- log2(rna.seq.exprs + 1)
 plot(density(unlist(rna.seq.exprs)))
 abline(v = cutoff, col = 'red')
 
-jmax <- apply(rna.seq.exprs, 1, max)
+jmean <- apply(rna.seq.exprs, 1, mean)
 
-genes.not.expressed <- names(jmax[which(jmax < cutoff)])
+genes.not.expressed <- names(jmean[which(jmean < cutoff)])
 all.genes <- rownames(rna.seq.exprs)
 genes.expressed <- all.genes[which(!all.genes %in% genes.not.expressed)]
 
 print(paste0(length(genes.not.expressed), 
-             " not expressed at cutoff = max(", cutoff, 
+             " not expressed at cutoff = mean(", cutoff, 
              ") for a gene across all tissues. Removing..."))
 
 # Remove unexpressed genes
@@ -214,8 +224,12 @@ omegas <- GetOmegas()
 # # # test my function
 # clockgenes <- c(clockgenes, "Spint4", "Defb23", "Defb34", "Gje1", "Gm10233", "Mir181b.2", "n.R5s54")
 # problem genes
-problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "Defb34")
-df <- subset(dat.split$WFAT, gene %in% c(clockgenes, problem.genes))
+problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "Defb34", "B3galt2")
+problem.genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", 
+                   "Tceal3", "Murc", "Fgf10", "Dclk1", "Ccne1", "Cox6a2", "Trim63", 
+                   "Kcng4", "Slc17a9", "Diras2", "Txlnb", "A830018L16Rik", "Elovl3", "Alb")
+problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2")
+df <- subset(dat.split$Liver, gene %in% c(clockgenes, problem.genes))
 df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = TRUE)
 df.proj$mod <- Mod(df.proj$exprs.transformed)
 df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
@@ -225,7 +239,10 @@ df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
 # jgene <- "Gm10233"
 # jgene <- "Mir181b.2"
 # jgene <- "Gje1"
-# sapply(omegas, DoFourier, exprs = subset(dat.split$WFAT, gene == jgene)$exprs, time = subset(dat.split$WFAT, gene == jgene)$time)
+jgene <- "B3galt2"
+jgene <- "Arntl"
+jmean <- mean(subset(dat.split$Liver, gene == jgene & experiment == "rnaseq")$exprs)
+sapply(omegas, DoFourier, exprs = subset(dat.split$Liver, gene == jgene)$exprs, time = subset(dat.split$Liver, gene == jgene)$time)
 
 
 start.time <- Sys.time()
@@ -277,7 +294,7 @@ rownames(s$v) <- colnames(dat.wide)
 # Plot interesting components ---------------------------------------------
 
 sing.vals <- seq(length(s$d))
-sing.vals <- c(1, 2, 3)
+# sing.vals <- c(1, 2, 3)
 
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
@@ -309,6 +326,13 @@ for (sing.val in sing.vals){
               threshold = 0.5 * jmax,
               verbose = FALSE)
   
+  # show how fast the values drop
+  top.genes.all <- GetTopNValues(Mod(eigensample), N = length(eigensample))
+  plot(top.genes.all$vals, 
+       log = "x", 
+       main = paste("Component:", sing.val),
+       ylab = "Modulus of gene loading",
+       xlab = "Gene index")
   # Plot args in color
   top.genes <- GetTopNValues(Mod(eigensample), N = 100)# list of $vals $i
   # use drop to keep rownames
@@ -316,17 +340,37 @@ for (sing.val in sing.vals){
   outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat)
   PlotArgsMatrix(outer.prod.mat, main = paste("Component", sing.val))
   
-  # print top 15 genes
-  cat(paste(head(names(top.genes$vals), n = 15), collapse = '", "'))
+  # print top 100 genes (copy and paste-able)
+  cat(paste0(head(names(top.genes$vals), n = 50), "\n"))
+  
+#   # print top 20 genes (list-able)
+  cat(paste(head(names(top.genes$vals), n = 20), collapse = '", "'))
   cat("\n")
 }
-
 
 
 # Plot interesting genes --------------------------------------------------
 
 # component 2: normalized and multiplied and filtered (these are LIVER GENES)
 genes <- c("Elovl3", "Ddit4", "Chka", "Pdk4", "Slc45a3", "Bhmt", "Cml5", "Osgin1", "Ppard", "BC029214", "Rgs16", "Acacb", "Leap2", "Upp2", "Ethe1")
+
+genes <- c("Cmah", "Cyp2f2", "Nr1d1", "C4b", "Slc25a10", "Cd37", "Dbp", "Zbtb16", "Ttr", "Rbp4", "Aplnr", 
+           "Pnpla3", "Serpina3n", "Apoa2", "Sucnr1", "Alb", "Cfb", "Sncg", "Aldh1a1", "Cyp2b10")
+
+# component 2: normalized, no multiply, filter by MEAN 
+genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", "Tceal3", "Murc", "Fgf10", "Dclk1")
+
+# component 2: normalized. multiply by 1 or 0, filter by mean
+genes <- c("Rgs16", "Ddit4", "Tceal3", "Dclk1", "Ccne1", "Diras2", "Slc17a9", 
+           "Cntfr", "Lrrc2", "Txlnb", "Aqp7", "Ppard", "Mb", "Lrfn3", "Acot1", 
+           "Kif26b", "Dtna", "Slc41a3", "Ebf1", "Pdk4")
+
+# component 2: normalized, multiply by 1 or 0 (if less than cutoff) filter by mean
+genes <- c("Rgs16", "Ddit4", "Ppard", "Cntfr", "Lonrf3", "Lrfn3", "Slc17a9", "Slc45a3", "Chka", "Pdk4", "Phospho1", 
+           "BC029214", "Osgin1", "I830012O16Rik", "Mpzl1", "Celsr1", "Arsg", "Abtb2", "Lgalsl", "Fbxo44")
+
+genes <- c("Npas2", "Cmah", "Mthfd1l", "Dbp", "Cfb", "Agt", "Lonrf3", "Nr1d1", "Usp13", "Eno3", "Cldn1", 
+           "Slc38a3", "Serpina3n", "Hif3a", "Rasl11a", "Sncg", "Serpina3c", "Slc25a10", "Cyp2f2", "Tcea3")
 dat.sub <- subset(dat, gene %in% genes)
 dat.sub$gene <- factor(dat.sub$gene)
 
