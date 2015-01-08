@@ -9,15 +9,20 @@ library(ddply)
 library(reshape2)
 library(doMC)
 
-## Specify the number of cores
-registerDoMC(30)
 
-## Check how many cores we are using
-getDoParWorkers()
+# Parameters to play ------------------------------------------------------
+
+## Specify the number of cores
+mc <- 30
+
+# Minimum log2 expression to be considered "expressed" in RNA-Seq
+cutoff <- 5
+
 
 clockgenes <- c('Nr1d1','Dbp', 'Arntl', 'Npas2', 'Nr1d2', 
                 'Bhlhe41', 'Nfil3', 'Cdkn1a', 'Lonrf3', 
                 'Tef', 'Usp2', 'Wee1', 'Dtx4', 'Asb12')
+
 clockgenes <- c(clockgenes, 'Elovl3', 'Clock', 'Per1', 'Per2', 'Per3', 'Cry2', 'Cry1')
 
 # My Functions ------------------------------------------------------------
@@ -30,6 +35,9 @@ source(file.path(scripts.dir, funcs.dir, "FourierFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "LoadAndHandleData.R"))
 source(file.path(scripts.dir, funcs.dir, "DataHandlingFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "PlotFunctions.R"))
+source(file.path(scripts.dir, funcs.dir, "GetTopNValues.R"))
+source(file.path(scripts.dir, funcs.dir, "OuterComplex.R"))
+source(file.path(scripts.dir, funcs.dir, "OrderPhaseMatrix.R"))
 
 ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
   # Perform fourier transform and normalize across all frequencies.
@@ -60,8 +68,6 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
     transformed <- transformed / length(df$exprs)
     sum.transforms <- sum.transforms + Mod(transformed)
     
-    print(transformed)
-    
     if (omega == my.omega){
       my.transformed <- transformed
     }
@@ -69,7 +75,9 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
   
   if (normalize){
     # Normalize across omegas
-    my.transformed <- my.transformed / sum.transforms 
+    # Multiply by mean
+    jmean <- mean(subset(df, experiment == "rnaseq")$exprs)  # rnaseq exprs more reliable than microarray.
+    my.transformed <- (my.transformed / sum.transforms) * jmean
   } 
   
   data.frame(exprs.transformed = my.transformed)
@@ -158,21 +166,42 @@ normalized.array <- log2(normalized.array + 1)
 rna.seq.exprs <- log2(rna.seq.exprs + 1)
 
 
+# Remove genes from RNA-Seqs that are not expressing. ---------------------
+
+# plot and show cutoff visually
+plot(density(unlist(rna.seq.exprs)))
+abline(v = cutoff, col = 'red')
+
+jmax <- apply(rna.seq.exprs, 1, max)
+
+genes.not.expressed <- names(jmax[which(jmax < cutoff)])
+all.genes <- rownames(rna.seq.exprs)
+genes.expressed <- all.genes[which(!all.genes %in% genes.not.expressed)]
+
+print(paste0(length(genes.not.expressed), 
+             " not expressed at cutoff = max(", cutoff, 
+             ") for a gene across all tissues. Removing..."))
+
+# Remove unexpressed genes
+
+rna.seq.exprs.filtered <- rna.seq.exprs[genes.expressed, ]
+
+
 # Take only common genes --------------------------------------------------
 
 array.genes <- rownames(normalized.array)
-rna.seq.genes <- rownames(rna.seq.exprs)
+rna.seq.genes <- rownames(rna.seq.exprs.filtered)
 
 common.genes <- intersect(array.genes, rna.seq.genes)
 
 print(paste(length(common.genes), "common genes between array and rnaseq"))
 
 normalized.array <- normalized.array[common.genes, ]
-rna.seq.exprs <- rna.seq.exprs[common.genes, ]
+rna.seq.exprs.filtered <- rna.seq.exprs.filtered[common.genes, ]
 
 # Merge data into long format ---------------------------------------------
 
-dat <- MergeToLong(normalized.array, rna.seq.exprs)
+dat <- MergeToLong(normalized.array, rna.seq.exprs.filtered)
 
 dat.split <- split(dat, dat$tissue)
 
@@ -180,13 +209,30 @@ dat.split <- split(dat, dat$tissue)
 # Project my data ---------------------------------------------------------
 
 omega <- 2 * pi / 24
+omegas <- GetOmegas()
 
-# # test my function
-clockgenes <- c(clockgenes, "Spint4", "Defb23")
-df <- subset(dat.split$WFAT, gene %in% clockgenes)
+# # # test my function
+# clockgenes <- c(clockgenes, "Spint4", "Defb23", "Defb34", "Gje1", "Gm10233", "Mir181b.2", "n.R5s54")
+# problem genes
+problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "Defb34")
+df <- subset(dat.split$WFAT, gene %in% c(clockgenes, problem.genes))
 df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = TRUE)
+df.proj$mod <- Mod(df.proj$exprs.transformed)
+df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
+(df.proj)
+# 
+# # test individual genes
+# jgene <- "Gm10233"
+# jgene <- "Mir181b.2"
+# jgene <- "Gje1"
+# sapply(omegas, DoFourier, exprs = subset(dat.split$WFAT, gene == jgene)$exprs, time = subset(dat.split$WFAT, gene == jgene)$time)
+
 
 start.time <- Sys.time()
+if (getDoParWorkers() == 1){
+  registerDoMC(mc)
+}
+print(paste("Parallel processing on:", getDoParWorkers(), "cores"))
 dat.split.proj <- lapply(dat.split, function(x){
   ddply(x, .(gene), ProjectToFrequency, my.omega = omega, normalize = TRUE, .parallel = TRUE)
 })
@@ -231,11 +277,13 @@ colnames(s$v) <- colnames(dat.wide)
 # Plot interesting components ---------------------------------------------
 
 sing.vals <- seq(length(s$d))
+sing.vals <- c(1, 2, 3)
 
 # ScreePlot
-plot(s$d^2, type='o')  # Manual screeplot. 
+plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
 
 for (sing.val in sing.vals){
+  print(paste("Plotting component:", sing.val))
   eigengene <- s$v[, sing.val]
   jmax <- max(Mod(eigengene))
   PlotComplex(eigengene, 
@@ -258,17 +306,78 @@ for (sing.val in sing.vals){
               main = paste("Component:", sing.val),
               add.text.plot = FALSE,
               jpch = 1,
-              threshold = 0.75 * jmax,
+              threshold = 0.5 * jmax,
               verbose = TRUE)
+  
+#   # Plot args in color
+#   top.genes <- GetTopNValues(Mod(eigensample), N = 100)  # list of $vals $i
+#   PlotArgsMatrix(eigensample, )
 }
 
-# genes <- c("Dbp", "Defb22", "Defb23", "Defb34", "Npas2", "Nr1d1", "Olfr1014", "Olfr1015", "Olfr1052", "Olfr731", "Spint4")
+
+
+# Plot interesting genes --------------------------------------------------
+
+# # Interesting genes: Fam150b, Cml5, Tshr
+# 
+# # genes <- c("Dbp", "Defb22", "Defb23", "Defb34", "Npas2", "Nr1d1", "Olfr1014", "Olfr1015", "Olfr1052", "Olfr731", "Spint4")
+# 
+# genes <- c("Gje1", "Gm10233", "Lonrf3", "Mir181b.2", "n.R5s54")
+# 
+# genes <- c("Cry2", "Arntl", "Dbp", "Gje1", "n.R5s54", "Npas2")
+# 
+# genes <- c("Abcd2", "Abcg5", "Abcg8", "Abtb2", "Acacb", "Acnat2", "Acot1", "Acsl1", "Adck3", "Adprhl1", 
+#            "Alas1", "Amer1", "Angptl4", "Aqp3", "Aqp8", "Arrdc3", "Arsg", "Avpr1a", "B3galt2", "BC029214", 
+#            "Bhmt", "Camk2a", "Ccrn4l", "Celsr1", "Chka", "Ckm", "Clec2h", "Clpx", "Cml5", "Cntfr", 
+#            "Col11a1", "Col27a1", "Cox6a2", "Crip2", "Ddc", "Ddit4", "Dupd1", "Ebf1", "Eef1a2", "Elmod3", 
+#            "Elovl3", "Ethe1", "Fdft1", "Fgf14", "Gm10762", "Gm10804", "Gm11437", "Gm15998", "Gm4952", 
+#            "Gpam", "Gpcpd1", "Gprin3", "Hacl1", "Hdhd3", "Hsd3b7", "I830012O16Rik", "Inca1", "Insc", "Insig2", "Irf6", "Jph3", "Klb", "Klhl30", "Leap2", "Lep", "Lgalsl", "Loxl4", "Lrfn3", "Lrrc30", "Mb", "Myc", "Myh6", "Myh8", "Ndrg1", "Net1", "Nr1d1", "Nrk", "Osgin1", "Paqr9", "Pck1", "Pdk4", "Pfkfb3", "Plin5", "Plxna2", "Pnp", "Pnp2", "Ppard", "Pxmp4", "Rassf6", "Rgs16", "Sco2", "Sept9", "Slc17a9", "Slc2a2", "Slc38a2", "Slc38a3", "Slc45a3", "Slc7a2", "Smagp", "Smpx", "Smtnl2", "Snhg3", "Spata22", "St5", "St6galnac6", "Tbx15", "Tfpi2", "Tfrc", "Tjp3", "Tmem37", "Tmie", "Tnfrsf19", "Tra2a", "Trdn", "Trim63", "Tshr", "Tspan4", "Tst", "Tubb2a", "Ube2u", "Upp2", "X1300002K09Rik", "X4930444P10Rik", "Xirp2")
+# 
+# genes <- c("Ddit4", "Elovl3", "Fgf14", "Pdk4", "Tshr")  # normalizing and multiplying by mean
+# genes <- c("Fam124b", "Fam150b", "Lrrc30", "Myh8", "Tshr", "X4930444P10Rik")  # removing "unexpressed genes" the normalizing, no multipy by mean
+# genes <- c("Tshr", "Fam124b", "Myh8", "Lrrc30", "X4930444P10Rik", "Fam150b", "B3galt2", "Dnmt3l", 
+#            "Hephl1", "Gm10804", "Tacr3", "Krt9", "Tmem72", "CN725425", "Tbx15", "Adprhl1", 
+#            "Cyp11a1", "Cpa4", "Ripply1", "Tpo", "Mc5r", "Ano7", "Wnt16", "Rab9b", "Lsmem1", 
+#            "Bcl2l10", "Nr1d1", "Cml5", "Ccdc121", "Kcnq3", "Sgcg", "Lonrf3", "Aqp3", "Cd209d", 
+#            "Myf5", "Pcdh8", "Kcne1l", "Cyp24a1", "Casr", "Tpsb2", "Smpx", "Dmrtc1a", "Defb2")
+# 
+# # 2nd component genes: normalize and multiply by mean
+# genes <- c("Bhmt", "Chka", "Ddit4", "Elovl3", "Fgf14", "Pdk4", "Rgs16", "Tshr") 
+# 
+# # 2nd component genes: normalize and multiply by mean (RNASEQ ONLY)
+# genes <- c("Elovl3", "Ddit4", "Chka", "Pdk4", "Slc45a3", "Bhmt", "Cml5", 
+#            "Osgin1", "Ppard", "BC029214", "Rgs16", "Acacb", 
+#            "Leap2", "Upp2", "Ethe1", "Slc30a10", "Tst", "Aqp8", 
+#            "Tshr", "Celsr1")
+# 
+# # 3rd component genes: normalize and multiply by mean of RNASEQ
+# genes <- c("Adrb3", "Ahsg", "Alb", "Aldh1a1", "Aplnr", "Apoa2", 
+#            "Bhlhe40", "Bhlhe41", "C4b", "Cd37", "Cfb", "Cmah", 
+#            "Cml5", "Cxcr4", "Cyp2b10", "Cyp2f2", "Dbp", "Dgat2", 
+#            "Ebf1", "Eno3", "Fbxo21", "Gsta3", "Hdc", "Hspa5", 
+#            "Igfbp4", "Lrg1", "Nnat", "Npas2", "Nr1d1", "Pnpla3", 
+#            "Rbp4", "Retn", "Serpina3n", "Slc25a1", "Slc25a10", 
+#            "Sncg", "Sucnr1", "Trf", "Ttr", "Zbtb16")
+# 
+# # problem genes
+# genes <- c(c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14"))
+# genes <- c("Spint4", "Defb23", "Defb34")
+# 
+# # 2nd component: no normalization (NOISY GENES)
+# genes <- c("Adam7", "Arntl", "Cst8", "Dbp", "Defb47", "Defb48", "Gpx5", "Lcn10", "Lcn8", "Lcn9", "Ly6g5b", "Ly6g5c", "Npas2", "Spint4", "Svs2")
+# 
+# # 2nd component: normalization only, no mean multiplication
+# genes <- c("Fam124b", "Fam150b", "Lrrc30", "Myh8", "Tshr", "X4930444P10Rik")
+# 
+# # 2nd component: no division, just multiply by mean
+# genes <- c("Adam7", "Bhmt", "Cst11", "Cst8", "Defb20", "Defb48", "Elovl3", 
+#            "Gpx5", "Lcn8", "Lcn9", "Ly6g5b", "Rnase10", "Svs2", "X5830403L16Rik", "X9230104L09Rik")
 # 
 # dat.sub <- subset(dat, gene %in% genes)
 # for (jgene in genes){
+#   print(jgene)
 #   m <- PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = jgene)
 #   print(m)
 # }
-
 
 
