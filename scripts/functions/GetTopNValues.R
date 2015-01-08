@@ -1,4 +1,4 @@
-GetTopNValues <- function(x, N){
+GetTopNValues <- function(x, N=100){
   # Return top N values from vector x
   # 
   # ARGS:
