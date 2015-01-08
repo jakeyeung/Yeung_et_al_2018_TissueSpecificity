@@ -134,12 +134,12 @@ ConvertLongToWide <- function(long.df, measurement.var = "exprs.transformed"){
 
 PlotGeneAcrossTissues <- function(dat, jtitle){
   m <- ggplot(dat, aes(x = time, y = exprs,
-                   group = experiment, 
-                   colour = experiment)) + 
-      geom_point() + 
-      geom_line() + 
-      facet_wrap(~tissue) +
-      ggtitle(jtitle)
+                       group = experiment, 
+                       colour = experiment)) + 
+    geom_point() + 
+    geom_line() + 
+    facet_wrap(~tissue) +
+    ggtitle(jtitle)
   return(m)
 }
 
@@ -272,7 +272,7 @@ s <- svd(dat.wide)
 # Set rownames for u and v ------------------------------------------------
 
 rownames(s$u) <- rownames(dat.wide)
-colnames(s$v) <- colnames(dat.wide)
+rownames(s$v) <- colnames(dat.wide)
 
 # Plot interesting components ---------------------------------------------
 
@@ -307,16 +307,33 @@ for (sing.val in sing.vals){
               add.text.plot = FALSE,
               jpch = 1,
               threshold = 0.5 * jmax,
-              verbose = TRUE)
+              verbose = FALSE)
   
-#   # Plot args in color
-#   top.genes <- GetTopNValues(Mod(eigensample), N = 100)  # list of $vals $i
-#   PlotArgsMatrix(eigensample, )
+  # Plot args in color
+  top.genes <- GetTopNValues(Mod(eigensample), N = 100)# list of $vals $i
+  # use drop to keep rownames
+  outer.prod.mat <- s$d[sing.val] * OuterComplex(s$u[top.genes$i, sing.val, drop = FALSE], t(s$v[, sing.val, drop = FALSE]))
+  outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat)
+  PlotArgsMatrix(outer.prod.mat, main = paste("Component", sing.val))
+  
+  # print top 15 genes
+  cat(paste(head(names(top.genes$vals), n = 15), collapse = '", "'))
+  cat("\n")
 }
 
 
 
 # Plot interesting genes --------------------------------------------------
+
+# component 2: normalized and multiplied and filtered (these are LIVER GENES)
+genes <- c("Elovl3", "Ddit4", "Chka", "Pdk4", "Slc45a3", "Bhmt", "Cml5", "Osgin1", "Ppard", "BC029214", "Rgs16", "Acacb", "Leap2", "Upp2", "Ethe1")
+dat.sub <- subset(dat, gene %in% genes)
+dat.sub$gene <- factor(dat.sub$gene)
+
+for (jgene in genes){
+  print(jgene)
+  print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = jgene))
+}
 
 # # Interesting genes: Fam150b, Cml5, Tshr
 # 
