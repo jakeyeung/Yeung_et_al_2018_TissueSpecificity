@@ -5,7 +5,7 @@
 # 
 # Dependencies: output of find.oscillating.genes.R is used to detect rhythmic genes.
 
-library(ddply)
+library(plyr)
 library(reshape2)
 library(doMC)
 
@@ -38,6 +38,8 @@ source(file.path(scripts.dir, funcs.dir, "PlotFunctions.R"))
 source(file.path(scripts.dir, funcs.dir, "GetTopNValues.R"))
 source(file.path(scripts.dir, funcs.dir, "OuterComplex.R"))
 source(file.path(scripts.dir, funcs.dir, "OrderPhaseMatrix.R"))
+source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
+
 
 ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
   # Perform fourier transform and normalize across all frequencies.
@@ -178,24 +180,24 @@ rna.seq.exprs <- log2(rna.seq.exprs + 1)
 
 # Remove genes from RNA-Seqs that are not expressing. ---------------------
 
-# plot and show cutoff visually
-plot(density(unlist(rna.seq.exprs)))
-abline(v = cutoff, col = 'red')
-
-jmean <- apply(rna.seq.exprs, 1, mean)
-
-genes.not.expressed <- names(jmean[which(jmean < cutoff)])
-all.genes <- rownames(rna.seq.exprs)
-genes.expressed <- all.genes[which(!all.genes %in% genes.not.expressed)]
-
-print(paste0(length(genes.not.expressed), 
-             " not expressed at cutoff = mean(", cutoff, 
-             ") for a gene across all tissues. Removing..."))
-
-# Remove unexpressed genes
-
-rna.seq.exprs.filtered <- rna.seq.exprs[genes.expressed, ]
-
+# # plot and show cutoff visually
+# plot(density(unlist(rna.seq.exprs)))
+# abline(v = cutoff, col = 'red')
+# 
+# jmean <- apply(rna.seq.exprs, 1, mean)
+# 
+# genes.not.expressed <- names(jmean[which(jmean < cutoff)])
+# all.genes <- rownames(rna.seq.exprs)
+# genes.expressed <- all.genes[which(!all.genes %in% genes.not.expressed)]
+# 
+# print(paste0(length(genes.not.expressed), 
+#              " not expressed at cutoff = mean(", cutoff, 
+#              ") for a gene across all tissues. Removing..."))
+# 
+# # Remove unexpressed genes
+# 
+# rna.seq.exprs.filtered <- rna.seq.exprs[genes.expressed, ]
+rna.seq.exprs.filtered <- rna.seq.exprs  # no filter
 
 # Take only common genes --------------------------------------------------
 
@@ -228,7 +230,7 @@ problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "
 problem.genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", 
                    "Tceal3", "Murc", "Fgf10", "Dclk1", "Ccne1", "Cox6a2", "Trim63", 
                    "Kcng4", "Slc17a9", "Diras2", "Txlnb", "A830018L16Rik", "Elovl3", "Alb")
-problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2")
+problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2", "Alb", "Elovl3")
 df <- subset(dat.split$Liver, gene %in% c(clockgenes, problem.genes))
 df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = TRUE)
 df.proj$mod <- Mod(df.proj$exprs.transformed)
@@ -247,7 +249,7 @@ sapply(omegas, DoFourier, exprs = subset(dat.split$Liver, gene == jgene)$exprs, 
 
 start.time <- Sys.time()
 if (getDoParWorkers() == 1){
-  registerDoMC(mc)
+  registerDoMC(40)
 }
 print(paste("Parallel processing on:", getDoParWorkers(), "cores"))
 dat.split.proj <- lapply(dat.split, function(x){
@@ -293,9 +295,12 @@ rownames(s$v) <- colnames(dat.wide)
 
 # Plot interesting components ---------------------------------------------
 
+tissues <- GetTissues(colnames(normalized.array))
+
 sing.vals <- seq(length(s$d))
 # sing.vals <- c(1, 2, 3)
 
+pdf("plots/components.normalized.filter.low.genes.pdf")
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
 
@@ -347,37 +352,66 @@ for (sing.val in sing.vals){
   cat(paste(head(names(top.genes$vals), n = 20), collapse = '", "'))
   cat("\n")
 }
+dev.off()
+
+# plot rhythmic genes
+pdf("plots/rhythmic.genes.by.singular.values.normalized.filter.low.genes")
+for (sing.val in sing.vals){
+  eigensample <- s$u[, sing.val]
+  top.genes <- GetTopNValues(Mod(eigensample), N = 10)# list of $vals $i
+  
+  genes <- names(top.genes$vals)
+  
+  dat.sub <- subset(dat, gene %in% genes)
+  dat.sub$gene <- factor(dat.sub$gene)
+  
+  for (jgene in names(top.genes$vals)){
+      print(jgene)
+      print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = paste("gene:", jgene, "component", sing.val)))
+  }
+}
+dev.off()
+
 
 
 # Plot interesting genes --------------------------------------------------
 
-# component 2: normalized and multiplied and filtered (these are LIVER GENES)
-genes <- c("Elovl3", "Ddit4", "Chka", "Pdk4", "Slc45a3", "Bhmt", "Cml5", "Osgin1", "Ppard", "BC029214", "Rgs16", "Acacb", "Leap2", "Upp2", "Ethe1")
-
-genes <- c("Cmah", "Cyp2f2", "Nr1d1", "C4b", "Slc25a10", "Cd37", "Dbp", "Zbtb16", "Ttr", "Rbp4", "Aplnr", 
-           "Pnpla3", "Serpina3n", "Apoa2", "Sucnr1", "Alb", "Cfb", "Sncg", "Aldh1a1", "Cyp2b10")
-
-# component 2: normalized, no multiply, filter by MEAN 
-genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", "Tceal3", "Murc", "Fgf10", "Dclk1")
-
-# component 2: normalized. multiply by 1 or 0, filter by mean
-genes <- c("Rgs16", "Ddit4", "Tceal3", "Dclk1", "Ccne1", "Diras2", "Slc17a9", 
-           "Cntfr", "Lrrc2", "Txlnb", "Aqp7", "Ppard", "Mb", "Lrfn3", "Acot1", 
-           "Kif26b", "Dtna", "Slc41a3", "Ebf1", "Pdk4")
-
-# component 2: normalized, multiply by 1 or 0 (if less than cutoff) filter by mean
-genes <- c("Rgs16", "Ddit4", "Ppard", "Cntfr", "Lonrf3", "Lrfn3", "Slc17a9", "Slc45a3", "Chka", "Pdk4", "Phospho1", 
-           "BC029214", "Osgin1", "I830012O16Rik", "Mpzl1", "Celsr1", "Arsg", "Abtb2", "Lgalsl", "Fbxo44")
-
-genes <- c("Npas2", "Cmah", "Mthfd1l", "Dbp", "Cfb", "Agt", "Lonrf3", "Nr1d1", "Usp13", "Eno3", "Cldn1", 
-           "Slc38a3", "Serpina3n", "Hif3a", "Rasl11a", "Sncg", "Serpina3c", "Slc25a10", "Cyp2f2", "Tcea3")
-dat.sub <- subset(dat, gene %in% genes)
-dat.sub$gene <- factor(dat.sub$gene)
-
-for (jgene in genes){
-  print(jgene)
-  print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = jgene))
-}
+# # component 2: normalized and multiplied and filtered (these are LIVER GENES)
+# genes <- c("Elovl3", "Ddit4", "Chka", "Pdk4", "Slc45a3", "Bhmt", "Cml5", "Osgin1", "Ppard", "BC029214", "Rgs16", "Acacb", "Leap2", "Upp2", "Ethe1")
+# 
+# genes <- c("Cmah", "Cyp2f2", "Nr1d1", "C4b", "Slc25a10", "Cd37", "Dbp", "Zbtb16", "Ttr", "Rbp4", "Aplnr", 
+#            "Pnpla3", "Serpina3n", "Apoa2", "Sucnr1", "Alb", "Cfb", "Sncg", "Aldh1a1", "Cyp2b10")
+# 
+# # component 2: normalized, no multiply, filter by MEAN 
+# genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", "Tceal3", "Murc", "Fgf10", "Dclk1")
+# 
+# # component 2: normalized. multiply by 1 or 0, filter by mean
+# genes <- c("Rgs16", "Ddit4", "Tceal3", "Dclk1", "Ccne1", "Diras2", "Slc17a9", 
+#            "Cntfr", "Lrrc2", "Txlnb", "Aqp7", "Ppard", "Mb", "Lrfn3", "Acot1", 
+#            "Kif26b", "Dtna", "Slc41a3", "Ebf1", "Pdk4")
+# 
+# # component 2: normalized, multiply by 1 or 0 (if less than cutoff) filter by mean
+# genes <- c("Rgs16", "Ddit4", "Ppard", "Cntfr", "Lonrf3", "Lrfn3", "Slc17a9", "Slc45a3", "Chka", "Pdk4", "Phospho1", 
+#            "BC029214", "Osgin1", "I830012O16Rik", "Mpzl1", "Celsr1", "Arsg", "Abtb2", "Lgalsl", "Fbxo44")
+# 
+# genes <- c("Npas2", "Cmah", "Mthfd1l", "Dbp", "Cfb", "Agt", "Lonrf3", "Nr1d1", "Usp13", "Eno3", "Cldn1", 
+#            "Slc38a3", "Serpina3n", "Hif3a", "Rasl11a", "Sncg", "Serpina3c", "Slc25a10", "Cyp2f2", "Tcea3")
+# 
+# # Module 11 genes: brain specific?
+# genes <- c("Slc13a4", "Cldn1", "Slc47a1", "Hk2", "Tyms", "Aqp1", "Igf2", "Cdh23", "Slc2a12", "Nov", "Clic5", 
+#            "Cd74", "Slc16a9", "Stk32a", "Bmp6", "Serping1", "Oasl2", "Prlr", "Zfp455", "Mrc1")
+# 
+# # Module 10 genes: aorta specific.
+# genes <- c("Pvalb", "Myh4", "Acta1", "Ryr1", "Neb", "Atp2a1", "Tnnt3", "Cacna1s", "Actn3", "Mylpf", 
+#            "Adm", "Tnni2", "Myh7", "Vipr2", "H19", "Mybpc1", "Vcan", "Snca", "Gck", "Sypl2")
+# 
+# dat.sub <- subset(dat, gene %in% genes)
+# dat.sub$gene <- factor(dat.sub$gene)
+# 
+# for (jgene in genes){
+#   print(jgene)
+#   print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = jgene))
+# }
 
 # # Interesting genes: Fam150b, Cml5, Tshr
 # 
