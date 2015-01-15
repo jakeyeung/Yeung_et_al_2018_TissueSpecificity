@@ -42,7 +42,6 @@ source(file.path(scripts.dir, funcs.dir, "OuterComplex.R"))
 source(file.path(scripts.dir, funcs.dir, "OrderPhaseMatrix.R"))
 source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
 
-
 ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
   # Perform fourier transform and normalize across all frequencies (squared and square root)
   # 
@@ -63,19 +62,22 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
     omegas <- my.omega
   }
   
-  sum.transforms <- 0
-  
-  for (omega in omegas){
-    # take gene from a tissue and get its fourier transform
-    transformed <- df$exprs %*% exp(-1i * omega * df$time)
-    # normalize by number of datapoints
-    transformed <- transformed / length(df$exprs)
-    sum.transforms <- sum.transforms + (Mod(transformed)) ^ 2
-    
-    if (omega == my.omega){
-      my.transformed <- transformed
-    }
-  }
+#   sum.transforms <- 0
+#   
+#   for (omega in omegas){
+#     # take gene from a tissue and get its fourier transform
+#     transformed <- df$exprs %*% exp(-1i * omega * df$time)
+#     # normalize by number of datapoints
+#     # transformed <- transformed / length(df$exprs)
+#     sum.transforms <- sum.transforms + (Mod(transformed)) ^ 2
+#     
+#     if (omega == my.omega){
+#       my.transformed <- transformed
+#     }
+#   }
+
+  transforms <- sapply(omegas, DoFourier, exprs = df$exprs, time = df$time)
+  my.transformed <- transforms[which(omegas == omega)]  # corresponds to omega of interest
   
   if (normalize){
     # Normalize across omegas
@@ -91,14 +93,17 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
       factor <- 0
     }
     
-    my.transformed <- (my.transformed / sqrt(sum.transforms)) * factor
+    my.transformed <- (my.transformed / sqrt(sum(Mod(transforms) ^ 2))) * factor
   } 
   
   data.frame(exprs.transformed = my.transformed)
 }
 
-DoFourier <- function(exprs, time, omega){
+DoFourier <- function(exprs, time, omega, normalize = TRUE){
   p <- exprs %*% exp(-1i * omega * time)
+  if (normalize){
+    p <- p / length(time)  # normalize by number of datapoints 
+  }
   return(p)
 }
 
@@ -232,8 +237,10 @@ problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "
 problem.genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", 
                    "Tceal3", "Murc", "Fgf10", "Dclk1", "Ccne1", "Cox6a2", "Trim63", 
                    "Kcng4", "Slc17a9", "Diras2", "Txlnb", "A830018L16Rik", "Elovl3", "Alb")
+
 problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2", "Alb", "Elovl3")
-df <- subset(dat.split$Liver, gene %in% c(clockgenes, problem.genes))
+
+df <- subset(dat.split$Liver, gene %in% c("Arntl"))
 df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = TRUE)
 df.proj$mod <- Mod(df.proj$exprs.transformed)
 df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
@@ -246,7 +253,7 @@ df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
 jgene <- "B3galt2"
 jgene <- "Arntl"
 jmean <- mean(subset(dat.split$Liver, gene == jgene & experiment == "rnaseq")$exprs)
-sapply(omegas, DoFourier, exprs = subset(dat.split$Liver, gene == jgene)$exprs, time = subset(dat.split$Liver, gene == jgene)$time)
+transforms <- sapply(omegas, DoFourier, exprs = subset(dat.split$Liver, gene == jgene)$exprs, time = subset(dat.split$Liver, gene == jgene)$time)
 
 
 start.time <- Sys.time()
