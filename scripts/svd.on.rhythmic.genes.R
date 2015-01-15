@@ -8,6 +8,8 @@
 library(plyr)
 library(reshape2)
 library(doMC)
+library(PhaseHSV)
+library(ggplot2)
 
 
 # Parameters to play ------------------------------------------------------
@@ -42,7 +44,7 @@ source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
 
 
 ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
-  # Perform fourier transform and normalize across all frequencies.
+  # Perform fourier transform and normalize across all frequencies (squared and square root)
   # 
   # Input:
   # df: long dataframe containing expression and time columns
@@ -68,7 +70,7 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
     transformed <- df$exprs %*% exp(-1i * omega * df$time)
     # normalize by number of datapoints
     transformed <- transformed / length(df$exprs)
-    sum.transforms <- sum.transforms + Mod(transformed)
+    sum.transforms <- sum.transforms + (Mod(transformed)) ^ 2
     
     if (omega == my.omega){
       my.transformed <- transformed
@@ -89,7 +91,7 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
       factor <- 0
     }
     
-    my.transformed <- (my.transformed / sum.transforms) * factor
+    my.transformed <- (my.transformed / sqrt(sum.transforms)) * factor
   } 
   
   data.frame(exprs.transformed = my.transformed)
@@ -216,7 +218,7 @@ rna.seq.exprs.filtered <- rna.seq.exprs.filtered[common.genes, ]
 dat <- MergeToLong(normalized.array, rna.seq.exprs.filtered)
 
 dat.split <- split(dat, dat$tissue)
-
+ 
 
 # Project my data ---------------------------------------------------------
 
@@ -300,7 +302,7 @@ tissues <- GetTissues(colnames(normalized.array))
 sing.vals <- seq(length(s$d))
 # sing.vals <- c(1, 2, 3)
 
-pdf("plots/components.normalized.filter.low.genes.pdf")
+pdf("plots/components.properly.normalized.filter.low.genes.pdf")
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
 
@@ -355,7 +357,7 @@ for (sing.val in sing.vals){
 dev.off()
 
 # plot rhythmic genes
-pdf("plots/rhythmic.genes.by.singular.values.normalized.filter.low.genes")
+pdf("plots/rhythmic.genes.by.singular.values.properly.normalized.filter.low.genes.pdf")
 for (sing.val in sing.vals){
   eigensample <- s$u[, sing.val]
   top.genes <- GetTopNValues(Mod(eigensample), N = 10)# list of $vals $i
