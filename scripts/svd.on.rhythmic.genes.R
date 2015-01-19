@@ -42,12 +42,14 @@ source(file.path(scripts.dir, funcs.dir, "OuterComplex.R"))
 source(file.path(scripts.dir, funcs.dir, "OrderPhaseMatrix.R"))
 source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
 
-ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
+Transform <- function(df, my.omega, normalize = TRUE){
   # Perform fourier transform and normalize across all frequencies (squared and square root)
   # 
   # Input:
-  # df: long dataframe containing expression and time columns
+  # df: long dataframe containing expression and time columns for one condition. Expect 'exprs' and 'time' columns.
   # to be transformed to frequency domain.
+  # my.omega: the omega of interest.
+  # normalize: converts transform into a sort of z-score
   # 
   # omega in which we are interested.
   
@@ -62,29 +64,11 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
     omegas <- my.omega
   }
   
-#   sum.transforms <- 0
-#   
-#   for (omega in omegas){
-#     # take gene from a tissue and get its fourier transform
-#     transformed <- df$exprs %*% exp(-1i * omega * df$time)
-#     # normalize by number of datapoints
-#     # transformed <- transformed / length(df$exprs)
-#     sum.transforms <- sum.transforms + (Mod(transformed)) ^ 2
-#     
-#     if (omega == my.omega){
-#       my.transformed <- transformed
-#     }
-#   }
-
   transforms <- sapply(omegas, DoFourier, exprs = df$exprs, time = df$time)
   my.transformed <- transforms[which(omegas == omega)]  # corresponds to omega of interest
   
   if (normalize){
-    # Normalize across omegas
-    # Multiply by mean
-#     jmean <- mean(subset(df, experiment == "rnaseq")$exprs)  # rnaseq exprs more reliable than microarray.
-#     factor <- jmean
-    
+    # Normalize across omega
     # if median is 0, then set factor to 0, otherwise 1
     factor <- 1
     cutoff <- 5
@@ -95,9 +79,110 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE){
     
     my.transformed <- (my.transformed / sqrt(sum(Mod(transforms) ^ 2))) * factor
   } 
-  
-  data.frame(exprs.transformed = my.transformed)
+  return(data.frame(exprs.transformed = my.transformed))
 }
+
+GetInterval <- function(time.vector){
+  # Given vector of times (equally spaced time points), return the time interval
+  time.sort <- sort(unique(df$time))
+  interval <- time.sort[2] - time.sort[1]
+  return(interval)
+}
+
+IsRhythmic <- function(df, my.omega, pval.cutoff = 5e-3, method = "ANOVA"){
+  # Test if rhythmic by BIC model selection: fit through all omegas.
+  # df: long format, gene and condition
+  # my.omega: omega of interest
+  # method = "BIC" or "ftest"
+  # pval.cutoff: for method = "ftest"
+  
+  fit.rhyth <- lm(exprs ~ 0 + experiment + sin(my.omega * time) + cos(my.omega * time), data = df)
+  fit.flat <- lm(exprs ~ 0 + experiment, data = df)  # intercept only
+  
+  if (method == "BIC"){
+    omegas.all <- GetOmegas(remove.zero = TRUE)
+    # remove also my.omega to get omegas representing "noise"
+    omegas.noise <- omegas.all[which(omegas.all != my.omega)]
+    
+    bic.test <- BIC(fit.rhyth, fit.flat)
+    
+    chosen.model <- rownames(bic.test)[which(bic.test$BIC == min(bic.test$BIC))]
+    
+    if (chosen.model == "fit.flat"){
+      # if flat, no need to check for noise.
+      return(FALSE)
+    }
+    # chosen model is fit.rhyth, but is it a noisy gene?
+    # Check if noise components have an even better fit than fit.rhyth
+    rhyth.bic <- bic.test["fit.rhyth", "BIC"]
+    # fit noise
+    fits.noise <- lapply(omegas.noise, 
+                         function(w) lm(exprs ~ sin(w * time) + cos(w * time), 
+                                        data = df))
+    bic.noise.min <- min(sapply(fits.noise, BIC))
+    # print(paste(unique(df$gene), "noise bic:", bic.noise.min, "rhyth bic:", rhyth.bic))
+    if (rhyth.bic < bic.noise.min){
+      return(TRUE)
+    } else {
+      return(FALSE)
+    } 
+  } else if (method == "ANOVA"){
+    f.test <- anova(fit.flat, fit.rhyth)
+    pval <- f.test[["Pr(>F)"]][[2]]
+    if (is.nan(pval)){
+      # if gene is all flat, then pval is NaN, force it to be 1 in this case.
+      pval <- 1
+    }
+    if (pval < pval.cutoff){
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+}
+}
+
+ProjectToFrequency <- function(df, my.omega, normalize = TRUE, rhythmic.only = FALSE, method = "ANOVA", pval.cutoff = 5e-3){
+  # Perform fourier transform and normalize across all frequencies (squared and square root)
+  # 
+  # Input:
+  # df: long dataframe containing expression and time columns for one condition. Expect 'exprs' and 'time' columns.
+  # to be transformed to frequency domain.
+  # my.omega: the omega of interest.
+  # normalize: converts transform into a sort of z-score
+  # rhytmic.only: transforms only genes that are rhythmic (by BIC method)
+  # 
+  # omega in which we are interested.
+  
+  if (rhythmic.only){
+    if (IsRhythmic(df, my.omega, pval.cutoff = pval.cutoff, method = "ANOVA")){
+      df.transformed <- Transform(df, my.omega, normalize)
+    } else {
+      df.transformed <- data.frame(exprs.transformed = 0)
+    }
+  } else {
+    df.transformed <- Transform(df, my.omega, normalize)
+  }
+  return(df.transformed)
+}
+
+# fit.rhyth <- lm(exprs ~ sin(omega * time) + cos(omega * time), data = df)
+# fit.flat <- lm(exprs ~ 1, data = df)  # intercept only
+# # omega.noise <- 2 * pi / (GetInterval(df$time) * 4)  # period of every two intervals is noise.
+# omega.noise <- 2 * pi / 12
+# fit.noise <- lm(exprs ~ sin(omega.noise * time) + cos(omega.noise * time), data = df)
+# bic.test <- BIC(fit.rhyth, fit.flat, fit.noise)
+# (bic.test)
+# # extract rowname of minimum BIC
+# chosen.model <- rownames(bic.test)[which(bic.test$BIC == min(bic.test$BIC))]
+# if (chosen.model == "fit.rhyth"){
+#   df.transformed <- Transform(df, my.omega, normalize)
+# } else {
+#   # if not rhythmic, then do not do transform it.
+#   df.transformed <- data.frame(exprs.transformed = 0)
+# }
+# } else {
+#   df.transformed <- Transform(df, my.omega, normalize)
+# }
 
 DoFourier <- function(exprs, time, omega, normalize = TRUE){
   p <- exprs %*% exp(-1i * omega * time)
@@ -136,7 +221,6 @@ GetOmegas <- function(n.timepoints=24, interval=2, remove.zero=FALSE){
   if (remove.zero){
     omegas <- omegas[2:length(omegas)]
   }
-  
   return(omegas)
 }
 
@@ -231,17 +315,16 @@ omega <- 2 * pi / 24
 omegas <- GetOmegas()
 
 # # # test my function
-# clockgenes <- c(clockgenes, "Spint4", "Defb23", "Defb34", "Gje1", "Gm10233", "Mir181b.2", "n.R5s54")
 # problem genes
 problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "Defb34", "B3galt2")
 problem.genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", 
                    "Tceal3", "Murc", "Fgf10", "Dclk1", "Ccne1", "Cox6a2", "Trim63", 
                    "Kcng4", "Slc17a9", "Diras2", "Txlnb", "A830018L16Rik", "Elovl3", "Alb")
 
-problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2", "Alb", "Elovl3")
+problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2", "Alb", "Elovl3", "Spint4", "Svs5")
 
-df <- subset(dat.split$Liver, gene %in% c("Arntl"))
-df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = TRUE)
+df <- subset(dat.split$WFAT, gene %in% c(clockgenes, problem.genes))
+df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = FALSE, rhythmic.only = TRUE)
 df.proj$mod <- Mod(df.proj$exprs.transformed)
 df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
 (df.proj)
@@ -262,7 +345,7 @@ if (getDoParWorkers() == 1){
 }
 print(paste("Parallel processing on:", getDoParWorkers(), "cores"))
 dat.split.proj <- lapply(dat.split, function(x){
-  ddply(x, .(gene), ProjectToFrequency, my.omega = omega, normalize = TRUE, .parallel = TRUE)
+  ddply(x, .(gene), ProjectToFrequency, my.omega = omega, normalize = FALSE, rhythmic.only = TRUE, pval.cutoff = 5e-5, .parallel = TRUE)
 })
 print(Sys.time() - start.time)
 
@@ -309,7 +392,7 @@ tissues <- GetTissues(colnames(normalized.array))
 sing.vals <- seq(length(s$d))
 # sing.vals <- c(1, 2, 3)
 
-pdf("plots/components.properly.normalized.filter.low.genes.pdf")
+pdf("plots/components.rhythmic.only.filter.noise.ANOVA.5e5.rotate.pdf")
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
 
@@ -317,6 +400,8 @@ for (sing.val in sing.vals){
   print(paste("Plotting component:", sing.val))
   eigengene <- s$v[, sing.val]
   jmax <- max(Mod(eigengene))
+  max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
+  jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
   PlotComplex(eigengene, 
               axis.min = -jmax,
               axis.max = jmax,
@@ -325,10 +410,12 @@ for (sing.val in sing.vals){
               add.text.plot = FALSE, 
               main = paste("Component:", sing.val),
               jpch = 20,
-              threshold = 0)
+              threshold = 0, 
+              rotate = -jmax.arg)
   
   eigensample <- s$u[, sing.val]
   jmax <- max(Mod(eigensample))
+  # rotate opposite way to make it all kosher
   PlotComplex(eigensample,
               axis.min = -jmax,
               axis.max = jmax,
@@ -338,7 +425,8 @@ for (sing.val in sing.vals){
               add.text.plot = FALSE,
               jpch = 1,
               threshold = 0.5 * jmax,
-              verbose = FALSE)
+              verbose = FALSE,
+              rotate = jmax.arg)
   
   # show how fast the values drop
   top.genes.all <- GetTopNValues(Mod(eigensample), N = length(eigensample))
@@ -351,7 +439,7 @@ for (sing.val in sing.vals){
   top.genes <- GetTopNValues(Mod(eigensample), N = 100)# list of $vals $i
   # use drop to keep rownames
   outer.prod.mat <- s$d[sing.val] * OuterComplex(s$u[top.genes$i, sing.val, drop = FALSE], t(s$v[, sing.val, drop = FALSE]))
-  outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat)
+  outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat, order.by = max.loading, order.tissues = TRUE)
   PlotArgsMatrix(outer.prod.mat, main = paste("Component", sing.val))
   
   # print top 100 genes (copy and paste-able)
@@ -364,7 +452,7 @@ for (sing.val in sing.vals){
 dev.off()
 
 # plot rhythmic genes
-pdf("plots/rhythmic.genes.by.singular.values.properly.normalized.filter.low.genes.pdf")
+pdf("plots/rhythmic.genes.by.singular.values.rhythmic.only.filter.noise.ANOVA.5e5.pdf")
 for (sing.val in sing.vals){
   eigensample <- s$u[, sing.val]
   top.genes <- GetTopNValues(Mod(eigensample), N = 10)# list of $vals $i
@@ -375,113 +463,8 @@ for (sing.val in sing.vals){
   dat.sub$gene <- factor(dat.sub$gene)
   
   for (jgene in names(top.genes$vals)){
-      print(jgene)
-      print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = paste("gene:", jgene, "component", sing.val)))
+    print(jgene)
+    print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = paste("gene:", jgene, "component", sing.val)))
   }
 }
 dev.off()
-
-
-
-# Plot interesting genes --------------------------------------------------
-
-# # component 2: normalized and multiplied and filtered (these are LIVER GENES)
-# genes <- c("Elovl3", "Ddit4", "Chka", "Pdk4", "Slc45a3", "Bhmt", "Cml5", "Osgin1", "Ppard", "BC029214", "Rgs16", "Acacb", "Leap2", "Upp2", "Ethe1")
-# 
-# genes <- c("Cmah", "Cyp2f2", "Nr1d1", "C4b", "Slc25a10", "Cd37", "Dbp", "Zbtb16", "Ttr", "Rbp4", "Aplnr", 
-#            "Pnpla3", "Serpina3n", "Apoa2", "Sucnr1", "Alb", "Cfb", "Sncg", "Aldh1a1", "Cyp2b10")
-# 
-# # component 2: normalized, no multiply, filter by MEAN 
-# genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", "Tceal3", "Murc", "Fgf10", "Dclk1")
-# 
-# # component 2: normalized. multiply by 1 or 0, filter by mean
-# genes <- c("Rgs16", "Ddit4", "Tceal3", "Dclk1", "Ccne1", "Diras2", "Slc17a9", 
-#            "Cntfr", "Lrrc2", "Txlnb", "Aqp7", "Ppard", "Mb", "Lrfn3", "Acot1", 
-#            "Kif26b", "Dtna", "Slc41a3", "Ebf1", "Pdk4")
-# 
-# # component 2: normalized, multiply by 1 or 0 (if less than cutoff) filter by mean
-# genes <- c("Rgs16", "Ddit4", "Ppard", "Cntfr", "Lonrf3", "Lrfn3", "Slc17a9", "Slc45a3", "Chka", "Pdk4", "Phospho1", 
-#            "BC029214", "Osgin1", "I830012O16Rik", "Mpzl1", "Celsr1", "Arsg", "Abtb2", "Lgalsl", "Fbxo44")
-# 
-# genes <- c("Npas2", "Cmah", "Mthfd1l", "Dbp", "Cfb", "Agt", "Lonrf3", "Nr1d1", "Usp13", "Eno3", "Cldn1", 
-#            "Slc38a3", "Serpina3n", "Hif3a", "Rasl11a", "Sncg", "Serpina3c", "Slc25a10", "Cyp2f2", "Tcea3")
-# 
-# # Module 11 genes: brain specific?
-# genes <- c("Slc13a4", "Cldn1", "Slc47a1", "Hk2", "Tyms", "Aqp1", "Igf2", "Cdh23", "Slc2a12", "Nov", "Clic5", 
-#            "Cd74", "Slc16a9", "Stk32a", "Bmp6", "Serping1", "Oasl2", "Prlr", "Zfp455", "Mrc1")
-# 
-# # Module 10 genes: aorta specific.
-# genes <- c("Pvalb", "Myh4", "Acta1", "Ryr1", "Neb", "Atp2a1", "Tnnt3", "Cacna1s", "Actn3", "Mylpf", 
-#            "Adm", "Tnni2", "Myh7", "Vipr2", "H19", "Mybpc1", "Vcan", "Snca", "Gck", "Sypl2")
-# 
-# dat.sub <- subset(dat, gene %in% genes)
-# dat.sub$gene <- factor(dat.sub$gene)
-# 
-# for (jgene in genes){
-#   print(jgene)
-#   print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = jgene))
-# }
-
-# # Interesting genes: Fam150b, Cml5, Tshr
-# 
-# # genes <- c("Dbp", "Defb22", "Defb23", "Defb34", "Npas2", "Nr1d1", "Olfr1014", "Olfr1015", "Olfr1052", "Olfr731", "Spint4")
-# 
-# genes <- c("Gje1", "Gm10233", "Lonrf3", "Mir181b.2", "n.R5s54")
-# 
-# genes <- c("Cry2", "Arntl", "Dbp", "Gje1", "n.R5s54", "Npas2")
-# 
-# genes <- c("Abcd2", "Abcg5", "Abcg8", "Abtb2", "Acacb", "Acnat2", "Acot1", "Acsl1", "Adck3", "Adprhl1", 
-#            "Alas1", "Amer1", "Angptl4", "Aqp3", "Aqp8", "Arrdc3", "Arsg", "Avpr1a", "B3galt2", "BC029214", 
-#            "Bhmt", "Camk2a", "Ccrn4l", "Celsr1", "Chka", "Ckm", "Clec2h", "Clpx", "Cml5", "Cntfr", 
-#            "Col11a1", "Col27a1", "Cox6a2", "Crip2", "Ddc", "Ddit4", "Dupd1", "Ebf1", "Eef1a2", "Elmod3", 
-#            "Elovl3", "Ethe1", "Fdft1", "Fgf14", "Gm10762", "Gm10804", "Gm11437", "Gm15998", "Gm4952", 
-#            "Gpam", "Gpcpd1", "Gprin3", "Hacl1", "Hdhd3", "Hsd3b7", "I830012O16Rik", "Inca1", "Insc", "Insig2", "Irf6", "Jph3", "Klb", "Klhl30", "Leap2", "Lep", "Lgalsl", "Loxl4", "Lrfn3", "Lrrc30", "Mb", "Myc", "Myh6", "Myh8", "Ndrg1", "Net1", "Nr1d1", "Nrk", "Osgin1", "Paqr9", "Pck1", "Pdk4", "Pfkfb3", "Plin5", "Plxna2", "Pnp", "Pnp2", "Ppard", "Pxmp4", "Rassf6", "Rgs16", "Sco2", "Sept9", "Slc17a9", "Slc2a2", "Slc38a2", "Slc38a3", "Slc45a3", "Slc7a2", "Smagp", "Smpx", "Smtnl2", "Snhg3", "Spata22", "St5", "St6galnac6", "Tbx15", "Tfpi2", "Tfrc", "Tjp3", "Tmem37", "Tmie", "Tnfrsf19", "Tra2a", "Trdn", "Trim63", "Tshr", "Tspan4", "Tst", "Tubb2a", "Ube2u", "Upp2", "X1300002K09Rik", "X4930444P10Rik", "Xirp2")
-# 
-# genes <- c("Ddit4", "Elovl3", "Fgf14", "Pdk4", "Tshr")  # normalizing and multiplying by mean
-# genes <- c("Fam124b", "Fam150b", "Lrrc30", "Myh8", "Tshr", "X4930444P10Rik")  # removing "unexpressed genes" the normalizing, no multipy by mean
-# genes <- c("Tshr", "Fam124b", "Myh8", "Lrrc30", "X4930444P10Rik", "Fam150b", "B3galt2", "Dnmt3l", 
-#            "Hephl1", "Gm10804", "Tacr3", "Krt9", "Tmem72", "CN725425", "Tbx15", "Adprhl1", 
-#            "Cyp11a1", "Cpa4", "Ripply1", "Tpo", "Mc5r", "Ano7", "Wnt16", "Rab9b", "Lsmem1", 
-#            "Bcl2l10", "Nr1d1", "Cml5", "Ccdc121", "Kcnq3", "Sgcg", "Lonrf3", "Aqp3", "Cd209d", 
-#            "Myf5", "Pcdh8", "Kcne1l", "Cyp24a1", "Casr", "Tpsb2", "Smpx", "Dmrtc1a", "Defb2")
-# 
-# # 2nd component genes: normalize and multiply by mean
-# genes <- c("Bhmt", "Chka", "Ddit4", "Elovl3", "Fgf14", "Pdk4", "Rgs16", "Tshr") 
-# 
-# # 2nd component genes: normalize and multiply by mean (RNASEQ ONLY)
-# genes <- c("Elovl3", "Ddit4", "Chka", "Pdk4", "Slc45a3", "Bhmt", "Cml5", 
-#            "Osgin1", "Ppard", "BC029214", "Rgs16", "Acacb", 
-#            "Leap2", "Upp2", "Ethe1", "Slc30a10", "Tst", "Aqp8", 
-#            "Tshr", "Celsr1")
-# 
-# # 3rd component genes: normalize and multiply by mean of RNASEQ
-# genes <- c("Adrb3", "Ahsg", "Alb", "Aldh1a1", "Aplnr", "Apoa2", 
-#            "Bhlhe40", "Bhlhe41", "C4b", "Cd37", "Cfb", "Cmah", 
-#            "Cml5", "Cxcr4", "Cyp2b10", "Cyp2f2", "Dbp", "Dgat2", 
-#            "Ebf1", "Eno3", "Fbxo21", "Gsta3", "Hdc", "Hspa5", 
-#            "Igfbp4", "Lrg1", "Nnat", "Npas2", "Nr1d1", "Pnpla3", 
-#            "Rbp4", "Retn", "Serpina3n", "Slc25a1", "Slc25a10", 
-#            "Sncg", "Sucnr1", "Trf", "Ttr", "Zbtb16")
-# 
-# # problem genes
-# genes <- c(c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14"))
-# genes <- c("Spint4", "Defb23", "Defb34")
-# 
-# # 2nd component: no normalization (NOISY GENES)
-# genes <- c("Adam7", "Arntl", "Cst8", "Dbp", "Defb47", "Defb48", "Gpx5", "Lcn10", "Lcn8", "Lcn9", "Ly6g5b", "Ly6g5c", "Npas2", "Spint4", "Svs2")
-# 
-# # 2nd component: normalization only, no mean multiplication
-# genes <- c("Fam124b", "Fam150b", "Lrrc30", "Myh8", "Tshr", "X4930444P10Rik")
-# 
-# # 2nd component: no division, just multiply by mean
-# genes <- c("Adam7", "Bhmt", "Cst11", "Cst8", "Defb20", "Defb48", "Elovl3", 
-#            "Gpx5", "Lcn8", "Lcn9", "Ly6g5b", "Rnase10", "Svs2", "X5830403L16Rik", "X9230104L09Rik")
-# 
-# dat.sub <- subset(dat, gene %in% genes)
-# for (jgene in genes){
-#   print(jgene)
-#   m <- PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = jgene)
-#   print(m)
-# }
-
-

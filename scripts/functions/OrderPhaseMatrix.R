@@ -1,4 +1,4 @@
-OrderPhaseMatrix <- function(complex.mat, order.by = "Liver"){
+OrderPhaseMatrix <- function(complex.mat, order.by = "Liver", order.tissues = FALSE){
   # Given complex.mat, order rows such that the average angles are
   # increasing.
   # 
@@ -15,6 +15,16 @@ OrderPhaseMatrix <- function(complex.mat, order.by = "Liver"){
 #     return(Arg(vec.avg))
 #   })
 #   print(avg.phases)
-  tissue.phases <- Arg(complex.mat[, tissue])
-  return(complex.mat[order(tissue.phases, decreasing = FALSE), , drop=FALSE])
+  tissue.phases <- Arg(complex.mat[, order.by])
+  # order by genes
+  complex.mat <- complex.mat[order(tissue.phases, decreasing = FALSE), , drop = FALSE]
+  # order by tissues: decreasing magnitude
+  if (order.tissues){
+    ordered.tissue.loadings <- names(sort(apply(complex.mat, 2,
+                                           function(x){
+                                            sum(Mod(x))
+                                           }), decreasing = FALSE))
+    complex.mat <- complex.mat[, ordered.tissue.loadings, drop = FALSE]
+  }
+  return(complex.mat)
 }
