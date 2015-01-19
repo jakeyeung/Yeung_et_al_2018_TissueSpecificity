@@ -24,8 +24,8 @@ rhythmic.genes.plots <- 'plots/rhythmic_genes_across_tissues.pdf'
 
 # parallel processing
 #setup parallel backend to use 30 processors
-cl<-makeCluster(30)
-registerDoParallel(cl)
+# cl<-makeCluster(30)
+# registerDoParallel(cl)
 
 # Define constants --------------------------------------------------------
 
@@ -73,7 +73,7 @@ GetParamsComplexModel <- function(myfit){
 
 # Fit flat model
 FitFlatModel <- function(df){
-  fit.flat <- lm(exprs ~ 0 + experiment, data =df)
+  fit.flat <- lm(exprs ~ 0 + experiment, data = df)
 }
 
 # Get pval
