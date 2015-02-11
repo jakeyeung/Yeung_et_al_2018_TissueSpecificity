@@ -307,36 +307,47 @@ rna.seq.exprs.filtered <- rna.seq.exprs.filtered[common.genes, ]
 dat <- MergeToLong(normalized.array, rna.seq.exprs.filtered)
 
 dat.split <- split(dat, dat$tissue)
- 
+
+
+# Remove WFAT from analysis -----------------------------------------------
+
+# WFAT seems to be show a lot of epidydmal-specific genes, let's remove 
+# it from analysis to prevent strangely oscillating genes showing up
+dat.split$WFAT <- NULL
+
+# remove BFAT from analysis: we see skeletal muscle and muscle contraction genes
+# in PCA 2 (BFAT + Muscle)
+dat.split$BFAT <- NULL
+
 
 # Project my data ---------------------------------------------------------
 
 omega <- 2 * pi / 24
 omegas <- GetOmegas()
 
-# # # test my function
-# problem genes
-problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "Defb34", "B3galt2")
-problem.genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", 
-                   "Tceal3", "Murc", "Fgf10", "Dclk1", "Ccne1", "Cox6a2", "Trim63", 
-                   "Kcng4", "Slc17a9", "Diras2", "Txlnb", "A830018L16Rik", "Elovl3", "Alb")
-
-problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2", "Alb", "Elovl3", "Spint4", "Svs5")
-
-df <- subset(dat.split$WFAT, gene %in% c(clockgenes, problem.genes))
-df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = FALSE, rhythmic.only = TRUE)
-df.proj$mod <- Mod(df.proj$exprs.transformed)
-df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
-(df.proj)
+# # # # test my function
+# # problem genes
+# problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "Defb34", "B3galt2")
+# problem.genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", 
+#                    "Tceal3", "Murc", "Fgf10", "Dclk1", "Ccne1", "Cox6a2", "Trim63", 
+#                    "Kcng4", "Slc17a9", "Diras2", "Txlnb", "A830018L16Rik", "Elovl3", "Alb")
 # 
-# # test individual genes
-# jgene <- "Gm10233"
-# jgene <- "Mir181b.2"
-# jgene <- "Gje1"
-jgene <- "B3galt2"
-jgene <- "Arntl"
-jmean <- mean(subset(dat.split$Liver, gene == jgene & experiment == "rnaseq")$exprs)
-transforms <- sapply(omegas, DoFourier, exprs = subset(dat.split$Liver, gene == jgene)$exprs, time = subset(dat.split$Liver, gene == jgene)$time)
+# problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2", "Alb", "Elovl3", "Spint4", "Svs5")
+# 
+# df <- subset(dat.split$WFAT, gene %in% c(clockgenes, problem.genes))
+# df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = FALSE, rhythmic.only = TRUE)
+# df.proj$mod <- Mod(df.proj$exprs.transformed)
+# df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
+# (df.proj)
+# # 
+# # # test individual genes
+# # jgene <- "Gm10233"
+# # jgene <- "Mir181b.2"
+# # jgene <- "Gje1"
+# jgene <- "B3galt2"
+# jgene <- "Arntl"
+# jmean <- mean(subset(dat.split$Liver, gene == jgene & experiment == "rnaseq")$exprs)
+# transforms <- sapply(omegas, DoFourier, exprs = subset(dat.split$Liver, gene == jgene)$exprs, time = subset(dat.split$Liver, gene == jgene)$time)
 
 
 start.time <- Sys.time()
@@ -345,7 +356,7 @@ if (getDoParWorkers() == 1){
 }
 print(paste("Parallel processing on:", getDoParWorkers(), "cores"))
 dat.split.proj <- lapply(dat.split, function(x){
-  ddply(x, .(gene), ProjectToFrequency, my.omega = omega, normalize = FALSE, rhythmic.only = TRUE, pval.cutoff = 5e-5, .parallel = TRUE)
+  ddply(x, .(gene), ProjectToFrequency, my.omega = omega, normalize = FALSE, rhythmic.only = FALSE, pval.cutoff = 1, .parallel = TRUE)
 })
 print(Sys.time() - start.time)
 
@@ -374,7 +385,13 @@ dat.proj <- do.call(rbind, dat.split.proj)
 # long to wide conversion
 dat.wide <- ConvertLongToWide(dat.proj, measurement.var = "exprs.transformed")
 
-# Complete cases only
+# Complete cases only. This removes NaN rows.
+dat.wide <- dat.wide[complete.cases(dat.wide), ]
+
+# Centre the rows
+dat.wide <- t(scale(t(dat.wide), center = TRUE, scale = FALSE))  # don't scale that's bad.
+
+# Remove rows with avg 0
 dat.wide <- dat.wide[complete.cases(dat.wide), ]
 
 s <- svd(dat.wide)
@@ -392,7 +409,7 @@ tissues <- GetTissues(colnames(normalized.array))
 sing.vals <- seq(length(s$d))
 # sing.vals <- c(1, 2, 3)
 
-pdf("plots/components.rhythmic.only.filter.noise.ANOVA.5e5.rotate.pdf")
+pdf("plots/components.centered.WFAT.BFAT.removed.pdf")
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
 
@@ -405,7 +422,7 @@ for (sing.val in sing.vals){
   PlotComplex(eigengene, 
               axis.min = -jmax,
               axis.max = jmax,
-              labels = tissues, 
+              labels = names(eigengene), 
               col = "HSV",
               add.text.plot = FALSE, 
               main = paste("Component:", sing.val),
@@ -452,7 +469,7 @@ for (sing.val in sing.vals){
 dev.off()
 
 # plot rhythmic genes
-pdf("plots/rhythmic.genes.by.singular.values.rhythmic.only.filter.noise.ANOVA.5e5.pdf")
+pdf("plots/rhythmic.genes.by.singular.values.centered.WFAT.BFAT.removed.pdf")
 for (sing.val in sing.vals){
   eigensample <- s$u[, sing.val]
   top.genes <- GetTopNValues(Mod(eigensample), N = 10)# list of $vals $i
