@@ -2,7 +2,7 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
                         axis.min, axis.max, col="HSV",
                         main='Plot title', 
                         rotate=0,
-                        add.text.plot="TRUE",
+                        add.text.plot=TRUE,
                         jpch=20,
                         threshold=0,
                         verbose=FALSE){
