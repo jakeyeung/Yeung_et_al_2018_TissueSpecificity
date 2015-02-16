@@ -304,7 +304,7 @@ dat.split <- split(dat, dat$tissue)
 # WFAT seems to be show a lot of epidydmal-specific genes, let's remove 
 
 # it from analysis to prevent strangely oscillating genes showing up
-# dat.split$WFAT <- NULL
+dat.split$WFAT <- NULL
 
 # remove BFAT from analysis: we see skeletal muscle and muscle contraction genes
 # in PCA 2 (BFAT + Muscle)
@@ -355,7 +355,7 @@ dat.wide <- ConvertLongToWide(dat.proj, measurement.var = "exprs.transformed")
 dat.wide <- dat.wide[complete.cases(dat.wide), ]
 
 # Centre the rows
-dat.wide <- t(scale(t(dat.wide), center = TRUE, scale = FALSE))  # don't scale that's bad.
+# dat.wide <- t(scale(t(dat.wide), center = TRUE, scale = FALSE))  # don't scale that's bad.
 
 # Remove rows with avg 0
 dat.wide <- dat.wide[complete.cases(dat.wide), ]
@@ -377,7 +377,7 @@ sing.vals <- seq(length(s$d))
 
 print("Plotting components...")
 
-pdf("plots/components.centred.WFAT.BFAT.removed.pdf")
+pdf("plots/components.WFAT.removed.pdf")
 
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
@@ -446,7 +446,7 @@ dev.off()
 
 print("Plotting gene loadings")
 
-pdf("plots/rhythmic.genes.by.singular.values.centred.removed.top10.svd2.pdf")
+pdf("plots/rhythmic.genes.by.components.WFAT.removed.pdf")
 for (sing.val in sing.vals){
   eigensample <- s$u[, sing.val]
   jtissues <- rownames(s$v)
