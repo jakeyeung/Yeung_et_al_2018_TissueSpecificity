@@ -41,6 +41,7 @@ source(file.path(scripts.dir, funcs.dir, "GetTopNValues.R"))
 source(file.path(scripts.dir, funcs.dir, "OuterComplex.R"))
 source(file.path(scripts.dir, funcs.dir, "OrderPhaseMatrix.R"))
 source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
+source(file.path(scripts.dir, funcs.dir, "PlotGeneAcrossTissues.R"))
 
 Transform <- function(df, my.omega, normalize = TRUE){
   # Perform fourier transform and normalize across all frequencies (squared and square root)
@@ -235,17 +236,6 @@ ConvertLongToWide <- function(long.df, measurement.var = "exprs.transformed"){
   return(wide.df)
 }
 
-PlotGeneAcrossTissues <- function(dat, jtitle){
-  m <- ggplot(dat, aes(x = time, y = exprs,
-                       group = experiment, 
-                       colour = experiment)) + 
-    geom_point() + 
-    geom_line() + 
-    facet_wrap(~tissue) +
-    ggtitle(jtitle)
-  return(m)
-}
-
 
 
 # Define dirs -------------------------------------------------------------
@@ -312,43 +302,19 @@ dat.split <- split(dat, dat$tissue)
 # Remove WFAT from analysis -----------------------------------------------
 
 # WFAT seems to be show a lot of epidydmal-specific genes, let's remove 
+
 # it from analysis to prevent strangely oscillating genes showing up
-dat.split$WFAT <- NULL
+# dat.split$WFAT <- NULL
 
 # remove BFAT from analysis: we see skeletal muscle and muscle contraction genes
 # in PCA 2 (BFAT + Muscle)
-dat.split$BFAT <- NULL
+# dat.split$BFAT <- NULL
 
 
 # Project my data ---------------------------------------------------------
 
 omega <- 2 * pi / 24
 omegas <- GetOmegas()
-
-# # # # test my function
-# # problem genes
-# problem.genes <- c("Hephl1", "Dnmt3l", "Gm10804", "Fgf14", "Spint4", "Defb23", "Defb34", "B3galt2")
-# problem.genes <- c("B3galt2", "Sgcg", "Rgs16", "Ddit4", "Smpx", "Eef1a2", "D3Bwg0562e", "Slc9a2", 
-#                    "Tceal3", "Murc", "Fgf10", "Dclk1", "Ccne1", "Cox6a2", "Trim63", 
-#                    "Kcng4", "Slc17a9", "Diras2", "Txlnb", "A830018L16Rik", "Elovl3", "Alb")
-# 
-# problem.genes <- c("Diras2", "Kcng4", "Trim63", "Cox6a2", "Alb", "Elovl3", "Spint4", "Svs5")
-# 
-# df <- subset(dat.split$WFAT, gene %in% c(clockgenes, problem.genes))
-# df.proj <- ddply(df, .(gene), ProjectToFrequency, omega, normalize = FALSE, rhythmic.only = TRUE)
-# df.proj$mod <- Mod(df.proj$exprs.transformed)
-# df.proj <- df.proj[order(df.proj$mod, decreasing = TRUE), ]
-# (df.proj)
-# # 
-# # # test individual genes
-# # jgene <- "Gm10233"
-# # jgene <- "Mir181b.2"
-# # jgene <- "Gje1"
-# jgene <- "B3galt2"
-# jgene <- "Arntl"
-# jmean <- mean(subset(dat.split$Liver, gene == jgene & experiment == "rnaseq")$exprs)
-# transforms <- sapply(omegas, DoFourier, exprs = subset(dat.split$Liver, gene == jgene)$exprs, time = subset(dat.split$Liver, gene == jgene)$time)
-
 
 start.time <- Sys.time()
 if (getDoParWorkers() == 1){
@@ -409,12 +375,16 @@ tissues <- GetTissues(colnames(normalized.array))
 sing.vals <- seq(length(s$d))
 # sing.vals <- c(1, 2, 3)
 
-pdf("plots/components.centered.WFAT.BFAT.removed.pdf")
+print("Plotting components...")
+
+pdf("plots/components.centred.WFAT.BFAT.removed.pdf")
+
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
 
+sink(file.path("results", "components.centred.WFAT.BFAT.removed.txt"))
+
 for (sing.val in sing.vals){
-  print(paste("Plotting component:", sing.val))
   eigengene <- s$v[, sing.val]
   jmax <- max(Mod(eigengene))
   max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
@@ -459,19 +429,27 @@ for (sing.val in sing.vals){
   outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat, order.by = max.loading, order.tissues = TRUE)
   PlotArgsMatrix(outer.prod.mat, main = paste("Component", sing.val))
   
-  # print top 100 genes (copy and paste-able)
-  cat(paste0(head(names(top.genes$vals), n = 50), "\n"))
-  
-#   # print top 20 genes (list-able)
-  cat(paste(head(names(top.genes$vals), n = 20), collapse = '", "'))
+  # print top 100 genes (copy and paste-able) to file
+  cat((paste0(c("COMPONENT", sing.val), collapse = "")))
   cat("\n")
+  cat(paste0(head(names(top.genes$vals), n = 100), collapse = "\n"))
+  cat("\n")
+  
+# #   # print top 20 genes (list-able)
+#   cat(paste(head(names(top.genes$vals), n = 20), collapse = '", "'))
+#   cat("\n")
 }
+sink()
 dev.off()
 
 # plot rhythmic genes
-pdf("plots/rhythmic.genes.by.singular.values.centered.WFAT.BFAT.removed.pdf")
+
+print("Plotting gene loadings")
+
+pdf("plots/rhythmic.genes.by.singular.values.centred.removed.top10.svd2.pdf")
 for (sing.val in sing.vals){
   eigensample <- s$u[, sing.val]
+  jtissues <- rownames(s$v)
   top.genes <- GetTopNValues(Mod(eigensample), N = 10)# list of $vals $i
   
   genes <- names(top.genes$vals)
@@ -480,8 +458,7 @@ for (sing.val in sing.vals){
   dat.sub$gene <- factor(dat.sub$gene)
   
   for (jgene in names(top.genes$vals)){
-    print(jgene)
-    print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene), jtitle = paste("gene:", jgene, "component", sing.val)))
+    print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene & tissue %in% jtissues), jtitle = paste("gene:", jgene, "component", sing.val)))
   }
 }
 dev.off()
