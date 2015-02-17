@@ -236,7 +236,13 @@ ConvertLongToWide <- function(long.df, measurement.var = "exprs.transformed"){
   return(wide.df)
 }
 
-
+PlotComponentOriginal <- function(orig.dat, s, jgene, component, show.original = TRUE){
+  component.mat <- s$d[component] * OuterComplex(s$u[, component, drop = FALSE], t(s$v[, component, drop = FALSE]))
+  if (show.original){
+    PlotComplex(as.matrix(orig.dat[jgene, ]), labels = colnames(orig.dat), main = paste(jgene, "original"), add.text.plot = FALSE) 
+  }
+  PlotComplex(as.matrix(component.mat[jgene, ]), labels = colnames(component.mat), main = paste(jgene, "component", component), add.text.plot = FALSE)
+}
 
 # Define dirs -------------------------------------------------------------
 
