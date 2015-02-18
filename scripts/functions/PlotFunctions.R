@@ -42,6 +42,9 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
     axis.max = jmax
   }
   
+  # check if data is a matrix. If data frame, coerce to matrix.
+  # this prevents errors: "Error non-numeric argument to function"
+  
   # rotate 
   rotation <- complex(modulus = 1, argument = rotate)
   dat <- dat * rotation
@@ -70,15 +73,15 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   }
   
   if (add.text.plot){
-    if (!is.null(dim(dat))){
+    if (is.null(dim(dat)) || nrow(dat) == 1) {
+      warning("Data is not a matrix with >1 row. Not adding text plot")
+    } else {
       textplot(Re(dat), Im(dat), text.labels, main=main,
                xlim=c(axis.min, axis.max),
                ylim=c(axis.min, axis.max),
                cex=0.6)
       abline(v=0)
       abline(h=0)  
-    } else {
-      warning("Data is not a matrix. Not adding text plot")
     }
   }
 }
