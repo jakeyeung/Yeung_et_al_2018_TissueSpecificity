@@ -244,6 +244,24 @@ PlotComponentOriginal <- function(orig.dat, s, jgene, component, show.original =
   PlotComplex(as.matrix(component.mat[jgene, ]), labels = colnames(component.mat), main = paste(jgene, "component", component), add.text.plot = FALSE)
 }
 
+ProjectOnVector <- function(input.complex, basis.complex){
+  # Given an input complex number, project onto a basis complex number using
+  # simple trigonometry or dot product
+  # 
+  # Returns length of vector after projection. >0 indicates along basis vector.
+  # <0 indicates anti-correlation with basis vector.
+  
+  if (is.data.frame(input.complex)){
+    input.complex <- as.matrix(input.complex)
+  }
+  if (is.data.frame(basis.complex)){
+    basis.complex <- as.matrix(basis.complex)
+  }
+  phase.diff <- Arg(input.complex) - Arg(basis.complex)
+  projected.mod <- Mod(input.complex) * cos(phase.diff)
+  return(projected.mod)
+}
+
 # Define dirs -------------------------------------------------------------
 
 # define dirs
@@ -468,3 +486,24 @@ for (sing.val in sing.vals){
   }
 }
 dev.off()
+
+
+# Analyze contribution of component to signal -----------------------------
+
+# Take top 100 genes from a component, see whether it contributes significantly
+# to the original expression
+
+component <- 1
+egene <- s$v[, component, drop = FALSE]
+esample <- s$u[, component, drop = FALSE]
+evalue <- s$d[component]
+
+component.mat <- evalue * OuterComplex(esample, t(egene))
+# orginal data is dat.wide
+
+
+
+
+
+
+
