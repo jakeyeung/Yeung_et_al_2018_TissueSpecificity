@@ -70,12 +70,16 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   }
   
   if (add.text.plot){
-    textplot(Re(dat), Im(dat), text.labels, main=main,
-             xlim=c(axis.min, axis.max),
-             ylim=c(axis.min, axis.max),
-             cex=0.6)
-    abline(v=0)
-    abline(h=0) 
+    if (!is.null(dim(dat))){
+      textplot(Re(dat), Im(dat), text.labels, main=main,
+               xlim=c(axis.min, axis.max),
+               ylim=c(axis.min, axis.max),
+               cex=0.6)
+      abline(v=0)
+      abline(h=0)  
+    } else {
+      warning("Data is not a matrix. Not adding text plot")
+    }
   }
 }
 
