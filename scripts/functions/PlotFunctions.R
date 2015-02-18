@@ -22,7 +22,9 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   # threshold: if many datapoints, show text label only if magnitude is greater than threshold
   # 
   # requires wordcloud package for textplot function
-  library(wordcloud)  # install.packages("wordcloud")
+  if (add.text.plot){
+    library(wordcloud)  # install.packages("wordcloud") 
+  }
   
   if (missing(gene.list)){
     dat <- complex.matrix  
