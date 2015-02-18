@@ -378,11 +378,14 @@ dat.wide <- ConvertLongToWide(dat.proj, measurement.var = "exprs.transformed")
 # Complete cases only. This removes NaN rows.
 dat.wide <- dat.wide[complete.cases(dat.wide), ]
 
-# Centre the rows
-# dat.wide <- t(scale(t(dat.wide), center = TRUE, scale = FALSE))  # don't scale that's bad.
 
-# Remove rows with avg 0
-dat.wide <- dat.wide[complete.cases(dat.wide), ]
+# Optional: centre rows ---------------------------------------------------
+
+# # Centre the rows
+# #dat.wide <- t(scale(t(dat.wide), center = TRUE, scale = FALSE))  # don't scale that's bad.
+# 
+# # Remove rows with avg 0
+# dat.wide <- dat.wide[complete.cases(dat.wide), ]
 
 s <- svd(dat.wide)
 
@@ -493,13 +496,26 @@ dev.off()
 # Take top 100 genes from a component, see whether it contributes significantly
 # to the original expression
 
-component <- 1
-egene <- s$v[, component, drop = FALSE]
-esample <- s$u[, component, drop = FALSE]
-evalue <- s$d[component]
+gene <- "Myh7"
 
-component.mat <- evalue * OuterComplex(esample, t(egene))
-# orginal data is dat.wide
+orig <- Mod(as.matrix(dat.wide[gene, ]))
+proj <- matrix(data = 0, nrow = 1, ncol = 11)
+for (component in 1:11){
+  egene <- s$v[, component, drop = FALSE]
+  esample <- s$u[, component, drop = FALSE]
+  evalue <- s$d[component]
+  component.mat <- evalue * OuterComplex(esample, t(egene))
+
+  proj.vec <- ProjectOnVector(component.mat[gene, ], dat.wide[gene, ])
+  print(paste('Component', component))
+  print(proj.vec / orig)
+  
+  proj <- proj + proj.vec / orig
+}
+
+print(proj)
+
+
 
 
 
