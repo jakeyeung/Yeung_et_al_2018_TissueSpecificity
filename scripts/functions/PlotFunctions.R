@@ -25,6 +25,7 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   if (add.text.plot){
     library(wordcloud)  # install.packages("wordcloud") 
   }
+  library(PhaseHSV)
   
   if (missing(gene.list)){
     dat <- complex.matrix  
