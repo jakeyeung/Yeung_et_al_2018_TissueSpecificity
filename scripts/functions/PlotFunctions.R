@@ -22,10 +22,18 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   # threshold: if many datapoints, show text label only if magnitude is greater than threshold
   # 
   # requires wordcloud package for textplot function
+  
+  library(PhaseHSV)  # for colors around the circle
+  
   if (add.text.plot){
     library(wordcloud)  # install.packages("wordcloud") 
   }
-  library(PhaseHSV)
+  
+  # check if data is a matrix. If data frame, coerce to matrix.
+  # this prevents errors: "Error non-numeric argument to function
+  if (is.data.frame(complex.matrix)){
+    complex.matrix <- as.matrix(complex.matrix)
+  }
   
   if (missing(gene.list)){
     dat <- complex.matrix  
@@ -42,9 +50,6 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
     axis.min = -jmax
     axis.max = jmax
   }
-  
-  # check if data is a matrix. If data frame, coerce to matrix.
-  # this prevents errors: "Error non-numeric argument to function"
   
   # rotate 
   rotation <- complex(modulus = 1, argument = rotate)
