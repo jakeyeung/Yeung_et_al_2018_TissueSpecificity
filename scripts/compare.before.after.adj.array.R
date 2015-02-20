@@ -14,7 +14,7 @@ library(ggplot2)
 N.TISSUES <- 12
 N.TIMEPTS <- 24
 INTERVAL <- 2
-PERIOD <- Inf
+PERIOD <- 24
 before.after.plot.out <- paste0("plots/before.after.variance.gain.period", PERIOD, ".pdf")
 
 # Functions ---------------------------------------------------------------
@@ -108,6 +108,10 @@ var.exprs.after <- apply(Mod(array.after.time.proj), 1, var)
 var.df <- data.frame(tissue=c(names(var.total.before), names(var.total.after)), 
                      before.or.after=as.factor(rep(c("before", "after"), each = N.TISSUES)),
                      sum.Mod.Ygc1.sqr=c(unlist(var.total.before), unlist(var.total.after)))
+
+
+# reorder by decreasing variance
+var.df$tissue <- factor(var.df$tissue, levels(var.df$tissue)[order(var.total.after, decreasing = TRUE)])
 
 ggplot(var.df, aes(x=tissue, y=sum.Mod.Ygc1.sqr, fill=before.or.after)) + 
   ggtitle(paste("Variance gain before and after for Period", PERIOD)) + 
