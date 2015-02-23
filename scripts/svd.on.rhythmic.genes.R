@@ -489,37 +489,3 @@ for (sing.val in sing.vals){
   }
 }
 dev.off()
-
-
-# Analyze contribution of component to signal -----------------------------
-
-# Take top 100 genes from a component, see whether it contributes significantly
-# to the original expression
-
-gene <- "Myh7"
-
-orig <- Mod(as.matrix(dat.wide[gene, ]))
-proj <- matrix(data = 0, nrow = 1, ncol = 11)
-for (component in 1:11){
-  egene <- s$v[, component, drop = FALSE]
-  esample <- s$u[, component, drop = FALSE]
-  evalue <- s$d[component]
-  component.mat <- evalue * OuterComplex(esample, t(egene))
-
-  proj.vec <- ProjectOnVector(component.mat[gene, ], dat.wide[gene, ])
-  print(paste('Component', component))
-  print(proj.vec / orig)
-  
-  proj <- proj + proj.vec / orig
-}
-
-print(proj)
-
-
-
-
-
-
-
-
-
