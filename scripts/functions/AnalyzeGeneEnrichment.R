@@ -82,7 +82,7 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   # Select genes in bg that are in hit, binary matrix.
   # used in topGO new() function
   sel.genes <- factor(as.integer(genes.bg %in% genes.hit))
-  names(sel.genes) <- genes.entrez
+  names(sel.genes) <- genes.bg
   
   # Get topGO object
   GOdata <- new("topGOdata",
