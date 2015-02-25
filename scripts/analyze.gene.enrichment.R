@@ -41,7 +41,9 @@ entrez2GO <- lapply(entrez2GO.full, function(x){
 # geneID2GO<- readMappings(file = system.file("examples/geneid2go.map", package = "topGO"))
 
 
-# Run enrichment ----------------------------------------------------------
+
+# Get GOData --------------------------------------------------------------
+
 
 top.genes <- read.table("plots/nconds/7_conds_filtered/7_conds_filtered4.txt")
 top.genes <- as.character(unlist(top.genes))  # to get correct naming after conversion
@@ -58,6 +60,34 @@ GOdata <- new("topGOdata",
               description = "Test",
               ontology = "BP",
               allGenes = sel.genes,
-              nodeSize = 10,
+              nodeSize = 5,
               annot = annFUN.gene2GO,
               gene2GO = entrez2GO)
+
+
+# Run enrichment ----------------------------------------------------------
+
+result.fisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
+n.tests <- length(score(result.fisher))
+
+# Look at results ---------------------------------------------------------
+
+all.res <- GenTable(GOdata, 
+                    classicFisher = result.fisher,
+                    # classicKS = result.KS,
+                    # elimKS = result.KS.elim,
+                    orderBy = "classicFisher",
+                    ranksOf = "classicFisher",
+                    topNodes = n.tests)
+# adjust pvalues
+all.res$FDRadj <- p.adjust(all.res$classicFisher, method = "BH")
+
+
+# Filter table by pvalue --------------------------------------------------
+
+all.res <- all.res[all.res$FDRadj <= 0.05, ]
+
+# Write to file -----------------------------------------------------------
+
+write.table(all.res, file = "plots/nconds/7_conds_filtered/TOPGo_model4.txt", quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+
