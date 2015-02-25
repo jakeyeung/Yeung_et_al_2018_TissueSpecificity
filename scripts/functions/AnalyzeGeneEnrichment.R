@@ -1,6 +1,13 @@
 # AnalyzeGeneEnrichment.R
 # using topGO
 # 25 Feb 2014
+#
+# if necessary:
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("topGO")
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("org.Mm.eg.db")
+
 
 library(topGO)
 library(org.Mm.eg.db)
@@ -36,6 +43,8 @@ ConvertSym2Entrez <- function(gene.list, sym2entrez){
 }
 
 AnalyzeGeneEnrichment <- function(genes.bg, genes.hit, 
+                                  sym2entrez,
+                                  entrez2GO,
                                   convert.sym.to.entrez = TRUE,
                                   which.ontology = "BP", 
                                   write.path = FALSE,
@@ -46,6 +55,8 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   # INPUT:
   # genes.bg: vector of background genes
   # genes.hit: vector of hit genes
+  # sym2entrez: Provide a mapping from gene symbol to entrez, see example via CreateSym2Entrez(). If missing, creates it via CreateSym2Entrez()
+  # entrez2GO: mapping from entrez to GO terms, example CreateEntrez2GO(). If missing, creates it via CreateEntrez2Go()
   # convert.sym.to.entrez: convert gene symbols to entrez ID. Set to FALSE if genes already in entrez ID
   # write.path: path to write topGO results object. If FALSE, does not write to file
   # which.ontology: "BP", "MF", "CC"
@@ -56,8 +67,14 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   # OUTPUT:
   # all.res: topGO results object
   #
-  if (convert.sym.to.entrez){
+  if (missing(sym2entrez)){
     sym2entrez <- CreateSym2Entrez()
+  }
+  if (missing(entrez2GO)){
+    entrez2GO <- CreateEntrez2GO()
+  }
+  
+  if (convert.sym.to.entrez){
     genes.bg <- ConvertSym2Entrez(genes.bg, sym2entrez)
     genes.hit <- ConvertSym2Entrez(genes.hit, sym2entrez)
   }
@@ -66,8 +83,6 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   # used in topGO new() function
   sel.genes <- factor(as.integer(genes.bg %in% genes.hit))
   names(sel.genes) <- genes.entrez
-  
-  entrez2GO <- CreateEntrez2GO()
   
   # Get topGO object
   GOdata <- new("topGOdata",
@@ -98,7 +113,7 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   all.res <- all.res[all.res$FDRadj <= FDR.cutoff, ]
   
   # Write to file -----------------------------------------------------------
-  if (write.path){
+  if (write.path != FALSE){
     write.table(all.res, file = write.path, 
                 quote = FALSE, 
                 sep = "\t", 
