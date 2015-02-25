@@ -2,8 +2,10 @@
 # February 25 2015
 
 LoadArrayRnaSeq <- function(){
-  source(file.path(scripts.dir, funcs.dir, "PlotFunctions.R"))
-  
+  scripts.dir <- "scripts"
+  funcs.dir <- "functions"
+  source(file.path(scripts.dir, funcs.dir, "LoadAndHandleData.R"))
+  source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
   # Define dirs -------------------------------------------------------------
   
   # define dirs
@@ -41,4 +43,5 @@ LoadArrayRnaSeq <- function(){
   # Merge data into long format ---------------------------------------------
   
   dat <- MergeToLong(normalized.array, rna.seq.exprs.filtered)  
+  return(dat)
 }
