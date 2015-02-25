@@ -17,10 +17,10 @@ RemoveExtension <- function(fname){
 
 # Loop through file names and get gene enrichment -------------------------
 
-fnames <- read.table("plots/nconds/7_conds_filtered/files.txt", )  # full file paths
+fnames <- read.table("plots/nconds/7_conds_filtered_05_amp/files.txt", )  # full file paths
 fnames <- as.character(unlist(fnames))  # loop-able
 
-genes.bg <- read.table("plots/nconds/7_conds_filtered/filtered_genes.txt")
+genes.bg <- read.table("plots/nconds/7_conds_filtered_05_amp/filtered_genes.txt")
 genes.bg <- as.character(unlist(genes.bg))
 
 # precalculation of these objs makes things go faster
@@ -30,10 +30,16 @@ entrez2GO <- CreateEntrez2GO()
 for (fname in fnames){
   genes.hit <- read.table(fname)
   genes.hit <- as.character(unlist(genes.hit))
+  if (length(genes.hit) < 20){
+    next
+  }
   # Run ontologies for MF, BP and CC
   for (onto in c("BP", "MF", "CC")){
     fname.noext <- RemoveExtension(fname)
     fname.out <- paste0(fname.noext, '_', onto)
+    if (file.exists(fname.out)){
+      next
+    }
     res <- AnalyzeGeneEnrichment(genes.bg, genes.hit, 
                                  sym2entrez, entrez2GO, 
                                  convert.sym.to.entrez = TRUE, 
