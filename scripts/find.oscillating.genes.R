@@ -5,27 +5,28 @@
 
 library(ggplot2)
 library(plyr)
-# library(foreach)  # for parallelization
-# library(doParallel)  # for parallelization
+library(foreach)  # for parallelization
+library(doParallel)  # for parallelization
 library(parallel)
 
 # Adjustable parameters ---------------------------------------------------
 
-outfile <- "data/oscillating_genes.txt"
+setwd("/home/yeung/projects/tissue-specificity")
+outfile <- "data/oscillating_genes.rerun.txt"
 gene.header <- "gene"
 params.header <- c("amp", "phase", "int.array", "int.rnaseq")
 
 # plot outputs
-amp.dist.plot <- 'plots/amplitude_distributions_across_tissues.pdf'
-phase.dist.plot <- 'plots/phase_distributions_across_tissues.pdf'
-count.dist.plot <- 'plots/distribution_of_tissue_specificness_rhythmic_genes.pdf'
-tissue.specific.dist.plot <- 'plots/number_of_tissue_specific_rhythmic_genes.pdf'
-rhythmic.genes.plots <- 'plots/rhythmic_genes_across_tissues.pdf'
+amp.dist.plot <- 'plots/amplitude_distributions_across_tissues.rerun.pdf'
+phase.dist.plot <- 'plots/phase_distributions_across_tissues.rerun.pdf'
+count.dist.plot <- 'plots/distribution_of_tissue_specificness_rhythmic_genes.rerun.pdf'
+tissue.specific.dist.plot <- 'plots/number_of_tissue_specific_rhythmic_genes.rerun.pdf'
+rhythmic.genes.plots <- 'plots/rhythmic_genes_across_tissues.rerun.pdf'
 
 # parallel processing
 #setup parallel backend to use 30 processors
-# cl<-makeCluster(30)
-# registerDoParallel(cl)
+cl<-makeCluster(30)
+registerDoParallel(cl)
 
 # Define constants --------------------------------------------------------
 
@@ -422,6 +423,8 @@ fit.list <- foreach(i = 1:length(tissues),
 names(fit.list) <- tissues
 print(Sys.time())
 print('End fitting lm models')
+# write fit object to file
+save(fit.list, file = "results/fits.Robj")
 
 # Write list to textfile -- ------------------------------------------------
 
@@ -616,7 +619,7 @@ dat.sub.temp.split <- split(dat.sub.temp, f = dat.sub.temp$gene)
 dat.sub.temp.split <- lapply(dat.sub.temp.split, GetFitTitle, fit.list)
 plot.titles <- sapply(my.genes, GetPlotTitles, count.df = r.genes.sum)
 
-pdf('plots/rhythmic_across_tissues.pdf')
+pdf('plots/rhythmic_across_tissues.rerun.pdf')
 start.time <- Sys.time()
 mclapply(as.vector(my.genes, mode = "list"), function(x) PlotTissues(dat.sub.temp.split[[x]], plot.titles[[x]]), 
          mc.cores = 24)
@@ -624,7 +627,7 @@ print(Sys.time() - start.time)
 dev.off()
 
 # plot projections 
-pdf('plots/projections.pdf')
+pdf('plots/projections.rerun.pdf')
 for (gene in my.genes){
   PlotComplex(dat.proj[gene, ], 
               labels = colnames(dat.proj),
