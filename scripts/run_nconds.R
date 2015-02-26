@@ -40,12 +40,11 @@ t <- rep(seq(18, 64, 2), co)
 data.6 <- PrepareData(dat, conds, t)
 
 load("~/projects/select-rhythmic-models/fit_7_conditions.Robj") # fit
+# load("~/projects/select-rhythmic-models/matrices_7_conditions.Robj")  # my_mat
+# load("~/projects/select-rhythmic-models/matrices_2_conditions.Robj")  # my_mat
 
 dat.with.fit <- InsertFitToMat(fit, data.6)
 
-for (jgene in rownames(relamps)){
-  
-}
 col_i.relamps <- grepl("relamp", colnames(dat.with.fit))
 col_i.amps <- grepl("^amp", colnames(dat.with.fit))
 relamps <- apply(dat.with.fit, 1, GetColsApply, col_i=col_i.relamps)
@@ -54,11 +53,13 @@ amps <- apply(dat.with.fit, 1, GetColsApply, col_i = col_i.amps)
 
 # filter out low relamps
 filtered.genes <- names(relamps[which(amps >= 0.5)])  # amps is tunable
-
 dat.with.fit.filtered <- dat.with.fit[filtered.genes, ]
 
+# filter by BICW
+dat.with.fit.filtered <- dat.with.fit[which(dat.with.fit$BICW >= 0.2), ]
+
 plot_models(dat.with.fit.filtered, 
-            file_path_name = "plots/nconds/7_conds_filtered_05_amp/7_conds_filtered", 
+            file_path_name = "plots/nconds/7_conds_filtered_02_bicw/7_conds_filtered", 
             t, 
             co = length(conds), 
             conds, 
@@ -66,7 +67,7 @@ plot_models(dat.with.fit.filtered,
             test = TRUE)
 
 # write list of gene names to file for gene enrichment analysis later
-sink("plots/nconds/7_conds_filtered_05_amp/filtered_genes.txt")
+sink("plots/nconds/7_conds_filtered_02_bicw/filtered_genes.txt")
 for (gene in filtered.genes){
   cat(gene)
   cat("\n")
