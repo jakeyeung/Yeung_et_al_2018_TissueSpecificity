@@ -16,7 +16,10 @@ FilterBedFile <- function(genes.in, bedfile.out, bedfile.in){
   genes.fixed <- unlist(sapply(genes, FixGeneName))
   
   genes.grep <- paste0(genes.fixed, collapse = "|")
-  
+  if (nchar(genes.grep) > 2048){
+    warning("Too many genes (>2048 char limit), skipping...")
+    return(NA)
+  }
   bedfile.filtered <- bedfile[grepl(genes.grep, bedfile$V4), ]
   
   write.table(bedfile.filtered, 
