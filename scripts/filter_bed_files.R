@@ -2,22 +2,25 @@
 #
 # Given list of genes, filter bed file so it only contains gene of interest.
 
-source("scripts/functions/ReadListToVector.R")
-source("scripts/functions/FixGeneName.R")
 
-bedfile <- read.table("bedfiles/Mm_EPDnew.liftOver.mm10.bed")  # 4th column contains gene names V4
+# Functions ---------------------------------------------------------------
 
-genes <- ReadListToVector("plots/nconds/7_conds_filtered_05_amp/7_conds_filtered4.txt")
+source(file.path("scripts", "functions", "FilterBedFile.R"))
+source(file.path("scripts", "functions", "ReadListToVector.R"))
+source(file.path("scripts", "functions", "RemoveExtension.R"))
 
-genes.fixed <- unlist(sapply(genes, FixGeneName))
 
-genes.grep <- paste0(genes.fixed, collapse = "|")
+fnames.list <- "~/projects/tissue-specificity/plots/nconds/7_conds_filtered_05_amp/files.txt"
+fnames <- ReadListToVector(fnames.list)
+outdir <- "~/projects/tissue-specificity/bedfiles"
 
-bedfile.filtered <- bedfile[grepl(genes.grep, bedfile$V4), ]
+for (fname in fnames){
+  bedfile.out <- file.path(outdir, basename(fname))
+  bedfile.out <- RemoveExtension(bedfile.out)
+  bedfile.out <- paste0(bedfile.out, '.bed')
+  FilterBedFile(fname, bedfile.out)
+}
 
-write.table(bedfile.filtered, 
-            file = "bedfiles/7_conds_filtered4.bed", 
-            quote = FALSE, 
-            sep = "\t", 
-            col.names = FALSE, 
-            row.names = FALSE)
+
+
+
