@@ -5,6 +5,8 @@
 
 # Functions ---------------------------------------------------------------
 
+source("scripts/functions/RemoveExtension.R")
+
 WriteHeaders <- function(){
   # write header for elastic input
   cat(paste0("\t", "cos.part", "\t", "sin.part", "\n"))
@@ -28,7 +30,7 @@ conds <- c('Adr', 'Aorta', 'BFAT', 'Kidney', 'Liver', 'Lung', 'Mus')  # each tis
 outdir <- "y_input_elastic_net"
 outprefix <- RemoveExtension(basename(genes.fname))
 for (cond in conds){
-  sink(file.path(outdir, paste0(outprefix, cond, ".elasticinput")))
+  sink(file.path(outdir, paste0(outprefix, ".", cond, ".elasticinput")))
   WriteHeaders()
   for (gene in genes){
     amp <- fit.list[[cond]][[gene]]$amp
