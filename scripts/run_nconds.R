@@ -1,8 +1,7 @@
 # Run nconds.R
 library("devtools")
 dev_mode()
-# install_bitbucket("Cgobet/ncond", auth_user = "jakeyeung", password = "Zelzel1.Btb")
-install("~/projects/ncond")
+install("~/projects/ncond")  # use jake branch
 library(nconds)
 
 GetRelamp <- function(dat.with.fit, jgene){
