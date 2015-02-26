@@ -1,7 +1,7 @@
 # FilterBedFile.R
 # February 26 2014
 
-FilterBed <- function(genes.in, bedfile.out, bedfile.in){
+FilterBedFile <- function(genes.in, bedfile.out, bedfile.in){
   source("scripts/functions/ReadListToVector.R")
   source("scripts/functions/FixGeneName.R")
   
@@ -9,7 +9,6 @@ FilterBed <- function(genes.in, bedfile.out, bedfile.in){
     bedfile.in <- "bedfiles/Mm_EPDnew.liftOver.mm10.bed"
   }
   bedfile <- read.table(bedfile.in)  # 4th column contains gene names V4
-  
   genes <- ReadListToVector(genes.in)
   
   # some genes added an 'X' because it R didn't allow rownames with numbers.
