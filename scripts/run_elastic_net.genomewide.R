@@ -2,6 +2,8 @@
 # Jake Yeung
 # February 26 2015
 
+library(glmnet)
+
 setwd("~/projects/tissue-specificity")
 
 source("scripts/functions/LoadAndHandleData.R")
