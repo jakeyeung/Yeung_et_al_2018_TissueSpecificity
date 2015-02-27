@@ -29,7 +29,7 @@ setwd("~/projects/tissue-specificity/")
 library(wordcloud)  # for showing text without jumbling
 source("scripts/functions/LoadAndHandleData.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
-source("scripts/functions/PlotFunctions.R")
+source("scripts/functions/PcaPlotFunctions.R")
 # mydat <- LoadArrayRnaSeq()  # slow
 # save(mydat, file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")
 # load(file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")  # mydat
