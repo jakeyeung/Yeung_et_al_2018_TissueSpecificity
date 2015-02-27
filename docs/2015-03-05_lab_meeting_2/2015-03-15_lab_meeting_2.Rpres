@@ -1,0 +1,135 @@
+Diurnal rhythms in 
+peripheral tissues
+========================================================
+author: Jake Yeung
+date: 5 March 2015
+transition: rotate
+incremental: true
+
+Introduction
+========================================================
+type: section
+
+Intro2
+========================================================
+type: subsection
+
+Here we will talk about TF binding 
+
+* Bullet 1
+* Bullet 2
+* Bullet 3
+
+Results
+=======================================================
+
+```{r prepare-data, echo=FALSE, message = FALSE, warnings = FALSE}
+setwd("~/projects/tissue-specificity/")
+library(wordcloud)  # for showing text without jumbling
+source("scripts/functions/LoadAndHandleData.R")
+source("scripts/functions/LoadArrayRnaSeq.R")
+source("scripts/functions/PlotFunctions.R")
+# mydat <- LoadArrayRnaSeq()  # slow
+# save(mydat, file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")
+# load(file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")  # mydat
+load(file = "docs/2015-03-05_lab_meeting/robjs/array.WFAT.removed")  # dat.array
+```
+
+Data processing
+=======================================================
+```{r data-processing, echo=FALSE}
+print("Justify why you removed WFAT and normalized array data to fit the RNA-Seq data")
+```
+
+PCA: Large number of components contribute to the overall variance
+=======================================================
+
+
+```{r pca-screeplot, echo=FALSE, fig.width=14, fig.height=7}
+# from pca_adjusted_microarray.R
+dat_pca <- prcomp(t(dat.array), center=TRUE, scale.=TRUE)
+
+# screeplot(dat_pca, type="lines", npcs = min(100, length(dat_pca$sdev)), log="y", main = "")
+npcs <- 100
+sdev.norm <- sapply(dat_pca$sdev, function(x) x / sum(dat_pca$sdev))
+plot(x = 1:npcs, 
+     sdev.norm[1:npcs], 
+     type='o', 
+     log = "y", 
+     main = paste0("Variance of first ", npcs, " components"),
+     xlab = paste0("Components (", length(dat_pca$sdev), " total components)"),
+     ylab = "Normalized variance (sum=1)")
+
+```
+
+Tissue-specific transcriptomes account for largest variance
+=======================================================
+```{r pca-component1v2, echo=FALSE, fig.width=14, fig.height=7}
+x_comp <- 1
+y_comp <- 2
+# Show PCA plot of tissues ----------------------------------------------------  
+# 2. 
+# Color by tissue
+colors.by.tissue <- rep(1:12, each=24)
+textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
+         main=paste("Component", x_comp, "vs.", y_comp))
+```
+
+Component 1 shows separation of neural tissues
+=======================================================
+```{r pca-loadings1, echo=FALSE, fig.width=14, fig.height=7}
+# get tissue names for text labels in plotloadings
+tissue.names.all <- rownames(dat_pca$x)
+
+n.timepts <- 24  # per tissue
+
+# sapply to get unique tissue names from .all
+tissue.names <- unique(sapply(tissue.names.all, function(s){
+  # get tissue name e.g. Liver34 -> Liver
+  t.name <- substr(s, 1, nchar(s) - 2)
+  return(t.name)
+}
+))
+
+# get x and y position of text labels in plot loadings
+samp.begins <- seq(1, length(tissue.names.all), n.timepts)  # beginning of each samp
+pos.x <- samp.begins + n.timepts / 2
+pos.y <- max(dat_pca$x[, x_comp])
+
+PlotLoadings(dat_pca$x[, x_comp], title=paste("Vector Loadings for component", x_comp))
+text(x = pos.x, y = pos.y, labels = tissue.names)
+abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary for line
+```
+
+
+Diurnal rhythms account for significant variance
+=======================================================
+```{r, echo=FALSE, fig.width=8, fig.height=6.5}
+# Create response vector, which is loadings
+
+y <- dat_pca$x[, pca_vector]
+
+# Optional: 
+# y <- MeanCenterAcrossGroups(y)
+
+# BEGIN: plot periodograms to see which frequency has high activity
+freq.and.periodogram <- CalculatePeriodogram(y)  # returns a list
+freq <- freq.and.periodogram$freq
+periodogram <- freq.and.periodogram$p.scaled
+periodogram.unscaled <- freq.and.periodogram$p.unscaled
+
+# Calculate top 5 frequencies
+max.freqs <- FindMaxFreqs(freq, periodogram)
+
+PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector))
+# add vertical line at max frequency
+max.f <- max.freqs[1]
+# calculate period from frequency
+max.T <- (1 / max.f) * 2  # multiply by 2 because samples are every 2 hours 
+abline(v=max.f, col='blue', lwd=2)
+# add text to show freq and period.
+# x offset of +0.02 so you can see the text
+text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"))
+
+PlotLoadings(y, title=paste("Vector Loadings for PCA component:", pca_vector))
+```
