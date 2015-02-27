@@ -1,5 +1,4 @@
-Diurnal rhythms in 
-peripheral tissues
+Diurnal rhythms in peripheral tissues
 ========================================================
 author: Jake Yeung
 date: 5 March 2015
@@ -12,7 +11,6 @@ type: section
 
 Intro2
 ========================================================
-type: subsection
 
 Here we will talk about TF binding 
 
@@ -20,19 +18,34 @@ Here we will talk about TF binding
 * Bullet 2
 * Bullet 3
 
+Hypothesis
+========================================================
+Let's list some hypotheses
+
+* Hypothesis 1
+* Hypothesis 2
+* Hypothesis 3
+
 Results
 =======================================================
+type: section
 
 ```{r prepare-data, echo=FALSE, message = FALSE, warnings = FALSE}
 setwd("~/projects/tissue-specificity/")
 library(wordcloud)  # for showing text without jumbling
+library(combinat)
+library(PhaseHSV)
+
 source("scripts/functions/LoadAndHandleData.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
-source("scripts/functions/PlotFunctions.R")
+source("scripts/functions/PcaPlotFunctions.R")
+source("scripts/functions/FourierFunctions.R")
 # mydat <- LoadArrayRnaSeq()  # slow
 # save(mydat, file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")
 # load(file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")  # mydat
 load(file = "docs/2015-03-05_lab_meeting/robjs/array.WFAT.removed")  # dat.array
+
+jcex <- 2.5
 ```
 
 Data processing
@@ -52,17 +65,21 @@ dat_pca <- prcomp(t(dat.array), center=TRUE, scale.=TRUE)
 # screeplot(dat_pca, type="lines", npcs = min(100, length(dat_pca$sdev)), log="y", main = "")
 npcs <- 100
 sdev.norm <- sapply(dat_pca$sdev, function(x) x / sum(dat_pca$sdev))
+op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
 plot(x = 1:npcs, 
      sdev.norm[1:npcs], 
      type='o', 
      log = "y", 
      main = paste0("Variance of first ", npcs, " components"),
      xlab = paste0("Components (", length(dat_pca$sdev), " total components)"),
-     ylab = "Normalized variance (sum=1)")
+     ylab = "Normalized variance (sum=1)",
+     cex.lab = jcex,
+     cex.main = jcex,
+     cex.axis = jcex)
 
 ```
 
-Tissue-specific transcriptomes account for largest variance
+Neural transcriptomes account for large variance
 =======================================================
 ```{r pca-component1v2, echo=FALSE, fig.width=14, fig.height=7}
 x_comp <- 1
@@ -71,11 +88,17 @@ y_comp <- 2
 # 2. 
 # Color by tissue
 colors.by.tissue <- rep(1:12, each=24)
+op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
 textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
-         main=paste("Component", x_comp, "vs.", y_comp))
+         main=paste("Principal Component", x_comp, "and", y_comp),
+         xlab = paste("Component", 1),
+         ylab = paste("Component", 2),
+         cex.lab = jcex,
+         cex.main = jcex,
+         cex.axis = jcex)
 ```
 
-Component 1 shows separation of neural tissues
+PC 1 shows separation of neural tissues
 =======================================================
 ```{r pca-loadings1, echo=FALSE, fig.width=14, fig.height=7}
 # get tissue names for text labels in plotloadings
@@ -96,21 +119,19 @@ samp.begins <- seq(1, length(tissue.names.all), n.timepts)  # beginning of each 
 pos.x <- samp.begins + n.timepts / 2
 pos.y <- max(dat_pca$x[, x_comp])
 
-PlotLoadings(dat_pca$x[, x_comp], title=paste("Vector Loadings for component", x_comp))
-text(x = pos.x, y = pos.y, labels = tissue.names)
+op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
+PlotLoadings(dat_pca$x[, x_comp], title=paste("Vector Loadings for PC", x_comp), cex = jcex)
+text(x = pos.x, y = pos.y, labels = tissue.names, cex = 0.8*jcex)
 abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary for line
 ```
 
 
-Diurnal rhythms account for significant variance
+Rhythmicity accounts for significant variance
 =======================================================
-```{r, echo=FALSE, fig.width=8, fig.height=6.5}
+```{r, echo=FALSE, fig.width=14, fig.height=7}
 # Create response vector, which is loadings
-
+pca_vector <- 14
 y <- dat_pca$x[, pca_vector]
-
-# Optional: 
-# y <- MeanCenterAcrossGroups(y)
 
 # BEGIN: plot periodograms to see which frequency has high activity
 freq.and.periodogram <- CalculatePeriodogram(y)  # returns a list
@@ -121,7 +142,18 @@ periodogram.unscaled <- freq.and.periodogram$p.unscaled
 # Calculate top 5 frequencies
 max.freqs <- FindMaxFreqs(freq, periodogram)
 
-PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector))
+op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
+PlotLoadings(y, title=paste("Vector Loadings for PCA component:", pca_vector), cex = jcex)
+pos.y <- max(y)
+text(x = pos.x, y = pos.y, labels = tissue.names, cex = 0.8*jcex)
+abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary for line
+```
+
+Spectral analysis shows rhythms are diurnal
+=======================================================
+```{r, echo=FALSE, fig.width=14, fig.height=7}
+op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
+PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector), cex = jcex)
 # add vertical line at max frequency
 max.f <- max.freqs[1]
 # calculate period from frequency
@@ -129,7 +161,52 @@ max.T <- (1 / max.f) * 2  # multiply by 2 because samples are every 2 hours
 abline(v=max.f, col='blue', lwd=2)
 # add text to show freq and period.
 # x offset of +0.02 so you can see the text
-text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"))
-
-PlotLoadings(y, title=paste("Vector Loadings for PCA component:", pca_vector))
+text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"), cex = jcex)
 ```
+
+Tissues cluster by times in rhythmic components
+=======================================================
+```{r, echo=FALSE, fig.width=14, fig.height=14}
+t <- rep(seq(0, 22, 2), 2)  # for one tissue
+time.cols <- hsv(PhaseToHsv(2 * pi * t/ 24, 0, 2 *pi), s=1, v=1)
+tissue <- "Kidney"
+x_comp <- 14
+y_comp <- 20
+t <- rep(seq(1, 12), 2)  # 12 samples repeated twice
+
+op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
+plot(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp], 
+     dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp], 
+     cex = 0.7, col = "black", 
+     main=paste(tissue, "Component", x_comp, "vs", y_comp),
+     xlab = paste("Component", x_comp),
+     ylab = paste("Component", y_comp),
+     cex.main = jcex,
+     cex.axis = jcex,
+     cex.lab = jcex)
+text(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp],
+     dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp],
+     rownames(dat_pca$x)[which(grepl(tissue, rownames(dat_pca$x)))],
+     col = time.cols,
+     cex.main = jcex,
+     cex.axis = jcex,
+     cex.lab = jcex)
+```
+
+PCA analysis
+=======================================================
+
+We found significant tissue-specific expression and
+diurnal rhythms contributing to variance across 11 tissues.
+
+* How do diurnal rhythms differ across tissues?
+
+Transforming the data to frequency space
+=======================================================
+$$
+\begin{aligned}
+Y_{gc\omega} = \frac{1}{N} \sum_{t=1}^{T} Y_{gct} \exp{(i \omega t)}
+\end{aligned}
+$$
+
+
