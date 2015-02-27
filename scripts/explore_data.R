@@ -11,7 +11,7 @@ library(wordcloud)  # for showing text without jumbling
 
 # First source my functions I wrote
 funcs.dir <- file.path('scripts', 'functions')
-source(file.path(funcs.dir, 'SampleNamehandler.R'))  # for shortening sample names
+source(file.path(funcs.dir, 'SampleNameHandler.R'))  # for shortening sample names
 source(file.path(funcs.dir, 'PcaPlotFunctions.R'))  # for visualizing PCA, periodoigrams
 source(file.path(funcs.dir, 'FourierFunctions.R'))  # for periodoigrams
 source(file.path(funcs.dir, 'GetTissueSpecificMatrix.R'))  # as name says
@@ -88,7 +88,7 @@ dat <- dat[, !(names(dat) %in% drop.cols)]
 
 # make more meaningful sample names
 # user changeable paramters: show="tissue.time" | "tissue" | "time"
-colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue")
+colnames(dat) <- ShortenSampNames(colnames(dat), show="tissue.time")
 
 # Plot histogram and quantiles ----------------------------------------------------------
 
@@ -265,3 +265,27 @@ gene.loadings <- dat_pca$rotation[, PCA]
 top.genes <- order(gene.loadings)[1:10]
 # print top genes
 rownames(dat_pca$rotation)[top.genes]
+
+
+# Plot combinations of rhythmicity ----------------------------------------
+
+rhyth.comps <- c(14, 16, 17, 19)
+library(combinat)
+tissues <- c("Liver", "Adr", "Kidney", "BFAT", "Aorta", "Mus", "Mus", "Heart")
+combos <- combn(rhyth.comps, 2)
+for (tissue in tissues){
+  for (i in 1:ncol(combos)){
+    combo <- combos[, i]
+    x_comp <- combo[1]
+    y_comp <- combo[2]
+    plot(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp], 
+         dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp], 
+         cex = 0.7, col = colors.by.tissue, 
+         main=paste(tissue, "Component", x_comp, "vs", y_comp),
+         xlab = paste("Component", x_comp),
+         ylab = paste("Component", y_comp))
+    text(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp],
+         dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp],
+         rownames(dat_pca$x)[which(grepl(tissue, rownames(dat_pca$x)))])
+  }  
+}
