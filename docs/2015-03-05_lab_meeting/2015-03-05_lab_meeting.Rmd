@@ -1,0 +1,86 @@
+---
+title: "Diurnal rhythms in peripheral tissues"
+author: "Jake Yeung"
+date: "5 March 2015"
+transition: rotate
+output: ioslides_presentation
+---
+
+# Introduction
+
+## Gene regulatory networks are complicated. | subtitle here
+
+## Combinatorial effects of transcription factors on gene expression | subtitle
+
+## Hypothesis
+
+> - Turn off alarm
+> - Get out of bed
+
+## Dataset
+
+- point1
+- point2
+
+# Results
+
+```{r prepare-data, echo=FALSE, message = FALSE, warnings = FALSE}
+setwd("~/projects/tissue-specificity/")
+library(wordcloud)  # for showing text without jumbling
+source("scripts/functions/LoadAndHandleData.R")
+source("scripts/functions/LoadArrayRnaSeq.R")
+source("scripts/functions/PlotFunctions.R")
+# mydat <- LoadArrayRnaSeq()  # slow
+# save(mydat, file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")
+# load(file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")  # mydat
+load(file = "docs/2015-03-05_lab_meeting/robjs/array.WFAT.removed")  # dat.array
+```
+
+## Data processing
+```{r data-processing, echo=FALSE}
+print("Justify why you removed WFAT and normalized array data to fit the RNA-Seq data")
+```
+
+## PCA {.flexbox .vcenter}
+This is shitty
+```{r pca-screeplot, echo=FALSE, fig.width=8, fig.height=6.5}
+# from pca_adjusted_microarray.R
+dat_pca <- prcomp(t(dat.array), center=TRUE, scale.=TRUE)
+
+# screeplot(dat_pca, type="lines", npcs = min(100, length(dat_pca$sdev)), log="y", main = "")
+npcs <- 100
+sdev.norm <- sapply(dat_pca$sdev, function(x) x / sum(dat_pca$sdev))
+plot(x = 1:npcs, 
+     sdev.norm[1:npcs], 
+     type='o', 
+     log = "y", 
+     main = paste0("Variance of first ", npcs, " components"),
+     xlab = paste0("Components (", length(dat_pca$sdev), " total components)"),
+     ylab = "Normalized variance (sum=1)")
+
+```
+Wil i see this text?
+
+## PCA2 {.smaller}
+If I add some text here does it change anything?
+```{r pca-component1v2, echo=FALSE, fig.width=8, fig.height=6.5}
+x_comp <- 1
+y_comp <- 2
+# Show PCA plot of tissues ----------------------------------------------------  
+# 2. 
+# Color by tissue
+colors.by.tissue <- rep(1:12, each=24)
+textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
+         main=paste("Component", x_comp, "vs.", y_comp))
+# PlotLoadings(dat_pca$x[, x_comp], title=paste("Vector Loadings for PCA component:", x_comp))
+
+```
+
+## Image example
+<iframe src = 'kidney_pca_20_v_16.jpg' height='600px'></iframe>
+
+## Images look like this
+```{r, echo=FALSE, fig.width=8, fig.height=6.5}
+# ![hello world](kidney_pca_20_v_16.jpg)
+plot(cars)
+```
