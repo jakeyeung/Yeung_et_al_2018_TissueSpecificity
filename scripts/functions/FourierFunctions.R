@@ -74,7 +74,7 @@ FindMaxFreqs <- function(freq, periodogram, n=5) {
   return(max.freqs)
 }
 
-PlotPeriodogram <- function(freq, periodogram, title="Plot title", vline=NA) {
+PlotPeriodogram <- function(Frequency, Periodogram, title="Plot title", vline=NA, cex=1) {
   # Plots periodogram. 
   # 
   # Input: 
@@ -83,7 +83,10 @@ PlotPeriodogram <- function(freq, periodogram, title="Plot title", vline=NA) {
   # 
   # Output:
   # Periodogram plot
-  plot(freq, periodogram, type='l', main=title)
+  plot(Frequency, Periodogram, type='l', main=title, 
+       cex.axis = cex,
+       cex.lab = cex,
+       cex.main = cex)
 }
 
 ProjectToPeriodicTime <- function(Y , N.TISSUES, N.TIMEPTS, INTERVAL, OMEGA, col.names){
