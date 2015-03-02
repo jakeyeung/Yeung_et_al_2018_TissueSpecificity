@@ -35,15 +35,23 @@ setwd("~/projects/tissue-specificity/")
 library(wordcloud)  # for showing text without jumbling
 library(combinat)
 library(PhaseHSV)
+library(doMC)
+library(plyr)
 
-source("scripts/functions/LoadAndHandleData.R")
-source("scripts/functions/LoadArrayRnaSeq.R")
-source("scripts/functions/PcaPlotFunctions.R")
-source("scripts/functions/FourierFunctions.R")
+source("~/projects/tissue-specificity/scripts/functions/LoadAndHandleData.R")
+source("~/projects/tissue-specificity/scripts/functions/LoadArrayRnaSeq.R")
+source("~/projects/tissue-specificity/scripts/functions/PcaPlotFunctions.R")
+source("~/projects/tissue-specificity/scripts/functions/FourierFunctions.R")
+source("~/projects/tissue-specificity/scripts/functions/SvdFunctions.R")
+source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
+source("~/projects/tissue-specificity/scripts/functions/GetTopNValues.R")
+source("~/projects/tissue-specificity/scripts/functions/OuterComplex.R")
+source("~/projects/tissue-specificity/scripts/functions/OrderPhaseMatrix.R")
+
 # mydat <- LoadArrayRnaSeq()  # slow
-# save(mydat, file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")
-# load(file = "docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")  # mydat
-load(file = "docs/2015-03-05_lab_meeting/robjs/array.WFAT.removed")  # dat.array
+# save(mydat, file = "~/projects/tissue-specificity/docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")
+load(file = "~/projects/tissue-specificity/docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")  # mydat
+load(file = "~/projects/tissue-specificity/docs/2015-03-05_lab_meeting/robjs/array.WFAT.removed")  # dat.array
 
 jcex <- 2.5
 ```
@@ -128,7 +136,7 @@ abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary
 
 Rhythmicity accounts for significant variance
 =======================================================
-```{r, echo=FALSE, fig.width=14, fig.height=7}
+```{r rhythmic-loadings, echo=FALSE, fig.width=14, fig.height=7}
 # Create response vector, which is loadings
 pca_vector <- 14
 y <- dat_pca$x[, pca_vector]
@@ -151,7 +159,7 @@ abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary
 
 Spectral analysis shows rhythms are diurnal
 =======================================================
-```{r, echo=FALSE, fig.width=14, fig.height=7}
+```{r spectral-analysis, echo=FALSE, fig.width=14, fig.height=7}
 op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
 PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector), cex = jcex)
 # add vertical line at max frequency
@@ -164,9 +172,9 @@ abline(v=max.f, col='blue', lwd=2)
 text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"), cex = jcex)
 ```
 
-Tissues cluster by times in rhythmic components
+Tissues cluster by time of day in rhythmic components
 =======================================================
-```{r, echo=FALSE, fig.width=14, fig.height=14}
+```{r limit-cycle, echo=FALSE, fig.width=14, fig.height=14}
 t <- rep(seq(0, 22, 2), 2)  # for one tissue
 time.cols <- hsv(PhaseToHsv(2 * pi * t/ 24, 0, 2 *pi), s=1, v=1)
 tissue <- "Kidney"
@@ -205,8 +213,167 @@ Transforming the data to frequency space
 =======================================================
 $$
 \begin{aligned}
-Y_{gc\omega} = \frac{1}{N} \sum_{t=1}^{T} Y_{gct} \exp{(i \omega t)}
+Y_{gc\omega} = \frac{1}{N} \sum_{t=1}^{T} Y_{gct} \exp{(-i \omega t)}
 \end{aligned}
 $$
+
+$Y_{gc\omega=\frac{2\pi}{24}}$ represents amplitude and phase angle 
+$$
+\begin{aligned}
+Y_{gc\omega=\frac{2\pi}{24}} = \frac{1}{N} \sum_{t=1}^{T} Y_{gct} \exp{(-i \omega t) = Ae^{i\phi}}
+\end{aligned}
+$$
+
+**Strategy**: identify "modules" representing diurnal rhythms across tissues.
+
+```{r project-to-frequency, echo=FALSE, message=FALSE, warnings=FALSE}
+# uncomment to run, otherwise just load from file
+# # split for parallel processing
+# dat.split <- split(mydat, mydat$tissue)
+# # remove WFAT because it sucks
+# dat.split$WFAT <- NULL
+# 
+# omega <- 2 * pi / 24
+# omegas <- GetOmegas()
+# 
+# start.time <- Sys.time()
+# if (getDoParWorkers() == 1){
+#   registerDoMC(40)
+# }
+# dat.split.proj <- lapply(dat.split, function(x){
+#   ddply(x, .(gene), ProjectToFrequency, my.omega = omega, normalize = FALSE, rhythmic.only = FALSE, pval.cutoff = 1, .parallel = TRUE)
+# })
+# save(dat.split.proj, file = "~/projects/tissue-specificity/docs/2015-03-05_lab_meeting/robjs/dat_projected.Robj")
+load(file = "~/projects/tissue-specificity/docs/2015-03-05_lab_meeting/robjs/dat_projected.Robj")
+
+# Add tissue information into each list -----------------------------------
+
+for (tissue in names(dat.split.proj)){
+  dat.split.proj[[tissue]]$tissue <- tissue
+}
+
+# Combine data ------------------------------------------------------------
+
+dat.proj <- do.call(rbind, dat.split.proj)
+
+# long to wide conversion
+dat.wide <- ConvertLongToWide(dat.proj, measurement.var = "exprs.transformed")
+
+# Complete cases only. This removes NaN rows.
+dat.wide <- dat.wide[complete.cases(dat.wide), ]
+
+s <- svd(dat.wide)
+
+# Set rownames for u and v ------------------------------------------------
+
+rownames(s$u) <- rownames(dat.wide)
+rownames(s$v) <- colnames(dat.wide)
+```
+
+Simple case: the mean
+=======================================================
+$Y_{gc\omega=0}$ represents mean across a condition
+$$
+\begin{aligned}
+Y_{gc\omega=0} = \frac{1}{N} \sum_{t=1}^{T} Y_{gct}
+\end{aligned}
+$$
+
+Assessing amplitude across tissues
+=====================================================
+By projecting to frequency space, we can easily 
+measure the amplitude across tissues at a certain
+$\omega$.
+
+Singular value decomposition (SVD) in frequency space
+======================================================
+$$
+Y = UDV^{*}
+$$
+
+- U and V are complex unitary matrices. 
+
+- Let's call U **eigensamples** (samples are mixtures of them)
+
+- Let's call V **eigengenes** (genes are mixtures of them)
+
+- D is a diagonal matrix with eigenvalues in the diagonal
+
+- Low-rank representation of the original matrix by taking the outer product of columns of U and V multiplied by D.
+
+Eigenvalues of SVD decomposition
+===================================================
+```{r screeplot-svd, echo=FALSE, fig.width=14, fig.height=7}
+# ScreePlot
+plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
+```
+
+SVD of $\Y_{gc\omega=\frac{2\pi}{24}}$ shows organism-wide diurnal rhythms
+====================================================
+Phases are independent of tissues in component 1
+$V_{conditions, 1}$ 
+```{r core-clock-components, echo=FALSE, fig.width=14, fig.height=7}
+sing.val <- 1
+eigengene <- s$v[, sing.val]
+
+jmax <- max(Mod(eigengene))
+max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
+jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
+
+PlotComplex(eigengene, 
+            axis.min = -jmax,
+            axis.max = jmax,
+            labels = names(eigengene), 
+            col = "HSV",
+            add.text.plot = FALSE, 
+            main = paste("Component:", sing.val),
+            jpch = 20,
+            threshold = 0, 
+            rotate = -jmax.arg)
+```
+
+SVD of $\Y_{gc\omega=\frac{2\pi}{24}}$ shows organism-wide diurnal rhythms
+====================================================
+Large loadings in core clock genes
+```{r core-clock-loadings, echo=FALSE, fig.width=14, fig.height=7}
+sing.val <- 1
+eigensample <- s$u[, sing.val]
+jmax <- max(Mod(eigensample))
+# rotate opposite way to make it all kosher
+PlotComplex(eigensample,
+            axis.min = -jmax,
+            axis.max = jmax,
+            labels = names(eigensample),
+            col = "HSV",
+            main = paste("Component:", sing.val),
+            add.text.plot = FALSE,
+            jpch = 1,
+            threshold = 0.5 * jmax,
+            verbose = FALSE,
+            rotate = jmax.arg)  # rotate in opposite direction
+```
+
+Low rank representation of $\Y_{gc\omega=\frac{2\pi}{24}}$
+===================================================
+```{r core-clock-heatmap, echo=FALSE, fig.width=14, fig.height=7}
+# Plot args in color
+top.genes <- GetTopNValues(Mod(eigensample), N = 100)# list of $vals $i
+# use drop to keep rownames
+outer.prod.mat <- s$d[sing.val] * OuterComplex(s$u[top.genes$i, sing.val, drop = FALSE], t(s$v[, sing.val, drop = FALSE]))
+outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat, order.by = max.loading, order.tissues = TRUE)
+PlotArgsMatrix(outer.prod.mat, main = paste("Component", sing.val))
+```
+
+
+
+SVD shows novel clock genes across many tissues
+====================================================
+Kay database to see if gene is annotated to be clock.
+
+
+WFAT rhythms do not seem real
+====================================================
+Show image here to convince the doubters
+
 
 
