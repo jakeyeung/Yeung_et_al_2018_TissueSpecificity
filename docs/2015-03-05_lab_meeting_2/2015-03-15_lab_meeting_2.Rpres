@@ -3,7 +3,7 @@ Diurnal rhythms in peripheral tissues
 author: Jake Yeung
 date: 5 March 2015
 transition: rotate
-incremental: true
+autosize: true
 
 Introduction
 ========================================================
@@ -64,6 +64,7 @@ print("Justify why you removed WFAT and normalized array data to fit the RNA-Seq
 
 PCA: Large number of components contribute to the overall variance
 =======================================================
+type: subsection
 
 
 ```{r pca-screeplot, echo=FALSE, fig.width=14, fig.height=7}
@@ -211,6 +212,8 @@ diurnal rhythms contributing to variance across 11 tissues.
 
 Transforming the data to frequency space
 =======================================================
+type: subsection
+
 $$
 \begin{aligned}
 Y_{gc\omega} = \frac{1}{N} \sum_{t=1}^{T} Y_{gct} \exp{(-i \omega t)}
@@ -308,10 +311,15 @@ Eigenvalues of SVD decomposition
 plot(s$d^2 / sum(s$d ^ 2), type='o')  # Manual screeplot. 
 ```
 
-SVD of $\Y_{gc\omega=\frac{2\pi}{24}}$ shows organism-wide diurnal rhythms
+SVD of Y shows organism-wide diurnal rhythms
 ====================================================
+$Y_{gc\omega=\frac{2\pi}{24}}$ convert to circle plots
+
+
 Phases are independent of tissues in component 1
+
 $V_{conditions, 1}$ 
+
 ```{r core-clock-components, echo=FALSE, fig.width=14, fig.height=7}
 sing.val <- 1
 eigengene <- s$v[, sing.val]
@@ -332,9 +340,12 @@ PlotComplex(eigengene,
             rotate = -jmax.arg)
 ```
 
-SVD of $\Y_{gc\omega=\frac{2\pi}{24}}$ shows organism-wide diurnal rhythms
+SVD of Y shows organism-wide diurnal rhythms
 ====================================================
+$Y_{gc\omega=\frac{2\pi}{24}}$
+
 Large loadings in core clock genes
+
 ```{r core-clock-loadings, echo=FALSE, fig.width=14, fig.height=7}
 sing.val <- 1
 eigensample <- s$u[, sing.val]
@@ -353,8 +364,10 @@ PlotComplex(eigensample,
             rotate = jmax.arg)  # rotate in opposite direction
 ```
 
-Low rank representation of $\Y_{gc\omega=\frac{2\pi}{24}}$
+Low rank representation of Y
 ===================================================
+$Y_{gc\omega=\frac{2\pi}{24}}$
+
 ```{r core-clock-heatmap, echo=FALSE, fig.width=14, fig.height=7}
 # Plot args in color
 top.genes <- GetTopNValues(Mod(eigensample), N = 100)# list of $vals $i
@@ -365,10 +378,154 @@ PlotArgsMatrix(outer.prod.mat, main = paste("Component", sing.val))
 ```
 
 
-
 SVD shows novel clock genes across many tissues
 ====================================================
 Kay database to see if gene is annotated to be clock.
+
+SVD modules suggest tissue-specific diurnal rhythms
+===================================================
+```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=7}
+sing.val <- 2
+eigengene <- s$v[, sing.val]
+
+jmax <- max(Mod(eigengene))
+max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
+jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
+
+PlotComplex(eigengene, 
+            axis.min = -jmax,
+            axis.max = jmax,
+            labels = names(eigengene), 
+            col = "HSV",
+            add.text.plot = FALSE, 
+            main = paste("Component:", sing.val),
+            jpch = 20,
+            threshold = 0, 
+            rotate = -jmax.arg)
+```
+
+Projecting to frequency space delineates tissue-independent and tissue-specific modules
+====================================================
+
+- SVD decomposition of projected matrix identifies core clock modules
+- Tissue-specific modules suggest distinct regulatory programs governing clocks in peripheral tissues
+
+**Question**: can we identify rhythmic genes regulated in a tissue-specific manner?
+
+
+Model selection using Cedric's model
+===================================================
+- 7 tissues (BFAT, Liver, Adrenal gland, Aorta, Lung, Kidney, Muscle)
+- BIC weight cut-off of 0.2 $\frac{w_{i}}{\sum_{j=1}^{M} w_j}$
+- **Strategy**: Identify groups of genes with similar rhythmic behaviour across tissues
+
+Model selection approach identifies tissue-specific rhythms
+===================================================
+
+<div align="left">
+<img src="images/adr_liver_specific.pdf" width=800 height=1000>
+</div>
+
+Model selection approach identifies tissue-specific rhythms
+===================================================
+<div align="left">
+<img src="images/adr_liver_phase.pdf" width=1600 height=800>
+</div>
+
+Plot an example of a gene in this model
+==================================================
+Plot of expression for a gene across tissues showing Adr-Liver
+specificity. 
+
+GREAT analysis shows metabolism-specific processes
+=================================================
+<div align="left">
+<img src="images/great_figures/models26_bp.pdf" width=1600 height=800>
+</div>
+
+GREAT analysis identifies potential regulators
+=================================================
+<div align="left">
+<img src="images/great_figures/model26_perturbation.pdf" width=1600 height=800>
+</div>
+
+Motif of HNF4A enriched in promoter regions
+=================================================
+<div align="left">
+<img src="images/great_figures/models26_motifs.pdf" width=1500 height=325>
+</div>
+
+Model selection approach identifies BFAT-specific rhythms
+===================================================
+<div align="left">
+<img src="images/bfat_specific_model.pdf" width=800 height=1000>
+</div>
+
+Model selection approach identifies BFAT-specific rhythms
+===================================================
+<div align="left">
+<img src="images/bfat_specific_phase.pdf" width=800 height=800>
+</div>
+
+Plot an example of a BFAT-specific gene
+===================================================
+Example here Hspb6
+
+BFAT-specific genes associated with muscle-related phenotypes
+===================================================
+<div align="left">
+<img src="images/great_figures/model4_phenotype.pdf" width=1600 height=800>
+</div>
+
+SRF is a potential regulator of BFAT-specific rhythms
+===================================================
+<div align="left">
+<img src="images/great_figures/model4_motifs.pdf" width=1500 height=325>
+</div>
+
+Show Schibler's paper.
+
+SRF is required for muscle growth.
+
+Preliminary results of regulatory modules using genome-wide models
+===================================================
+Show ridge regression and lasso plots.
+
+Discussion and future work
+===================================================
+type: section
+
+Discussion
+==================================================
+type: subsection
+
+- Projecting to frequency space identifies core and peripheral clock modules
+- Bayesian model selection approach delineates peripheral clock modules into tissue-specific rhythms
+- Potential regulators of tissue-specific rhythms associate with relevant biological function and phenotypes
+
+Future work
+==================================================
+type: subsection
+
+- Use a principled approach to identify players regulating gene expression
+- Identify interactions between rhythmic regulators and tissue-specific regulators
+
+Acknowledgements
+=================================================
+- Felix Naef
+- Saeed Omidi
+- Jingkui Wang
+- Cedric Gobet
+- Jonathan Sobel
+- Jonathan Bieler
+- Kyle Gustafson
+- Gianrocco Lazzari
+
+Thank you
+==================================================
+type: section
+
+Questions?
 
 
 WFAT rhythms do not seem real
