@@ -5,7 +5,8 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
                         add.text.plot=TRUE,
                         jpch=20,
                         threshold=0,
-                        verbose=FALSE){
+                        verbose=FALSE,
+                        jcex=1){
   # Plot genes on complex plane
   # 
   # ARGS:
@@ -20,6 +21,7 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
   # add.text.plot: add an optional text plot: useful if your gene list is huge.
   # jpch: pch plot symbols '.' for dot, 1 for circles, 20 for filled circles.
   # threshold: if many datapoints, show text label only if magnitude is greater than threshold
+  # jcex: adjusting size of main, label and axis of plot. Useful for presentations.
   # 
   # requires wordcloud package for textplot function
   
@@ -61,7 +63,12 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
        xlim=c(axis.min, axis.max), 
        ylim=c(axis.min, axis.max), 
        pch=jpch,
-       main=main)
+       main=main,
+       xlab="Real",
+       ylab="Complex",
+       cex.main=jcex,
+       cex.axis=jcex,
+       cex.lab=jcex)
   abline(v=0)
   abline(h=0)
   
@@ -85,7 +92,12 @@ PlotComplex <- function(complex.matrix, gene.list, labels,
       textplot(Re(dat), Im(dat), text.labels, main=main,
                xlim=c(axis.min, axis.max),
                ylim=c(axis.min, axis.max),
-               cex=0.6)
+               xlab="Real",
+               ylab="Complex",
+               cex=0.6,
+               cex.main=jcex,
+               cex.axis=jcex,
+               cex.lab=jcex)
       abline(v=0)
       abline(h=0)  
     }
@@ -305,7 +317,7 @@ PlotDiagnostics <- function(gene, array.exprs, rna.seq.exprs,
   par(mfrow=c(1,1))
 }
 
-PlotArgsMatrix <- function(complex.mat, colors, main = "Title"){
+PlotArgsMatrix <- function(complex.mat, colors, main = "Title", jcex = 1){
   if (missing(colors)){
     hues <- seq(from=0, to=1, length.out=100)
     colors <- hsv(h=hues, s=1, v=1)
@@ -319,18 +331,26 @@ PlotArgsMatrix <- function(complex.mat, colors, main = "Title"){
   image(x, y, Arg(complex.mat),
         col=colors,
         main=main, 
-        axes=FALSE, xlab="", ylab="")
+        axes=FALSE, xlab="", ylab="",
+        cex.lab = jcex,
+        cex.main = jcex,
+        cex.axis = jcex)
   axis(1, at=x, labels=FALSE, tick=FALSE)
   axis(2, at=y, labels=FALSE, tick=FALSE)
   # Now draw the textual axis labels
   # gene labels
+  if (jcex != 1){
+    gene.cex <- 1
+  } else {
+    gene.cex <- 0.5
+  }
   text(x, par("usr")[3] - 1.5,
        labels=rownames(complex.mat),
        srt=90, 
        pos=4,
        offset=0,
        xpd=TRUE, 
-       cex=0.5) 
+       cex=gene.cex) 
   # sample labels
   text(par("usr")[1] - .3, y, 
        labels = colnames(complex.mat), 
