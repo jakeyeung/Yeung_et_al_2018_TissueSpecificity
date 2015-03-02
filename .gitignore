@@ -9,3 +9,10 @@ data/*
 old_data/*
 *.pdf
 *.out
+docs/*
+bedfiles/*
+results/*
+site_count_matrices/*
+y_input_elastic_net/*
+*.Robj
+nohup*
