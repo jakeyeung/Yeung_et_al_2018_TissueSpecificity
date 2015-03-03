@@ -140,6 +140,7 @@ PlotRnaMicroarrayFit <- function(tissue, gene, coeff.mat, array.exprs, rna.seq.e
 
 PlotComplexCircle <- function(complex.vector,
                               jlabels,
+                              filter = 0,
                               period = 24,
                               rotate = 18,
                               xlabel = "Magnitude",
@@ -150,24 +151,44 @@ PlotComplexCircle <- function(complex.vector,
   
   theme_set(theme_grey(base_size = size))
   
-  if (missing(jlabels)){
-    jlabels <- names(complex.vector)
-    print(jlabels)
-  }
+  jnames <- names(complex.vector)
   complex.vector <- as.matrix(complex.vector)
   magnitude <- Mod(complex.vector)
   phase <- Arg(complex.vector)
   phase <- phase * (period / (2 * pi)) + rotate
   phase <- phase %% 24
   
-  dat <- data.frame(Magnitude = as.numeric(magnitude), Phase = as.numeric(phase))
+  if (missing(jlabels)){
+    jlabels <- jnames
+  } else if (filter != 0){
+    jlabels <- ifelse(magnitude < filter, "", jnames)
+  }
+  
+  dat <- data.frame(Magnitude = as.numeric(magnitude), Phase = as.numeric(phase), Labels = jlabels)
   jbreaks <- seq(length.out = period / 2, by = 2, to = period)
-  ggplot(data = dat, aes(x = Magnitude, y = Phase, label = jlabels)) + 
-    geom_point() + geom_text(size = textsize) + 
-    coord_polar(theta = "y") +
-    xlab(xlabel) +
-    ylab(ylabel) +
-    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+  if (!missing(jlabels) & filter == 0){
+    ggplot(data = dat, aes(x = Magnitude, y = Phase, label = Labels)) + 
+      geom_point() + geom_text(size = textsize) + 
+      coord_polar(theta = "y") +
+      xlab(xlabel) +
+      ylab(ylabel) +
+      scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+  } else if (!missing(jlabels) & filter > 0) {
+    ggplot(data = dat, aes(x = Magnitude, y = Phase)) + 
+      geom_point() + 
+      geom_text(aes(label = Labels)) + 
+      coord_polar(theta = "y") +
+      xlab(xlabel) +
+      ylab(ylabel) +
+      scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+  }  else if (missing(jlabels)) {
+      ggplot(data = dat, aes(x = Magnitude, y = Phase)) + 
+      geom_point() + 
+      coord_polar(theta = "y") +
+      xlab(xlabel) +
+      ylab(ylabel) +
+      scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))    
+  }
 }
 
 PlotFitDiagnostics <- function(array.exprs.full,
