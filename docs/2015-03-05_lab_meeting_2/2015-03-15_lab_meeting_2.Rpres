@@ -321,11 +321,19 @@ Phase of genes in component 1 are largely independent of tissues
 ===================================================
 left: 75%
 ```{r core-clock-heatmap, echo=FALSE, fig.width=14, fig.height=10}
-# Plot args in color
+# Plot args in colori
+sing.val <- 1
 top.genes <- GetTopNValues(Mod(eigensample), N = 100)# list of $vals $i
 # use drop to keep rownames
 outer.prod.mat <- s$d[sing.val] * OuterComplex(s$u[top.genes$i, sing.val, drop = FALSE], t(s$v[, sing.val, drop = FALSE]))
+# # rotate by 12 hours (pi)
+rotate <- complex(modulus = 1, argument = pi / 2)
+outer.prod.mat <- Conj(outer.prod.mat)
+outer.prod.mat <- outer.prod.mat * rotate
+
 outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat, order.by = max.loading, order.tissues = TRUE)
+
+# do the conjugate to flip it around 
 PlotArgsMatrix(outer.prod.mat, main = bquote(.('Phase angles of') ~ U[1] %*% V[1]), jcex = jcex)
 ```
 
@@ -338,8 +346,9 @@ plot(0, type = "n", asp=1,
      xlab="Real",
      ylab="Complex",
      xlim=c(-0.25, 0.25),
-     ylim=c(-1, 1))
+     ylim=c(-1.20, 1.20))
 points(vec, col=plot.colors)
+text(x = c(0, 1.2, 0, -1.2), y = c(1.2, 0, -1.2, 0), labels = c("0h", "6h", "12h", "18h"), cex=3)
 abline(v=0)
 abline(h=0)
 ```
