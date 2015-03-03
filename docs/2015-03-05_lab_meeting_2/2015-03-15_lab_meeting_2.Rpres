@@ -1,4 +1,4 @@
-Diurnal rhythms in peripheral tissues
+Circadian rhythms in peripheral tissues
 ========================================================
 author: Jake Yeung
 date: 5 March 2015
@@ -9,14 +9,19 @@ Introduction
 ========================================================
 type: section
 
-Intro2
+Circadian rhythms underly many physiological processes.
+========================================================
+Master clock in SCN in conjunction with daily oscillations in environmental factors control many physiological processes.
+
+![circadian-intro](images/circadian-introduction.jpg)
+<sup><a href="#fn2" id="ref2"></a></sup>
+
+<sup id="fn2">The Mammalian Circadian Timing System: Synchronization of Peripheral Clocks. Saini et al 2011<a href="#ref1" title="intro footnote."></a></sup>
+
+Combinatorial action of TFs contribute to tissue-specific transcriptomes
 ========================================================
 
-Here we will talk about TF binding 
-
-* Bullet 1
-* Bullet 2
-* Bullet 3
+![transcription-model](images/transcription-model.pdf)
 
 Hypothesis
 ========================================================
@@ -65,7 +70,6 @@ Dataset: Zhang et. al 2014 PNAS
 ***
 
 ![matrix-representation](images/matrix-representation.pdf)
-[footnote][footnote]
 
 Principal component analysis (PCA)
 ======================================================
@@ -200,7 +204,7 @@ Recap
 title: false
 
 We found significant tissue-specific expression and
-diurnal rhythms contributing to variance across 11 tissues.
+circadian rhythms contributing to variance across 11 tissues.
 
 * How do circadian rhythms differ across tissues?
 
@@ -278,7 +282,7 @@ plot(s$d^2 / sum(s$d ^ 2), type='o',
      cex.lab = jcex)  # Manual screeplot. 
 ```
 
-SVD of Y shows organism-wide diurnal rhythms
+SVD of Y shows organism-wide circadian rhythms
 ====================================================
 
 ```{r core-clock-components, echo=FALSE, fig.width=14, fig.height=7}
@@ -342,28 +346,6 @@ SVD shows novel clock genes across many tissues
 ====================================================
 Kay database to see if gene is annotated to be clock.
 
-SVD modules suggest tissue-specific diurnal rhythms
-===================================================
-```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=7}
-sing.val <- 2
-eigengene <- s$v[, sing.val]
-
-jmax <- max(Mod(eigengene))
-max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
-jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
-
-PlotComplex(eigengene, 
-            axis.min = -jmax,
-            axis.max = jmax,
-            labels = names(eigengene), 
-            col = "HSV",
-            add.text.plot = FALSE, 
-            main = paste("Component:", sing.val),
-            jpch = 20,
-            threshold = 0, 
-            rotate = -jmax.arg,
-            jcex = jcex)
-```
 
 Projecting to frequency space delineates tissue-independent and tissue-specific modules
 ====================================================
@@ -566,4 +548,28 @@ $$
 - D is a diagonal matrix with eigenvalues in the diagonal
 
 - Low-rank representation of the original matrix by taking the outer product of columns of U and V multiplied by D.
+
+
+SVD modules suggest tissue-specific circadian rhythms
+===================================================
+```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=7}
+sing.val <- 2
+eigengene <- s$v[, sing.val]
+
+jmax <- max(Mod(eigengene))
+max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
+jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
+
+PlotComplex(eigengene, 
+            axis.min = -jmax,
+            axis.max = jmax,
+            labels = names(eigengene), 
+            col = "HSV",
+            add.text.plot = FALSE, 
+            main = paste("Component:", sing.val),
+            jpch = 20,
+            threshold = 0, 
+            rotate = -jmax.arg,
+            jcex = jcex)
+```
 
