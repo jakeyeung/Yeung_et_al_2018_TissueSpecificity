@@ -138,6 +138,38 @@ PlotRnaMicroarrayFit <- function(tissue, gene, coeff.mat, array.exprs, rna.seq.e
   abline(intercept, slope, lty='dotted')
 }
 
+PlotComplexCircle <- function(complex.vector,
+                              jlabels,
+                              period = 24,
+                              rotate = 18,
+                              xlabel = "Magnitude",
+                              ylabel = "Phase (hr)",
+                              size = 24,
+                              textsize = 6){
+  library(ggplot2)
+  
+  theme_set(theme_grey(base_size = size))
+  
+  if (missing(jlabels)){
+    jlabels <- names(complex.vector)
+    print(jlabels)
+  }
+  complex.vector <- as.matrix(complex.vector)
+  magnitude <- Mod(complex.vector)
+  phase <- Arg(complex.vector)
+  phase <- phase * (period / (2 * pi)) + rotate
+  phase <- phase %% 24
+  
+  dat <- data.frame(Magnitude = as.numeric(magnitude), Phase = as.numeric(phase))
+  jbreaks <- seq(length.out = period / 2, by = 2, to = period)
+  ggplot(data = dat, aes(x = Magnitude, y = Phase, label = jlabels)) + 
+    geom_point() + geom_text(size = textsize) + 
+    coord_polar(theta = "y") +
+    xlab(xlabel) +
+    ylab(ylabel) +
+    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+}
+
 PlotFitDiagnostics <- function(array.exprs.full,
                                array.exprs.subset,
                                rna.seq.exprs, 
