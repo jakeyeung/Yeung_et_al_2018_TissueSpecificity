@@ -52,6 +52,9 @@ library(combinat)
 library(PhaseHSV)
 library(doMC)
 library(plyr)
+library(plotrix)
+library(grid)
+library(PhaseHSV)  # for colors around the circle
 
 source("~/projects/tissue-specificity/scripts/functions/LoadAndHandleData.R")
 source("~/projects/tissue-specificity/scripts/functions/LoadArrayRnaSeq.R")
@@ -94,7 +97,7 @@ PCA: Explaining much of the variance with fewer components
 type: subsection
 
 
-```{r pca-screeplot, echo=FALSE, fig.width=14, fig.height=7}
+```{r pca-screeplot, echo=FALSE, fig.width=14, fig.height=14}
 # from pca_adjusted_microarray.R
 dat_pca <- prcomp(t(dat.array), center=TRUE, scale.=TRUE)
 
@@ -117,7 +120,7 @@ plot(x = 1:npcs,
 
 Transcriptomes cluster by tissue for PC 1 vs. PC 2
 =======================================================
-```{r pca-component1v2, echo=FALSE, fig.width=14, fig.height=7}
+```{r pca-component1v2, echo=FALSE, fig.width=14, fig.height=14}
 x_comp <- 1
 y_comp <- 2
 # Show PCA plot of tissues ----------------------------------------------------  
@@ -136,7 +139,7 @@ textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7,
 
 PC 1 shows separation between neural tissues
 =======================================================
-```{r pca-loadings1, echo=FALSE, fig.width=14, fig.height=7}
+```{r pca-loadings1, echo=FALSE, fig.width=14, fig.height=14}
 # get tissue names for text labels in plotloadings
 tissue.names.all <- rownames(dat_pca$x)
 
@@ -164,7 +167,7 @@ abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary
 
 Rhythms within tissues account for significant variance
 =======================================================
-```{r rhythmic-loadings, echo=FALSE, fig.width=14, fig.height=7}
+```{r rhythmic-loadings, echo=FALSE, fig.width=14, fig.height=14}
 # Create response vector, which is loadings
 pca_vector <- 14
 y <- dat_pca$x[, pca_vector]
@@ -187,7 +190,7 @@ abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary
 
 Spectral analysis shows rhythms are circadian
 =======================================================
-```{r spectral-analysis, echo=FALSE, fig.width=14, fig.height=7}
+```{r spectral-analysis, echo=FALSE, fig.width=14, fig.height=14}
 op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
 PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector), cex = jcex)
 # add vertical line at max frequency
@@ -264,6 +267,10 @@ dat.wide <- ConvertLongToWide(dat.proj, measurement.var = "exprs.transformed")
 # Complete cases only. This removes NaN rows.
 dat.wide <- dat.wide[complete.cases(dat.wide), ]
 
+# Rotate my shit
+rotate <- complex(modulus = 1, argument = (18 * 2 * pi) / 24) 
+dat.wide <- dat.wide * rotate 
+
 s <- svd(dat.wide)
 
 # Set rownames for u and v ------------------------------------------------
@@ -273,7 +280,7 @@ rownames(s$v) <- colnames(dat.wide)
 ```
 
 
-```{r screeplot-svd, echo=FALSE, fig.width=14, fig.height=7}
+```{r screeplot-svd, echo=FALSE, fig.width=14, fig.height=14}
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o',
      main = "Eigenvalues from SVD decomposition",
@@ -301,25 +308,40 @@ PlotComplexCircle(eigengene, jlabels = names(eigengene), rotate = -jmax.arg,
 Gene loadings show circadian genes
 ====================================================
 
-```{r core-clock-loadings, echo=FALSE, fig.width=14, fig.height=7}
+```{r core-clock-loadings, echo=FALSE, fig.width=14, fig.height=14}
 sing.val <- 1
 eigensample <- s$u[, sing.val]
 jmax <- max(Mod(eigensample))
-PlotComplexCircle(eigensample, jlabels = names(eigensample), rotate = jmax.arg + 18,
-                  ylabel=("Phase (hr)"),
+PlotComplexCircle(eigensample, jlabels = names(eigensample), rotate = jmax.arg,
+                  ylabel=("Phase (CT)"),
                   filter = 0.5 * jmax)
 ```
 
 Phase of genes in component 1 are largely independent of tissues
 ===================================================
-
-```{r core-clock-heatmap, echo=FALSE, fig.width=14, fig.height=7}
+left: 75%
+```{r core-clock-heatmap, echo=FALSE, fig.width=14, fig.height=10}
 # Plot args in color
 top.genes <- GetTopNValues(Mod(eigensample), N = 100)# list of $vals $i
 # use drop to keep rownames
 outer.prod.mat <- s$d[sing.val] * OuterComplex(s$u[top.genes$i, sing.val, drop = FALSE], t(s$v[, sing.val, drop = FALSE]))
 outer.prod.mat <- OrderPhaseMatrix(outer.prod.mat, order.by = max.loading, order.tissues = TRUE)
 PlotArgsMatrix(outer.prod.mat, main = bquote(.('Phase angles of') ~ U[1] %*% V[1]), jcex = jcex)
+```
+
+***
+
+```{r color-legend, echo=FALSE, fig.width=7, fig.height=7}
+vec <- complex(length.out = 4, argument = seq(-pi, pi, 0.01))
+plot.colors <- hsv(h=PhaseToHsv(Arg(vec), -pi, pi), s=1, v=1)
+plot(0, type = "n", asp=1,
+     xlab="Real",
+     ylab="Complex",
+     xlim=c(-0.25, 0.25),
+     ylim=c(-1, 1))
+points(vec, col=plot.colors)
+abline(v=0)
+abline(h=0)
 ```
 
 
@@ -525,7 +547,7 @@ $$
 
 SVD modules suggest tissue-specific circadian rhythms
 ===================================================
-```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=7}
+```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=14}
 sing.val <- 2
 eigengene <- Conj(s$v[, sing.val])
 

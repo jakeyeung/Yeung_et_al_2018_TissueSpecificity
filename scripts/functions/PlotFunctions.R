@@ -142,7 +142,7 @@ PlotComplexCircle <- function(complex.vector,
                               jlabels,
                               filter = 0,
                               period = 24,
-                              rotate = 18,
+                              rotate = 0,  # by hours
                               xlabel = "Magnitude",
                               ylabel = "Phase (hr)",
                               size = 24,
@@ -151,7 +151,16 @@ PlotComplexCircle <- function(complex.vector,
   
   theme_set(theme_grey(base_size = size))
   
+  if (missing(jlabels)){
+    no.label <- TRUE
+  } else {
+    no.label <- FALSE
+  }
+  
   jnames <- names(complex.vector)
+  if (is.null(jnames)){
+    jnames <- rep(NA, length(complex.vector))
+  }
   complex.vector <- as.matrix(complex.vector)
   magnitude <- Mod(complex.vector)
   phase <- Arg(complex.vector)
@@ -162,18 +171,18 @@ PlotComplexCircle <- function(complex.vector,
     jlabels <- jnames
   } else if (filter != 0){
     jlabels <- ifelse(magnitude < filter, "", jnames)
-  }
+  } 
   
   dat <- data.frame(Magnitude = as.numeric(magnitude), Phase = as.numeric(phase), Labels = jlabels)
   jbreaks <- seq(length.out = period / 2, by = 2, to = period)
-  if (!missing(jlabels) & filter == 0){
+  if (!no.label & filter == 0){
     ggplot(data = dat, aes(x = Magnitude, y = Phase, label = Labels)) + 
       geom_point() + geom_text(size = textsize) + 
       coord_polar(theta = "y") +
       xlab(xlabel) +
       ylab(ylabel) +
       scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
-  } else if (!missing(jlabels) & filter > 0) {
+  } else if (!no.label & filter > 0) {
     ggplot(data = dat, aes(x = Magnitude, y = Phase)) + 
       geom_point() + 
       geom_text(aes(label = Labels)) + 
@@ -181,13 +190,13 @@ PlotComplexCircle <- function(complex.vector,
       xlab(xlabel) +
       ylab(ylabel) +
       scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
-  }  else if (missing(jlabels)) {
-      ggplot(data = dat, aes(x = Magnitude, y = Phase)) + 
+  }  else if (no.label) {
+    ggplot(data = dat, aes(x = Magnitude, y = Phase)) + 
       geom_point() + 
       coord_polar(theta = "y") +
       xlab(xlabel) +
       ylab(ylabel) +
-      scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))    
+      scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
   }
 }
 
