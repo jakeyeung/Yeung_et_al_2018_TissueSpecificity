@@ -11,7 +11,6 @@ type: section
 
 Circadian rhythms underly many physiological processes.
 ========================================================
-Master clock in SCN in conjunction with daily oscillations in environmental factors control many physiological processes.
 
 ![circadian-intro](images/circadian-introduction.jpg)
 <sup><a href="#fn2" id="ref2"></a></sup>
@@ -20,16 +19,27 @@ Master clock in SCN in conjunction with daily oscillations in environmental fact
 
 Combinatorial action of TFs contribute to tissue-specific transcriptomes
 ========================================================
+incremental: true
 
 ![transcription-model](images/transcription-model.pdf)
 
-Hypothesis
-========================================================
-Let's list some hypotheses
+***
 
-* Hypothesis 1
-* Hypothesis 2
-* Hypothesis 3
+- Which rhythmic genes show oscillations independent of tissue and which are tissue specific?
+- How do core clock genes interact with response elements in different tissue contexts to output robust oscillations?
+- What medley of transcription factors contribute to tissue-specific circadian rhythms?
+
+Dataset: Zhang et. al 2014 PNAS
+=======================================================
+incremental: true
+
+- 12h:12h light:dark schedule for 1 week, then constant darkness
+- Aorta, adrenal gland, brainstem, brown fat, cerebellum, heart, hypothalamus, kidney, liver, lung and skeletal muscle
+- Microarray every 2 hrs, RNA-seq every 6 hrs. 
+
+***
+
+![matrix-representation](images/matrix-representation.pdf)
 
 Results
 =======================================================
@@ -61,24 +71,16 @@ load(file = "~/projects/tissue-specificity/docs/2015-03-05_lab_meeting/robjs/arr
 jcex <- 2.5
 ```
 
-Dataset: Zhang et. al 2014 PNAS
-=======================================================
-- 12h:12h light:dark schedule for 1 week, then constant darkness
-- Aorta, adrenal gland, brainstem, brown fat, cerebellum, heart, hypothalamus, kidney, liver, lung and skeletal muscle
-- Microarray every 2 hrs, RNA-seq every 6 hrs. 
-
-***
-
-![matrix-representation](images/matrix-representation.pdf)
-
-Principal component analysis (PCA)
+Singular value decomposition (SVD)
 ======================================================
+incremental: true
+
+- **Singular value decomposition** to find the principal components.
 - Compute eigenvectors and eigenvalues of the covariance matrix.
 - Represents projections onto a set of directions that have maximum variance.
-- **Singular value decomposition** to find the principal components.
 - $Y = UDV^{*}$
 
-Singular value decomposition (SVD)
+SVD projects the data onto a new set of vectors
 ======================================================
 $Y = UDV^{*}$
 
@@ -279,58 +281,69 @@ plot(s$d^2 / sum(s$d ^ 2), type='o',
      xlab = "Index",
      cex.axis = jcex,
      cex.main = jcex,
-     cex.lab = jcex)  # Manual screeplot. 
+     cex.lab = jcex)  # Manual screeplot 
 ```
 
-SVD of Y shows organism-wide circadian rhythms
+SVD approach shows organism-wide circadian rhythms
 ====================================================
 
-```{r core-clock-components, echo=FALSE, fig.width=14, fig.height=7}
+```{r core-clock-components, echo=FALSE, fig.width=14, fig.height=14}
 sing.val <- 1
 eigengene <- s$v[, sing.val]
-
 jmax <- max(Mod(eigengene))
 max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
-jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
-
-PlotComplex(eigengene, 
-            axis.min = -jmax,
-            axis.max = jmax,
-            labels = names(eigengene), 
-            col = "HSV",
-            add.text.plot = FALSE, 
-            main = paste("Column", sing.val, "of V"),
-            jpch = 20,
-            threshold = 0, 
-            rotate = -jmax.arg,
-            jcex = jcex)
+jmax.arg <- Arg(eigengene[max.loading])
+jmax.arg <- (jmax.arg * (24 / (2 * pi))) %% 24
+PlotComplexCircle(eigengene, jlabels = names(eigengene), rotate = -jmax.arg,
+                  ylabel=("Phase (relative to BFAT)"))
+# magnitude <- Mod(eigengene)
+# phase <- (Arg(eigengene) * (24 / (2 * pi))) %% 24
+# qplot(x = magnitude, y = phase) + geom_point() + coord_polar(theta = "y") + scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+# jmax <- max(Mod(eigengene))
+# max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
+# jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
+# shift.to.top <- pi  # rotate by pi so 18 points to bottom (first sample is CT18)
+# 
+# PlotComplex(eigengene, 
+#             axis.min = -jmax,
+#             axis.max = jmax,
+#             labels = names(eigengene), 
+#             col = "HSV",
+#             add.text.plot = FALSE, 
+#             main = paste("Column", sing.val, "of V"),
+#             jpch = 20,
+#             threshold = 0, 
+#             rotate = -jmax.arg,
+#             jcex = jcex)
 ```
 
-SVD on transformed Y directly reveals circadian rhythms
+Gene loadings show circadian genes
 ====================================================
 
 ```{r core-clock-loadings, echo=FALSE, fig.width=14, fig.height=7}
 sing.val <- 1
 eigensample <- s$u[, sing.val]
 jmax <- max(Mod(eigensample))
-# rotate opposite way to make it all kosher
-PlotComplex(eigensample,
-            axis.min = -jmax,
-            axis.max = jmax,
-            labels = names(eigensample),
-            col = "HSV",
-            main = paste("Column", sing.val, "of U"),
-            add.text.plot = FALSE,
-            jpch = 1,
-            threshold = 0.5 * jmax,
-            verbose = FALSE,
-            rotate = jmax.arg,
-            jcex = jcex)  # rotate in opposite direction
+PlotComplexCircle(eigensample, jlabels = names(eigensample), rotate = jmax.arg + 18,
+                  ylabel=("Phase (hr)"),
+                  filter = 0.5 * jmax)
+# # rotate opposite way to make it all kosher
+# PlotComplex(eigensample,
+#             axis.min = -jmax,
+#             axis.max = jmax,
+#             labels = names(eigensample),
+#             col = "HSV",
+#             main = paste("Column", sing.val, "of U"),
+#             add.text.plot = FALSE,
+#             jpch = 1,
+#             threshold = 0.5 * jmax,
+#             verbose = FALSE,
+#             rotate = jmax.arg,
+#             jcex = jcex)  # rotate in opposite direction
 ```
 
-Low rank representation of Y
+Phase of genes in component 1 are largely independent of tissues
 ===================================================
-$Y_{gc\omega=\frac{2\pi}{24}}$
 
 ```{r core-clock-heatmap, echo=FALSE, fig.width=14, fig.height=7}
 # Plot args in color
@@ -342,18 +355,14 @@ PlotArgsMatrix(outer.prod.mat, main = bquote(.('Phase angles of') ~ U[1] %*% V[1
 ```
 
 
-SVD shows novel clock genes across many tissues
-====================================================
-Kay database to see if gene is annotated to be clock.
-
-
 Projecting to frequency space delineates tissue-independent and tissue-specific modules
 ====================================================
+incremental: true
 
 - SVD decomposition of projected matrix identifies core clock modules
-- Tissue-specific modules suggest distinct regulatory programs governing clocks in peripheral tissues
+- Overall, SVD approach provides a broad overview of rhythmicity in tissues
 
-**Question**: can we identify rhythmic genes regulated in a tissue-specific manner?
+**Question**: can we identify modules of rhythmic genes regulated in a tissue-specific manner?
 
 
 Model selection using Cedric's model
@@ -377,22 +386,22 @@ Plot an example of a gene in this model
 Plot of expression for a gene across tissues showing Adr-Liver
 specificity. 
 
-GREAT analysis shows metabolism-specific processes
+GREAT analysis shows enrichment of metabolism-specific processes
 =================================================
 <div align="left">
-<img src="images/great_figures/models26_bp.pdf" width=1600 height=800>
+<img src="images/great_figures/models26_bp.pdf" width=2000 height=700>
 </div>
 
 GREAT analysis identifies potential regulators
 =================================================
 <div align="left">
-<img src="images/great_figures/model26_perturbation.pdf" width=1600 height=800>
+<img src="images/great_figures/model26_perturbation.pdf" width=2500 height=400>
 </div>
 
 Motif of HNF4A enriched in promoter regions
 =================================================
 <div align="left">
-<img src="images/great_figures/models26_motifs.pdf" width=1500 height=325>
+<img src="images/great_figures/models26_motifs.pdf" width=2000 height=225>
 </div>
 
 Model selection approach identifies BFAT-specific rhythms
@@ -412,13 +421,13 @@ Example here Hspb6
 BFAT-specific genes associated with muscle-related phenotypes
 ===================================================
 <div align="left">
-<img src="images/great_figures/model4_phenotype.pdf" width=1600 height=800>
+<img src="images/great_figures/model4_phenotype.pdf" width=2000 height=700>
 </div>
 
 SRF is a potential regulator of BFAT-specific rhythms
 ===================================================
 <div align="left">
-<img src="images/great_figures/model4_motifs.pdf" width=1500 height=325>
+<img src="images/great_figures/model4_motifs.pdf" width=2000 height=225>
 </div>
 
 Show Schibler's paper.
@@ -450,6 +459,8 @@ type: subsection
 
 Acknowledgements
 =================================================
+type: section
+
 - Felix Naef
 - Saeed Omidi
 - Jingkui Wang
@@ -458,12 +469,6 @@ Acknowledgements
 - Jonathan Bieler
 - Kyle Gustafson
 - Gianrocco Lazzari
-
-Thank you
-==================================================
-type: section
-
-Questions?
 
 
 WFAT rhythms do not seem real
@@ -554,13 +559,14 @@ SVD modules suggest tissue-specific circadian rhythms
 ===================================================
 ```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=7}
 sing.val <- 2
-eigengene <- s$v[, sing.val]
+eigengene <- Conj(s$v[, sing.val])
 
 jmax <- max(Mod(eigengene))
 max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
 jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
+shift.to.18 <- -pi # Arg = 0 corresponds to CT18
 
-PlotComplex(eigengene, 
+PlotComplex(eigengene,  # negative so it goes around like a clock 
             axis.min = -jmax,
             axis.max = jmax,
             labels = names(eigengene), 
@@ -569,7 +575,7 @@ PlotComplex(eigengene,
             main = paste("Component:", sing.val),
             jpch = 20,
             threshold = 0, 
-            rotate = -jmax.arg,
+            rotate = -jmax.arg + shift.to.18,
             jcex = jcex)
 ```
 
