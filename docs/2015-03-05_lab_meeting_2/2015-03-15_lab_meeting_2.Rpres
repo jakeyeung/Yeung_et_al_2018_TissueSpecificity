@@ -296,25 +296,6 @@ jmax.arg <- Arg(eigengene[max.loading])
 jmax.arg <- (jmax.arg * (24 / (2 * pi))) %% 24
 PlotComplexCircle(eigengene, jlabels = names(eigengene), rotate = -jmax.arg,
                   ylabel=("Phase (relative to BFAT)"))
-# magnitude <- Mod(eigengene)
-# phase <- (Arg(eigengene) * (24 / (2 * pi))) %% 24
-# qplot(x = magnitude, y = phase) + geom_point() + coord_polar(theta = "y") + scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
-# jmax <- max(Mod(eigengene))
-# max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
-# jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
-# shift.to.top <- pi  # rotate by pi so 18 points to bottom (first sample is CT18)
-# 
-# PlotComplex(eigengene, 
-#             axis.min = -jmax,
-#             axis.max = jmax,
-#             labels = names(eigengene), 
-#             col = "HSV",
-#             add.text.plot = FALSE, 
-#             main = paste("Column", sing.val, "of V"),
-#             jpch = 20,
-#             threshold = 0, 
-#             rotate = -jmax.arg,
-#             jcex = jcex)
 ```
 
 Gene loadings show circadian genes
@@ -327,19 +308,6 @@ jmax <- max(Mod(eigensample))
 PlotComplexCircle(eigensample, jlabels = names(eigensample), rotate = jmax.arg + 18,
                   ylabel=("Phase (hr)"),
                   filter = 0.5 * jmax)
-# # rotate opposite way to make it all kosher
-# PlotComplex(eigensample,
-#             axis.min = -jmax,
-#             axis.max = jmax,
-#             labels = names(eigensample),
-#             col = "HSV",
-#             main = paste("Column", sing.val, "of U"),
-#             add.text.plot = FALSE,
-#             jpch = 1,
-#             threshold = 0.5 * jmax,
-#             verbose = FALSE,
-#             rotate = jmax.arg,
-#             jcex = jcex)  # rotate in opposite direction
 ```
 
 Phase of genes in component 1 are largely independent of tissues
