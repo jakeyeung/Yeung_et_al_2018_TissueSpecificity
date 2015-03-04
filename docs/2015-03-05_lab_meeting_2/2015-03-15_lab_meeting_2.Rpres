@@ -1,4 +1,4 @@
-Circadian rhythms in peripheral tissues
+Circadian transcription regulatory networks in mammalian tissues
 ========================================================
 author: Jake Yeung
 date: 5 March 2015
@@ -11,30 +11,34 @@ type: section
 
 Circadian rhythms underly many physiological processes.
 ========================================================
+Functions of many peripheral tissues are circadian.
 
-![circadian-intro](images/circadian-introduction.jpg)
+<div align="left">
+<img src="images/circadian-introduction.jpg" width=400 height=400>
+</div>
 <sup><a href="#fn2" id="ref2"></a></sup>
 
 <sup id="fn2">The Mammalian Circadian Timing System: Synchronization of Peripheral Clocks. Saini et al 2011<a href="#ref1" title="intro footnote."></a></sup>
 
-Combinatorial action of TFs contribute to tissue-specific transcriptomes
+
+Gene regulation in different tissues
 ========================================================
 incremental: true
+Combinatorial action of TFs contribute to tissue-specific transcriptomes
 
-![transcription-model](images/transcription-model.pdf)
+![transcriptional-model](images/transcription-model.pdf)
 
 ***
 
-- Which rhythmic genes show oscillations independent of tissue and which are tissue specific?
-- How do core clock genes interact with response elements in different tissue contexts to output robust oscillations?
+- Which genes show tissue-specific oscillatory patterns?
 - What medley of transcription factors contribute to tissue-specific circadian rhythms?
 
 Dataset: Zhang et. al 2014 PNAS
 =======================================================
 incremental: true
 
-- 12h:12h light:dark schedule for 1 week, then constant darkness
 - Aorta, adrenal gland, brainstem, brown fat, cerebellum, heart, hypothalamus, kidney, liver, lung and skeletal muscle
+- 12h:12h light:dark schedule for 1 week, then constant darkness. Fed *ad libitum*
 - Microarray every 2 hrs, RNA-seq every 6 hrs. 
 
 ***
@@ -44,6 +48,10 @@ incremental: true
 Results
 =======================================================
 type: section
+
+- Singular value decomposition to identify circadian gene modules
+- Bayesian information criterion for model selection to identify tissue-specific rhythms
+- Identify potential regulators using enrichment analysis
 
 ```{r prepare-data, echo=FALSE, message = FALSE, warnings = FALSE}
 setwd("~/projects/tissue-specificity/")
@@ -65,6 +73,7 @@ source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
 source("~/projects/tissue-specificity/scripts/functions/GetTopNValues.R")
 source("~/projects/tissue-specificity/scripts/functions/OuterComplex.R")
 source("~/projects/tissue-specificity/scripts/functions/OrderPhaseMatrix.R")
+source("~/projects/tissue-specificity/scripts/functions/PlotGeneAcrossTissues.R")
 
 # mydat <- LoadArrayRnaSeq()  # slow
 # save(mydat, file = "~/projects/tissue-specificity/docs/2015-03-05_lab_meeting/robjs/arrayrnaseq.Robj")
@@ -78,8 +87,8 @@ Singular value decomposition (SVD)
 ======================================================
 incremental: true
 
-- **Singular value decomposition** to find the principal components.
-- Compute eigenvectors and eigenvalues of the covariance matrix.
+- SVD to find the principal components.
+- Compute **eigenvectors** and **eigenvalues** of the covariance matrix.
 - Represents projections onto a set of directions that have maximum variance.
 - $Y = UDV^{*}$
 
@@ -92,12 +101,12 @@ $Y = UDV^{*}$
 
 <sup id="fn1">1. http://smd.princeton.edu/help/svd.shtml<a href="#ref1" title="SVD footnote."></a></sup>
 
-PCA: Explaining much of the variance with fewer components
+Explaining variance with fewer components
 =======================================================
 type: subsection
 
 
-```{r pca-screeplot, echo=FALSE, fig.width=14, fig.height=14}
+```{r pca-screeplot, echo=FALSE, fig.width=14, fig.height=10}
 # from pca_adjusted_microarray.R
 dat_pca <- prcomp(t(dat.array), center=TRUE, scale.=TRUE)
 
@@ -120,7 +129,7 @@ plot(x = 1:npcs,
 
 Transcriptomes cluster by tissue for PC 1 vs. PC 2
 =======================================================
-```{r pca-component1v2, echo=FALSE, fig.width=14, fig.height=14}
+```{r pca-component1v2, echo=FALSE, fig.width=20, fig.height=14}
 x_comp <- 1
 y_comp <- 2
 # Show PCA plot of tissues ----------------------------------------------------  
@@ -128,10 +137,12 @@ y_comp <- 2
 # Color by tissue
 colors.by.tissue <- rep(1:12, each=24)
 op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
-textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
+textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), 
+         col=colors.by.tissue, 
          main=paste("Principal Component", x_comp, "and", y_comp),
          xlab = paste("Component", 1),
          ylab = paste("Component", 2),
+         cex = 1.5, 
          cex.lab = jcex,
          cex.main = jcex,
          cex.axis = jcex)
@@ -139,7 +150,7 @@ textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7,
 
 PC 1 shows separation between neural tissues
 =======================================================
-```{r pca-loadings1, echo=FALSE, fig.width=14, fig.height=14}
+```{r pca-loadings1, echo=FALSE, fig.width=20, fig.height=14}
 # get tissue names for text labels in plotloadings
 tissue.names.all <- rownames(dat_pca$x)
 
@@ -165,9 +176,16 @@ abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary
 ```
 
 
+PCA analysis shows large variance between tissues
+======================================================
+incremental: true
+
+- What about variance **within** tissues?
+- Find components that vary rhythmically by time
+
 Rhythms within tissues account for significant variance
 =======================================================
-```{r rhythmic-loadings, echo=FALSE, fig.width=14, fig.height=14}
+```{r rhythmic-loadings, echo=FALSE, fig.width=20, fig.height=14}
 # Create response vector, which is loadings
 pca_vector <- 14
 y <- dat_pca$x[, pca_vector]
@@ -190,7 +208,7 @@ abline(v = samp.begins[2:length(samp.begins)])  # only between samples necessary
 
 Spectral analysis shows rhythms are circadian
 =======================================================
-```{r spectral-analysis, echo=FALSE, fig.width=14, fig.height=14}
+```{r spectral-analysis, echo=FALSE, fig.width=20, fig.height=14}
 op <- par(mar = c(5,6,4,2) + 0.1) ## default is c(5,4,4,2) + 0.1
 PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector), cex = jcex)
 # add vertical line at max frequency
@@ -204,23 +222,24 @@ text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"), cex = jcex)
 ```
 
 
-Recap
+Components show tissue-specific and circadian variance
 =======================================================
-title: false
+incremental: true
 
 We found significant tissue-specific expression and
 circadian rhythms contributing to variance across 11 tissues.
 
-* How do circadian rhythms differ across tissues?
+* Can we identify modules of circadian genes across all tissues?
+* Which gene modules are circadian in a subset of tissues?
 
 
-Transforming the data to frequency space
+Transforming to frequency space to focus on circadian rhythms
 =======================================================
 type: subsection
 
 ![sine_to_complex](images/sine_to_complex.pdf)
 
-- $Y_{gc\omega} = \frac{1}{N} \sum_{t=1}^{T} Y_{gct} \exp{(-i \omega t)}$
+- $Y_{gc\omega} = \frac{1}{N} \displaystyle\sum_{t=1}^{T} Y_{gct} \exp{(-i \omega t)}$
 
 - **Large magnitudes represent strong circadian rhythms**
 
@@ -280,21 +299,21 @@ rownames(s$v) <- colnames(dat.wide)
 ```
 
 
-```{r screeplot-svd, echo=FALSE, fig.width=14, fig.height=14}
+```{r screeplot-svd, echo=FALSE, fig.width=20, fig.height=14}
 # ScreePlot
 plot(s$d^2 / sum(s$d ^ 2), type='o',
      main = "Eigenvalues from SVD decomposition",
-     ylab = "Normalized eigenvalue squared",
+     ylab = "Normalized eigenvalue",
      xlab = "Index",
      cex.axis = jcex,
      cex.main = jcex,
      cex.lab = jcex)  # Manual screeplot 
 ```
 
-SVD approach shows organism-wide circadian rhythms
+Module of tissue-independent phases
 ====================================================
 
-```{r core-clock-components, echo=FALSE, fig.width=14, fig.height=14}
+```{r core-clock-components, echo=FALSE, fig.width=20, fig.height=20}
 sing.val <- 1
 eigengene <- s$v[, sing.val]
 jmax <- max(Mod(eigengene))
@@ -302,24 +321,33 @@ max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
 jmax.arg <- Arg(eigengene[max.loading])
 jmax.arg <- (jmax.arg * (24 / (2 * pi))) %% 24
 PlotComplexCircle(eigengene, jlabels = names(eigengene), rotate = -jmax.arg,
-                  ylabel=("Phase (relative to BFAT)"))
+                  ylabel=("Phase (relative to BFAT)"),
+                  size = 60,
+                  textsize = 16)
+theme_set(theme_grey(base_size = 24))  # reset
 ```
 
 Gene loadings show circadian genes
 ====================================================
 
-```{r core-clock-loadings, echo=FALSE, fig.width=14, fig.height=14}
+```{r core-clock-loadings, echo=FALSE, fig.width=20, fig.height=20}
 sing.val <- 1
 eigensample <- s$u[, sing.val]
 jmax <- max(Mod(eigensample))
 PlotComplexCircle(eigensample, jlabels = names(eigensample), rotate = jmax.arg,
                   ylabel=("Phase (CT)"),
-                  filter = 0.5 * jmax)
+                  filter = 0.5 * jmax,
+                  size = 60,
+                  textsize = 16)
+theme_set(theme_grey(base_size = 24))  # reset
+
 ```
 
-Phase of genes in component 1 are largely independent of tissues
+Approximate Y using first component
 ===================================================
 left: 75%
+We can approximate Y with $U_1 \bigotimes V_1$
+
 ```{r core-clock-heatmap, echo=FALSE, fig.width=14, fig.height=10}
 # Plot args in colori
 sing.val <- 1
@@ -354,38 +382,44 @@ abline(h=0)
 ```
 
 
-Projecting to frequency space delineates tissue-independent and tissue-specific modules
+Projecting to frequency space reveals circadian modules
 ====================================================
 incremental: true
 
 - SVD decomposition of projected matrix identifies core clock modules
 - Overall, SVD approach provides a broad overview of rhythmicity in tissues
+- **Question**: can we identify modules of rhythmic genes regulated in a tissue-specific manner?
 
-**Question**: can we identify modules of rhythmic genes regulated in a tissue-specific manner?
 
-
-Model selection using Cedric's model
+Model selection using Bayesian Information Criterion
 ===================================================
+- BIC for model selection: method implemented by Cedric
 - 7 tissues (BFAT, Liver, Adrenal gland, Aorta, Lung, Kidney, Muscle)
-- BIC weight cut-off of 0.2 $\frac{w_{i}}{\sum_{j=1}^{M} w_j}$
+- BIC weight cut-off of $\frac{w_{i}}{\sum_{j=1}^{M} w_j} \le 0.2$
 - **Strategy**: Identify groups of genes with similar rhythmic behaviour across tissues
 
 Model selection approach identifies tissue-specific rhythms
 ===================================================
+left: 66%
+
 <div align="center">
 <img src="images/adr_liver_specific.pdf" width=700 height=1100>
 </div>
+
 ***
+
 <div align="center">
 <img src="images/adr_liver_phase.pdf" width=700 height=400>
 </div>
 
-Plot an example of a gene in this model
-==================================================
-Plot of expression for a gene across tissues showing Adr-Liver
-specificity. 
+```{r nr0b2-expression, echo=FALSE, message=FALSE, fig.width=7, fig.height=7}
+# <div align="center">
+# <img src="images/adr_liver_example_Nr0b2.pdf" width=700 height=700>
+# </div>
+PlotGeneAcrossTissues(subset(mydat, gene == "Nr0b2"), jtitle = "Nr0b2")
+```
 
-GREAT analysis shows enrichment of metabolism-specific processes
+GREAT analysis shows enrichment of metabolic processes
 =================================================
 <div align="left">
 <img src="images/great_figures/models26_bp.pdf" width=2000 height=700>
@@ -394,48 +428,68 @@ GREAT analysis shows enrichment of metabolism-specific processes
 GREAT analysis identifies potential regulators
 =================================================
 <div align="left">
-<img src="images/great_figures/model26_perturbation.pdf" width=2500 height=400>
+<img src="images/great_figures/model26_perturbation.pdf" width=2500 height=300>
 </div>
 
-Motif of HNF4A enriched in promoter regions
+Motif of Hnf4a enriched in promoter regions
 =================================================
+
 <div align="left">
-<img src="images/great_figures/models26_motifs.pdf" width=2000 height=225>
+<img src="images/great_figures/models26_motifs.pdf" width=600 height=100>
 </div>
+
+Hnf4a is expressed in a tissue-specific manner
+================================================
+
+```{r hnf4a-expression, echo=FALSE, message=FALSE, fig.width=14, fig.height=14}
+PlotGeneAcrossTissues(subset(mydat, gene == "Hnf4a"), jtitle = "Hnf4a")
+```
 
 Model selection approach identifies BFAT-specific rhythms
 ===================================================
+left: 66%
+
 <div align="left">
 <img src="images/bfat_specific_model.pdf" width=700 height=1100>
 </div>
+
 ***
+
 <div align="left">
-<img src="images/bfat_specific_phase.pdf" width=700 height=400>
+<img src="images/bfat_specific_phase.pdf" width=350 height=200>
 </div>
 
-Plot an example of a BFAT-specific gene
-===================================================
-Example here Hspb6
+```{r hspb6-expression, echo=FALSE, message=FALSE, fig.width=7, fig.height=7}
+PlotGeneAcrossTissues(subset(mydat, gene == "Hspb6"), jtitle = "Hspb6")
+```
 
 BFAT-specific genes associated with muscle-related phenotypes
 ===================================================
 <div align="left">
-<img src="images/great_figures/model4_phenotype.pdf" width=2000 height=700>
+<img src="images/great_figures/model4_phenotype.pdf" width=2000 height=500>
 </div>
 
-SRF is a potential regulator of BFAT-specific rhythms
+
+Srf is a potential regulator of BFAT-specific rhythms
 ===================================================
+left: 70%
 <div align="left">
-<img src="images/great_figures/model4_motifs.pdf" width=2000 height=225>
+<img src="images/great_figures/model4_motifs.pdf" width=700 height=125>
 </div>
 
-Show Schibler's paper.
+<div align="left">
+<img src="images/srf-schibler-paper.pdf" width=600 height=200>
+</div>
 
-SRF is required for muscle growth.
+Link between Srf activity and actin function in brown fat?
 
-Preliminary results of regulatory modules using genome-wide models
-===================================================
-Show ridge regression and lasso plots.
+Srf may control actin-related signalling
+==================================================
+<div align="left">
+<img src="images/srf-circadian-figure.pdf" width=500 height=800>
+</div>
+<sup><a href="#fn3" id="ref3"></a></sup>
+<sup id="fn3">SRF’ing Around the Clock. Zhao et al 2013<a href="#ref3" title="srf-preview"></a></sup>
 
 Discussion and future work
 ===================================================
@@ -445,35 +499,95 @@ Discussion
 ==================================================
 type: subsection
 
-- Projecting to frequency space identifies core and peripheral clock modules
-- Bayesian model selection approach delineates peripheral clock modules into tissue-specific rhythms
-- Potential regulators of tissue-specific rhythms associate with relevant biological function and phenotypes
+- SVD analysis broadly identifies circadian modules
+- BIC model groups rhythmic genes by tissue-specific oscillatory patterns 
+- *Hnf4a* may regulate metabolic genes rhythmic in adrenal gland and liver
+- *Srf* may regulate actin-related functions in brown fat
 
 Future work
 ==================================================
 type: subsection
 
-- Use a principled approach to identify players regulating gene expression
-- Identify interactions between rhythmic regulators and tissue-specific regulators
+- Use a principled approach to delineate regulators of circadian transcription regulatory networks.
+- Identify functions of gene modules by overlaying pathway information.
+- Investigate the role of post-transcriptional regulation in tissue-specific circadian rhythms
 
 Acknowledgements
 =================================================
 type: section
+left: 65%
+
+***
 
 - Felix Naef
 - Saeed Omidi
 - Jingkui Wang
 - Cedric Gobet
-- Jonathan Sobel
-- Jonathan Bieler
 - Kyle Gustafson
+- Jerome Mermet
+- Jonathan Bieler
+- Rosamaria Cannavo
+- Onur Tidin
+- Damien Nicolas
+- Benjamin Zoller
 - Gianrocco Lazzari
+- Jonathan Sobel
 
+Strength of rhythmicity across tissues
+=================================================
+```{r rhythmicity-tissues, echo=FALSE, fig.width=14, fig.height=10}
+var.total <- apply(Mod(as.matrix(dat.wide)) ^ 2, 2, sum)
+var.df <- data.frame(Variance = var.total, Tissue = names(var.total))
+# reorder by decreasing variance
+var.df$Tissue <- factor(var.df$Tissue, levels(var.df$Tissue)[order(var.total, decreasing = TRUE)])
+
+ggplot(data = var.df, aes(x = Tissue, y = var.total)) + 
+  geom_bar(stat="identity", fill = "lightblue") + 
+  ggtitle("Total varianace across tissues after transformation. T=24")
+```
+
+Srf expression
+==================================================
+```{r srf-expression, echo=FALSE, fig.width=14, fig.height=14}
+PlotGeneAcrossTissues(subset(mydat, gene == "Srf"), jtitle = "Srf")
+```
+
+SVD modules suggest tissue-specific circadian rhythms
+===================================================
+```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=14}
+sing.val <- 2
+eigengene <- Conj(s$v[, sing.val])
+
+jmax <- max(Mod(eigengene))
+max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
+jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
+shift.to.18 <- -pi # Arg = 0 corresponds to CT18
+
+PlotComplex(eigengene,  # negative so it goes around like a clock 
+            axis.min = -jmax,
+            axis.max = jmax,
+            labels = names(eigengene), 
+            col = "HSV",
+            add.text.plot = FALSE, 
+            main = paste("Component:", sing.val),
+            jpch = 20,
+            threshold = 0, 
+            rotate = -jmax.arg + shift.to.18,
+            jcex = jcex)
+```
+
+
+Preliminary results of regulatory modules using genome-wide models
+===================================================
+<div align="left">
+<img src="images/7_conds_filtered26Liver0.007.pdf" width=1000 height=1000>
+</div>
 
 WFAT rhythms do not seem real
 ====================================================
-Show image here to convince the doubters
-
+<div align="left">
+<img src="images/adam7_wfat.pdf" width=1000 height=800>
+</div>
 
 Tissues cluster by time of day in rhythmic components
 =======================================================
@@ -552,29 +666,4 @@ $$
 - D is a diagonal matrix with eigenvalues in the diagonal
 
 - Low-rank representation of the original matrix by taking the outer product of columns of U and V multiplied by D.
-
-
-SVD modules suggest tissue-specific circadian rhythms
-===================================================
-```{r tissue-modules, echo=FALSE, fig.width=14, fig.height=14}
-sing.val <- 2
-eigengene <- Conj(s$v[, sing.val])
-
-jmax <- max(Mod(eigengene))
-max.loading <- names(eigengene[which(Mod(eigengene) == jmax)])
-jmax.arg <- Arg(eigengene[max.loading])  # aligns everything relative to jmax.arg
-shift.to.18 <- -pi # Arg = 0 corresponds to CT18
-
-PlotComplex(eigengene,  # negative so it goes around like a clock 
-            axis.min = -jmax,
-            axis.max = jmax,
-            labels = names(eigengene), 
-            col = "HSV",
-            add.text.plot = FALSE, 
-            main = paste("Component:", sing.val),
-            jpch = 20,
-            threshold = 0, 
-            rotate = -jmax.arg + shift.to.18,
-            jcex = jcex)
-```
 
