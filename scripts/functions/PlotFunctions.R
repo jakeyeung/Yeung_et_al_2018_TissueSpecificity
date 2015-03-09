@@ -175,21 +175,22 @@ PlotComplexCircle <- function(complex.vector,
   
   dat <- data.frame(Magnitude = as.numeric(magnitude), Phase = as.numeric(phase), Labels = jlabels)
   jbreaks <- seq(length.out = period / 2, by = 2, to = period)
-  if (!no.label & filter == 0){
+  if (!no.label){
     ggplot(data = dat, aes(x = Magnitude, y = Phase, label = Labels)) + 
-      geom_point() + geom_text(size = textsize) + 
-      coord_polar(theta = "y") +
-      xlab(xlabel) +
-      ylab(ylabel) +
-      scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
-  } else if (!no.label & filter > 0) {
-    ggplot(data = dat, aes(x = Magnitude, y = Phase)) + 
       geom_point() + 
-      geom_text(aes(label = Labels)) + 
+      geom_text(size = textsize) + 
       coord_polar(theta = "y") +
       xlab(xlabel) +
       ylab(ylabel) +
       scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+#   } else if (!no.label & filter > 0) {
+#     ggplot(data = dat, aes(x = Magnitude, y = Phase, label = Labels)) + 
+#       geom_point() + 
+#       geom_text(size = textsize) + 
+#       coord_polar(theta = "y") +
+#       xlab(xlabel) +
+#       ylab(ylabel) +
+#       scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
   }  else if (no.label) {
     ggplot(data = dat, aes(x = Magnitude, y = Phase)) + 
       geom_point() + 
