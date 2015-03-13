@@ -28,6 +28,30 @@ AvgExprsAcrossTissues <- function(df){
   return(df.avg.tiss)
 }
 
+AllOnes <- function(v){
+  # check if vector is all 1s
+  return(all(v == 1))
+}
+
+FilterAllOnesOrZeros <- function(mat){
+  # Filter out a binary matrix only for rows that do not contain
+  # all 1s or 0s. They are not meaningful for differentiating TF
+  # across tissues
+  mat <- mat[which(apply(mat, 1, AllOnes) == FALSE), ]  # remove TFs with only 1s 
+  mat <- mat[which(rowSums(mat) > 0), ] # remove TFs with only 0s
+  return(mat)
+}
+
+Binarize <- function(mat, cutoff){
+  mat[which(mat < cutoff)] <- 0
+  mat[which(mat >= cutoff)] <- 1
+  return(mat)
+}
+
+
+# Set pallette for heatmap colors -----------------------------------------
+
+
 # creates a own color palette from red to green
 # my_palette <- colorRampPalette(c("red", "yellow", "green"))(n = 299)
 my.palette <- colorRampPalette(c("black", "yellow"))(n = 299)
@@ -55,6 +79,27 @@ dat.tfs.mat <- dcast(dat.tfs.avg, gene ~ tissue, value.var = "mean.exprs")
 
 dat.tfs.mat <- as.matrix(FirstColToRowname(dat.tfs.mat))
 
+# binarize
+cutoff <- 5
+dat.tfs.mat.binary <- Binarize(dat.tfs.mat, cutoff)
+dat.tfs.mat.binary <- FilterAllOnesOrZeros(dat.tfs.mat.binary)
+
+
+# heatmap that shiet
+heatmap.2(dat.tfs.mat.binary,
+          # cellnote = dat.tfs.mat,  # same data set for cell labels
+          main = paste0("exprs cutoff=", cutoff), # heat map title
+          # notecol="black",      # change font color of cell labels to black
+          density.info='density',  # turns off density plot inside color legend
+          trace="none",         # turns off trace lines inside the heat map
+          # margins =c(5, 45),     # widens margins around plot
+          dendrogram = "both",
+          cexRow = 0.3,
+          col=my.palette,       # use on color palette defined earlier 
+          # breaks=col.breaks    # enable color transition at specified limits
+          # dendrogram="col",     # only draw a row dendrogram
+          # Colv="NA")            # turn off column clustering
+)
 # heatmap that shiet
 heatmap.2(dat.tfs.mat,
           # cellnote = dat.tfs.mat,  # same data set for cell labels
