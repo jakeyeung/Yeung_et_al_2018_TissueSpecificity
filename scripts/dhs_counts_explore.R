@@ -35,9 +35,9 @@ jtissue <- "Liver"
 
 # subset constants --------------------------------------------------------
 set.seed(0)
-n.sub <- 0.01 * nrow(dhs.dat.no.out)
-rows.sub <- sample(seq(1:nrow(dhs.dat.no.out)), n.sub)
-i.reps <- GetReplicates(colnames(dhs.dat.no.out))
+n.sub <- 0.01 * nrow(dhs.dat)
+rows.sub <- sample(seq(1:nrow(dhs.dat)), n.sub)
+i.reps <- GetReplicates(colnames(dhs.dat))
 n.samps <- length(i.reps)
 
 # Normalize by total counts -----------------------------------------------
@@ -65,6 +65,7 @@ rows.subpair <- sample(seq(1:nrow(dhs.reps)), n.sub.forpairs)
 # Plot pairwise between outlier and normal and normal-normal
 pairs(log2(dhs.reps[rows.subpair, c(samp.outlier, samp.normal), ]))
 pairs(log2(dhs.reps[rows.subpair, c(samp.normal2, samp.normal), ]))
+pairs((log2(dhs.reps[rows.subpair, c("UwStam.mLiver.DS16740.FC62FJL.7", "UwStam_mLiver.DS16853.FC62FJY.3_004"), ])))
 
 # Plot density distributions for outlier and two normals
 counts.outlier <- dhs.reps[, samp.outlier][which(dhs.reps[, samp.outlier] > 0)]
@@ -81,6 +82,7 @@ dhs.dat.no.out[, samp.outlier] <- NULL
 
 # get mean and sd ---------------------------------------------------------
 
+epsilon <- 10^-3
 sums.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, sum)
 # dhs.dat.no.out <- scale(dhs.dat.no.out)
 means.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, mean)
