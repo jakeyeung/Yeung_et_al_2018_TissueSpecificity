@@ -4,14 +4,16 @@
 
 # Functions ---------------------------------------------------------------
 
+setwd("~/projects/tissue-specificity")
 source("scripts/functions/RemoveExtension.R")
 source("scripts/functions/FixGeneName.R")
+source("scripts/functions/ReadListToVector.R")
 
 # Load site counts and genes ----------------------------------------------
 
 site.mat.full <- read.table("site_count_matrices/sitecounts_matrix_EPD", header = TRUE, row.names = 1)
 
-genes.fname <- "plots/nconds/7_conds_filtered_02_bicw/7_conds_filtered26.txt"
+genes.fname <- "plots/nconds/7_conds_filtered_02_bicw/7_conds_filtered4.txt"
 genes <- ReadListToVector(genes.fname)
 genes <- unlist(sapply(genes, FixGeneName))
 

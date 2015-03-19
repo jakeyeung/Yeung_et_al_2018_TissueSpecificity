@@ -4,15 +4,19 @@
 
 # install.packages("glmnet")
 library(glmnet)
+setwd("~/projects/tissue-specificity")
 source("scripts/functions/RunElasticNet.R")
+
+args <- commandArgs(trailingOnly = TRUE)
+alpha = as.numeric(args[1])
 
 # Load y and x ------------------------------------------------------------
 
 conds <- c('Adr', 'Aorta', 'BFAT', 'Kidney', 'Liver', 'Lung', 'Mus')
 
 for (cond in conds){
-  y <- read.table(paste0("y_input_elastic_net/7_conds_filtered26.", cond, ".elasticinput"))
-  x <- read.table("site_count_matrices/7_conds_filtered26.sitecounts")
+  y <- read.table(paste0("y_input_elastic_net/7_conds_filtered4.", cond, ".elasticinput"))
+  x <- read.table("site_count_matrices/7_conds_filtered4.sitecounts")
   
   common.genes <- intersect(rownames(y), rownames(x))
   
@@ -21,5 +25,5 @@ for (cond in conds){
   
   # Run elastic net ---------------------------------------------------------
   
-  RunElasticNet(y, x, paste0("plots/elastic_net/7_conds_filtered26_standardize", cond), standardize = FALSE, alpha = 0.5)
+  RunElasticNet(y, x, paste0("plots/elastic_net/7_conds_filtered4/7_conds_filtered4", cond), standardize = FALSE, alpha = alpha)
 }

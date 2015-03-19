@@ -4,8 +4,10 @@
 
 
 # Functions ---------------------------------------------------------------
+setwd("~/projects/tissue-specificity")
 
 source("scripts/functions/RemoveExtension.R")
+source("scripts/functions/ReadListToVector.R")
 
 WriteHeaders <- function(){
   # write header for elastic input
@@ -14,7 +16,7 @@ WriteHeaders <- function(){
 
 # Get genes from Cedric's model -------------------------------------------
 
-genes.fname <- "plots/nconds/7_conds_filtered_02_bicw/7_conds_filtered26.txt"
+genes.fname <- "plots/nconds/7_conds_filtered_02_bicw/7_conds_filtered4.txt"
 genes <- ReadListToVector(genes.fname)
 
 
