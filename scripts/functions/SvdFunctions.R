@@ -190,17 +190,6 @@ GetOmegas <- function(n.timepoints=24, interval=2, remove.zero=FALSE){
   return(omegas)
 }
 
-ConvertLongToWide <- function(long.df, measurement.var = "exprs.transformed"){
-  wide.df <- dcast(dat.proj, gene ~ tissue, value.var = measurement.var)
-  # first row is gene name, let's make them rowname and remove first column.
-  
-  rownames(wide.df) <- wide.df$gene
-  
-  wide.df <- subset(wide.df, select = -c(gene))
-  
-  return(wide.df)
-}
-
 PlotComponentOriginal <- function(orig.dat, s, jgene, component, show.original = TRUE){
   component.mat <- s$d[component] * OuterComplex(s$u[, component, drop = FALSE], t(s$v[, component, drop = FALSE]))
   if (show.original){
