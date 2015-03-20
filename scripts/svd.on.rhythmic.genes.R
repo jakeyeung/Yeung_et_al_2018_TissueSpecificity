@@ -43,6 +43,7 @@ source(file.path(scripts.dir, funcs.dir, "OrderPhaseMatrix.R"))
 source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
 source(file.path(scripts.dir, funcs.dir, "PlotGeneAcrossTissues.R"))
 source(file.path(scripts.dir, funcs.dir, "ConvertLongToWide.R"))
+source(file.path(scripts.dir, funcs.dir, "ProjectToFrequency.R"))
 source(file.path(scripts.dir, funcs.dir, "SvdFunctions.R"))  # many script-specific functions here
 
 # Define dirs -------------------------------------------------------------
