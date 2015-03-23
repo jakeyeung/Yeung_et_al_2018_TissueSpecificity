@@ -15,8 +15,8 @@ t.start <- 18
 t.interval <- 2  # every 2 hours
 cutoff <- 1e-8
 cutoff.amp <- 0.035
+t.interval <- 2  # every 2 hours
 t.end <- (n.timepoints - 1) * t.interval + t.start
-n.timepoints <- ncol(A.mat)
 t.vec <- seq(t.start, t.end, t.interval)
 
 colnames(A.mat) <- t.vec
@@ -46,6 +46,6 @@ ggplot(data = Y, aes(x = amp, y = phase, label = label)) +
   xlab("Amplitude of activity") +
   ylab("Phase of activity") +
   geom_text(aes(x = amp, y = phase), hjust = 0, vjust = 0) +
-  ggtitle(paste0("Labeled if adj.pval cutoff<", cutoff, "amp>", cutoff.amp)) +
+  ggtitle(paste0("Labeled if adj.pval cutoff<", cutoff, " amp>", cutoff.amp)) +
   scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
 
