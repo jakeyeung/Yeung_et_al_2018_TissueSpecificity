@@ -1,6 +1,10 @@
 # PlotGeneAcrossTissues.R
 
 PlotGeneAcrossTissues <- function(dat, jtitle){
+  library(ggplot2)
+  if (missing(jtitle)){
+    jtitle = unique(dat$gene)
+  }
   m <- ggplot(dat, aes(x = time, y = exprs,
                        group = experiment, 
                        colour = experiment)) + 
