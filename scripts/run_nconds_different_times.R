@@ -67,13 +67,14 @@ dat.filt.array <- dat[, grepl(conds1.grep, colnames(dat))]
 t.vec <- seq(22, 64, 6)
 subset.grep <- paste0(t.vec, collapse = "|")
 cnames.subset <- paste0("reviL_", t.vec)
-
+dat.filt.rnaseq <- rna.seq.exprs[, grepl(conds1.grep, colnames(rna.seq.exprs))]
 # dat.filt.array2 <- dat.filt.array[, grepl(subset.grep, colnames(dat.filt.array))]
-colnames(dat.filt.array2) <- cnames.subset
-dat.filt <- cbind(dat.filt.array, dat.filt.array2)
+colnames(dat.filt.rnaseq) <- cnames.subset
+dat.filt <- cbind(dat.filt.array, dat.filt.rnaseq)
 
 start <- Sys.time()
-A <- nconds(dat.filt, out.prefix = "plots/nconds_different_times/nconds_different_times2", ncores = 20)
+A <- nconds(dat.filt, 
+            out.prefix = "plots/nconds_different_times/nconds_different_times_array_v_rnaseq_liver", ncores = 20)
 print(Sys.time() - start)
 
 
