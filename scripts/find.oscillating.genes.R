@@ -26,7 +26,7 @@ rhythmic.genes.plots <- 'plots/rhythmic_genes_across_tissues.rerun.pdf'
 # parallel processing
 #setup parallel backend to use 30 processors
 rscript_args = c("--no-init-file", "--no-site-file", "--no-environ")
-cl<-makeCluster(rscript_args, 30)
+cl<-makeCluster(30, rscript_args=rscript_args)
 registerDoParallel(cl)
 
 # Define constants --------------------------------------------------------
