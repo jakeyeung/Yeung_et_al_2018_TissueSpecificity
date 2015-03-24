@@ -101,15 +101,17 @@ GetAmpPhase <- function(df){
   params <- GetParamsComplexModel(fit.complex)  # model = intercept.array + intercept.rnaseq + acos(t) + bsin(t)
   # for amp and phase calculation: see http://www.intmath.com/analytic-trigonometry/6-express-sin-sum-angles.php
   amp <- unname(sqrt(params[["a"]] ^ 2 + params[["b"]] ^ 2))
-  phase <- unname(atan2(params[["a"]], params[["b"]]))
+  phase <- unname(atan2(params[["b"]], params[["a"]]))
   # phase <- atan(params[["b"]] / params[["a"]])
   int.array <- params[["intercept.array"]]
   int.rnaseq <- params[["intercept.rnaseq"]]
   return(list(pval=pval,
-         amp=amp, 
-         phase=phase, 
-         int.array=int.array, 
-         int.rnaseq=int.rnaseq))
+              cos.part=params[["a"]],
+              sin.part=params[["b"]],
+              amp=amp, 
+              phase=phase, 
+              int.array=int.array, 
+              int.rnaseq=int.rnaseq))
 }
 
 # list to textfile
