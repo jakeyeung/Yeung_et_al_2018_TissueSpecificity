@@ -31,6 +31,7 @@ fit <- function(x, a, b){
 
 dhs.path <- "~/projects/tissue-specificity/data/beds/ENCODE:Seq:Liver/combined.nogc.bedfixed"
 dhs.dat <- read.table(dhs.path, header = TRUE, sep = "\t")  # gigantic file ~ 1.2 gigs in memory
+save(dhs.dat, file = "~/projects/tissue-specificity/docs/2015-03-19-felix/dhs_dat.Robj")
 jtissue <- "Liver"
 
 # subset constants --------------------------------------------------------
