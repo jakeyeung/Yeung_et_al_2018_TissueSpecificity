@@ -6,15 +6,15 @@
 
 pval <- 1.1  # for F-test between saturation model and linear model
 y.max <- 25  # for plotting
-diagnostics.plot.out <- 'plots/diagnostics.saturation.slope.adj.0.3.pdf'
-before.after.plot.out <- 'plots/before.after.saturation.slope.adj.0.3.pdf'
-side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.slope.adj.0.3.pdf'
+diagnostics.plot.out <- 'plots/diagnostics.saturation.slope.adj.0.7.RERUN.pdf'
+before.after.plot.out <- 'plots/before.after.saturation.slope.adj.0.7.RERUN.pdf'
+side.by.side.plot.out <- 'plots/overlap.with.rnaseq.saturation.slope.adj.0.7.RERUN.pdf'
 
 mean.var.fit.outpath <- 'plots/mean.var.probes.pdf'
 
-array.adj.out <- 'data/array.adj.saturationfit.conservative.slope.adj.0.3.txt'
-fit.results.out <- 'data/saturation.fit.results.slope.adj.0.3.RData'
-fit.select.results.out <- 'data/saturation.fit.select.results.slope.adj.0.3.RData'
+array.adj.out <- 'data/array.adj.saturationfit.conservative.slope.adj.0.7.RERUN.txt'
+fit.results.out <- 'data/saturation.fit.results.slope.adj.0.7.RERUN.RData'
+fit.select.results.out <- 'data/saturation.fit.select.results.slope.adj.0.7.RERUN.RData'
 
 # Functions ---------------------------------------------------------------
 
@@ -38,6 +38,7 @@ source(file.path(functions.dir, 'SampleNameHandler.R'))  # make sample names
 source(file.path(functions.dir, 'RegressionFunctions.R'))  # optim function
 source(file.path(functions.dir, 'GeneTissueCalculations.R'))
 source(file.path(functions.dir, 'PlotFunctions.R'))
+source(file.path(functions.dir, 'FitSaturationCurveFindProblemGenes.R'))
 
 # Clock genes --------------------------------------------------------
 
@@ -183,7 +184,7 @@ dev.off()
 
 # Crazy loop to find best starting slope. ---------------------------------
 
-slopes <- seq(0.01, by=0.02, length.out=100)
+slopes <- seq(0.06, by=0.001, length.out=50)
 slope.n.neg.genes <- data.frame(n.neg.genes=rep(NA, length(slopes)), row.names=slopes)
 for (slope0 in slopes){
   fit.results.out.slope <- paste0('data/sat.fit.', slope0, '.RData')
@@ -211,7 +212,7 @@ x.factor <- 1.2
 bg.factor <- 0.8
 
 # init vals: linear model
-# slope0 <- 0.3
+slope0 <- 0.07
 int0 <- 10
 
 # init out list
@@ -454,10 +455,10 @@ for (gene in c(clockgenes, tissuegenes, problematicgenes)){
 }
 dev.off()
 
-Garbage collect ---------------------------------------------------------
+# Garbage collect ---------------------------------------------------------
 
 rm(fit.select.list)
 
-Garbage collection ------------------------------------------------------
+# Garbage collection ------------------------------------------------------
 
 rm(fit.list)
