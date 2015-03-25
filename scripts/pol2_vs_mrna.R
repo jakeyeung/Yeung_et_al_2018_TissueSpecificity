@@ -76,24 +76,51 @@ dat.liver.filt.fit <- ddply(dat.liver.filt, .(gene), FitRhythmic)
 
 
 # create long vector
-dat.liver.mrna <- data.frame(gene = dat.liver.filt.fit$gene,
-                             amp = dat.liver.filt.fit$amp, 
-                             phase = dat.liver.filt.fit$phase,
-                             data = rep("mRNA", nrow(dat.liver.filt.fit)))
 dat.liver.pol2 <- data.frame(gene = pol2.filtered$signal$gene,
                              amp = pol2.filtered$signal$amp,
                              phase = pol2.filtered$signal$phase,
                              data = rep("PolII", nrow(pol2.filtered$signal)))
 # take care of duplicates in pol2 data
 dat.liver.pol2 <- ddply(dat.liver.pol2, .(gene), AverageAmpPhase)
+dat.liver.mrna <- data.frame(gene = dat.liver.filt.fit$gene,
+                             amp = dat.liver.filt.fit$amp, 
+                             phase = dat.liver.filt.fit$phase,
+                             data = rep("mRNA", nrow(dat.liver.filt.fit)))
 
 dat.liver.rhythmic <- rbind(dat.liver.mrna, dat.liver.pol2)
 head(dat.liver.rhythmic)
 
 # plot genes rhythmic in pol2
-dat.liver.pol2rhythmic <- subset(dat.liver.rhythmic, gene %in% genes.pol2)
+genes.pol2.common <- intersect(genes.pol2, unique(dat.liver$gene))
+dat.liver.pol2rhythmic <- subset(dat.liver.rhythmic, gene %in% genes.pol2.common)
 # plot genes rhythmic in mrna
-dat.liver.mrnarhythmic <- subset(dat.liver.rhythmic, gene %in% genes.rhythmic)
+genes.mrna.common <- intersect(genes.rhythmic, genes.pol2)
+dat.liver.mrnarhythmic <- subset(dat.liver.rhythmic, gene %in% genes.mrna.common)
 
 PlotMrnaVsPol2(dat.liver.pol2rhythmic)
 PlotMrnaVsPol2(dat.liver.mrnarhythmic)
+
+# calculate phase shift between pol2 and mrna
+PhaseDiff <- function(df){
+  # expect df$phase and df$data
+  i.mrna <- which(df$data == "mRNA")
+  i.pol2 <- which(df$data == "PolII")
+  phase.diff <- (df$phase[i.mrna] - df$phase[i.pol2]) %% 24
+  if (length(i.mrna) == 0 |  length(i.pol2) == 0){
+    df.out <- data.frame(phase.diff = NA, amp.mrna = NA, amp.pol2 = NA)
+    return(df.out)
+  }
+  df.out <- data.frame(phase.diff = phase.diff, amp.mrna = df$amp[i.mrna], amp.pol2 = df$amp[i.pol2])
+  return(df.out)
+}
+dat.phasediff <- ddply(dat.liver.pol2rhythmic, .(gene), PhaseDiff)
+dat.phasediff <- dat.phasediff[which(! is.na(dat.phasediff$phase.diff)), ]
+ggplot(data = dat.phasediff, aes(x = phase.diff)) + geom_density()  # big bump: mRNA delay. Small bump: pol2 delay. 
+
+# plot genes with pol2 delay
+genes.pol2delay <- subset(dat.phasediff, phase.diff >= 12)$gene
+PlotMrnaVsPol2(subset(dat.liver.rhythmic, gene %in% genes.pol2delay))
+
+# plot genes with mrna delay
+genes.mrnadelay <- subset(dat.phasediff, phase.diff < 12)$gene
+PlotMrnaVsPol2(subset(dat.liver.rhythmic, gene %in% genes.mrnadelay))
