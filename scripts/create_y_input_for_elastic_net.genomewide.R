@@ -40,8 +40,10 @@ for (cond in conds){
     if (is.null(phase)){
       next
     }
-    cos.part <- amp * cos(phase)
-    sin.part <- amp * sin(phase)
+    # sin.part <- amp * cos(phase)  # if phase comes from model: y = Asin(w + phi)
+    # cos.part <- amp * sin(phase)  # if phase comes from y = Asin(w + phi)
+    sin.part <- amp * sin(phase)  # # if phase comes from y = Acos(w - phi)
+    cos.part <- amp * cos(phase)  # if phase comes from y = Acos(w - phi)
     cat(paste0(gene, "\t", cos.part, "\t", sin.part, "\n"))
   }
   sink()
