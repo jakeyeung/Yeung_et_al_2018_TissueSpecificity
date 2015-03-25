@@ -1,3 +1,15 @@
+PlotAmpPhase <- function(dat, textsize = 2){
+  # Expect amp and phase in data frame column names.
+  # label as gene names
+  ggplot(data = dat, aes(x = amp, y = phase, label = gene)) + 
+    geom_point() + 
+    geom_text(size = textsize) + 
+    coord_polar(theta = "y") +
+    xlab("Phase") +
+    ylab("Amp") +
+    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+}
+
 PlotComplex <- function(complex.matrix, gene.list, labels,
                         axis.min, axis.max, col="HSV",
                         main='Plot title', 
