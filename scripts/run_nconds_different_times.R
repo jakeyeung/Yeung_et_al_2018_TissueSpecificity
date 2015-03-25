@@ -48,7 +48,7 @@ AddUnderscores <- function(cnames){
 
 # load from this because it is easier, it is run from a code that takes a while to calculate
 load("~/projects/select-rhythmic-models/data/tissue_array_dat.Robj")  # dat
-rna.seq.exprs <- LoadRnaSeq(rna.seq.path)
+rna.seq.exprs <- log2(LoadRnaSeq(rna.seq.path) + 1)
 
 colnames(rna.seq.exprs) <- AddUnderscores(colnames(rna.seq.exprs))
 
@@ -64,6 +64,7 @@ conds1.grep <- paste0(conds[1], collapse = "|")
 dat.filt.array <- dat[, grepl(conds1.grep, colnames(dat))]
 
 # subset of array as second time point
+t.vec1 <- seq(18, 64, 2)
 t.vec <- seq(22, 64, 6)
 subset.grep <- paste0(t.vec, collapse = "|")
 cnames.subset <- paste0("reviL_", t.vec)
@@ -72,9 +73,13 @@ dat.filt.rnaseq <- rna.seq.exprs[, grepl(conds1.grep, colnames(rna.seq.exprs))]
 colnames(dat.filt.rnaseq) <- cnames.subset
 dat.filt <- cbind(dat.filt.array, dat.filt.rnaseq)
 
+jconds <- c(rep("Liver", length(t.vec1)), rep("reviL", length(t.vec)))
+t.vec.full <- c(t.vec1, t.vec)
 start <- Sys.time()
 A <- nconds(dat.filt, 
-            out.prefix = "plots/nconds_different_times/nconds_different_times_array_v_rnaseq_liver", ncores = 20)
+            conds = jconds,
+            t = t.vec.full,
+            out.prefix = "plots/nconds_different_times/nconds_different_times_array_v_rnaseq_liver_log2", ncores = 20)
 print(Sys.time() - start)
 
 
