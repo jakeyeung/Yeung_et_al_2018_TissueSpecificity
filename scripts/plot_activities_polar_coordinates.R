@@ -15,7 +15,7 @@ t.start <- 18
 t.interval <- 2  # every 2 hours
 cutoff <- 1e-8
 cutoff.amp <- 0.035
-t.interval <- 2  # every 2 hours
+n.timepoints <- ncol(A.mat)
 t.end <- (n.timepoints - 1) * t.interval + t.start
 t.vec <- seq(t.start, t.end, t.interval)
 
