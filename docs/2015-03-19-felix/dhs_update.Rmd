@@ -1,0 +1,169 @@
+---
+title: "Meeting-20-Mar-2015"
+author: "Jake Yeung"
+date: "March 19, 2015"
+output: beamer_presentation
+---
+
+## Total counts differ across replicates
+
+```{r load-data, echo=FALSE}
+library(ggplot2)
+GetReplicates <- function(cnames, get.index=TRUE){
+  # from colnames of data, retrieve replicate names
+  # expects that colnames are not called "chr", "start", "end", "zscore" or "total"
+  # get.index -> return the index from cnames otherwise get names
+  colnames.remove <- c("chr", "start", "end", "zscore", "total")
+  if (get.index){
+    return(which(!cnames %in% colnames.remove))
+  }
+  else {
+    return(cnames[which(!cnames %in% colnames.remove)])
+  }
+}
+
+# dhs.path <- "~/projects/tissue-specificity/data/beds/ENCODE:Seq:Liver/combined.nogc.bedfixed"
+# dhs.dat <- read.table(dhs.path, header = TRUE, sep = "\t")  # gigantic file ~ 1.2 gigs in memory
+load("~/projects/tissue-specificity/docs/2015-03-19-felix/dhs_dat.Robj")  # dhs.dat
+jtissue <- "Liver"
+
+# subset constants --------------------------------------------------------
+set.seed(0)
+n.sub <- 0.01 * nrow(dhs.dat)
+rows.sub <- sample(seq(1:nrow(dhs.dat)), n.sub)
+i.reps <- GetReplicates(colnames(dhs.dat))
+n.samps <- length(i.reps)
+
+# Normalize by total counts -----------------------------------------------
+
+dhs.reps <- dhs.dat[, i.reps]
+sum.samps <- apply(dhs.reps, 2, sum)
+dhs.reps <- dhs.reps / sum.samps * 10^6
+
+barplot(sum.samps, las = 2, ylab = "total counts", main = paste0("total counts across replicates", jtissue))
+```
+
+There are `r length(i.reps)` replicates from 14 samples? Replicates 10 to 14 contain multiple files.
+
+
+## Outlier detected
+
+```{r outliers, echo=FALSE}
+samp.outlier <- "UwStam_mLiver.DS16858.FC62FJY.4_004"
+samp.normal <- "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep1"
+samp.normal2 <- "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep2"
+
+# plot pairs
+n.sub.forpairs <- 0.001 * nrow(dhs.reps)
+rows.subpair <- sample(seq(1:nrow(dhs.reps)), n.sub.forpairs)
+# this takes super long and prone to crashes
+# pdf("plots/dhs/pair_plots_scattermatrix.pdf")
+# pairs(log2(dhs.dat[rows.subpair, i.reps]))  # UwStam_mLiver.DS16858.FC62FJY.4_004 is an outlier
+# dev.off()
+
+# Plot pairwise between outlier and normal and normal-normal
+pairs(log2(dhs.reps[rows.subpair, c(samp.outlier, samp.normal), ]))
+```
+
+## Two replicates that look "good"
+```{r between-normals, echo=FALSE}
+pairs(log2(dhs.reps[rows.subpair, c(samp.normal2, samp.normal), ]))
+# pairs((log2(dhs.reps[rows.subpair, c("UwStam.mLiver.DS16740.FC62FJL.7", "UwStam_mLiver.DS16853.FC62FJY.3_004"), ])))
+```
+
+## Distribution of counts: outlier
+```{r distribution-outlier, echo=FALSE}
+# Plot density distributions for outlier and two normals
+counts.outlier <- dhs.reps[, samp.outlier][which(dhs.reps[, samp.outlier] > 0)]
+counts.normal <- dhs.reps[, samp.normal][which(dhs.reps[, samp.normal] > 0)]
+counts.normal2 <- dhs.reps[, samp.normal2][which(dhs.reps[, samp.normal2] > 0)]
+qplot(x = counts.outlier, geom = "density") + scale_x_log10() + ggtitle(paste0("Sample ", samp.outlier))
+```
+
+## Distribution of counts: "good"
+```{r distribution-normal, echo=FALSE}
+qplot(x = counts.normal, geom = "density") + scale_x_log10() + ggtitle(paste0("Sample ", samp.normal))
+```
+
+## Comparing all 25 "replicates"
+![pairs](/home/yeung/projects/tissue-specificity/plots/dhs/scatterplot_replicates.jpeg)
+
+## Density plot of counts (sum across replicates)
+```{r density-total, echo=FALSE}
+# Remove outlier ----------------------------------------------------------
+
+dhs.dat.no.out <- dhs.reps
+dhs.dat.no.out[, samp.outlier] <- NULL
+
+# plot densities
+
+epsilon <- 10^-3
+sums.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, sum)
+# dhs.dat.no.out <- scale(dhs.dat.no.out)
+means.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, mean)
+sds.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, sd)
+
+qplot(x = sums.reps + 1, geom = "density") + scale_x_log10()
+```
+
+## SD vs mean for each window across replicates
+```{r sd-vs-mean, echo=FALSE}
+ggplot(data = data.frame(Mean = means.reps, SD = sds.reps), 
+       aes(x = Mean, y = SD)) + 
+  geom_point(alpha = 0.05) + 
+  scale_x_log10() + 
+  scale_y_log10() +
+  ggtitle("Standard deviation vs mean") + 
+  geom_abline(intercept=0, slope=1)
+```
+
+## CV vs mean for each window across replicates
+```{r cv-vs-mean, echo=FALSE}
+means.nozero <- means.reps[which(means.reps > 0)]
+sds.nozero <- sds.reps[which(means.reps > 0)]
+ggplot(data = data.frame(Mean = means.nozero, CV = sds.nozero / means.nozero), 
+       aes(x = Mean, y = CV)) + 
+  geom_point(alpha = 0.05) + 
+  scale_x_log10() + 
+  scale_y_log10() +
+  ggtitle("Coefficient of variation vs mean")
+```
+
+## Using DHS data from Jingkui and Jonathan Sobel
+- Filtering for rhythmic genes
+- Playing with $\alpha$ values
+
+## Using all genes
+![jingkui_dhs_genomewide](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/Wang/nofilter/corrected_sitecounts_Liver05.pdf)
+
+## Filtering by p-value for rhythmicitiy
+Filter genes by p-value $\le 5 \times 10^{-5}$
+
+![jingkui_dhs_pval1e5](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/Wang/corrected_sitecounts_Liver09pval1e5.pdf)
+
+## Filtering by p-value for rhythmicitiy
+Filter genes by p-value $\le 5 \times 10^{-4}$
+
+![jingkui_dhs_pval1e4](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/Wang/corrected_sitecounts_Liver1pval1e4.pdf)
+
+## Filtering for rhythmicity in pol2
+Instead of rhythmiciity in genes, we use rhythmicity of pol2 activity pval $\le 0.05$
+
+![jingkui_dhs](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/Wang/truncated_sitecounts/corrected_sitecounts_Liver05.pdf)
+
+## Elastic net: E\textsuperscript{*} on SwissRegulon motifs
+$N$ from promoter regions only. $E^{*}$ corrected for length bias
+
+![estar_swissregulon](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/SwissRegulon/N.Estar.corrected/corrected_sitecounts_Liver0005.pdf)
+
+## Elastic net: MLE on SwissRegulon motifs
+$N$ from promoter regions only. 
+![mle_swissregulon](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/SwissRegulon/N.MLE.Corrected/corrected_sitecounts_Liver0005.pdf)
+
+## Elastic net: E\textsuperscript{*} on 33 motifs
+$N$ from promoter regions only. Corrected for length bias
+![estar_sobel](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/Sobel.33/N.Estar.corrected/corrected_sitecounts_Liver0005.pdf)
+
+## Elastic net: 
+$N$ from promoter regions only. Not corrected for length bias
+![estar_nocorrect](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/Sobel.33/N.Estar/corrected_sitecounts_Liver0005.pdf)
