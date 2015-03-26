@@ -1,0 +1,280 @@
+---
+title: "Meeting-27-Mar-2015"
+author: "Jake Yeung"
+date: "March 27, 2015"
+output: beamer_presentation
+---
+
+# Using DHS sites for sitecounts may provide more relevant regulatory signal
+Rhythmicity of pol2 activity pval $\le 0.05$ as gene set
+
+![jingkui_dhs](/home/yeung/projects/tissue-specificity/plots/elastic_net/genome_wide/GLM/Wang/truncated_sitecounts/corrected_sitecounts_Liver05.pdf)
+
+# ENCODE DHS Data
+- Liver: 14 replicates (25 samples total?)
+- Mapped with `bowtie2` to mm10 genome
+- Need to check for quality of samples
+
+# Assessing quality of DHS data
+- Correlation between replicates
+- Enrichment of certain genomic windows
+- Fragmenth length between 50-100 nucleotides
+
+# Binning counts using a sliding window
+- Get counts using sliding window (window size = 500, sliding = 250)
+- Look at total counts for each sample
+- Look at correlation between samples (after normalizing for total counts)
+
+# Total counts differ across replicates
+
+```{r load-data, echo=FALSE, warning=FALSE}
+library(ggplot2)
+library(plyr)
+
+GetReplicates <- function(cnames, get.index=TRUE){
+  # from colnames of data, retrieve replicate names
+  # expects that colnames are not called "chr", "start", "end", "zscore" or "total"
+  # get.index -> return the index from cnames otherwise get names
+  colnames.remove <- c("chr", "start", "end", "zscore", "total")
+  if (get.index){
+    return(which(!cnames %in% colnames.remove))
+  }
+  else {
+    return(cnames[which(!cnames %in% colnames.remove)])
+  }
+}
+
+# dhs.path <- "~/projects/tissue-specificity/data/beds/ENCODE:Seq:Liver/combined.nogc.bedfixed"
+# dhs.dat <- read.table(dhs.path, header = TRUE, sep = "\t")  # gigantic file ~ 1.2 gigs in memory
+load("~/projects/tissue-specificity/docs/2015-03-19-felix/dhs_dat.Robj")  # dhs.dat
+jtissue <- "Liver"
+
+# subset constants --------------------------------------------------------
+set.seed(0)
+n.sub <- 0.01 * nrow(dhs.dat)
+rows.sub <- sample(seq(1:nrow(dhs.dat)), n.sub)
+i.reps <- GetReplicates(colnames(dhs.dat))
+n.samps <- length(i.reps)
+
+# Normalize by total counts -----------------------------------------------
+
+dhs.reps <- dhs.dat[, i.reps]
+sum.samps <- apply(dhs.reps, 2, sum)
+dhs.reps <- dhs.reps / sum.samps * 10^6
+
+
+barplot(sort(sum.samps, decreasing = TRUE), las = 2, ylab = "total counts", main = paste0("total counts across replicates ", jtissue))
+```
+
+
+# Outlier detected
+
+```{r outliers, echo=FALSE, warning=FALSE}
+samp.outlier <- "UwStam_mLiver.DS16858.FC62FJY.4_004"  # UwStam_mLiver-DS16858-FC62FJY-4_004 also is outlier from fragmentLengthEstimate
+samp.normal <- "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep1"
+samp.normal2 <- "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep2"
+
+# plot pairs
+n.sub.forpairs <- 0.001 * nrow(dhs.reps)
+rows.subpair <- sample(seq(1:nrow(dhs.reps)), n.sub.forpairs)
+# this takes super long and prone to crashes
+# pdf("plots/dhs/pair_plots_scattermatrix.pdf")
+# pairs(log2(dhs.dat[rows.subpair, i.reps]))  # UwStam_mLiver.DS16858.FC62FJY.4_004 is an outlier
+# dev.off()
+
+# Plot pairwise between outlier and normal and normal-normal
+pairs(log2(dhs.reps[rows.subpair, c(samp.outlier, samp.normal), ]))
+```
+
+# Two replicates that look "good"
+```{r between-normals, echo=FALSE, warning=FALSE}
+pairs(log2(dhs.reps[rows.subpair, c(samp.normal2, samp.normal), ]))
+# pairs((log2(dhs.reps[rows.subpair, c("UwStam.mLiver.DS16740.FC62FJL.7", "UwStam_mLiver.DS16853.FC62FJY.3_004"), ])))
+```
+
+# Distribution of counts for outlier is low
+```{r distribution-outlier, echo=FALSE, warning=FALSE}
+# Plot density distributions for outlier and two normals
+counts.outlier <- dhs.reps[, samp.outlier][which(dhs.reps[, samp.outlier] > 0)]
+counts.normal <- dhs.reps[, samp.normal][which(dhs.reps[, samp.normal] > 0)]
+counts.normal2 <- dhs.reps[, samp.normal2][which(dhs.reps[, samp.normal2] > 0)]
+qplot(x = counts.outlier, geom = "density") + scale_x_log10() + ggtitle(paste0("Sample ", samp.outlier))
+```
+
+# Other samples have enrichment of counts in certain windows
+```{r distribution-normal, echo=FALSE, warning=FALSE}
+qplot(x = counts.normal, geom = "density") + scale_x_log10() + ggtitle(paste0("Sample ", samp.normal))
+```
+
+# Comparing all 25 "replicates"
+![pairs](/home/yeung/projects/tissue-specificity/plots/dhs/scatterplot_replicates.jpeg)
+
+# SD vs mean for each window across replicates
+with replicate removed
+```{r sd-vs-mean, echo=FALSE, warning=FALSE}
+# Remove outlier ----------------------------------------------------------
+
+dhs.dat.no.out <- dhs.reps
+dhs.dat.no.out[, samp.outlier] <- NULL
+
+# plot densities
+
+epsilon <- 10^-3
+sums.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, sum)
+# dhs.dat.no.out <- scale(dhs.dat.no.out)
+means.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, mean)
+sds.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, sd)
+
+ggplot(data = data.frame(Mean = means.reps, SD = sds.reps), 
+       aes(x = Mean, y = SD)) + 
+  geom_point(alpha = 0.05) + 
+  scale_x_log10() + 
+  scale_y_log10() +
+  ggtitle("Standard deviation vs mean") + 
+  geom_abline(intercept=0, slope=1)
+```
+
+
+# Autocorrelation analysis
+
+- Can be used to infer fragment length
+- Quality control (we want fragment lengths between 50 to 100?)
+- Procedure: calculate distance from each tag to every other tag ($\pm$ 2000) and find enrichment in opposite strand
+
+```{r autocorrelation-begin, echo=FALSE, warning=FALSE}
+# scripts from dhs_analyze_homerpeaks.R
+
+source("/home/yeung/projects/tissue-specificity/scripts/functions/DhsFunctions.R")
+
+# Main --------------------------------------------------------------------
+
+dat.dir <- "/home/yeung/projects/tissue-specificity/data/homerpeaks"
+dir.vec <- list.files(dat.dir)
+samp.paths <- sapply(dir.vec, function(d){
+  file.path(dat.dir, d)
+}, USE.NAMES=FALSE)
+
+# init merged dataframe and peakwidths
+cnames <- Cnames.long()
+dat.merged <- data.frame(matrix(nrow = 0, ncol = length(cnames)))
+colnames(dat.merged) <- cnames
+
+
+# Loop through files, create merged data in long format -------------------
+
+
+fname <- "tagAutocorrelation.txt"
+for (samp in samp.paths){
+  samp.base <- basename(samp)
+  f.path <- file.path(samp, fname)
+  dat.ac <- ReadAutocorrelation(f.path, samp.base)
+  dat.merged <- rbind(dat.merged, dat.ac)
+}
+
+
+# Create dat labels for plotting ------------------------------------------
+
+
+dat.labels <- ddply(dat.merged, .(samp), function(d){
+  sprintf("FragLength==%s;PeakWidth==%s", unique(d$peakwidth), unique(d$fraglength))
+  # sprintf("FragLength==%s,Peakwidth==%s", unique(d$peakwidth), unique(d$fraglength))
+})
+colnames(dat.labels) <- c("samp", "jlabel")
+dat.labels$strand = rep("+", nrow(dat.labels))  # colour is strand, messes up the code otherwise
+
+```
+
+# Autocorrelation defines fragment length
+
+```{r autocorrelation-best, echo=FALSE, warning=FALSE}
+best <- c("wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep9")
+ggplot(data = subset(dat.merged, 
+                     samp %in% best), 
+       aes(x = distance, y = n.obs, group = strand, colour = strand)) +
+  geom_line() +
+  facet_wrap(~samp) +
+  geom_text(data = subset(dat.labels, samp %in% best), 
+            aes(x = 0, y = 0, label = jlabel), 
+            colour = "black", 
+            parse = TRUE)
+```
+
+# Poor samples detected using autocorrelation analysis
+
+```{r autocorrelation-outliers, echo=FALSE, warning=FALSE}
+ggplot(data = dat.merged, 
+       aes(x = distance, y = n.obs, group = strand, colour = strand)) +
+  geom_line() +
+  facet_wrap(~samp) + 
+  geom_text(data = dat.labels,
+            aes(x = 0, y = 0, label = jlabel), 
+            colour = "black", 
+            parse = TRUE) + 
+  scale_x_continuous(limits = c(-2000, 2000))
+```
+
+# Poor samples detected using autocorrelation analysis
+
+```{r autocorrelation-zoomed, echo=FALSE, warning=FALSE}
+ggplot(data = dat.merged, 
+       aes(x = distance, y = n.obs, group = strand, colour = strand)) +
+  geom_line() +
+  facet_wrap(~samp) + 
+  geom_text(data = dat.labels,
+            aes(x = 0, y = 0, label = jlabel), 
+            colour = "black", 
+            parse = TRUE) + 
+  scale_x_continuous(limits = c(-200, 200))
+```
+
+# Large fragment length indicates unreliable sample
+```{r autocorrelation-badsamp, echo=FALSE, warning=FALSE}
+suspects <- c("UwStam_mLiver-DS16858-FC62FJY-4_004", 
+              "UwStam_mLiver-DS19375-FCC05B7-L006_R1_002")
+
+ggplot(data = subset(dat.merged, 
+                     samp %in% suspects), 
+       aes(x = distance, y = n.obs, group = strand, colour = strand)) +
+  geom_line() +
+  facet_wrap(~samp) +
+  geom_text(data = subset(dat.labels, samp %in% suspects), 
+            aes(x = 0, y = 0, label = jlabel), 
+            colour = "black", 
+            parse = TRUE)
+```
+
+# Intermediate read depths
+```{r autocorrelation-intermediate, echo=FALSE, warning=FALSE}
+suspects2 <- c("UwStam_mLiver-DS16853-FC62FJY-3_004",
+               "UwStam-mLiver-DS16740-FC62J2C-7-003",
+               "UwStam_mLiver-DS19636-FCD06E9-L006_R1_002")
+
+ggplot(data = subset(dat.merged, 
+                     samp %in% suspects2), 
+       aes(x = distance, y = n.obs, group = strand, colour = strand)) +
+  geom_line() +
+  facet_wrap(~samp) +
+  geom_text(data = subset(dat.labels, samp %in% suspects2), 
+            aes(x = 0, y = 0, label = jlabel), 
+            colour = "black", 
+            parse = TRUE)
+```
+
+# Density plot of counts (sum across replicates)
+```{r density-total, echo=FALSE, warning=FALSE}
+
+
+qplot(x = sums.reps + 1, geom = "density") + scale_x_log10()
+```
+
+# CV vs mean for each window across replicates
+```{r cv-vs-mean, echo=FALSE, warning=FALSE}
+means.nozero <- means.reps[which(means.reps > 0)]
+sds.nozero <- sds.reps[which(means.reps > 0)]
+ggplot(data = data.frame(Mean = means.nozero, CV = sds.nozero / means.nozero), 
+       aes(x = Mean, y = CV)) + 
+  geom_point(alpha = 0.05) + 
+  scale_x_log10() + 
+  scale_y_log10() +
+  ggtitle("Coefficient of variation vs mean")
+```
