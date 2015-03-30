@@ -9,12 +9,23 @@ library(foreach)  # for parallelization
 library(doParallel)  # for parallelization
 library(parallel)
 
+# Define constants --------------------------------------------------------
+
+pval.threshold <- 1e-5
+amp.threshold <- 0.5
+T <- 24  # hours
+omega <- 2 * pi / T
+
+
 # Adjustable parameters ---------------------------------------------------
 
 setwd("/home/yeung/projects/tissue-specificity")
-outfile <- "data/oscillating_genes.rerun.txt"
+outfile <- "results/oscillating_genes.rerun.txt"
+filtered.genes.outfile <- paste0("results/rhythmic.pval", pval.threshold, "amp", amp.threshold, ".out")
+all.genes.outfile <- paste0("results/all_genes.txt")
 gene.header <- "gene"
-params.header <- c("amp", "phase", "int.array", "int.rnaseq")
+# params.header <- c("amp", "phase", "pval", "int.array", "int.rnaseq")
+params.header <- c("pval", "cos.part", "sin.part", "amp", "phase", "int.array", "int.rnaseq")
 
 # plot outputs
 amp.dist.plot <- 'plots/amplitude_distributions_across_tissues.rerun.pdf'
@@ -28,13 +39,6 @@ rhythmic.genes.plots <- 'plots/rhythmic_genes_across_tissues.rerun.pdf'
 rscript_args = c("--no-init-file", "--no-site-file", "--no-environ")
 cl<-makeCluster(30, rscript_args=rscript_args)
 registerDoParallel(cl)
-
-# Define constants --------------------------------------------------------
-
-pval.threshold <- 1e-6
-amp.threshold <- 1.5
-T <- 24  # hours
-omega <- 2 * pi / T
 
 
 # Define genes ------------------------------------------------------------
@@ -442,8 +446,8 @@ for (gene in filtered.genes){
   writerow <- character(length(myheader))
   writerow[1] <- gene  # first column is gene
   index.start <- 2  # begin tissue parameters at column 2
-  index.jump <- length(params.header) + 1  # step after each loop to write to next part of vector
-  index.end <- index.start + length(params.header)
+  index.jump <- length(params.header) # step after each loop to write to next part of vector
+  index.end <- index.start + length(params.header) - 1
   for (tissue in tissues){
     writerow.temp <- unlist(fit.list[[tissue]][[gene]], use.names = FALSE)
     # Append to vector
@@ -454,7 +458,7 @@ for (gene in filtered.genes){
   # write to file
   write(writerow, outfile, ncolumns = length(myheader), append = TRUE, sep = "\t")
 }
-rm(writerow.temp)
+# rm(writerow.temp)
 print(paste("Done writing fit results to file.", Sys.time()))
 
 # Create data frame for ggplot --------------------------------------------
@@ -483,6 +487,29 @@ for (tissue in tissues){
 }
 rm(df.temp)
 
+
+# Save filtered genes -----------------------------------------------------
+
+if (!file.exists(filtered.genes.outfile)){
+  fits.df.subset <- subset(fits.df, pval < pval.threshold & amp > amp.threshold)
+  for (g in unique(fits.df.subset$gene)){
+    write(g, filtered.genes.outfile, append = TRUE, sep = '\t')
+    sprintf('Filtered genes saved: %s', filtered.genes.outfile)
+  }
+} else {
+  print(paste0('File ', filtered.genes.outfile, ' exists. Skipping.'))
+}
+
+# save all genes
+if (!file.exists(all.genes.outfile)){
+  all.genes <- unique(fits.df$gene)
+  for (g in all.genes){
+    write(g, all.genes.outfile, append = TRUE, sep = '\t')
+    sprintf('All genes saved: %s', all.genes.outfile)
+  }
+} else {
+  print(paste0('File ', all.genes.outfile, ' exists. Skipping.'))
+}
 
 # Plot amplitude distributions --------------------------------------------
 
