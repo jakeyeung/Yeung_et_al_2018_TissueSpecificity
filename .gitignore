@@ -16,3 +16,4 @@ site_count_matrices/*
 y_input_elastic_net/*
 *.Robj
 nohup*
+scripts/for_sandy/*
