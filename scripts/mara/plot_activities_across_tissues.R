@@ -39,11 +39,11 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My t
                    phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
                    label = labels)
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
-        geom_point() +
+        geom_point(size = 0.5) +
         coord_polar(theta = "y") + 
         xlab("Amplitude of activity") +
         ylab("Phase of activity") +
-        geom_text(aes(x = amp, y = phase), hjust = 0, vjust = 0) +
+        geom_text(aes(x = amp, y = phase, size = amp), hjust = 0, vjust = 0) +
         ggtitle(title) +
       scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
 }
@@ -69,10 +69,10 @@ remove.wfat <- TRUE
 
 
 # out.fpath from cbind_activities.R
-in.fpath <- "/home/yeung/projects/tissue-specificity/results/outputs_all_genes_MARA.swissregulon.corrected/MARA.33motifs.corrected/activities.all"
+in.fpath <- "/home/yeung/projects/tissue-specificity/results/outputs_all_genes_MARA/MARA.33motifs.corrected/activities.all"
 
 act.all <- read.table(in.fpath)
-
+motif_activities.plotout <- "plots/all_genes.MARA.33motifs.corrected.all_motifs.activities.pdf"
 
 
 # Create long dataframe ---------------------------------------------------
@@ -117,9 +117,6 @@ act.svd <- svd(act.proj.wide)
 rownames(act.svd$u) <- rownames(act.proj.wide)
 rownames(act.svd$v) <- colnames(act.proj.wide)
 
-# screeplot
-plot(act.svd$d ^ 2, type = 'o')  # eigenvalues
-
 
 
 # Plot across tissues -----------------------------------------------------
@@ -129,18 +126,26 @@ plot(act.svd$d ^ 2, type = 'o')  # eigenvalues
 act.proj$phase <- ConvertArgToPhase(Arg(act.proj$exprs.transformed), omega)
 act.proj$amp <- 2 * Mod(act.proj$exprs.transformed)
 
-ggplot(data = act.proj, aes(x = amp, y = phase, label = gene)) + 
-  geom_point() +
-  coord_polar(theta = "y") + 
-  xlab("Amplitude of activity") +
-  ylab("Phase of activity") +
-  geom_text(aes(x = amp, y = phase, size = amp), hjust = 0, vjust = 0) +
-  scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) + 
-  facet_wrap(~tissue)
+theme_set(theme_gray(base_size = 14))
+pdf(file = motif_activities.plotout)
+m <- ggplot(data = act.proj, aes(x = amp, y = phase, label = gene)) + 
+      geom_point(size = 0.5) +
+      coord_polar(theta = "y") + 
+      xlab("Amplitude of activity") +
+      ylab("Phase of activity") +
+      geom_text(aes(x = amp, y = phase, size = amp), hjust = 0, vjust = 0) +
+      scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) + 
+      scale_size(range=c(0.5, 3)) +
+      facet_wrap(~tissue)
+print(m)
 
 # Plot first component ----------------------------------------------------
 
 
+# screeplot
+plot(act.svd$d ^ 2, type = 'o')  # eigenvalues
+
+theme_set(theme_gray())
 for (comp in seq(1, ncol(act.proj.wide))){
   eigengene <- act.svd$v[, comp]
   eigensamp <- act.svd$u[, comp]
@@ -150,4 +155,4 @@ for (comp in seq(1, ncol(act.proj.wide))){
   print(v.plot)
   print(u.plot)
 }
-
+dev.off()
