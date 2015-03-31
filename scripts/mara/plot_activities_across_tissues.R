@@ -67,15 +67,17 @@ remove.wfat <- TRUE
 
 # Load file ---------------------------------------------------------------
 
-
+args <- commandArgs(trailingOnly = TRUE)
 # out.fpath from cbind_activities.R
-in.fpath <- "/home/yeung/projects/tissue-specificity/results/outputs_all_genes_MARA/MARA.33motifs.corrected/activities.all"
+# in.fpath <- "/home/yeung/projects/tissue-specificity/results/outputs_all_genes_MARA/MARA.33motifs.corrected/activities.all"
+in.fpath <- args[1]
 
-act.all <- read.table(in.fpath)
-motif_activities.plotout <- "plots/all_genes.MARA.33motifs.corrected.all_motifs.activities.pdf"
-
+# motif_activities.plotout <- "plots/all_genes.MARA.33motifs.corrected.all_motifs.activities.pdf"
+motif_activities.plotout <- args[2]
 
 # Create long dataframe ---------------------------------------------------
+
+act.all <- read.table(in.fpath)
 
 tissues <- GetTissues(colnames(act.all))
 times <- GetTimes(colnames(act.all))
