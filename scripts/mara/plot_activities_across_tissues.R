@@ -129,7 +129,7 @@ act.proj$phase <- ConvertArgToPhase(Arg(act.proj$exprs.transformed), omega)
 act.proj$amp <- 2 * Mod(act.proj$exprs.transformed)
 
 theme_set(theme_gray(base_size = 14))
-pdf(file = motif_activities.plotout)
+# pdf(file = motif_activities.plotout)
 m <- ggplot(data = act.proj, aes(x = amp, y = phase, label = gene)) + 
       geom_point(size = 0.5) +
       coord_polar(theta = "y") + 
@@ -151,10 +151,17 @@ theme_set(theme_gray())
 for (comp in seq(1, ncol(act.proj.wide))){
   eigengene <- act.svd$v[, comp]
   eigensamp <- act.svd$u[, comp]
+  # rotate to phase of largest magnitude in sample of eigengene
+  phase.reference <- Arg(eigengene[which(Mod(eigengene) == max(Mod(eigengene)))])
+  rotate.factor <- complex(modulus = 1, argument = phase.reference)
+  # rotate eigengene by -phase ref
+  eigengene <- eigengene * Conj(rotate.factor)
+  # rotate eigensamp by +phase ref
+  eigensamp <- eigensamp * rotate.factor
   
   v.plot <- PlotComplex2(eigengene, labels = colnames(act.proj.wide), omega = omega, title = paste("Right singular value", comp))
   u.plot <- PlotComplex2(eigensamp, labels = rownames(act.proj.wide), omega = omega, title = paste("Left singular value", comp)) 
   print(v.plot)
   print(u.plot)
 }
-dev.off()
+# dev.off()
