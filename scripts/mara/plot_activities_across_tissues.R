@@ -129,7 +129,7 @@ act.proj$phase <- ConvertArgToPhase(Arg(act.proj$exprs.transformed), omega)
 act.proj$amp <- 2 * Mod(act.proj$exprs.transformed)
 
 theme_set(theme_gray(base_size = 14))
-pdf(file = motif_activities.plotout)
+# pdf(file = motif_activities.plotout)
 m <- ggplot(data = act.proj, aes(x = amp, y = phase, label = gene)) + 
       geom_point(size = 0.5) +
       coord_polar(theta = "y") + 
@@ -164,4 +164,4 @@ for (comp in seq(1, ncol(act.proj.wide))){
   print(v.plot)
   print(u.plot)
 }
-dev.off()
+# dev.off()
