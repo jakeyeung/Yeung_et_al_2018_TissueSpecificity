@@ -8,6 +8,50 @@
 
 source("scripts/functions/GetTissueTimes.R")
 
+PlotActivitiesWithSE <- function(df){
+  jgene <- unique(df$gene)
+  ggplot(df, 
+         aes(x = time, y = exprs, group = experiment, colour = experiment)) +
+    geom_line() +
+    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+    facet_wrap(~tissue) + 
+    xlab("CT") +
+    ylab("Activity") + 
+    ggtitle(jgene)
+}
+
+PlotMeanActivitiesWithSE <- function(df){
+  jgene <- unique(df$gene)
+  ggplot(df,
+         aes(x = tissue, y = exprs, group = experiment, colour = experiment)) + 
+    geom_line() + 
+    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+    ylab("Activity") +
+    ggtitle(jgene)
+}
+
+GetExprsMean <- function(df){
+  # Input: long df filtered for a tissue and a gene.
+  # Expect "exprs", "se" and "experiment"
+  df.split <- split(df, df$experiment)
+  
+  # get exprs
+  exprs.array.mean <- mean(df.split$array$exprs)
+  exprs.rnaseq.mean <- mean(df.split$rnaseq$exprs)
+  
+  # get se
+  var.array.mean <- mean(df.split$array$se^2)
+  se.array.mean <- sqrt(var.array.mean)
+  var.rnaseq.mean <- mean(df.split$rnaseq$se^2)
+  se.rnaseq.mean <- sqrt(var.rnaseq.mean)
+  
+  df.out <- data.frame(tissue = unique(df$tissue),
+                       exprs = c(exprs.array.mean, exprs.rnaseq.mean),
+                       se = c(se.array.mean, se.rnaseq.mean),
+                       experiment = c("array", "rnaseq"))
+}
+
+
 IsRnaseq <- function(label.samp){
   # Split by period, if splits into two elements, it's RNASeq, otherwise it's array
   split.length <- length(strsplit(label.samp, "[.]")[[1]])
@@ -48,7 +92,11 @@ FitRhythmicWeighted <- function(df, T = 24){
   ftest <- anova(fit.flat, fit.rhyth)
   ftest.pval <- ftest[["Pr(>F)"]][[2]]
   amp <- unname(sqrt(coef(fit.rhyth)["sin(w * time)"] ^ 2 + coef(fit.rhyth)["cos(w * time)"] ^ 2))
-  phase <- unname(atan2(coef(fit.rhyth)["sin(w * time)"], coef(fit.rhyth)["cos(w * time)"] ^ 2))
+  phase <- unname(atan2(coef(fit.rhyth)["sin(w * time)"], coef(fit.rhyth)["cos(w * time)"]))
+  if (phase < 0){
+    phase <- phase + 2 * pi
+  }
+  phase <- phase / w
   df.out <- data.frame(tissue = tissue, amp = amp, phase = phase, pval = ftest.pval)
 }
 
@@ -93,14 +141,9 @@ jgene <- "ARNT_ARNT2_BHLHB2_MAX_MYC_USF1.p2"
 jgene <- "AHR_ARNT_ARNT2.p2"
 jgene <- "GZF1.p2"
 jgene <- "FOX.I1.J2..p2"
-ggplot(subset(act.long, gene == jgene), 
-       aes(x = time, y = exprs, group = experiment, colour = experiment)) +
-  geom_line() +
-  geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
-  facet_wrap(~tissue) + 
-  xlab("CT") +
-  ylab("Activity") + 
-  ggtitle(jgene)
+jgene <- "ADNP_IRX_SIX_ZHX.p2"
+
+PlotActivitiesWithSE(subset(act.long, gene == jgene))
 
 
 # Which ones are most rhythmic? -------------------------------------------
@@ -128,3 +171,34 @@ for (t in unique(tissues)){
 }
 head(act.fit[order(act.fit$pval.adj), ])
 
+
+# Plot mean expressions ---------------------------------------------------
+
+
+act.split.mean <- lapply(act.split, function(df.tiss){
+  ddply(df.tiss, .(gene), GetExprsMean)
+})
+
+act.mean <- do.call(rbind, act.split.mean)
+
+PlotMeanActivitiesWithSE(subset(act.mean, gene == "REST.p3"))
+
+
+# Find most "tissue-specific" ---------------------------------------------
+
+# use only rnaseq
+act.mean.rnaseq <- subset(act.mean, experiment == "rnaseq")
+tissue.ranges <- ddply(act.mean.rnaseq, .(gene), summarise, range = diff(range(exprs)))
+head(tissue.ranges[order(tissue.ranges$range, decreasing = TRUE), ], n = 10)
+
+# find liver vs kidney
+act.mean.rnaseq.livkid <- subset(act.mean.rnaseq, tissue %in% c("Liver", "Kidney"))
+tissue.ranges.livkid <- ddply(act.mean.rnaseq.livkid, .(gene), summarise, range = diff(range(exprs)))
+head(tissue.ranges.livkid[order(tissue.ranges.livkid$range, decreasing = TRUE), ], n = 10)
+
+
+df <- subset(act.mean, gene == "REST.p3")
+df <- subset(act.mean, gene == "RORA.p2")
+fit.tiss <- lm(exprs ~ 0 + experiment + tissue, data = df)
+fit.null <- lm(exprs ~ 0 + experiment, data = df)
+anova(fit.null, fit.tiss)
