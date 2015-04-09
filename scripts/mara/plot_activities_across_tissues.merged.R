@@ -33,9 +33,30 @@ GetMergedColnames <- function(cnames.merged){
   })
 }
 
+FitRhythmicWeighted <- function(df, T = 24){
+  # Input: long df with exprs, time, se, experiment (array or rnaseq) for
+  # a given tissue and a given gene. 
+  # 
+  # Fits a weighted regression model. With weights in SE
+  w = 2 * pi / T  # omega
+  tissue <- unique(df$tissue)
+  
+  sigma.sq <- df$se ^ 2
+  jweights <- 1 / sigma.sq
+  fit.rhyth <- lm(exprs ~ 0 + experiment + sin(w * time) + cos(w * time), data = df, weights = jweights)
+  fit.flat <- lm(exprs ~ 0 + experiment, data = df, weights = jweights)
+  ftest <- anova(fit.flat, fit.rhyth)
+  ftest.pval <- ftest[["Pr(>F)"]][[2]]
+  amp <- unname(sqrt(coef(fit.rhyth)["sin(w * time)"] ^ 2 + coef(fit.rhyth)["cos(w * time)"] ^ 2))
+  phase <- unname(atan2(coef(fit.rhyth)["sin(w * time)"], coef(fit.rhyth)["cos(w * time)"] ^ 2))
+  df.out <- data.frame(tissue = tissue, amp = amp, phase = phase, pval = ftest.pval)
+}
+
 # Load data ---------------------------------------------------------------
 
 
+merged.act.path <- "results/MARA/MARA_N_centered_with_SE_with_merged/merged/rhythmic_pval1e5amp05/activities.all"
+merged.se.path <- "results/MARA/MARA_N_centered_with_SE_with_merged/merged/rhythmic_pval1e5amp05/standarderrors.all"
 merged.act.path <- "results/MARA/MARA_N_centered_with_SE_with_merged/merged/expressed_genes_threshold5/activities.all"
 merged.se.path <- "results/MARA/MARA_N_centered_with_SE_with_merged/merged/expressed_genes_threshold5/standarderrors.all"
 
@@ -64,18 +85,14 @@ act.long <- data.frame(gene = rep(rownames(merged.act), ncol(merged.act)),
 
 # Plot  -------------------------------------------------------------------
 
-ggplot(data = subset(act.long, gene == jgene) , aes(x = time, y = exprs)) + 
-  geom_line() +
-  geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
-  geom_errorbar(limits, width=0.25) + 
-  facet_wrap(~tissue) + 
-  xlab("CT") + 
-  ylab("Activity") + 
-  ggtitle(jgene)
-
 jgene <- "REST.p3"
 jgene <- "HNF1A.p2"
 jgene <- "RORA.p2"
+jgene <- "SRF.p3"
+jgene <- "ARNT_ARNT2_BHLHB2_MAX_MYC_USF1.p2"
+jgene <- "AHR_ARNT_ARNT2.p2"
+jgene <- "GZF1.p2"
+jgene <- "FOX.I1.J2..p2"
 ggplot(subset(act.long, gene == jgene), 
        aes(x = time, y = exprs, group = experiment, colour = experiment)) +
   geom_line() +
@@ -84,5 +101,30 @@ ggplot(subset(act.long, gene == jgene),
   xlab("CT") +
   ylab("Activity") + 
   ggtitle(jgene)
-  
-  
+
+
+# Which ones are most rhythmic? -------------------------------------------
+
+act.split <- split(act.long, act.long$tissue)
+
+act.split.fit <- lapply(act.split, function(df.tiss){
+  ddply(df.tiss, .(gene), FitRhythmicWeighted)
+})
+
+
+# Combine data ------------------------------------------------------------
+
+act.fit <- do.call(rbind, act.split.fit)
+
+# False discovery rate adj ------------------------------------------------
+
+act.fit$pval.adj <- p.adjust(act.fit$pval, method = "BH")
+
+
+# Show top genes for each tissue ------------------------------------------
+
+for (t in unique(tissues)){
+  print(head(act.split.fit[[t]][order(act.split.fit[[t]]$pval), ]))
+}
+head(act.fit[order(act.fit$pval.adj), ])
+
