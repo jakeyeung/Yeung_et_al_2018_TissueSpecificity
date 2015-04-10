@@ -1,10 +1,3 @@
-ProjectToFrequency2 <- function(df, omega){
-  # simpler than ProjectToFrequency().
-  # expect df to be gene i in tissue c with column names time and exprs
-  exprs.transformed <- DoFourier(df$exprs, df$time, omega = omega)
-  return(data.frame(exprs.transformed = exprs.transformed))
-}
-
 ConvertArgToPhase <- function(phase.rads, omega){
   # convert phase in radians to phase in time, using omega.
   # expect phase to be between -pi to pi, convert that
