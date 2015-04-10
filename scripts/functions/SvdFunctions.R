@@ -7,6 +7,13 @@ library(reshape2)
 library(PhaseHSV)
 library(ggplot2)
 
+ProjectToFrequency2 <- function(df, omega){
+  # simpler than ProjectToFrequency().
+  # expect df to be gene i in tissue c with column names time and exprs
+  exprs.transformed <- DoFourier(df$exprs, df$time, omega = omega)
+  return(data.frame(exprs.transformed = exprs.transformed))
+}
+
 
 Transform <- function(df, my.omega, normalize = TRUE){
   # Perform fourier transform and normalize across all frequencies (squared and square root)
@@ -127,7 +134,7 @@ IsRhythmic <- function(df, my.omega, pval.cutoff = 5e-3, method = "ANOVA"){
 # }
 
 DoFourier <- function(exprs, time, omega, normalize = TRUE){
-  p <- exprs %*% exp(-1i * omega * time)
+  p <- exprs %*% exp(1i * omega * time)
   if (normalize){
     p <- p / length(time)  # normalize by number of datapoints 
   }
