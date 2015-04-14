@@ -8,6 +8,11 @@ GetParamsRhythModel <- function(myfit){
 }
 
 FitRhythmic <- function(df, T = 24){
+  # Fit rhythmic model to long df. Expect df to be per tissue per gene.
+  # use lapply and ddply to vectorize this code.
+  # df needs columns: tissue time experiment exprs
+  
+  tissue <- unique(df$tissue)
   w = 2 * pi / T
   # Expect columns exprs and time
   rhyth.fit <- lm(exprs ~ 0 + experiment + cos(w * time) + sin(w * time), data = df)
@@ -18,7 +23,8 @@ FitRhythmic <- function(df, T = 24){
   amp <- sqrt(model.params$a ^ 2 + model.params$b ^ 2)
   phase.rad <- atan2(model.params$b, model.params$a)
   phase.time <- (phase.rad / w) %% T
-  df.out <- data.frame(cos.part = model.params$a, sin.part = model.params$b, 
+  df.out <- data.frame(tissue = tissue, 
+                       cos.part = model.params$a, sin.part = model.params$b, 
                        amp = amp, phase = phase.time, pval = pval,
                        int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq)
   return(df.out)
