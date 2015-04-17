@@ -8,8 +8,7 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE, rhythmic.only = F
   # normalize: converts transform into a sort of z-score
   # rhytmic.only: transforms only genes that are rhythmic (by BIC method)
   # 
-  # omega in which we are interested.
-  
+  # omega in which we are interested.  
   if (rhythmic.only){
     if (IsRhythmic(df, my.omega, pval.cutoff = pval.cutoff, method = "ANOVA")){
       df.transformed <- Transform(df, my.omega, normalize)
