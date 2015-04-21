@@ -6,7 +6,20 @@ library(foreach)
 library(doParallel)
 setwd("/home/yeung/projects/tissue-specificity")
 
+
+# Constants ---------------------------------------------------------------
+
+T <- 24  # hours
+omega <- 2 * pi / T
+
 # Functions ---------------------------------------------------------------
+
+source("scripts/functions/LoadArrayRnaSeq.R")
+source("scripts/functions/FitRhythmic.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/SvdFunctions.R")
+source("scripts/functions/ConvertLongToWide.R")
+source("scripts/functions/PlotActivitiesFunctions.R")
 
 Is.TissueSpecific <- function(pval, amp, min.pval = 1e-5, max.pval = 0.05, max.amp = 0.5, min.amp = 0.1){
   # Check that min pval and max amplitude passes cutoff
@@ -16,6 +29,14 @@ Is.TissueSpecific <- function(pval, amp, min.pval = 1e-5, max.pval = 0.05, max.a
   # last two checks: if there exists a non-rhythmic gene.
   if (min(pval) < min.pval & max(amp) > max.amp & 
         max(pval) > max.pval & min(amp) < min.amp){
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+Is.RhythmicAcrossTissues <- function(pval, amp, cutoff.pval = 1e-5, cutoff.amp = 0.5){
+  if (max(pval) < cutoff.pval & min(amp) > cutoff.amp){
     return(TRUE)
   } else {
     return(FALSE)
@@ -33,11 +54,6 @@ registerDoParallel(cores = ncores)
 
 scripts.dir <- "scripts"
 funcs.dir <- "functions"
-source(file.path(scripts.dir, funcs.dir, "LoadArrayRnaSeq.R"))
-source(file.path(scripts.dir, funcs.dir, "FitRhythmic.R"))
-source(file.path(scripts.dir, funcs.dir, "PlotGeneAcrossTissues.R"))
-# source(file.path(scripts.dir, funcs.dir, "RemoveExtension.R"))
-# source(file.path(scripts.dir, funcs.dir, "ReadListToVector.R"))
 
 genes <- ReadListToVector("data/gene_lists/genes_associated_with_multiple_promoters.txt")
 genes <- ReadListToVector("data/gene_lists/genes_with_multiple_promoters_aftermm10liftOver.txt")
@@ -73,9 +89,45 @@ dat.sub.fit.long.filt <- subset(dat.sub.fit.long, ! tissue %in% c("BS", "Cere", 
 # Filter for genes containing significant pvals AND non significant across tissues
 tissue_specific_genes <- ddply(dat.sub.fit.long.filt, .(gene), summarise,
                                IsTissueSpecific = Is.TissueSpecific(pval, amp))
-tissue_specific_genes <- subset(tissue_specific_genes, IsTissueSpecific == TRUE)
+
+tissue_specific_genes <- subset(tissue_specific_genes, IsTissueSpecific == TRUE)$gene
+
+rhythmic_genes <- ddply(dat.sub.fit.long.filt, .(gene), summarise,
+                        IsRhythmic = Is.RhythmicAcrossTissues(pval, amp))
 
 
 # Doing SVD on this matrix. What happens? ---------------------------------
 
+dat.sub.filt <- subset(dat.sub, gene %in% tissue_specific_genes)
+dat.sub.split <- split(dat.sub.filt, dat.sub.filt$tissue)
+
+dat.split.proj <- lapply(dat.sub.split, function(x){ 
+  ddply(x, .(gene), ProjectToFrequency2, omega = omega, add.tissue = TRUE, .parallel = TRUE)
+})
+dat.proj <- do.call(rbind, dat.split.proj)
+
+
+
+# Make wide format --------------------------------------------------------
+
+dat.proj.wide <- ConvertLongToWide(dat.proj)
+
+
+
+# Perform SVD -------------------------------------------------------------
+
+tissues <- colnames(dat.proj.wide)
+genes <- rownames(dat.proj.wide)
+
+s <- svd(dat.proj.wide)
+rownames(s$u) <- genes
+rownames(s$v) <- tissues
+
+plot(s$d^2 / sum(s$d ^ 2), type = 'o')
+
+for (comp in seq(11)){
+  comp <- 4
+  PlotEigengene(s, comp)
+  PlotEigensamp(s, comp)
+}
 
