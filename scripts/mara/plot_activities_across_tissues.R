@@ -21,22 +21,55 @@ remove.wfat <- TRUE
 
 args <- commandArgs(trailingOnly = TRUE)
 # out.fpath from cbind_activities.R
-# in.fpath <- "/home/yeung/projects/tissue-specificity/results/outputs_all_genes_MARA/MARA.33motifs.corrected/activities.all"
-in.fpath <- args[1]
+in.fpath <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_N_centered_with_SE/multiple/expressed_genes_threshold5/activities/activities.all"
+err.fpath <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_N_centered_with_SE/multiple/expressed_genes_threshold5/activities/standarderrors.all"
+# in.fpath <- args[1]
 
-# motif_activities.plotout <- "plots/all_genes.MARA.33motifs.corrected.all_motifs.activities.pdf"
-motif_activities.plotout <- args[2]
+
+# motif_activities.plotout <- "plots/all_genes.MARA_with_SE.pdf"
+# motif_activities.plotout <- args[2]
 
 # Create long dataframe ---------------------------------------------------
 
 act.all <- read.table(in.fpath)
+err.all <- read.table(err.fpath)
 
 tissues <- GetTissues(colnames(act.all))
 times <- GetTimes(colnames(act.all))
 act.long <- data.frame(gene = rep(rownames(act.all), ncol(act.all)),  # i know it's a motif, bare with me.
                        tissue = rep(tissues, each = nrow(act.all) * length(times)),
                        time = as.numeric(rep(times, length(tissues), each = nrow(act.all))),
-                       exprs = as.numeric(unlist(act.all)))
+                       exprs = as.numeric(unlist(act.all)),
+                       se = as.numeric(unlist(err.all)))
+
+
+# Test plot ---------------------------------------------------------------
+
+jgene <- "HNF4A_NR2F1.2.p2"
+jgene <- "MEF2.A.B.C.D..p2"
+jgene <- "NR1H4.p2"
+jgene <- "PITX1..3.p2"
+jgene <- "HSF1.2.p2"
+jgene <- "bHLH_family.p2"
+jgene <- "NFIL3.p2"
+jgene <- "DBP.p2"
+jgene <- "FOXA2.p3"
+jgene <- "GATA6.p2"
+jgene <- "REST.p3"
+jgene <- "HNF1A.p2"
+jgene <- "RORA.p2"
+jgene <- "E2F1..5.p2"
+jgene <- "NRF1.p2"
+jgene <- "ZEB1.p2"
+jgene <- "PPARG.p2"
+ggplot(data = subset(act.long, gene == jgene) , aes(x = time, y = exprs)) + 
+  geom_line() +
+  geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+  geom_errorbar(limits, width=0.25) + 
+  facet_wrap(~tissue) + 
+  xlab("CT") + 
+  ylab("Activity") + 
+  ggtitle(jgene)
 
 
 # Convert to Fourier ------------------------------------------------------
