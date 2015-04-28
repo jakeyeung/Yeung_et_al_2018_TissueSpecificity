@@ -11,7 +11,6 @@ ShannonEntropyMixMdl <- function(x, mixmdl){
   return(entropy)
 }
 
-
 GetDensity <- function(mixmdl, x, i){
   # Get density from a single distribution, given by i
   density.i <- mixmdl$lambda[i] * dnorm(x, mean = mixmdl$mu[i], sd = mixmdl$sigma[i])
