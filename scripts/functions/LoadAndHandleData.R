@@ -26,6 +26,9 @@ LoadNormalizedArray <- function(normalized.array.path, remove.negs=TRUE){
 }
 
 LoadRnaSeq <- function(rna.seq.path, handle.duplicates=TRUE){
+  if (missing(rna.seq.path)){
+    rna.seq.path <- "data/rna_seq_deseq_counts_colnames_fixed.txt"
+  }
   # tricky duplicate rownames. We'll fix that though.
   
   rna.seq.exprs <- read.table(rna.seq.path, header=TRUE, sep='\t')
