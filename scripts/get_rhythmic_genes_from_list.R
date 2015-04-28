@@ -11,7 +11,7 @@ setwd("/home/yeung/projects/tissue-specificity")
 
 T <- 24  # hours
 omega <- 2 * pi / T
-outfile <- "results/tissue_specific_rhythmic_genes/tissue_specific_rhythmic_genes.txt"
+outfile <- "results/tissue_specific_rhythmic_genes/tissue_specific_rhythmic_genes.genome_wide.txt"
 
 # Functions ---------------------------------------------------------------
 
@@ -38,12 +38,12 @@ funcs.dir <- "functions"
 genes <- ReadListToVector("data/gene_lists/genes_associated_with_multiple_promoters.txt")
 # genes <- ReadListToVector("data/gene_lists/genes_with_multiple_promoters_aftermm10liftOver.txt")
 dat <- LoadArrayRnaSeq()
-dat.sub <- subset(dat, gene %in% genes)
+dat.sub <- dat  # genome_wide
+# dat.sub <- subset(dat, gene %in% genes)
 
 # Fit Rhythmic ------------------------------------------------------------
 
 # Fit rhythmic
-sprintf("Running with %s cores.", ncores)
 t.start <- Sys.time()
 dat.sub.split <- split(dat.sub, dat.sub$tissue)
 # remove WFAT
@@ -83,6 +83,8 @@ write.table(x = dat.sub.tiss, file = outfile, quote = FALSE, sep = "\t", row.nam
 
 rhythmic_genes <- ddply(dat.sub.fit.long.filt, .(gene), summarise,
                         IsRhythmic = Is.RhythmicAcrossTissues(pval, amp))
+
+print(paste("Outfile:", outfile))
 
 
 # Plot some genes and look for alternative promoter usage on the b --------
