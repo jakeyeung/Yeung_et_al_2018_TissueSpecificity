@@ -1,16 +1,17 @@
-# Get parameters from complex model
-GetParamsRhythModel <- function(myfit){
-  model.params <- coef(myfit)
-  return(list(intercept.array = model.params[1],
-              intercept.rnaseq = model.params[2],
-              a = model.params[3],
-              b = model.params[4]))
-}
-
 FitRhythmic <- function(df, T = 24){
   # Fit rhythmic model to long df. Expect df to be per tissue per gene.
   # use lapply and ddply to vectorize this code.
   # df needs columns: tissue time experiment exprs
+  
+  
+  # Get parameters from complex model: used later
+  GetParamsRhythModel <- function(myfit){
+    model.params <- coef(myfit)
+    return(list(intercept.array = model.params[1],
+                intercept.rnaseq = model.params[2],
+                a = model.params[3],
+                b = model.params[4]))
+  }
   
   tissue <- unique(df$tissue)
   w = 2 * pi / T
