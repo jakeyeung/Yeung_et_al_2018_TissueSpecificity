@@ -65,6 +65,9 @@ cutoff.amp <- 0.5
 # dat.sub.fit.long.filt <- subset(dat.sub.fit.long, ! tissue %in% c("BS", "Cere", "Hypo", "WFAT"))
 dat.sub.fit.long.filt <- dat.sub.fit.long  # no filter
 
+# save as object to load for presentations
+save(dat.sub.fit.long, file = "results/FitRhythmicOutputs/FitRhythmic.dat.sub.fit.long.Robj")
+
 
 # Filter for genes containing significant pvals AND non significant across tissues
 tissue_specific_genes_or_not <- ddply(dat.sub.fit.long.filt, .(gene), summarise,
