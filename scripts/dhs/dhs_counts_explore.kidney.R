@@ -60,21 +60,12 @@ for (i in 1:ncol(dhs.reps.sub)){
 # Mixture models two Gaussians --------------------------------------------
 
 library(mixtools)
+source("scripts/functions/MixtureModelFunctions.R")
 normcounts <- c(dhs.reps[rows.sub, 1], dhs.reps[rows.sub, 2])
 normcounts <- normcounts[which(normcounts > 0)]
 normcounts <- log2(normcounts)
-mixmdl = normalmixEM(normcounts)
+mixmdl = normalmixEM(normcounts, lambda=c(0.5, 0.5), mu=c(-6, -2))
 plot(mixmdl,which=2)
 lines(density(normcounts), lty=2, lwd=2)
 
-optimize.function <- function(x, mixmdl){
-  p1 <- PredictFromMM(mixmdl, x)
-  p2 <- 1 - p1
-  entropy <- 0
-  for (p in c(p1, p2)){
-    entropy <- entropy + (p * log(1 / p))
-  }
-  return(entropy)
-}
-
-cutoff <- optimize(f = optimize.function, interval = c(-5, -3), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
+cutoff <- optimize(f = ShannonEntropyMixMdl, interval = range(normcounts), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
