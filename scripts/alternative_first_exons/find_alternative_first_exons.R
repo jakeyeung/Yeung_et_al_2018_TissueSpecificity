@@ -42,10 +42,11 @@ LoopCor <- function(m, show.which=FALSE){
     }
   }
   if (show.which){
-    for (mymin in c(imin, jmin)){
-      print(colnames(m)[mymin])
-    }
-  }
+    jtissues <- c(colnames(m)[imin], colnames(m)[jmin])
+    print(jtissues)
+    return(list(tissues = jtissues,
+                min.cor = jcor.min))
+  } 
   return(jcor.min)
 }
 
@@ -340,6 +341,25 @@ cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
 cov.mincor[order(cov.mincor$min.cor), ]
 plot(density(cov.mincor$min.cor), xlim=c(0, 1))
 
+
+# Do sanity checks on examples --------------------------------------------
+
+jgene <- "Ddc"
+# check normreads
+jdf <- subset(cov.normreads.by_gene, gene == jgene)
+print(data.frame(jdf))
+# check out the matrix for correlations
+m <- acast(jdf, transcript ~ tissue, value.var = "norm_reads")
+# check which two tissues were called as "most different"
+best.cor <- LoopCor(m, show.which = TRUE)
+# check which transcript accounts for largest difference
+(m.sub <- m[, best.cor$tissues])
+# return transcript with highest difference
+m.diffs <- apply(m.sub, 1, function(x) abs(log2(x[1] / x[2])))
+(m.diffs.max <- m.diffs[which(m.diffs == max(m.diffs))])
+transcript.max <- names(m.diffs.max)
+# get chromosome location of this transcript
+GetLocationFromAnnotation(bed, gene_name = jgene, transcript_id = transcript.max)
 
 # Calculate ShannonEntropy ------------------------------------------------
 
