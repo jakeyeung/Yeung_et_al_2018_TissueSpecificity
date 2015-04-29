@@ -4,9 +4,10 @@
 setwd("~/projects/tissue-specificity/")
 
 library(ggplot2)
-library(plyr)
+library(dplyr)
 library(mixtools)
 library(doParallel)
+library(parallel)
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/LoadArrayRnaSeq.R")
@@ -16,6 +17,60 @@ source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/MakeCluster.R")
 source("scripts/functions/ReadListToVector.R")
 source("scripts/functions/GrepRikGenes.R")
+
+cossim <- function(x, y){
+  return(x %*% y / sqrt(x%*%x * y%*%y))
+}
+
+LoopCor <- function(m, show.which=FALSE){
+  imin <- NA
+  jmin <- NA
+  jcor.min <- 2  # init because pearson cor is between -1 and 1. Use a number outside of this range.
+  for (i in 1:ncol(m)){
+    vec1 <- m[, i]
+    for (j in i:ncol(m)){
+      if (j == i){
+        next  # dont need to compare between same vec
+      }
+      vec2 <- m[, j]
+      jcor <- cossim(vec1, vec2)
+      if (jcor < jcor.min){
+        jcor.min <- jcor
+        imin <- i
+        jmin <- j
+      }
+    }
+  }
+  if (show.which){
+    for (mymin in c(imin, jmin)){
+      print(colnames(m)[mymin])
+    }
+  }
+  return(jcor.min)
+}
+
+GetMinCor <- function(df){
+  m <- acast(data = df, transcript ~ tissue, value.var = "norm_reads")
+  jcor.min <- LoopCor(m)
+  return(data.frame(min.cor = jcor.min))
+}
+
+Normalize <- function(x, pseudocount = 1){
+  if (pseudocount > 0){
+    x <- x + pseudocount
+  }
+  x.norm <- x / sum(x)
+  return(x.norm)
+}
+
+AvgAcrossTranscripts <- function(df){
+  ddply(df, .(transcript, gene, tissue), summarise, mean_reads = mean(reads))
+}
+
+NormalizeReads <- function(df){
+  # Normalize reads across transcripts
+  ddply(df, .(gene), transform, norm_reads = Normalize(mean_reads))
+}
 
 GetGeneNameFromAnnot <- function(annot){
   # from gene_name=RP23-271O17.1;transcript_id=ENSMUST00000193812 retrieve RP23-27017.1
@@ -104,9 +159,11 @@ GetFirst <- function(x){
   return(x[1])
 }
 
-ShannonEntropy <- function(x.vec, normalizeout=TRUE){
-  # should sum to 1
-  x.vec <- x.vec / sum(x.vec)
+ShannonEntropy <- function(x.vec, normalize=FALSE){
+  if (normalize){
+      # should sum to 1
+    x.vec <- x.vec / sum(x.vec)
+  }
   entropy <- 0
   for (x in x.vec){
     entropy <- entropy + x * log2(1 / x)
@@ -130,7 +187,7 @@ MulitpleStarts <- function(df, min_dist = 500){
 
 # Load RNASeq ---------------------------------------------------
 
-# dat.long <- LoadArrayRnaSeq()
+dat.long <- LoadArrayRnaSeq()
 dat <- LoadRnaSeq()
 
 
@@ -243,36 +300,50 @@ cov.long.filt <- cov.long
 
 # Normalize exon reads ----------------------------------------------------
 
-# cov.long.filt$reads_norm <- cov.long.filt$reads / cov.long.filt$rnaseq_reads
-cov.long.split <- split(cov.long, cov.long$gene)
+# cov.long.filt$reads_norm <- cov.long.filt$reads / cov.long.filt$rnaseq_reads  # naive
+
+by_tissuegene <- group_by(cov.long, transcript, tissue, gene)
+cov.avgreads <- summarise(by_tissuegene, mean_reads = mean(reads))
+cov.avgreads.by_tissuegene <- group_by(cov.avgreads, tissue, gene)
+cov.normreads <- mutate(cov.avgreads.by_tissuegene, norm_reads = Normalize(mean_reads), n_starts = length(mean_reads))
 
 
-# Average across tissues --------------------------------------------------
+# Remove n_starts == 1 ----------------------------------------------------
 
-# rscript_args <- MakeCluster()
-# ncores <- detectCores()
-# cl <- makeCluster(ncores, rscript_args=rscript_args)
-# # stopCluster(cl)  # if you cannot open connections
-# registerDoParallel(cl)
-doParallel::registerDoParallel(cores = 48)
-start <- Sys.time()
-cov.long.filt.avg <- ddply(cov.long.filt, 
-                           .(tissue, transcript),
-                           .fun = summarise,
-                           reads_norm_avg = mean(reads_norm),
-                           gene = unique(gene),
-                           .parallel = TRUE)
-print(Sys.time() - start)
+cov.normreads <- subset(cov.normreads, n_starts > 1)
 
-# save(cov.long.filt.avg, file = "data/alternative_exon_usage/cov.long.filt.avg.Robj")
-# load("data/alternative_exon_usage/cov.long.filt.avg.Robj")
+
+# Remove lowly expressed genes --------------------------------------------
+
+# find cutoff
+normreads.vec <- log2(cov.normreads$mean_reads + 1)
+mixmdl.normreads <- normalmixEM(normreads.vec, lambda = c(0.5, 0.5), mu = c(0.1, 6), k = 2)
+plot(mixmdl.normreads, which = 2)
+lines(density(normreads.vec), lty = 2, lwd = 2)
+cutoff.normreads <- optimize(ShannonEntropyMixMdl, interval = c(1, 5), mixmdl = mixmdl.normreads, maximum = TRUE)
+cutoff.normreads <- 2^(cutoff.normreads$maximum)
+print(paste("mean reads cutoff:", cutoff.normreads))  # 1.01
+
+cov.normreads.filt <- mutate(cov.normreads, mean_reads.gene = mean(mean_reads))
+
+cov.normreads.filt <- subset(cov.normreads.filt, mean_reads.gene > cutoff.normreads)
+
+# Calculate maximum difference --------------------------------------------
+
+cov.normreads.sub <- subset(cov.normreads.filt, gene %in% common.genes)
+cov.normreads.by_gene <- group_by(cov.normreads.sub, gene)
+cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
+
+
+# Show distributions ------------------------------------------------------
+
+cov.mincor[order(cov.mincor$min.cor), ]
+plot(density(cov.mincor$min.cor), xlim=c(0, 1))
+
 
 # Calculate ShannonEntropy ------------------------------------------------
 
-cov.long.filt.entropy <- ddply(cov.long.filt.avg, .(transcript),
-                               .fun = summarise,
-                               entropy = ShannonEntropy(reads_norm_avg))
-
+cov.entropy <- summarise(cov.normreads, entropy = ShannonEntropy(norm_reads))
 
 # Remove NaNs -------------------------------------------------------------
 
