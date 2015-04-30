@@ -6,7 +6,7 @@ setwd("~/projects/tissue-specificity/")
 library(ggplot2)
 library(dplyr)
 library(mixtools)
-library(doParallel)
+library(gplots)
 library(parallel)
 # Functions ---------------------------------------------------------------
 
@@ -17,6 +17,7 @@ source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/MakeCluster.R")
 source("scripts/functions/ReadListToVector.R")
 source("scripts/functions/GrepRikGenes.R")
+source("scripts/functions/FitRhythmic.R")
 
 cossim <- function(x, y){
   return(x %*% y / sqrt(x%*%x * y%*%y))
@@ -198,6 +199,18 @@ dat.long <- LoadArrayRnaSeq()
 dat <- LoadRnaSeq()
 
 
+# Find rhythmic genes -----------------------------------------------------
+
+dat.long.by_genetiss <- group_by(dat.long, gene, tissue)
+dat.long.by_genetiss.split <- split(dat.long.by_genetiss, dat.long.by_genetiss$tissue)
+print("Finding rhythmic genes (~3 minutes)")
+start <- Sys.time()
+dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
+  do(.data = jdf, FitRhythmic(df = .))
+}, mc.cores = 12)
+dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
+print(Sys.time() - start)
+
 # Find cutoff for expressed genes -----------------------------------------
 
 # exprs.vec <- log2(unlist(dat)[which(unlist(dat) > 0)])
@@ -339,7 +352,13 @@ cov.normreads.filt <- subset(cov.normreads.filt, mean_reads.gene > cutoff.normre
 
 cov.normreads.sub <- subset(cov.normreads.filt, gene %in% common.genes)
 cov.normreads.by_gene <- group_by(cov.normreads.sub, gene)
+
+# find AFEs by "minimum correlation"
 cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
+
+# find AFEs by looking for maximum distance
+cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
+
 
 
 # Show distributions ------------------------------------------------------
@@ -370,6 +389,11 @@ m.diffs <- apply(m.sub, 1, function(x) abs(log2(x[1] / x[2])))
 transcript.max <- names(m.diffs.max)
 # get chromosome location of this transcript
 GetLocationFromAnnotation(bed, gene_name = jgene, transcript_id = transcript.max)
+# Heatmap the matrix of correlations
+my_palette <- colorRampPalette(c("white", "black"))(n = 299)
+heatmap.2(m, density.info = "density", trace = "none", margins = c(8, 14), main = jgene, col = my_palette)
+
+MaxDiff <- 
 
 # Calculate ShannonEntropy ------------------------------------------------
 
