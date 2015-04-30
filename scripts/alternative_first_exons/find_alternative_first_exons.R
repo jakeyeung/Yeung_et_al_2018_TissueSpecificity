@@ -210,6 +210,7 @@ dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
 }, mc.cores = 12)
 dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
 print(Sys.time() - start)
+if (exists("dat.fitrhyth")) rm(dat.fitrhyth.split)  # GC
 
 # Find cutoff for expressed genes -----------------------------------------
 
@@ -322,6 +323,10 @@ cov.long.filt <- cov.long
 
 # cov.long.filt$reads_norm <- cov.long.filt$reads / cov.long.filt$rnaseq_reads  # naive
 
+# cov.normreads <- cov.long %>%
+#   group_by(tissue, gene, time) %>%
+#   mutate(norm_reads = Normalize(reads), n_starts = length(reads))
+
 by_tissuegene <- group_by(cov.long, transcript, tissue, gene)
 cov.avgreads <- summarise(by_tissuegene, mean_reads = mean(reads))
 cov.avgreads.by_tissuegene <- group_by(cov.avgreads, tissue, gene)
@@ -356,8 +361,63 @@ cov.normreads.by_gene <- group_by(cov.normreads.sub, gene)
 # find AFEs by "minimum correlation"
 cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
 
-# find AFEs by looking for maximum distance
-cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
+
+# Calculate log2 fold change ----------------------------------------------
+
+# find AFEs by log2 fold change between "rhythmic" and "not rhythmic" genes
+cov.normreads.by_genetiss <- group_by(cov.normreads, gene, tissue)
+dat.fitrhyth.filt <- data.frame(subset(dat.fitrhyth, gene %in% common.genes, select = c(gene, tissue, as.numeric(pval), amp)))  # faster
+rnames <- apply(dat.fitrhyth.filt, 1, function(x) paste0(x[2], '-', x[1]))
+rownames(dat.fitrhyth.filt) <- rnames; rm(rnames)
+dat.fitrhyth.filt <- subset(dat.fitrhyth.filt, select = c(pval, amp))
+dat.fitrhyth.filt <- data.matrix(dat.fitrhyth.filt)  # faster to work with matrices
+
+# ask if rhythmic 20 seconds
+rhythmic.or.not <- apply(cov.normreads.by_gene, 1, GetRhythmicOrNot, fitdf = dat.fitrhyth.filt)
+
+rhythmic.or.not <- cov.isrhyth.vec
+
+# Append to df
+cov.normreads.by_gene.rhyth <- cbind(cov.normreads.by_gene, rhythmic.or.not)
+
+# Find 
+
+GetRhythmicOrNot <- function(x, fitdf){
+  # Expect x to be a row from cov.normreads, with tissue and gene in 2nd and 3rd col
+  tiss <- x[2]
+  gene <- x[3]
+  rname <- paste0(tiss, '-', gene)
+  fitdf.sub = tryCatch({
+    fitdf[rname, ]
+  }, warning = function(w) {
+    print("Warning")
+    print(w)
+  }, error = function(e) {
+    # print(paste("Cannot access:", rname))
+    return(NA)
+  })  
+  if (is.na(fitdf.sub[1])){
+    return(NA)
+  }
+  pval <- fitdf.sub[1]
+  amp <- fitdf.sub[2]
+  annots <- RhythmicOrNot(pval, amp)
+  return(annots)
+}
+
+RhythmicOrNot <- function(pval, amp, min.pval = 1e-5, max.pval = 0.05, max.amp = 0.5, min.amp = 0.1){
+  if (pval < min.pval & amp > max.amp){
+    return("Rhythmic")
+  } else if (pval > max.pval & amp < min.amp){
+    return("NotRhythmic")
+  } else {
+    return(NA)  # undecided
+  }
+}
+
+FoldChangeRhyth <- function(jdf){
+  # Calculate log2 fold change between "rhythmic" and "non rhythmic" genes 
+}
 
 
 
@@ -372,6 +432,7 @@ plot(density(cov.mincor$min.cor), xlim=c(0, 1))
 jgene <- "Ddc"
 jgene <- "Sgk2"
 jgene <- "Gas7"
+jgene <- "Insig2"
 # plot exprs
 PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
 # check normreads
@@ -380,7 +441,7 @@ print(data.frame(jdf))
 # check out the matrix for correlations
 m <- acast(jdf, transcript ~ tissue, value.var = "norm_reads")
 # check which two tissues were called as "most different"
-best.cor <- LoopCor(m, show.which = TRUE, input.vec1 = which(colnames(m) == "Liver"))
+best.cor <- LoopCor(m, show.which = TRUE)
 # check which transcript accounts for largest difference
 (m.sub <- m[, best.cor$tissues])
 # return transcript with highest difference
@@ -391,7 +452,7 @@ transcript.max <- names(m.diffs.max)
 GetLocationFromAnnotation(bed, gene_name = jgene, transcript_id = transcript.max)
 # Heatmap the matrix of correlations
 my_palette <- colorRampPalette(c("white", "black"))(n = 299)
-heatmap.2(m, density.info = "density", trace = "none", margins = c(8, 14), main = jgene, col = my_palette)
+heatmap.2(m, density.info = "density", trace = "none", margins = c(8, 14), main = jgene, col = my_palette, cexRow=1.1)
 
 MaxDiff <- 
 
