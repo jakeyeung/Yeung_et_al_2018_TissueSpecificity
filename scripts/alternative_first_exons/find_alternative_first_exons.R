@@ -8,6 +8,7 @@ library(dplyr)
 library(mixtools)
 library(gplots)
 library(parallel)
+library(biglm)
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/LoadArrayRnaSeq.R")
@@ -256,7 +257,7 @@ dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
 }, mc.cores = 12)
 dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
 print(Sys.time() - start)
-if (exists("dat.fitrhyth")) rm(dat.fitrhyth.split)  # GC
+if (exists("dat.fitrhyth")) rm(dat.fitrhyth.split); rm(dat.long.by_genetiss); rm(dat.long.by_genetiss.split)  # GC
 
 # Find cutoff for expressed genes -----------------------------------------
 
@@ -343,12 +344,6 @@ Xgenes <- RemoveX(Xgenes)
 common.genes <- intersect(unique(gene.names), c(rhythmic_genes, Xgenes))  # 1062 genes
 
 bed$gene <- gene.names
-bed.filtered <- ddply(bed, .(gene), MulitpleStarts)
-
-gene.multistarts <- bed.filtered$gene[which(bed.filtered$MultiStart == TRUE)]
-
-# Furhter filter genes
-common.genes <- intersect(common.genes, gene.multistarts)
 
 
 # Filter rhythmic genes with multistarts ----------------------------------
@@ -401,6 +396,10 @@ cov.normreads.filt <- cov.normreads %>%
   filter(mean_reads.gene > cutoff.normreads)
 
 
+# Filter only for genes of interest ---------------------------------------
+
+cov.normreads.filt.common.genes <- subset(cov.normreads.filt, gene %in% common.genes)
+
 # Ask if gene is rhythmic in that tissue ----------------------------------
 
 dat.fitrhyth.filt <- FitDfToMatrix(dat.fitrhyth, common.genes)
@@ -408,12 +407,27 @@ dat.fitrhyth.filt <- FitDfToMatrix(dat.fitrhyth, common.genes)
 rhythmic.or.not.mat <- apply(dat.fitrhyth.filt, 1, function(x) RhythmicOrNot(pval = x[1], amp = x[2]))
 
 start <- Sys.time()
-rnames <- paste(cov.normreads.filt$tissue, cov.normreads.filt$gene, sep = "-")
+rnames <- paste(cov.normreads.filt.common.genes$tissue, cov.normreads.filt.common.genes$gene, sep = "-")
 rhythmic.or.not <- rhythmic.or.not.mat[rnames]
-rhythmic.or.not <- apply(cov.normreads.filt, 1, GetRhythmicOrNot, fitdf = dat.fitrhyth.filt)
 print(Sys.time() - start)
+if (exists(rhythmic.or.not)) rm(rhythmic.or.not.mat)
 
-cov.normreads.filt.rhyth <- cbind(cov.normreads.filt, rhythmic.or.not)
+cov.normreads.filt.rhyth <- cbind(cov.normreads.filt.common.genes, rhythmic.or.not)
+
+
+# Model reads on rhythmic or not ------------------------------------------
+
+test <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000178704" & !(is.na(rhythmic.or.not)))
+test2 <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000134121" & !(is.na(rhythmic.or.not)))
+ggplot(test, aes(x = rhythmic.or.not, y = norm_reads)) + geom_point()
+
+fit.test <- biglm(formula = norm_reads ~ 0 + rhythmic.or.not, data = test)
+(summary(fit.test))
+fit.afe <- cov.normreads.filt.rhyth %>%
+  filter(!(is.na(rhythmic.or.not))) %>%
+  group_by(transcript, gene) %>%
+  do(biglm(data = ., formula = norm_reads ~ 0 + rhythmic.or.not))
+  
 
 # Calculate maximum difference --------------------------------------------
 
@@ -435,7 +449,7 @@ rhythmic.or.not <- apply(cov.normreads.by_gene, 1, GetRhythmicOrNot, fitdf = dat
 # Append to df
 cov.normreads.by_gene.rhyth <- cbind(cov.normreads.by_gene, rhythmic.or.not)
 
-# Find 
+# Fin
 
 
 
