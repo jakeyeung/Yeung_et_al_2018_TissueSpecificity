@@ -22,11 +22,14 @@ cossim <- function(x, y){
   return(x %*% y / sqrt(x%*%x * y%*%y))
 }
 
-LoopCor <- function(m, show.which=FALSE){
+LoopCor <- function(m, show.which=FALSE, input.vec1=NA){
   imin <- NA
   jmin <- NA
   jcor.min <- 2  # init because pearson cor is between -1 and 1. Use a number outside of this range.
   for (i in 1:ncol(m)){
+    if (!is.na(input.vec1)){
+      i <- input.vec1
+    }
     vec1 <- m[, i]
     for (j in i:ncol(m)){
       if (j == i){
@@ -39,6 +42,9 @@ LoopCor <- function(m, show.which=FALSE){
         imin <- i
         jmin <- j
       }
+    }
+    if (!is.na(input.vec1)){
+      break
     }
   }
   if (show.which){
@@ -338,20 +344,24 @@ cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
 
 # Show distributions ------------------------------------------------------
 
-cov.mincor[order(cov.mincor$min.cor), ]
+(head(as.data.frame(cov.mincor[order(cov.mincor$min.cor), ]), n = 50))
 plot(density(cov.mincor$min.cor), xlim=c(0, 1))
 
 
 # Do sanity checks on examples --------------------------------------------
 
 jgene <- "Ddc"
+jgene <- "Sgk2"
+jgene <- "Gas7"
+# plot exprs
+PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
 # check normreads
-jdf <- subset(cov.normreads.by_gene, gene == jgene)
+jdf <- subset(cov.normreads.filt, gene == jgene)
 print(data.frame(jdf))
 # check out the matrix for correlations
 m <- acast(jdf, transcript ~ tissue, value.var = "norm_reads")
 # check which two tissues were called as "most different"
-best.cor <- LoopCor(m, show.which = TRUE)
+best.cor <- LoopCor(m, show.which = TRUE, input.vec1 = which(colnames(m) == "Liver"))
 # check which transcript accounts for largest difference
 (m.sub <- m[, best.cor$tissues])
 # return transcript with highest difference
