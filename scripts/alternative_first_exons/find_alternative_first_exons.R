@@ -20,225 +20,6 @@ source("scripts/functions/ReadListToVector.R")
 source("scripts/functions/GrepRikGenes.R")
 source("scripts/functions/FitRhythmic.R")
 
-FitDfToMatrix <- function(jdf, common.genes){
-  dat.fitrhyth.filt <- data.frame(subset(jdf, gene %in% common.genes, select = c(gene, tissue, as.numeric(pval), amp)))  # faster
-  rnames <- apply(dat.fitrhyth.filt, 1, function(x) paste0(x[2], '-', x[1]))
-  rownames(dat.fitrhyth.filt) <- rnames; rm(rnames)
-  dat.fitrhyth.filt <- subset(dat.fitrhyth.filt, select = c(pval, amp))
-  dat.fitrhyth.filt <- data.matrix(dat.fitrhyth.filt)  # faster to work with matrices
-  return(dat.fitrhyth.filt)
-}
-
-GetRhythmicOrNot <- function(x, fitdf){
-  # Expect x to be a row from cov.normreads, with tissue and gene in 2nd and 3rd col
-  tiss <- x[2]
-  gene <- x[3]
-  rname <- paste0(tiss, '-', gene)
-  fitdf.sub = tryCatch({
-    fitdf[rname, ]
-  }, warning = function(w) {
-    print("Warning")
-    print(w)
-  }, error = function(e) {
-    # print(paste("Cannot access:", rname))
-    return(NA)
-  })  
-  if (is.na(fitdf.sub[1])){
-    return(NA)
-  }
-  pval <- fitdf.sub[1]
-  amp <- fitdf.sub[2]
-  annots <- RhythmicOrNot(pval, amp)
-  return(annots)
-}
-
-RhythmicOrNot <- function(pval, amp, min.pval = 1e-5, max.pval = 0.05, max.amp = 0.5, min.amp = 0.1){
-  if (pval < min.pval & amp > max.amp){
-    return("Rhythmic")
-  } else if (pval > max.pval & amp < min.amp){
-    return("NotRhythmic")
-  } else {
-    return(NA)  # undecided
-  }
-}
-
-FoldChangeRhyth <- function(jdf){
-  # Calculate log2 fold change between "rhythmic" and "non rhythmic" genes 
-}
-
-cossim <- function(x, y){
-  return(x %*% y / sqrt(x%*%x * y%*%y))
-}
-
-LoopCor <- function(m, show.which=FALSE, input.vec1=NA){
-  imin <- NA
-  jmin <- NA
-  jcor.min <- 2  # init because pearson cor is between -1 and 1. Use a number outside of this range.
-  for (i in 1:ncol(m)){
-    if (!is.na(input.vec1)){
-      i <- input.vec1
-    }
-    vec1 <- m[, i]
-    for (j in i:ncol(m)){
-      if (j == i){
-        next  # dont need to compare between same vec
-      }
-      vec2 <- m[, j]
-      jcor <- cossim(vec1, vec2)
-      if (jcor < jcor.min){
-        jcor.min <- jcor
-        imin <- i
-        jmin <- j
-      }
-    }
-    if (!is.na(input.vec1)){
-      break
-    }
-  }
-  if (show.which){
-    jtissues <- c(colnames(m)[imin], colnames(m)[jmin])
-    print(jtissues)
-    return(list(tissues = jtissues,
-                min.cor = jcor.min))
-  } 
-  return(jcor.min)
-}
-
-GetMinCor <- function(df){
-  m <- acast(data = df, transcript ~ tissue, value.var = "norm_reads")
-  jcor.min <- LoopCor(m)
-  return(data.frame(min.cor = jcor.min))
-}
-
-Normalize <- function(x, pseudocount = 1){
-  if (pseudocount > 0){
-    x <- x + pseudocount
-  }
-  x.norm <- x / sum(x)
-  return(x.norm)
-}
-
-AvgAcrossTranscripts <- function(df){
-  ddply(df, .(transcript, gene, tissue), summarise, mean_reads = mean(reads))
-}
-
-NormalizeReads <- function(df){
-  # Normalize reads across transcripts
-  ddply(df, .(gene), transform, norm_reads = Normalize(mean_reads))
-}
-
-GetGeneNameFromAnnot <- function(annot){
-  # from gene_name=RP23-271O17.1;transcript_id=ENSMUST00000193812 retrieve RP23-27017.1
-  gene.str <- strsplit(as.character(annot), ';')[[1]][[1]]
-  gene.str <- strsplit(gene.str, '=')[[1]][[2]]
-  return(gene.str)
-}
-
-GetTranscriptIDFromAnnot <- function(annot){
-  # from gene_name=RP23-271O17.1;transcript_id=ENSMUST00000193812 retrieve ENSMUST...
-  transcript.str <- strsplit(as.character(annot), ';')[[1]][[2]]
-  transcript.str <- strsplit(transcript.str, '=')[[1]][[2]]
-  return(transcript.str)
-}
-
-rowMax <- function(df){
-  # Return vector of maximums from df
-  return(apply(df, 1, max))
-}
-
-GetTissuesAFE <- function(x){
-  # Get tissues from column names from Adr_CT22 format
-  substr(x, "_")[[1]][[1]]
-}
-
-TissueMapping <- function(cov.to.rnaseq = TRUE){
-  # Tissue names from coverage are slightly different from
-  # tissue names from RNASeq data. Create the mapping between 
-  # coverage to rnaseq tissue names
-  list("Adr" = "Adr",
-       "Aor" = "Aorta",
-       "BFat" = "BFAT",
-       "Bstm" = "BS",
-       "Cer" = "Cere",
-       "Hrt" = "Heart",
-       "Hyp" = "Hypo",
-       "Kid" = "Kidney",
-       "Liv" = "Liver",
-       "Lun" = "Lung",
-       "Mus" = "Mus",
-       "WFat" = "WFAT")
-}
-
-ConvertTissuesToMatchRnaSeq <- function(tissues){
-  # make tissue names look like RNASeq column names using TissueMapping
-  tissue.map <- TissueMapping()
-  sapply(tissues, function(x){
-    tissue.map[[x]]
-  })
-}
-
-GetExprsAsVector <- function(dat, genes, tissuetime){
-  # Given a vector of rownames and column names, extract
-  # its corresponding element in the dat. Return as
-  # a vector.
-  if (length(genes) != length(tissuetime)) print("Genes and tissuetime is not same length")
-  lookups <- mapply(function(x, y){
-    return(dat[x, y])
-  }, x = genes, y = tissuetime)
-  return(lookups)
-}
-
-GetLocationFromAnnotation <- function(bed, gene_name, transcript_id){
-  # Given bed, gene_name and transcript_id, return the chromo, start, end
-  annot <- paste0("gene_name=", gene_name, ";transcript_id=", transcript_id)
-  sub <- subset(bed, annotations == annot)
-  # return as UCSC-style
-  return(paste0(sub$chromosome, ":", sub$start, "-", sub$end))
-}
-
-SubsetBed <- function(bed, gene_name, transcript){
-  # Subset bed based on grepping annotations from gene name
-  if (missing(transcript)){
-    return(bed[grepl(gene_name, bed$annotations), ])  
-  } else if (missing(gene_name)){  
-    return(bed[grepl(transcript, bed$annotations), ])  
-  }
-}
-
-NormalizeBySum <- function(x){
-  # Normalize a vector by its sum
-  return(x / sum(x))
-}
-
-GetFirst <- function(x){
-  return(x[1])
-}
-
-ShannonEntropy <- function(x.vec, normalize=FALSE){
-  if (normalize){
-      # should sum to 1
-    x.vec <- x.vec / sum(x.vec)
-  }
-  entropy <- 0
-  for (x in x.vec){
-    entropy <- entropy + x * log2(1 / x)
-  }
-  entropy <- entropy / log2(length(x.vec))
-  return(entropy)
-}
-
-MulitpleStarts <- function(df, min_dist = 500){
-  # Check if df has multiple exons, ddply from bed
-  if (nrow(df) <= 1){
-    return(data.frame(MultiStart = FALSE))
-  }
-  dist <- diff(c(min(df$start), max(df$start)))
-  if (dist >= min_dist){
-    return(data.frame(MultiStart = TRUE))
-  } else{
-    return(data.frame(MultiStart = FALSE))
-  }
-}
 
 # Load RNASeq ---------------------------------------------------
 
@@ -417,110 +198,147 @@ cov.normreads.filt.rhyth <- cbind(cov.normreads.filt.common.genes, rhythmic.or.n
 
 # Model reads on rhythmic or not ------------------------------------------
 
-test <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000178704" & !(is.na(rhythmic.or.not)))
-test2 <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000134121" & !(is.na(rhythmic.or.not)))
-ggplot(test, aes(x = rhythmic.or.not, y = norm_reads)) + geom_point()
+# test <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000178704" & !(is.na(rhythmic.or.not)))
+# test <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000134121" & !(is.na(rhythmic.or.not)))
+# test <- subset(cov.normreads.filt.rhyth, gene == "Cdh1" & transcript == "ENSMUST00000000312" & !(is.na(rhythmic.or.not)))
+# test <- subset(cov.normreads.filt.rhyth, gene == "Adra1b" & transcript == "ENSMUST00000067258" & !(is.na(rhythmic.or.not)))
+# test <- subset(cov.normreads.filt.rhyth, gene == "Csrp3" & transcript == "ENSMUST00000167786" & !(is.na(rhythmic.or.not)))
+# test <- subset(cov.normreads.filt.rhyth, gene == "Arhgef10l" & transcript == "ENSMUST00000154979" & !(is.na(rhythmic.or.not)))
 
-fit.test <- biglm(formula = norm_reads ~ 0 + rhythmic.or.not, data = test)
+# for sanity checking
+jgene <- "Asl"; jtrans <- "ENSMUST00000160557"
+test <- subset(cov.normreads.filt.rhyth, gene == jgene & transcript == jtrans & !(is.na(rhythmic.or.not)))
+
+PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
+ggplot(test, aes(x = rhythmic.or.not, y = norm_reads)) + geom_point() + ggtitle(paste(jgene, jtrans))
+# ggplot(test, aes(x = rhythmic.or.not, y = log2(norm_reads))) + geom_point() + ggtitle(paste(jgene, jtrans))
+fit.test <- biglm(formula = log2(norm_reads) ~ rhythmic.or.not, data = test)
 (summary(fit.test))
+
+# run model on full dataset
 fit.afe <- cov.normreads.filt.rhyth %>%
   filter(!(is.na(rhythmic.or.not))) %>%
   group_by(transcript, gene) %>%
-  do(biglm(data = ., formula = norm_reads ~ 0 + rhythmic.or.not))
-  
+  do(FitRhythNonRhyth(jdf = .)) %>%
+  filter(!is.na(pval))
 
-# Calculate maximum difference --------------------------------------------
+# show top hits
+(head(data.frame(fit.afe[order(fit.afe$pval), ]), n = 50))
+(head(data.frame(fit.afe[order(fit.afe$coef, decreasing = TRUE), ]), n = 50))
 
-cov.normreads.sub <- subset(cov.normreads.filt, gene %in% common.genes)
-cov.normreads.by_gene <- group_by(cov.normreads.sub, gene)
+# summarize by choosing the top for each gene
+fit.afe.summary <- fit.afe %>%
+  group_by(gene) %>%
+  do(SubsetMinPval(jdf = .))
 
-# find AFEs by "minimum correlation"
-cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
+# plot histogram of pvalues
+plot(density(fit.afe$pval))  # NICE
 
-# Calculate log2 fold change ----------------------------------------------
+head(data.frame(fit.afe.summary[order(fit.afe.summary$pval), ]), n = 50)
 
-# find AFEs by log2 fold change between "rhythmic" and "not rhythmic" genes
-cov.normreads.by_genetiss <- group_by(cov.normreads, gene, tissue)
+# save(cov.normreads.filt.rhyth, file = "results/alternative_exon_usage/cov.normreads.filt.rhyth.Robj")
 
+# How many peaks correlate with rhythmic genes? ---------------------------
 
-# ask if rhythmic 20 seconds
-rhythmic.or.not <- apply(cov.normreads.by_gene, 1, GetRhythmicOrNot, fitdf = dat.fitrhyth.filt)
+pval.adj <- p.adjust(fit.afe.summary$pval)
+fit.afe.summary$pval.adj <- pval.adj
+(head(data.frame(fit.afe.summary[order(fit.afe.summary$pval.adj), ]), n = 50))
+n.hits <- nrow(subset(fit.afe.summary, pval.adj < 0.05))
+print(paste0("Number of hits:", n.hits))
+sprintf("%s/%s are hits", n.hits, length(common.genes))
 
-# Append to df
-cov.normreads.by_gene.rhyth <- cbind(cov.normreads.by_gene, rhythmic.or.not)
-
-# Fin
-
-
-
-# Show distributions ------------------------------------------------------
-
-(head(as.data.frame(cov.mincor[order(cov.mincor$min.cor), ]), n = 50))
-plot(density(cov.mincor$min.cor), xlim=c(0, 1))
-
-
-# Do sanity checks on examples --------------------------------------------
-
-jgene <- "Ddc"
-jgene <- "Sgk2"
-jgene <- "Gas7"
-jgene <- "Insig2"
-# plot exprs
-PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
-# check normreads
-jdf <- subset(cov.normreads.filt, gene == jgene)
-print(data.frame(jdf))
-# check out the matrix for correlations
-m <- acast(jdf, transcript ~ tissue, value.var = "norm_reads")
-# check which two tissues were called as "most different"
-best.cor <- LoopCor(m, show.which = TRUE)
-# check which transcript accounts for largest difference
-(m.sub <- m[, best.cor$tissues])
-# return transcript with highest difference
-m.diffs <- apply(m.sub, 1, function(x) abs(log2(x[1] / x[2])))
-(m.diffs.max <- m.diffs[which(m.diffs == max(m.diffs))])
-transcript.max <- names(m.diffs.max)
-# get chromosome location of this transcript
-GetLocationFromAnnotation(bed, gene_name = jgene, transcript_id = transcript.max)
-# Heatmap the matrix of correlations
-my_palette <- colorRampPalette(c("white", "black"))(n = 299)
-heatmap.2(m, density.info = "density", trace = "none", margins = c(8, 14), main = jgene, col = my_palette, cexRow=1.1)
-
-MaxDiff <- 
-
-# Calculate ShannonEntropy ------------------------------------------------
-
-cov.entropy <- summarise(cov.normreads, entropy = ShannonEntropy(norm_reads))
-
-# Remove NaNs -------------------------------------------------------------
-
-cov.long.filt.entropy <- cov.long.filt.entropy[which(!is.nan(cov.long.filt.entropy$entropy)), ]
-
-# Sort by entropy ---------------------------------------------------------
-
-print(head(cov.long.filt.entropy[order(cov.long.filt.entropy$entropy), ], n = 50))
-
-# Test with Ddc and Insig2 ------------------------------------------------
-
-jgene <- "Dbp"
-jtrans <- "ENSMUST00000107740"
-
-jgene <- "Insig2"
-jtrans <- "ENSMUST00000161068"
-
-jgene <- "Ddc"
-jtrans <- "ENSMUST00000178704"
-
-jgene <- "Hnf4a"
-jtrans <- "ENSMUST00000143911"
-
-cov.long.sub <- subset(cov.long, gene == jgene)
-
-test <- subset(cov.long.sub, transcript == jtrans)
-test$normcov <- test$reads / test$rnaseq_reads
-
-ggplot(data = test, aes(x = time, y = reads)) + 
-  geom_point() + 
-  geom_line() + 
-  facet_wrap(~tissue) + 
-  ggtitle(paste(jgene, jtrans))
+# # Calculate maximum difference --------------------------------------------
+# 
+# cov.normreads.sub <- subset(cov.normreads.filt, gene %in% common.genes)
+# cov.normreads.by_gene <- group_by(cov.normreads.sub, gene)
+# 
+# # find AFEs by "minimum correlation"
+# cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
+# 
+# # Calculate log2 fold change ----------------------------------------------
+# 
+# # find AFEs by log2 fold change between "rhythmic" and "not rhythmic" genes
+# cov.normreads.by_genetiss <- group_by(cov.normreads, gene, tissue)
+# 
+# 
+# # ask if rhythmic 20 seconds
+# rhythmic.or.not <- apply(cov.normreads.by_gene, 1, GetRhythmicOrNot, fitdf = dat.fitrhyth.filt)
+# 
+# # Append to df
+# cov.normreads.by_gene.rhyth <- cbind(cov.normreads.by_gene, rhythmic.or.not)
+# 
+# # Fin
+# 
+# 
+# 
+# # Show distributions ------------------------------------------------------
+# 
+# (head(as.data.frame(cov.mincor[order(cov.mincor$min.cor), ]), n = 50))
+# plot(density(cov.mincor$min.cor), xlim=c(0, 1))
+# 
+# 
+# # Do sanity checks on examples --------------------------------------------
+# 
+# jgene <- "Ddc"
+# jgene <- "Sgk2"
+# jgene <- "Gas7"
+# jgene <- "Insig2"
+# # plot exprs
+# PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
+# # check normreads
+# jdf <- subset(cov.normreads.filt, gene == jgene)
+# print(data.frame(jdf))
+# # check out the matrix for correlations
+# m <- acast(jdf, transcript ~ tissue, value.var = "norm_reads")
+# # check which two tissues were called as "most different"
+# best.cor <- LoopCor(m, show.which = TRUE)
+# # check which transcript accounts for largest difference
+# (m.sub <- m[, best.cor$tissues])
+# # return transcript with highest difference
+# m.diffs <- apply(m.sub, 1, function(x) abs(log2(x[1] / x[2])))
+# (m.diffs.max <- m.diffs[which(m.diffs == max(m.diffs))])
+# transcript.max <- names(m.diffs.max)
+# # get chromosome location of this transcript
+# GetLocationFromAnnotation(bed, gene_name = jgene, transcript_id = transcript.max)
+# # Heatmap the matrix of correlations
+# my_palette <- colorRampPalette(c("white", "black"))(n = 299)
+# heatmap.2(m, density.info = "density", trace = "none", margins = c(8, 14), main = jgene, col = my_palette, cexRow=1.1)
+# 
+# MaxDiff <- 
+# 
+# # Calculate ShannonEntropy ------------------------------------------------
+# 
+# cov.entropy <- summarise(cov.normreads, entropy = ShannonEntropy(norm_reads))
+# 
+# # Remove NaNs -------------------------------------------------------------
+# 
+# cov.long.filt.entropy <- cov.long.filt.entropy[which(!is.nan(cov.long.filt.entropy$entropy)), ]
+# 
+# # Sort by entropy ---------------------------------------------------------
+# 
+# print(head(cov.long.filt.entropy[order(cov.long.filt.entropy$entropy), ], n = 50))
+# 
+# # Test with Ddc and Insig2 ------------------------------------------------
+# 
+# jgene <- "Dbp"
+# jtrans <- "ENSMUST00000107740"
+# 
+# jgene <- "Insig2"
+# jtrans <- "ENSMUST00000161068"
+# 
+# jgene <- "Ddc"
+# jtrans <- "ENSMUST00000178704"
+# 
+# jgene <- "Hnf4a"
+# jtrans <- "ENSMUST00000143911"
+# 
+# cov.long.sub <- subset(cov.long, gene == jgene)
+# 
+# test <- subset(cov.long.sub, transcript == jtrans)
+# test$normcov <- test$reads / test$rnaseq_reads
+# 
+# ggplot(data = test, aes(x = time, y = reads)) + 
+#   geom_point() + 
+#   geom_line() + 
+#   facet_wrap(~tissue) + 
+#   ggtitle(paste(jgene, jtrans))
