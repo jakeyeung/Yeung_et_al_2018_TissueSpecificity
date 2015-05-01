@@ -9,6 +9,7 @@ library(mixtools)
 library(gplots)
 library(parallel)
 library(biglm)
+library(reshape2)
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/LoadArrayRnaSeq.R")
@@ -19,12 +20,14 @@ source("scripts/functions/MakeCluster.R")
 source("scripts/functions/ReadListToVector.R")
 source("scripts/functions/GrepRikGenes.R")
 source("scripts/functions/FitRhythmic.R")
-
+source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
 
 # Load RNASeq ---------------------------------------------------
 
 dat.long <- LoadArrayRnaSeq()
 dat <- LoadRnaSeq()
+
+save(dat.long, file = "")
 
 
 # Find rhythmic genes -----------------------------------------------------
@@ -109,6 +112,7 @@ cov.long <- data.frame(gene = rep(gene.names, ncol(exon.cov)),
                        rnaseq_reads = unlist(dat.filt))
 head(cov.long)
 
+# save(cov.long, file="results/alternative_exon_usage/cov.long.Robj")
 
 # Only consider tissue-specific rhythmic genes ----------------------------
 
@@ -140,7 +144,6 @@ bed$gene <- gene.names
 
 cov.long.filt <- cov.long
 
-
 # Normalize exon reads ----------------------------------------------------
 
 # cov.long.filt$reads_norm <- cov.long.filt$reads / cov.long.filt$rnaseq_reads  # naive
@@ -150,6 +153,24 @@ cov.normreads <- cov.long %>%
   group_by(tissue, gene, time) %>%
   mutate(norm_reads = Normalize(reads), n_starts = length(reads)) %>%
   filter(n_starts > 1)  # has no alternative first exons
+
+# What is distribution of start sites?
+cov.normreads.startsites <- cov.long %>%
+  group_by(gene) %>%
+  summarise(n_starts = length(transcript)) %>%
+  mutate(n_starts_norm_samp = n_starts / 96) %>%  # 96 samples, so divide that
+  select_("gene", "n_starts_norm_samp")
+
+head(cov.normreads.startsites[order(cov.normreads.startsites$n_starts, decreasing = TRUE), ])
+
+# filter for common.genes
+canonicalgenes <- unique(dat.long$gene)
+cov.normreads.startsites.common <- subset(cov.normreads.startsites, gene %in% canonicalgenes)
+
+hist(cov.normreads.startsites.common$n_starts_norm_samp, breaks = 44, freq = TRUE, 
+     main = paste0("Number of transcripts per gene (N=", 
+                   length(cov.normreads.startsites.common$gene), ")"), 
+     ylim = c(0, 3000))
 
 
 # Find cutoff for background expression -----------------------------------
@@ -234,7 +255,8 @@ fit.afe.summary <- fit.afe %>%
 # plot histogram of pvalues
 plot(density(fit.afe$pval))  # NICE
 
-head(data.frame(fit.afe.summary[order(fit.afe.summary$pval), ]), n = 50)
+fit.afe.summary <- data.frame(fit.afe.summary[order(fit.afe.summary$pval), ])
+head(fit.afe.summary, n = 50)
 
 # save(cov.normreads.filt.rhyth, file = "results/alternative_exon_usage/cov.normreads.filt.rhyth.Robj")
 
@@ -247,98 +269,39 @@ n.hits <- nrow(subset(fit.afe.summary, pval.adj < 0.05))
 print(paste0("Number of hits:", n.hits))
 sprintf("%s/%s are hits", n.hits, length(common.genes))
 
-# # Calculate maximum difference --------------------------------------------
-# 
-# cov.normreads.sub <- subset(cov.normreads.filt, gene %in% common.genes)
-# cov.normreads.by_gene <- group_by(cov.normreads.sub, gene)
-# 
-# # find AFEs by "minimum correlation"
-# cov.mincor <- do(.data = cov.normreads.by_gene, GetMinCor(df = .))  # super slow
-# 
-# # Calculate log2 fold change ----------------------------------------------
-# 
-# # find AFEs by log2 fold change between "rhythmic" and "not rhythmic" genes
-# cov.normreads.by_genetiss <- group_by(cov.normreads, gene, tissue)
-# 
-# 
-# # ask if rhythmic 20 seconds
-# rhythmic.or.not <- apply(cov.normreads.by_gene, 1, GetRhythmicOrNot, fitdf = dat.fitrhyth.filt)
-# 
-# # Append to df
-# cov.normreads.by_gene.rhyth <- cbind(cov.normreads.by_gene, rhythmic.or.not)
-# 
-# # Fin
-# 
-# 
-# 
-# # Show distributions ------------------------------------------------------
-# 
-# (head(as.data.frame(cov.mincor[order(cov.mincor$min.cor), ]), n = 50))
-# plot(density(cov.mincor$min.cor), xlim=c(0, 1))
-# 
-# 
-# # Do sanity checks on examples --------------------------------------------
-# 
-# jgene <- "Ddc"
-# jgene <- "Sgk2"
-# jgene <- "Gas7"
-# jgene <- "Insig2"
-# # plot exprs
-# PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
-# # check normreads
-# jdf <- subset(cov.normreads.filt, gene == jgene)
-# print(data.frame(jdf))
-# # check out the matrix for correlations
-# m <- acast(jdf, transcript ~ tissue, value.var = "norm_reads")
-# # check which two tissues were called as "most different"
-# best.cor <- LoopCor(m, show.which = TRUE)
-# # check which transcript accounts for largest difference
-# (m.sub <- m[, best.cor$tissues])
-# # return transcript with highest difference
-# m.diffs <- apply(m.sub, 1, function(x) abs(log2(x[1] / x[2])))
-# (m.diffs.max <- m.diffs[which(m.diffs == max(m.diffs))])
-# transcript.max <- names(m.diffs.max)
-# # get chromosome location of this transcript
-# GetLocationFromAnnotation(bed, gene_name = jgene, transcript_id = transcript.max)
-# # Heatmap the matrix of correlations
-# my_palette <- colorRampPalette(c("white", "black"))(n = 299)
-# heatmap.2(m, density.info = "density", trace = "none", margins = c(8, 14), main = jgene, col = my_palette, cexRow=1.1)
-# 
-# MaxDiff <- 
-# 
-# # Calculate ShannonEntropy ------------------------------------------------
-# 
-# cov.entropy <- summarise(cov.normreads, entropy = ShannonEntropy(norm_reads))
-# 
-# # Remove NaNs -------------------------------------------------------------
-# 
-# cov.long.filt.entropy <- cov.long.filt.entropy[which(!is.nan(cov.long.filt.entropy$entropy)), ]
-# 
-# # Sort by entropy ---------------------------------------------------------
-# 
-# print(head(cov.long.filt.entropy[order(cov.long.filt.entropy$entropy), ], n = 50))
-# 
-# # Test with Ddc and Insig2 ------------------------------------------------
-# 
-# jgene <- "Dbp"
-# jtrans <- "ENSMUST00000107740"
-# 
-# jgene <- "Insig2"
-# jtrans <- "ENSMUST00000161068"
-# 
-# jgene <- "Ddc"
-# jtrans <- "ENSMUST00000178704"
-# 
-# jgene <- "Hnf4a"
-# jtrans <- "ENSMUST00000143911"
-# 
-# cov.long.sub <- subset(cov.long, gene == jgene)
-# 
-# test <- subset(cov.long.sub, transcript == jtrans)
-# test$normcov <- test$reads / test$rnaseq_reads
-# 
-# ggplot(data = test, aes(x = time, y = reads)) + 
-#   geom_point() + 
-#   geom_line() + 
-#   facet_wrap(~tissue) + 
-#   ggtitle(paste(jgene, jtrans))
+
+# Plot heatmap of examples ------------------------------------------------
+
+jgene <- "Ddc"
+cov.sub <- subset(cov.normreads.filt.rhyth, gene == jgene)
+cov.sub.sum <- cov.sub %>%
+  group_by(transcript, tissue) %>%
+  summarise(mean_reads = mean(norm_reads))
+cov.m <- acast(cov.sub.sum, transcript ~ tissue, value.var = "mean_reads")
+my_palette <- colorRampPalette(c("white", "black"))(n = 299)
+heatmap.2(cov.m, density.info = "histogram", trace = "none", margins = c(5, 14), main = jgene, col = my_palette, cexRow=1)
+
+
+# Explore sitecount differences in hit -------------------------------------------------------------
+
+source("scripts/functions/PlotSitecounts.R")
+source("scripts/functions/LoadSitecounts.R")
+
+N.list <- LoadSitecounts()  # list of N and N.promoter
+N <- as.matrix(N.list$N)
+N.promoter <- N.list$N.promoter
+if (exists(x = "N") & exists(x = "N.promoter")) rm(N.list)
+
+jgene <- "Adra1b"
+jgene <- "Csrp3"
+jgene <- "Slc25a25"
+jgene <- "Fpgs"
+par(mar=c(5.1, 12, 4.1, 2.1))
+
+# print(N[grep(jgene, rownames(N)), ])
+# print(N.promoter[grep(jgene, rownames(N)), ])
+
+m <- N[grep(jgene, rownames(N)), ]
+m <- m[, which(colSums(m) > 0.25)]
+heatmap.2(t(m), density.info = "density", trace = "none", margins = c(1, 14), main = jgene, col = my_palette, cexRow=0.75)
+
