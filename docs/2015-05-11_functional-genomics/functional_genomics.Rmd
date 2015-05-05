@@ -1,0 +1,105 @@
+---
+title: "Regulation of tissue-specific oscillators in mammals"
+author: Jake Yeung
+date: "11 May 2015"
+output:
+  beamer_presentation:
+    toc: false
+    theme: "Madrid"
+    colortheme: "default"
+    fonttheme: "default"
+    incremental: true
+    slide_level: 2
+---
+
+# Introduction
+
+## Organisms have adapted to predict periodic signals
+
+```{r load-data, message=FALSE, warning=FALSE, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+source("/home/yeung/projects/tissue-specificity/scripts/functions/GetClockGenes.R")
+load(file = "/home/yeung/projects/tissue-specificity/Robjs/arrayrnaseq.mydat.Robj")
+# dat.long <- mydat; rm(mydat)
+# load(file = "/home/yeung/projects/tissue-specificity/Robjs/cov.long.Robj")
+# load(file = "/home/yeung/projects/tissue-specificity/Robjs/cov.normreads.filt.rhyth.Robj")
+# load(file = "/home/yeung/projects/tissue-specificity/Robjs/N_and_N.promoter.Robj")
+
+```
+
+Coordinating internal biological processes with external cues is crucial to organism fitness
+
+\begin{center}
+\includegraphics[height=0.6\textheight]{images/circadian-intro-man}
+\end{center}
+
+\let\thefootnote\relax\footnotetext{\tiny{Circadian Surprise: How Our Body Clocks Help Shape Our Waistlines. Aubrey and Streeter 2015}}
+
+## Circadian rhythms (~24 hours) underly many physiological processes.
+
+Tissues orchestrate together to carry out function.
+
+\begin{center}
+\includegraphics[height=0.6\textheight]{images/circadian-introduction}
+\end{center}
+
+\let\thefootnote\relax\footnotetext{\tiny{The Mammalian Circadian Timing System: Synchronization of Peripheral Clocks. Saini et al 2011}}
+
+## Transcriptional feedback loops drive circadian rhythms
+
+\columnsbegin
+\column{.5\textwidth}
+\includegraphics[height=0.6\textheight]{images/bmal-per-loop}
+\column{.5\textwidth}
+\pause
+
+```{r plot-bmal1-per, echo=FALSE, warning=FALSE}
+# clockgenes <- GetClockGenes()
+# jtissue <- "Mus"
+# jgenes <- c("Arntl", "Per2")
+# 
+# dat.scale <- dat.long %>%
+#   group_by(gene, tissue, experiment) %>%
+#   filter(gene %in% clockgenes) %>%
+#   mutate(scaled = scale(exprs))
+# 
+# dat.sub <- subset(dat.scale, gene %in% jgenes & experiment == "array" & tissue == jtissue)
+# 
+# dat.sub$gene <- c("Bmal1", "Period2")
+# 
+# m <- ggplot(dat.sub, aes(x = time, y = scaled,
+#                      group = gene, 
+#                      colour = gene)) + 
+#   geom_line(size = 2) + 
+#   # facet_wrap(~tissue) +
+#   ggtitle("Expression of Bmal1 (+ regulator) and Period2 (- regulator) + 
+#   ylab(label = "Normalized log expression") +
+#   xlab(label = "Circadian time (CT)")
+# m
+```
+\columnsend
+
+\let\thefootnote\relax\footnotetext{\tiny{Molecular architecture of the mammalian circadian clock. Partch et al 2014}}
+
+## How do circadian and tissue-restricted factors interact to produce tissue-specific rhythmic outputs?
+
+\begin{center}
+\includegraphics[height=0.6\textheight]{images/circadian-tissue-interaction}
+\end{center}
+
+# Methods
+
+## The dataset
+
+# Results
+
+## Results here
+
+Huge result
+
+# Conclusion
+
+## conclusiosn here
+
+Take it home the message
