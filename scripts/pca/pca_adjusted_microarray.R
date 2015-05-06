@@ -68,6 +68,7 @@ MeanCenterAcrossGroups <- function(x, n.per.group=24) {
 dat <- LoadNormalizedArray(normalized.array.path = "data/array.adj.0.07.txt", 
                            remove.negs = TRUE)
 dat <- as.matrix(dat)
+# dat.array <- dat; save(dat.array, file = "Robjs/array.dat.Robj"); rm(dat.array)
 
 
 # Remove WFAT -------------------------------------------------------------
@@ -105,7 +106,7 @@ plot(x = 1:npcs,
 # Plot PCA: tissue components ----------------------------------------------------
 
 # Loop to plot scatter plot of PCA i versus PCA i + 1
-for (x_comp in 1) {
+for (x_comp in 1:2) {
   
   y_comp <- x_comp + 1  # plot x PCA component i on x-axis, PCA component i+1 on y-axis
   
