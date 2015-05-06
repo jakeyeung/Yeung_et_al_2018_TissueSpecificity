@@ -21,6 +21,7 @@ source("scripts/functions/ReadListToVector.R")
 source("scripts/functions/GrepRikGenes.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
+source("scripts/functions/AlternativeFirstExonsFunctions.R")
 
 # Load RNASeq ---------------------------------------------------
 
@@ -296,6 +297,8 @@ jgene <- "Adra1b"
 jgene <- "Csrp3"
 jgene <- "Slc25a25"
 jgene <- "Fpgs"
+jgene <- "Insig2"
+jgene <- "Ddc"
 par(mar=c(5.1, 12, 4.1, 2.1))
 
 # print(N[grep(jgene, rownames(N)), ])
@@ -303,5 +306,14 @@ par(mar=c(5.1, 12, 4.1, 2.1))
 
 m <- N[grep(jgene, rownames(N)), ]
 m <- m[, which(colSums(m) > 0.25)]
+my_palette <- colorRampPalette(c("white", "black"))(n = 299)
 heatmap.2(t(m), density.info = "density", trace = "none", margins = c(1, 14), main = jgene, col = my_palette, cexRow=0.75)
+
+
+# SVD on Promoters --------------------------------------------------------
+
+s <- svd(N)
+plot(s$v[, 1], s$v[, 2])
+text(s$v[, 1], s$v[, 2], colnames(N))
+
 
