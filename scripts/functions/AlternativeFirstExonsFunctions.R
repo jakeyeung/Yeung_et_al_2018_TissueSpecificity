@@ -1,3 +1,37 @@
+KsTestPosNeg <- function(jdf){
+  # 
+  x.neg <- jdf$sitecount[which(jdf$hit.or.not == "Neg")]
+  x.pos <- jdf$sitecount[which(jdf$hit.or.not == "Pos")]
+  jks <- ks.test(x.neg, x.pos)
+  stat <- jks$statistic
+  pval <- jks$p.value
+  return(data.frame(statistic = stat, pval = pval))
+}
+
+FitPosNeg <- function(jdf){
+  jfit <- lm(formula = sitecount ~ hit.or.not, data = jdf)
+  summary(jfit)$coefficients["hit.or.notPos", "Pr(>|t|)"]
+  pval <- summary(jfit)$coefficients["hit.or.notPos", "Pr(>|t|)"]
+  coef <- summary(jfit)$coefficients["hit.or.notPos", "Estimate"]
+  return(data.frame(coef = coef, pval = pval))
+}
+
+HitOrNot <- function(coef, pval, max.pval=1e-5, min.pval = 0.05){
+  if (pval < max.pval){
+    if (coef > 0){
+      s = "Pos"
+    } else if (coef < 0){
+      s = "Neg"
+    } else {
+      warning("Coefficient is 0 but called a hit")
+    }
+  } else if (pval < min.pval){
+    s = NA
+  } else {
+    s = "NotHit"
+  }
+  return(s)
+}
 
 FitDfToMatrix <- function(jdf, common.genes){
   dat.fitrhyth.filt <- data.frame(subset(jdf, gene %in% common.genes, select = c(gene, tissue, as.numeric(pval), amp)))  # faster
