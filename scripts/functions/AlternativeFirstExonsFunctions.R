@@ -226,15 +226,20 @@ SubsetMinPval <- function(jdf){
 }
 
 FitRhythNonRhyth <- function(jdf, log2transf = FALSE){
-  library(biglm)
+  # check it contains both Rhythmic and NotRhythmic elements
+  if (length(unique(jdf$rhythmic.or.not)) != 2){
+    return(data.frame(int = NA, coef = NA, pval = NA))
+  }
   if (log2transf){
     jform <- log2(norm_reads) ~ rhythmic.or.not
   } else {
     jform <- norm_reads ~ rhythmic.or.not
   }
-  jfit <- biglm(data = jdf, formula = jform)
-  int <- summary(jfit)$mat["(Intercept)", "Coef"]
-  coef <- summary(jfit)$mat["rhythmic.or.notRhythmic", "Coef"]
-  pval <- summary(jfit)$mat["rhythmic.or.notRhythmic", "p"]
-  return(data.frame(int = int, coef = coef, pval = pval))
+  jfit <- lm(data = jdf, formula = jform)
+  # int <- summary(jfit)$mat["(Intercept)", "Coef"]
+  # jcoef <- summary(jfit)$mat["rhythmic.or.notRhythmic", "Coef"]
+  int <- coef(jfit)[[1]]
+  jcoef <- coef(jfit)[[2]]
+  pval <- summary(jfit)$coefficients["rhythmic.or.notRhythmic", "Pr(>|t|)"]
+  return(data.frame(int = int, coef = jcoef, pval = pval))
 }
