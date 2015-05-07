@@ -226,6 +226,7 @@ SubsetMinPval <- function(jdf){
 }
 
 FitRhythNonRhyth <- function(jdf, log2transf = FALSE){
+  library(biglm)
   if (log2transf){
     jform <- log2(norm_reads) ~ rhythmic.or.not
   } else {
