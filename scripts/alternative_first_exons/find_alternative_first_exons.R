@@ -220,7 +220,7 @@ cov.normreads.filt.rhyth <- cbind(cov.normreads.filt.common.genes, rhythmic.or.n
 
 # Model reads on rhythmic or not ------------------------------------------
 
-# test <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000178704" & !(is.na(rhythmic.or.not)))
+test <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000178704" & !(is.na(rhythmic.or.not)))
 # test <- subset(cov.normreads.filt.rhyth, gene == "Ddc" & transcript == "ENSMUST00000134121" & !(is.na(rhythmic.or.not)))
 # test <- subset(cov.normreads.filt.rhyth, gene == "Cdh1" & transcript == "ENSMUST00000000312" & !(is.na(rhythmic.or.not)))
 # test <- subset(cov.normreads.filt.rhyth, gene == "Adra1b" & transcript == "ENSMUST00000067258" & !(is.na(rhythmic.or.not)))
@@ -228,13 +228,15 @@ cov.normreads.filt.rhyth <- cbind(cov.normreads.filt.common.genes, rhythmic.or.n
 # test <- subset(cov.normreads.filt.rhyth, gene == "Arhgef10l" & transcript == "ENSMUST00000154979" & !(is.na(rhythmic.or.not)))
 
 # for sanity checking
-jgene <- "Asl"; jtrans <- "ENSMUST00000160557"
+# jgene <- "Asl"; jtrans <- "ENSMUST00000160557"
+jgene <- "Fbxl21"; jtrans <- "ENSMUST00000045428"
+jgene <- "Eya1"; jtrans <- "ENSMUST00000027066"
 test <- subset(cov.normreads.filt.rhyth, gene == jgene & transcript == jtrans & !(is.na(rhythmic.or.not)))
 
 PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
 ggplot(test, aes(x = rhythmic.or.not, y = norm_reads)) + geom_point() + ggtitle(paste(jgene, jtrans))
 # ggplot(test, aes(x = rhythmic.or.not, y = log2(norm_reads))) + geom_point() + ggtitle(paste(jgene, jtrans))
-fit.test <- biglm(formula = log2(norm_reads) ~ rhythmic.or.not, data = test)
+fit.test <- lm(formula = log2(norm_reads) ~ rhythmic.or.not, data = test)
 (summary(fit.test))
 
 # run model on full dataset
@@ -243,6 +245,11 @@ fit.afe <- cov.normreads.filt.rhyth %>%
   group_by(transcript, gene) %>%
   do(FitRhythNonRhyth(jdf = .)) %>%
   filter(!is.na(pval))
+
+cov.normreads.filt.rhyth.tmp <- filter(cov.normreads.filt.rhyth, !(is.na(rhythmic.or.not)))
+cov.normreads.filt.rhyth.tmp <- group_by(cov.normreads.filt.rhyth.tmp, transcript, gene)
+cov.normreads.filt.rhyth.tmp <- do(.data = cov.normreads.filt.rhyth.tmp, FitRhythNonRhyth(jdf = .))
+cov.normreads.filt.rhyth.tmp <- filter(!is.na(pval))
 
 # show top hits
 (head(data.frame(fit.afe[order(fit.afe$pval), ]), n = 50))
@@ -263,10 +270,12 @@ head(fit.afe.summary, n = 50)
 
 # How many peaks correlate with rhythmic genes? ---------------------------
 
+pval.adj.cutoff <- 0.05
+
 pval.adj <- p.adjust(fit.afe.summary$pval)
 fit.afe.summary$pval.adj <- pval.adj
 (head(data.frame(fit.afe.summary[order(fit.afe.summary$pval.adj), ]), n = 50))
-n.hits <- nrow(subset(fit.afe.summary, pval.adj < 0.05))
+n.hits <- nrow(subset(fit.afe.summary, pval.adj < pval.adj.cutoff))
 print(paste0("Number of hits:", n.hits))
 sprintf("%s/%s are hits", n.hits, length(common.genes))
 
@@ -288,10 +297,15 @@ heatmap.2(cov.m, density.info = "histogram", trace = "none", margins = c(5, 14),
 source("scripts/functions/PlotSitecounts.R")
 source("scripts/functions/LoadSitecounts.R")
 
-N.list <- LoadSitecounts()  # list of N and N.promoter
+N.list <- LoadSitecounts(gene_ids=FALSE)  # list of N and N.promoter
+N.annot <- LoadEnsemblToPromoter()
+# rownames(N.annot) <- N.annot$ensemblid
 N <- as.matrix(N.list$N)
 N.promoter <- N.list$N.promoter
 if (exists(x = "N") & exists(x = "N.promoter")) rm(N.list)
+head(N)
+
+N.long <- LoadSitecountsPromotersLong()
 
 jgene <- "Adra1b"
 jgene <- "Csrp3"
@@ -310,10 +324,59 @@ my_palette <- colorRampPalette(c("white", "black"))(n = 299)
 heatmap.2(t(m), density.info = "density", trace = "none", margins = c(1, 14), main = jgene, col = my_palette, cexRow=0.75)
 
 
-# SVD on Promoters --------------------------------------------------------
+# Correlate alternative transcript usage to promoter sitecounts -----------
 
-s <- svd(N)
-plot(s$v[, 1], s$v[, 2])
-text(s$v[, 1], s$v[, 2], colnames(N))
+# Filter only for genes that contain a correlation between promoter usage
+# and rhythmicity
 
+genes.hit <- subset(fit.afe.summary, pval.adj < pval.adj.cutoff)$gene
+max.pval <- max(subset(fit.afe.summary, pval.adj < pval.adj.cutoff)$pval)  # any pval below this is a hit
+fit.afe.hits <- subset(fit.afe, gene %in% genes.hit)
+
+fit.afe.hits$hit.or.not <- factor(mapply(HitOrNot, fit.afe.hits$coef, fit.afe.hits$pval, 
+                                         MoreArgs = list(max.pval=max.pval, min.pval=max.pval)), 
+                                  levels = c("NotHit", "Neg", "Pos"))
+
+fit.afe.hits.filt <- subset(fit.afe.hits, hit.or.not %in% c("Neg", "Pos"))
+
+# Annotate N.long to hit or not (subset makes things easier)
+N.annot.sub <- subset(N.annot, ensemblid %in% fit.afe.hits.filt$transcript)
+annot.dic <- setNames(fit.afe.hits.filt$hit.or.not, fit.afe.hits.filt$transcript)
+N.annot.sub$hit.or.not <- sapply(N.annot.sub$ensemblid, function(x){
+  return(annot.dic[[x]])
+})
+annot.dic <- setNames(N.annot.sub$hit.or.not, N.annot.sub$saeedid)
+N.long.sub <- subset(N.long, promoterid %in% N.annot.sub$saeedid)
+N.long.sub$hit.or.not <- sapply(N.long.sub$promoterid, function(x){
+  x <- as.character(x)
+  return(annot.dic[[x]])
+})
+
+# Fit linear model of motif and hit or not
+
+jmotif <- "RORA.p2"
+jmotif <- "TFDP1.p2"
+jmotif <- "NFIL3.p2"
+test <- subset(N.long.sub, motif == jmotif)
+
+ks.test <- KsTestPosNeg(jdf = test)
+fit.test <- FitPosNeg(jdf = test)
+ks.test; fit.test
+
+ggplot(data = test, aes(x = hit.or.not, y = sitecount)) + geom_boxplot()
+ggplot(data = test, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) + geom_density(alpha = 0.5)
+
+ks.motif <- N.long.sub %>%
+  group_by(motif) %>%
+  do(KsTestPosNeg(jdf = .)) %>%
+  .[order(.$pval), ]
+ks.motif$pval.adj <- p.adjust(ks.motif$pval)
+head(ks.motif)
+
+fit.motif <- N.long.sub %>%
+  group_by(motif) %>%
+  do(FitPosNeg(jdf = .)) %>%
+  .[order(.$pval), ]
+fit.motif$pval.adj <- p.adjust(fit.motif$pval)
+head(fit.motif)
 
