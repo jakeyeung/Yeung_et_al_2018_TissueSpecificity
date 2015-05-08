@@ -1,5 +1,6 @@
 ---
-title: "Regulation of tissue-specific oscillators in mammals"
+title: "Regulation of tissue-specific circadian rhythms in mouse"
+shorttitle: "Regulation of tissue-specific circadian rhythms"
 author: Jake Yeung
 date: "11 May 2015"
 output:
@@ -16,22 +17,32 @@ output:
 
 ## Organisms have adapted to predict periodic signals
 
+
 ```{r load-data, message=FALSE, warning=FALSE, echo=FALSE}
+library(plyr)
 library(dplyr)
 library(ggplot2)
-source("/home/yeung/projects/tissue-specificity/scripts/functions/GetClockGenes.R")
+# source("/home/yeung/projects/tissue-specificity/scripts/functions/GetClockGenes.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/ActivitiesMergedFunctions.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/SvdFunctions.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/PlotActivitiesFunctions.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/PlotGeneAcrossTissues.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/AlternativeFirstExonsFunctions.R")
 load(file = "/home/yeung/projects/tissue-specificity/Robjs/arrayrnaseq.mydat.Robj")
-# dat.long <- mydat; rm(mydat)
-# load(file = "/home/yeung/projects/tissue-specificity/Robjs/cov.long.Robj")
-# load(file = "/home/yeung/projects/tissue-specificity/Robjs/cov.normreads.filt.rhyth.Robj")
-# load(file = "/home/yeung/projects/tissue-specificity/Robjs/N_and_N.promoter.Robj")
-
+dat.long <- mydat; rm(mydat)
+load(file = "/home/yeung/projects/tissue-specificity/Robjs/cov.long.Robj")
+load(file = "/home/yeung/projects/tissue-specificity/Robjs/cov.normreads.filt.rhyth.Robj")
+load(file = "/home/yeung/projects/tissue-specificity/Robjs/N_and_N.promoter.Robj")
+load(file = "/home/yeung/projects/tissue-specificity/Robjs/N.annot.Robj")
+# load(file = "/home/yeung/projects/tissue-specificity/Robjs/array.dat.Robj")  # array.dat
+load(file = "/home/yeung/projects/tissue-specificity/Robjs/N.long.Robj")
+load(file = "/home/yeung/projects/tissue-specificity/Robjs/act.long.Robj")
 ```
 
 Coordinating internal biological processes with external cues is crucial to organism fitness
 
 \begin{center}
-\includegraphics[height=0.6\textheight]{images/circadian-intro-man}
+\includegraphics[height=0.4\textheight]{images/circadian-intro-man}
 \end{center}
 
 \let\thefootnote\relax\footnotetext{\tiny{Circadian Surprise: How Our Body Clocks Help Shape Our Waistlines. Aubrey and Streeter 2015}}
@@ -41,46 +52,10 @@ Coordinating internal biological processes with external cues is crucial to orga
 Tissues orchestrate together to carry out function.
 
 \begin{center}
-\includegraphics[height=0.6\textheight]{images/circadian-introduction}
+\includegraphics[height=0.5\textheight]{images/circadian-introduction}
 \end{center}
 
 \let\thefootnote\relax\footnotetext{\tiny{The Mammalian Circadian Timing System: Synchronization of Peripheral Clocks. Saini et al 2011}}
-
-## Transcriptional feedback loops drive circadian rhythms
-
-\columnsbegin
-\column{.5\textwidth}
-\includegraphics[height=0.6\textheight]{images/bmal-per-loop}
-\column{.5\textwidth}
-\pause
-
-```{r plot-bmal1-per, echo=FALSE, warning=FALSE}
-# clockgenes <- GetClockGenes()
-# jtissue <- "Mus"
-# jgenes <- c("Arntl", "Per2")
-# 
-# dat.scale <- dat.long %>%
-#   group_by(gene, tissue, experiment) %>%
-#   filter(gene %in% clockgenes) %>%
-#   mutate(scaled = scale(exprs))
-# 
-# dat.sub <- subset(dat.scale, gene %in% jgenes & experiment == "array" & tissue == jtissue)
-# 
-# dat.sub$gene <- c("Bmal1", "Period2")
-# 
-# m <- ggplot(dat.sub, aes(x = time, y = scaled,
-#                      group = gene, 
-#                      colour = gene)) + 
-#   geom_line(size = 2) + 
-#   # facet_wrap(~tissue) +
-#   ggtitle("Expression of Bmal1 (+ regulator) and Period2 (- regulator) + 
-#   ylab(label = "Normalized log expression") +
-#   xlab(label = "Circadian time (CT)")
-# m
-```
-\columnsend
-
-\let\thefootnote\relax\footnotetext{\tiny{Molecular architecture of the mammalian circadian clock. Partch et al 2014}}
 
 ## How do circadian and tissue-restricted factors interact to produce tissue-specific rhythmic outputs?
 
@@ -90,16 +65,213 @@ Tissues orchestrate together to carry out function.
 
 # Methods
 
-## The dataset
+## A dataset of temporal gene expression across 12 tissues
+
+\columnsbegin
+\column{.5\textwidth}
+
+![method](images/method-visualization.eps)
+
+\column{.5\textwidth}
+
+- Sampled over 48 hours (288 microarray + 96 rnaseq samples)
+- {\scriptsize Liver, kidney, adrenal gland, white/brown fat, muscle, heart, aorta, lung, brainstem, cerebellum, hypothalamus}
+
+\columnsend
+
+## Inferring activity of transcription factors using a genome-wide linear model
+
+Credit goes to Saeed Omidi
+
+>* Predict transcription factor binding sites in promoter regions (1kb region).
+    + Using a MotEvo-like framework (Arnold et al. Bioinformatics, 2012)
+* Infer activity of transcription factor from gene expression data and transcription factor binding sites.
+    + Using the MARA framework (Balwierz et al. Genome Res, 2014)
 
 # Results
 
-## Results here
+## Tissues align together
 
-Huge result
+```{r eigengenes, echo=FALSE, message=FALSE}
+act.fit <- act.long %>%
+  group_by(tissue, gene) %>%
+  do(.data = ., FitRhythmicWeighted(df = .))
+
+act.fit$pval.adj <- p.adjust(act.fit$pval, method = "BH")
+
+# Filter for rhythmic
+
+pval.adj.cutoff <- 0.0005
+
+rhythmic_genes <- act.fit %>%
+  group_by(gene) %>%
+  mutate(pval.adj.min = min(pval.adj)) %>%
+  filter(pval.adj.min < pval.adj.cutoff)
+
+rhythmic_genes <- unique(rhythmic_genes$gene)
+
+act.filt <- subset(act.long, gene %in% rhythmic_genes)
+
+omega <- 2 * pi / 24
+
+act.complex <- lapply(split(act.filt, act.filt$tissue), function(x){
+  ddply(x, .(gene), ProjectToFrequency2, omega = omega, add.tissue = TRUE)
+}) %>%
+  do.call(rbind, .) %>%
+  mutate(magnitude = Mod(exprs.transformed)) %>%
+  arrange(desc(magnitude))
+# head(act.complex, n = 100)
+
+
+# SVD on complex matrix ---------------------------------------------------
+
+act.complex.mat <- dcast(data = act.complex, formula = gene ~ tissue, value.var = "exprs.transformed")
+rownames(act.complex.mat) <- act.complex.mat[, "gene"]
+act.complex.mat <- act.complex.mat[, 2:ncol(act.complex.mat)]
+
+act.svd <- svd(act.complex.mat) 
+
+# add row and colnames
+rownames(act.svd$u) <- rownames(act.complex.mat)
+rownames(act.svd$v) <- colnames(act.complex.mat)
+rownames(act.svd$v)[which(rownames(act.svd$v) == "Adr")] <- "AdrenalGland"
+rownames(act.svd$v)[which(rownames(act.svd$v) == "Adr")] <- "Muscle"
+
+# Plot
+theme_set(theme_gray(base_size = 32))
+comp <- 1
+eigengene <- act.svd$v[, comp]
+eigensamp <- act.svd$u[, comp]
+eigenval <- act.svd$d[comp]
+# rotate to phase of largest magnitude in sample of eigengene
+phase.reference <- Arg(eigengene[which(Mod(eigengene) == max(Mod(eigengene)))])
+amp.reference <- 2 * Mod(eigengene[which(Mod(eigengene) == max(Mod(eigengene)))])  # 2 times because amplitude should be DOUBLE the half amplitude from Fourier
+rotate.factor <- complex(modulus = 1, argument = phase.reference)
+# rotate eigengene by -phase ref
+eigengene <- eigengene * Conj(rotate.factor) * (1 / amp.reference)
+# rotate eigensamp by +phase ref
+eigensamp <- eigensamp * rotate.factor * amp.reference
+
+v.plot <- PlotComplex2(eigengene, labels = rownames(act.svd$v), omega = omega, title = paste("Eigenmotif activity (normalized to Liver)")) +
+  scale_size(range=c(2, 6)) + xlim(0, 1.1)
+print(v.plot)
+```
+
+## Core clock genes contribute to significant variance
+
+```{r eigensamples, echo=FALSE, message=FALSE, fig.align='center'}
+u.plot <- PlotComplex2(eigensamp, labels = rownames(act.svd$u), omega = omega, title = paste("Eigentissue activity (normalized to Liver)")) +
+  scale_size(range=c(0, 10))
+print(u.plot)
+```
+
+## Using core clock components to produce tissue-specific rhythms
+
+- Genome-wide linear model identifies tissue-restricted and circadian regulators
+- Core clock components and known circadian regulators contribute to a majority of the circadian signal tissue-wide
+
+- **How do tissue-restricted and circadian regulators interact to produce tissue-restricted circadian rhythms?**
+
+## Could alternative promoter usage in different tissues produce tissue-restricted rhythms?
+
+\begin{center}
+\includegraphics[height=0.6\textheight]{images/alternative-promoter-usage}
+\end{center}
+
+## Correlating alternative promoter usage to tissue-restricted circadian rhythms
+
+```{r correlate-alt-promt-usage, echo=FALSE, message=FALSE, fig.align='center'}
+# cov.sub <- subset(cov.normreads.filt.rhyth, gene == jgene)
+# cov.sub.sum <- cov.sub %>%
+#   group_by(transcript, tissue) %>%
+#   summarise(mean_reads = mean(norm_reads))
+
+# for sanity checking
+jgene <- "Ddc"; jtrans <- "ENSMUST00000066237"
+cov.sum <- subset(cov.normreads.filt.rhyth, gene == jgene & transcript == jtrans & !(is.na(rhythmic.or.not)))
+ggplot(cov.sum, aes(x = rhythmic.or.not, y = norm_reads)) + 
+  geom_boxplot() + 
+  ggtitle(paste(jgene, jtrans)) +
+  ylab("Fractional first-exon usage") + 
+  xlab("Rhythmic or Not")
+```
+
+## Alternative promoter usage is associated with tissue-restricted circadian rhythms
+
+15% of 1062 tissue-restricted circadian rhythms are associated with alternative promoter usage
+
+```{r histogram-pvals, warning=FALSE, echo=FALSE, message=FALSE, fig.align='center', fig.height=5}
+fit.afe <- cov.normreads.filt.rhyth %>%
+  filter(!(is.na(rhythmic.or.not))) %>%
+  group_by(transcript, gene) %>%
+  do(FitRhythNonRhyth(jdf = .)) %>%
+  filter(!is.na(pval))
+
+# summarize by choosing the top for each gene
+fit.afe.summary <- fit.afe %>%
+  group_by(gene) %>%
+  do(SubsetMinPval(jdf = .))
+fit.afe.summary$pval.adj <- p.adjust(fit.afe.summary$pval)
+
+# plot histogram of pvalues
+qplot(x = fit.afe$pval, geom = "histogram", binwidth = 0.001, xlab = "P-value")
+```
+
+## Motif enrichment analysis in alternative promoters
+
+```{r motif-enrichment, warnings=FALSE, echo=FALSE, message=FALSE, fig.align='center'}
+
+jcutoff <- 0.01
+genes.hit <- subset(fit.afe.summary, pval.adj < jcutoff)
+genes.hit <- genes.hit$gene
+max.pval <- max(subset(fit.afe.summary, pval.adj < jcutoff)$pval)  # any pval below this is a hit
+fit.afe.hits <- subset(fit.afe, gene %in% genes.hit)
+
+fit.afe.hits$hit.or.not <- factor(mapply(HitOrNot, fit.afe.hits$coef, fit.afe.hits$pval, 
+                                         MoreArgs = list(max.pval=max.pval, min.pval=max.pval)), 
+                                  levels = c("NotHit", "Neg", "Pos"))
+
+fit.afe.hits.filt <- subset(fit.afe.hits, hit.or.not %in% c("Neg", "Pos"))
+
+# Annotate N.long to hit or not (subset makes things easier)
+N.annot.sub <- subset(N.annot, ensemblid %in% fit.afe.hits.filt$transcript)
+annot.dic <- setNames(fit.afe.hits.filt$hit.or.not, fit.afe.hits.filt$transcript)
+N.annot.sub$hit.or.not <- sapply(N.annot.sub$ensemblid, function(x){
+  return(annot.dic[[x]])
+})
+annot.dic <- setNames(N.annot.sub$hit.or.not, N.annot.sub$saeedid)
+N.long.sub <- subset(N.long, promoterid %in% N.annot.sub$saeedid)
+N.long.sub$hit.or.not <- sapply(N.long.sub$promoterid, function(x){
+  x <- as.character(x)
+  return(annot.dic[[x]])
+})
+
+# BEGIN TESTING MOTIFS INDIVIDUALLY
+jmotif <- "RORA.p2"
+ror <- subset(N.long.sub, motif == jmotif)
+
+# ks.ror <- KsTestPosNeg(jdf = ror)
+# fit.ror <- FitPosNeg(jdf = ror)
+# ks.ror; fit.ror
+
+# ggplot(data = ror, aes(x = hit.or.not, y = sitecount)) + 
+#   geom_boxplot() + 
+#   ggtitle(jmotif)
+ggplot(data = ror, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) + 
+  geom_density(alpha = 0.5) +
+  ggtitle("Sitecounts of ROR motif")
+```
 
 # Conclusion
 
-## conclusiosn here
+## Regulation of tissue-specific circadian rhythms
+
+- Tissu
+
 
 Take it home the message
+
+## Thank you
+
+End of my presentation
+
