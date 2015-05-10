@@ -271,7 +271,6 @@ head(fit.afe.summary, n = 50)
 # How many peaks correlate with rhythmic genes? ---------------------------
 
 pval.adj.cutoff <- 0.05
-
 pval.adj <- p.adjust(fit.afe.summary$pval)
 fit.afe.summary$pval.adj <- pval.adj
 (head(data.frame(fit.afe.summary[order(fit.afe.summary$pval.adj), ]), n = 50))
@@ -299,6 +298,7 @@ source("scripts/functions/LoadSitecounts.R")
 
 N.list <- LoadSitecounts(gene_ids=FALSE)  # list of N and N.promoter
 N.annot <- LoadEnsemblToPromoter()
+# save(N.annot, file="Robjs/N.annot.Robj")
 # rownames(N.annot) <- N.annot$ensemblid
 N <- as.matrix(N.list$N)
 N.promoter <- N.list$N.promoter
@@ -306,6 +306,7 @@ if (exists(x = "N") & exists(x = "N.promoter")) rm(N.list)
 head(N)
 
 N.long <- LoadSitecountsPromotersLong()
+# save(N.long, file="Robjs/N.long.Robj")
 
 jgene <- "Adra1b"
 jgene <- "Csrp3"
@@ -354,17 +355,28 @@ N.long.sub$hit.or.not <- sapply(N.long.sub$promoterid, function(x){
 
 # Fit linear model of motif and hit or not
 
+# BEGIN TESTING MOTIFS INDIVIDUALLY
 jmotif <- "RORA.p2"
 jmotif <- "TFDP1.p2"
 jmotif <- "NFIL3.p2"
+jmotif <- "bHLH_family.p2"
+jmotif <- "MTF1.p2"
+jmotif <- "PAX8.p2"
+jmotif <- "POU1F1.p2"
+jmotif <- "HNF1A.p2"
 test <- subset(N.long.sub, motif == jmotif)
 
 ks.test <- KsTestPosNeg(jdf = test)
 fit.test <- FitPosNeg(jdf = test)
 ks.test; fit.test
 
-ggplot(data = test, aes(x = hit.or.not, y = sitecount)) + geom_boxplot()
-ggplot(data = test, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) + geom_density(alpha = 0.5)
+ggplot(data = test, aes(x = hit.or.not, y = sitecount)) + 
+  geom_boxplot() + 
+  ggtitle(jmotif)
+ggplot(data = test, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) + 
+  geom_density(alpha = 0.5) +
+  ggtitle(jmotif)
+# END TESTING MOTIFS INDIVIDUALLY
 
 ks.motif <- N.long.sub %>%
   group_by(motif) %>%
