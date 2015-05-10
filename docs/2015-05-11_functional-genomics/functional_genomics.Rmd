@@ -68,31 +68,73 @@ Tissues orchestrate together to carry out function.
 ## A dataset of temporal gene expression across 12 tissues
 
 \columnsbegin
-\column{.5\textwidth}
+\column{.7\textwidth}
 
-![method](images/method-visualization.eps)
+\begin{center}
+\includegraphics[height=0.8\textheight]{images/method-visualization}
+\end{center}
 
-\column{.5\textwidth}
 
-- Sampled over 48 hours (288 microarray + 96 rnaseq samples)
-- {\scriptsize Liver, kidney, adrenal gland, white/brown fat, muscle, heart, aorta, lung, brainstem, cerebellum, hypothalamus}
+\column{.3\textwidth}
+
+>- \scriptsize liver
+- \scriptsize kidney
+- \scriptsize adrenal gland
+- \scriptsize white/brown fat
+- \scriptsize muscle
+- \scriptsize heart
+- \scriptsize aorta
+- \scriptsize lung
+- \scriptsize brainstem
+- \scriptsize cerebellum
+- \scriptsize hypothalamus
 
 \columnsend
 
-## Inferring activity of transcription factors using a genome-wide linear model
+\let\thefootnote\relax\footnotetext{\tiny{A circadian gene expression atlas in mammals. Zhang et al 2014}}
 
-Credit goes to Saeed Omidi
+## Infer activity of transcription factors using a genome-wide linear model
 
->* Predict transcription factor binding sites in promoter regions (1kb region).
-    + Using a MotEvo-like framework (Arnold et al. Bioinformatics, 2012)
-* Infer activity of transcription factor from gene expression data and transcription factor binding sites.
-    + Using the MARA framework (Balwierz et al. Genome Res, 2014)
+Model expression $E$ in gene $g$, tissue $c$, time $t$ as a function of motif sitecounts $N$ and (unknown) motif activity $A$
+
+$$E_{gct} = \sum_{m} N_{gm} A_{mct} + noise$$
+
+- Expect to capture 5% to 15% of the variance using the linear model
+- Goal: to identify regulatory motifs contributing to gene expression in time and across tissues
+
+\let\thefootnote\relax\footnotetext{\tiny{Arnold et al. Bioinformatics, 2012. Balwierz et al. Genome Res, 2014}}
+
+## Infer activity of TFs using a genome-wide linear model
+$E_{gct} = \sum_{m} N_{gm} A_{mct} + noise$
+\begin{center}
+\includegraphics[height=0.7\textheight]{images/matrix-representation}
+\end{center}
+
+
+## Uncover modules of motifs by matrix decomposition
+
+\begin{center}
+\includegraphics[height=0.8\textheight]{images/svd-outer-product-mara1}
+\end{center}
+
+## Uncover modules of motifs by matrix decomposition
+
+\begin{center}
+\includegraphics[height=0.8\textheight]{images/svd-outer-product-mara2}
+\end{center}
 
 # Results
 
-## Tissues align together
+## Questions we explored
 
-```{r eigengenes, echo=FALSE, message=FALSE}
+- Which motifs contribute significantly to the circadian signal across tissues? 
+    + One motif module containing core clock regulators explains majority of the circadian signal
+- How do regulators interact to generate tissue-restricted circadian rhythms?
+    + Alternative promoter usage is a mode in which the cell regulates tissue-restricted circadian rhythms
+
+## First component captures a majority of the circadian signal
+
+```{r screeplot, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
 act.fit <- act.long %>%
   group_by(tissue, gene) %>%
   do(.data = ., FitRhythmicWeighted(df = .))
@@ -131,6 +173,14 @@ act.complex.mat <- act.complex.mat[, 2:ncol(act.complex.mat)]
 
 act.svd <- svd(act.complex.mat) 
 
+plot(act.svd$d^2 / sum(act.svd$d ^ 2), main = "Fraction of signal recovered from each component", ylab = "Fraction of signal", xlab = "Components", type = 'o', cex = 2)
+```
+
+## First component contains motif module whose phases are tissue-independent  
+
+```{r eigengenes, echo=FALSE, message=FALSE}
+
+
 # add row and colnames
 rownames(act.svd$u) <- rownames(act.complex.mat)
 rownames(act.svd$v) <- colnames(act.complex.mat)
@@ -157,7 +207,7 @@ v.plot <- PlotComplex2(eigengene, labels = rownames(act.svd$v), omega = omega, t
 print(v.plot)
 ```
 
-## Core clock genes contribute to significant variance
+## Motif module containing core clock regulators contributes to a majority of the tissue-wide circadian signal
 
 ```{r eigensamples, echo=FALSE, message=FALSE, fig.align='center'}
 u.plot <- PlotComplex2(eigensamp, labels = rownames(act.svd$u), omega = omega, title = paste("Eigentissue activity (normalized to Liver)")) +
@@ -165,12 +215,13 @@ u.plot <- PlotComplex2(eigensamp, labels = rownames(act.svd$u), omega = omega, t
 print(u.plot)
 ```
 
-## Using core clock components to produce tissue-specific rhythms
+## Questions we explored
 
-- Genome-wide linear model identifies tissue-restricted and circadian regulators
-- Core clock components and known circadian regulators contribute to a majority of the circadian signal tissue-wide
-
-- **How do tissue-restricted and circadian regulators interact to produce tissue-restricted circadian rhythms?**
+>- Which motifs contribute significantly to the circadian signal across tissues? 
+    + One motif module containing core clock regulators explains majority of the circadian signal
+\pause
+- How do regulators interact to generate tissue-restricted circadian rhythms?
+    + Alternative promoter usage is a mode in which the cell regulates tissue-restricted circadian rhythms
 
 ## Could alternative promoter usage in different tissues produce tissue-restricted rhythms?
 
@@ -264,12 +315,10 @@ ggplot(data = ror, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) +
 
 # Conclusion
 
-## Regulation of tissue-specific circadian rhythms
+## Conclusions
 
-- Tissu
-
-
-Take it home the message
+- Circadian regulators with tissue-independent phase contribute to a majority of the circadian signal 
+- Circadian regulators interact with different promoters in a tissue-dependent context
 
 ## Thank you
 
