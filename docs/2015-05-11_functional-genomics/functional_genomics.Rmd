@@ -39,20 +39,10 @@ load(file = "/home/yeung/projects/tissue-specificity/Robjs/N.long.Robj")
 load(file = "/home/yeung/projects/tissue-specificity/Robjs/act.long.Robj")
 ```
 
-Coordinating internal biological processes with external cues is crucial to organism fitness
+## Tissues orchestrate together to carry out function.
 
 \begin{center}
-\includegraphics[height=0.4\textheight]{images/circadian-intro-man}
-\end{center}
-
-\let\thefootnote\relax\footnotetext{\tiny{Circadian Surprise: How Our Body Clocks Help Shape Our Waistlines. Aubrey and Streeter 2015}}
-
-## Circadian rhythms (~24 hours) underly many physiological processes.
-
-Tissues orchestrate together to carry out function.
-
-\begin{center}
-\includegraphics[height=0.5\textheight]{images/circadian-introduction}
+\includegraphics[height=0.7\textheight]{images/circadian-introduction}
 \end{center}
 
 \let\thefootnote\relax\footnotetext{\tiny{The Mammalian Circadian Timing System: Synchronization of Peripheral Clocks. Saini et al 2011}}
@@ -105,11 +95,11 @@ $$E_{gct} = \sum_{m} N_{gm} A_{mct} + noise$$
 \let\thefootnote\relax\footnotetext{\tiny{Arnold et al. Bioinformatics, 2012. Balwierz et al. Genome Res, 2014}}
 
 ## Infer activity of TFs using a genome-wide linear model
-$E_{gct} = \sum_{m} N_{gm} A_{mct} + noise$
 \begin{center}
-\includegraphics[height=0.7\textheight]{images/matrix-representation}
+\includegraphics[height=0.65\textheight]{images/matrix-representation}
 \end{center}
 
+$E_{gct} = \sum_{m} N_{gm} A_{mct} + noise$
 
 ## Uncover modules of motifs by matrix decomposition
 
@@ -173,7 +163,16 @@ act.complex.mat <- act.complex.mat[, 2:ncol(act.complex.mat)]
 
 act.svd <- svd(act.complex.mat) 
 
-plot(act.svd$d^2 / sum(act.svd$d ^ 2), main = "Fraction of signal recovered from each component", ylab = "Fraction of signal", xlab = "Components", type = 'o', cex = 2)
+par(mar=c(5.1,5.1,4.1,2.1))
+jcex <- 2.2
+plot(act.svd$d^2 / sum(act.svd$d ^ 2), 
+     main = "Fraction of signal recovered from each component", 
+     ylab = "Fraction of signal", xlab = "Components", 
+     type = 'o', 
+     cex.axis = jcex,
+     cex.lab = jcex,
+     cex.main = jcex)
+
 ```
 
 ## First component contains motif module whose phases are tissue-independent  
@@ -229,6 +228,12 @@ print(u.plot)
 \includegraphics[height=0.6\textheight]{images/alternative-promoter-usage}
 \end{center}
 
+## Example of correlation of alternative promoter usage to tissue-restricted circadian rhythms
+
+\begin{center}
+\includegraphics[width=\textwidth]{images/ddc_genome_browser.eps}
+\end{center}
+
 ## Correlating alternative promoter usage to tissue-restricted circadian rhythms
 
 ```{r correlate-alt-promt-usage, echo=FALSE, message=FALSE, fig.align='center'}
@@ -249,7 +254,7 @@ ggplot(cov.sum, aes(x = rhythmic.or.not, y = norm_reads)) +
 
 ## Alternative promoter usage is associated with tissue-restricted circadian rhythms
 
-15% of 1062 tissue-restricted circadian rhythms are associated with alternative promoter usage
+15% of 1062 (FDR 5%) tissue-restricted circadian rhythms are associated with alternative promoter usage
 
 ```{r histogram-pvals, warning=FALSE, echo=FALSE, message=FALSE, fig.align='center', fig.height=5}
 fit.afe <- cov.normreads.filt.rhyth %>%
@@ -308,8 +313,10 @@ ror <- subset(N.long.sub, motif == jmotif)
 # ggplot(data = ror, aes(x = hit.or.not, y = sitecount)) + 
 #   geom_boxplot() + 
 #   ggtitle(jmotif)
+full.lab <- "Correlation\nwith\nrhythmicity"
 ggplot(data = ror, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) + 
   geom_density(alpha = 0.5) +
+  labs(fill = full.lab, colour = full.lab) +
   ggtitle("Sitecounts of ROR motif")
 ```
 
@@ -322,5 +329,24 @@ ggplot(data = ror, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) +
 
 ## Thank you
 
-End of my presentation
+\columnsbegin
+\column{.7\textwidth}
+
+\begin{center}
+\includegraphics[height=0.8\textheight]{images/team_picture.eps}
+\end{center}
+
+
+\column{.3\textwidth}
+
+Special thanks
+
+>- Felix Naef
+- Saeed Omidi
+- Jingkui Wang
+- Cedric Gobet
+- Jonathan Sobel
+
+\columnsend
+
 
