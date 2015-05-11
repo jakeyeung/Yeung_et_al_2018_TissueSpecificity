@@ -15,9 +15,7 @@ output:
 
 # Introduction
 
-## Circadian rhythms underly many physiological processes
-
-Tissues coordinate with 24h solar day to carry out function
+## Circadian rhythms underlie many physiological processes
 
 ```{r load-data, message=FALSE, warning=FALSE, echo=FALSE}
 library(plyr)
@@ -40,13 +38,12 @@ load(file = "/home/yeung/projects/tissue-specificity/Robjs/N.long.Robj")
 load(file = "/home/yeung/projects/tissue-specificity/Robjs/act.long.Robj")
 ```
 
-\begin{center}
-\includegraphics[height=0.7\textheight]{images/circadian-introduction}
-\end{center}
+![intro](images/circadian-introduction.jpg)
 
 \let\thefootnote\relax\footnotetext{\tiny{The Mammalian Circadian Timing System: Synchronization of Peripheral Clocks. Saini et al 2011}}
 
-## How do circadian and tissue-restricted factors interact to produce tissue-specific rhythmic outputs?
+
+## How do circadian and tissue-specific regulators interact to produce tissue-specific circadian outputs?
 
 \begin{center}
 \includegraphics[height=0.6\textheight]{images/circadian-tissue-interaction}
@@ -84,21 +81,19 @@ load(file = "/home/yeung/projects/tissue-specificity/Robjs/act.long.Robj")
 
 ## Infer activity of TFs using a genome-wide linear model
 \begin{center}
-\includegraphics[height=0.45\textheight]{images/matrix-representation}
+\includegraphics[height=0.55\textheight]{images/matrix-representation}
 \end{center}
-
-$$E_{gct} = \sum_{m} N_{gm} A_{mct} + noise$$
 
 # Results
 
 ## Questions we explored
 
 - Which motifs contribute significantly to the circadian signal across tissues? 
-    + One motif module containing core clock regulators explains majority of the circadian signal
-- How do regulators interact to generate tissue-restricted circadian rhythms?
-    + Alternative promoter usage is a mode in which the cell regulates tissue-restricted circadian rhythms
+    + 45% of the circadian signal can be explained from motifs with tissue-independent phases
+- How are genes expressed rhythmically in a tissue-dependent manner?
+    + Alternative promoter usage in a tissue-dependent manner correlates with tissue-restricted rhythmic expression
 
-## First component captures a majority of the circadian signal
+## First component captures 45% of the circadian signal
 
 ```{r screeplot, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
 act.fit <- act.long %>%
@@ -168,7 +163,7 @@ rownames(act.svd$u)[which(rownames(act.svd$u) == "ATF2.p2")] <- " CREB"
 
 
 # Plot
-theme_set(theme_gray(base_size = 32))
+theme_set(theme_gray(base_size = 28))
 comp <- 1
 eigengene <- act.svd$v[, comp]
 eigensamp <- act.svd$u[, comp]
@@ -182,15 +177,15 @@ eigengene <- eigengene * Conj(rotate.factor) * (1 / amp.reference)
 # rotate eigensamp by +phase ref
 eigensamp <- eigensamp * rotate.factor * amp.reference
 
-v.plot <- PlotComplex2(eigengene, labels = rownames(act.svd$v), omega = omega, title = paste("First component activity (eigenmotif)")) +
+v.plot <- PlotComplex2(eigengene, labels = rownames(act.svd$v), omega = omega, title = paste("First component activity (eigenmotif)"), ylab = "Normalized phase (CT)", xlab = "Normalized activity") +
   scale_size(range=c(2, 6)) + xlim(0, 1.1)
 print(v.plot)
 ```
 
-## Motif module containing core clock regulators contributes to a majority of the tissue-wide circadian signal
+## Main motif module contains core clock regulators
 
 ```{r eigensamples, echo=FALSE, message=FALSE, fig.align='center'}
-u.plot <- PlotComplex2(eigensamp, labels = rownames(act.svd$u), omega = omega, title = paste("First component activity (eigentissue)")) +
+u.plot <- PlotComplex2(eigensamp, labels = rownames(act.svd$u), omega = omega, title = paste("First component activity (eigentissue)"), ylab = "Normalized phase (CT)", xlab = "Normalized activity") +
   scale_size(range=c(0, 10))
 print(u.plot)
 ```
@@ -198,10 +193,10 @@ print(u.plot)
 ## Questions we explored
 
 >- Which motifs contribute significantly to the circadian signal across tissues? 
-    + One motif module containing core clock regulators explains majority of the circadian signal
+    + 45% of the circadian signal can be explained from motifs with tissue-independent phases
 \pause
-- How do regulators interact to generate tissue-restricted circadian rhythms?
-    + Alternative promoter usage is a mode in which the cell regulates tissue-restricted circadian rhythms
+- How are genes expressed rhythmically in a tissue-dependent manner?
+    + Alternative promoter usage in a tissue-dependent manner correlates with tissue-restricted rhythmic expression
 
 ## Could alternative promoter usage in different tissues produce tissue-restricted rhythms?
 
@@ -209,7 +204,7 @@ print(u.plot)
 \includegraphics[height=0.6\textheight]{images/alternative-promoter-usage}
 \end{center}
 
-## Example of correlation of alternative promoter usage to tissue-restricted circadian rhythms
+## Example of correlation of alternative promoter usage with tissue-restricted circadian rhythms
 
 Ddc gene is rhythmic only in liver and kidney
 
@@ -220,24 +215,19 @@ Ddc gene is rhythmic only in liver and kidney
 ## Correlating alternative promoter usage to tissue-restricted circadian rhythms
 
 ```{r correlate-alt-promt-usage, echo=FALSE, message=FALSE, fig.align='center'}
-# cov.sub <- subset(cov.normreads.filt.rhyth, gene == jgene)
-# cov.sub.sum <- cov.sub %>%
-#   group_by(transcript, tissue) %>%
-#   summarise(mean_reads = mean(norm_reads))
-
 # for sanity checking
 jgene <- "Ddc"; jtrans <- "ENSMUST00000066237"
 cov.sum <- subset(cov.normreads.filt.rhyth, gene == jgene & transcript == jtrans & !(is.na(rhythmic.or.not)))
 ggplot(cov.sum, aes(x = rhythmic.or.not, y = norm_reads)) + 
   geom_boxplot() + 
-  ggtitle(paste(jgene, jtrans)) +
+  ggtitle(paste(jgene, "Upstream Promoter")) +
   ylab("Fractional first-exon usage") + 
   xlab("Rhythmic or Not")
 ```
 
 ## Alternative promoter usage is associated with tissue-restricted circadian rhythms
 
-15% of 1062 (FDR 5%) tissue-restricted circadian rhythms are associated with alternative promoter usage
+15% of 1062 tissue-restricted circadian rhythms are associated with alternative promoter usage (FDR 5%) 
 
 ```{r histogram-pvals, warning=FALSE, echo=FALSE, message=FALSE, fig.align='center', fig.height=5}
 fit.afe <- cov.normreads.filt.rhyth %>%
@@ -300,15 +290,15 @@ full.lab <- "Correlation\nwith\nrhythmicity"
 ggplot(data = ror, aes(x = sitecount, colour = hit.or.not, fill = hit.or.not)) + 
   geom_density(alpha = 0.5) +
   labs(fill = full.lab, colour = full.lab) +
-  ggtitle("Sitecounts of ROR motif")
+  ggtitle("Sitecounts of Rev-erbA/Ror")
 ```
 
 # Conclusion
 
 ## Conclusions
 
-- Circadian regulators with tissue-independent phase contribute to a majority of the circadian signal 
-- Circadian regulators interact with different promoters in a tissue-dependent context
+- Circadian regulators with tissue-independent phase contribute to almost a majority of the circadian signal 
+- Alternative promoters are used in a tissue-dependent context and correlates with tissue-restricted rhythms
 
 ## Thank you
 
