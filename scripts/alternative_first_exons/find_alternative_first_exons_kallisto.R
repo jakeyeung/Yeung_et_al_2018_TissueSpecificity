@@ -7,6 +7,7 @@ library(dplyr)
 
 source("scripts/functions/GetTissueTimes.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
+source("scripts/functions/FitRhythmic.R")
 
 LoadKallisto <- function(path.kallisto){
   source("scripts/functions/ConvertRNASeqTissueNamesToArray.R")
@@ -47,6 +48,7 @@ LoadKallisto <- function(path.kallisto){
 # Load data ---------------------------------------------------------------
 
 tpm.long <- LoadKallisto()
+dat.long <- LoadArrayRnaSeq()
 
 head(tpm.long)
 
@@ -60,10 +62,12 @@ test.afe <- test %>%
 ggplot(test.afe, aes(y = tpm_normalized, x = transcript_id)) + geom_boxplot() + facet_wrap(~tissue) + ggtitle(jgene)
 
 
+# Fit rhythmic ------------------------------------------------------------
+
+dat.rhyth <- FitRhythmicDatLong(dat.long)
+
 # Calculate fractional first exon usage -----------------------------------
 
 tpm.afe <- tpm.long %>%
   group_by(gene_name, tissue, time) %>%
   mutate(tpm_normalized = tpm / sum(tpm))
-
-
