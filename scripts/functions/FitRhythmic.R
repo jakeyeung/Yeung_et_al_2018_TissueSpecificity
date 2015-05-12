@@ -30,3 +30,17 @@ FitRhythmic <- function(df, T = 24){
                        int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq)
   return(df.out)
 }
+
+FitRhythmicDatLong <- function(dat.long){
+  library(parallel)
+  dat.long.by_genetiss <- group_by(dat.long, gene, tissue)
+  dat.long.by_genetiss.split <- split(dat.long.by_genetiss, dat.long.by_genetiss$tissue)
+  print("Finding rhythmic genes (~3 minutes)")
+  start <- Sys.time()
+  dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
+    do(.data = jdf, FitRhythmic(df = .))
+  }, mc.cores = 12)
+  dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
+  print(Sys.time() - start)
+  return(dat.fitrhyth)
+}
