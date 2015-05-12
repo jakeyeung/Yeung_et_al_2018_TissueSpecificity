@@ -2,7 +2,7 @@
 # to be used in svd.on.rhythmic.genes.R and other similar scripts
 # March 2 2015
 
-library(plyr)
+# library(plyr)
 library(reshape2)
 # library(PhaseHSV)
 library(ggplot2)
