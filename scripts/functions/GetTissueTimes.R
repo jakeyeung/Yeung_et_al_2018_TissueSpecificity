@@ -3,22 +3,30 @@
 # Dec 4 2014
 # GetTissueTimes.R
 
-GetTissues <- function(samp.names){
+GetTissues <- function(samp.names, get_unique=TRUE){
   # Samp names of form: WFAT48 (as vector)
   # return WFAT (as vector, unique)
   tissues <- unlist(lapply(samp.names, function(samp.name){
     substr(samp.name, 1, nchar(samp.name) - 2)
   }))
-  return(unique(tissues))
+  if (get_unique){
+    return(unique(tissues))
+  } else {
+    return(tissues)
+  }
 }
 
-GetTimes <- function(samp.names){
+GetTimes <- function(samp.names, get_unique=TRUE){
   # Samp names of form: WFAT48 (as vector)
   # return 48 (as vector, unique)
   times <- unlist(lapply(samp.names, function(samp.name){
     substr(samp.name, nchar(samp.name) - 1, nchar(samp.name))
   }))
-  return(unique(times))
+  if (get_unique){
+    return(unique(times))
+  } else {
+    return(times)
+  }
 }
 
 GetTissues.merged <- function(samp.names){
