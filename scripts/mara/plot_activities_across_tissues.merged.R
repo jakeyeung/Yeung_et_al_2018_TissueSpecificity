@@ -63,6 +63,7 @@ jgene <- "ADNP_IRX_SIX_ZHX.p2"
 jgene <- "NFIL3.p2"
 jgene <- "MEF2.A.B.C.D..p2"
 jgene <- "MYOD1.p2"
+jgene <- "TBP.p2"
 
 PlotActivitiesWithSE(subset(act.long, gene == jgene))
 
@@ -123,22 +124,22 @@ text(eigengene, labels = rownames(names(eigengene)))
 
 # Find most "tissue-specific" ---------------------------------------------
 
-# use only rnaseq
-act.mean.rnaseq <- subset(act.mean, experiment == "rnaseq")
-tissue.ranges <- ddply(act.mean.rnaseq, .(gene), summarise, range = diff(range(exprs)))
-head(tissue.ranges[order(tissue.ranges$range, decreasing = TRUE), ], n = 10)
-
-# find liver vs kidney
-act.mean.rnaseq.livkid <- subset(act.mean.rnaseq, tissue %in% c("Liver", "Kidney"))
-tissue.ranges.livkid <- ddply(act.mean.rnaseq.livkid, .(gene), summarise, range = diff(range(exprs)))
-head(tissue.ranges.livkid[order(tissue.ranges.livkid$range, decreasing = TRUE), ], n = 10)
-
-
-df <- subset(act.mean, gene == "REST.p3")
-df <- subset(act.mean, gene == "RORA.p2")
-fit.tiss <- lm(exprs ~ 0 + experiment + tissue, data = df)
-fit.null <- lm(exprs ~ 0 + experiment, data = df)
-anova(fit.null, fit.tiss)
+# # use only rnaseq
+# act.mean.rnaseq <- subset(act.mean, experiment == "rnaseq")
+# tissue.ranges <- ddply(act.mean.rnaseq, .(gene), summarise, range = diff(range(exprs)))
+# head(tissue.ranges[order(tissue.ranges$range, decreasing = TRUE), ], n = 10)
+# 
+# # find liver vs kidney
+# act.mean.rnaseq.livkid <- subset(act.mean.rnaseq, tissue %in% c("Liver", "Kidney"))
+# tissue.ranges.livkid <- ddply(act.mean.rnaseq.livkid, .(gene), summarise, range = diff(range(exprs)))
+# head(tissue.ranges.livkid[order(tissue.ranges.livkid$range, decreasing = TRUE), ], n = 10)
+# 
+# 
+# df <- subset(act.mean, gene == "REST.p3")
+# df <- subset(act.mean, gene == "RORA.p2")
+# fit.tiss <- lm(exprs ~ 0 + experiment + tissue, data = df)
+# fit.null <- lm(exprs ~ 0 + experiment, data = df)
+# anova(fit.null, fit.tiss)
 
 
 # Find rhythmic regulators ------------------------------------------------
@@ -197,7 +198,7 @@ plot(act.svd$d ^ 2 / sum(act.svd$d ^ 2), type = 'o')  # eigenvalues
 
 theme_set(theme_gray())
 # for (comp in seq(1, ncol(act.complex.mat))){
-for (comp in c(2)){
+for (comp in seq(12)){
   eigengene <- act.svd$v[, comp]
   eigensamp <- act.svd$u[, comp]
   # rotate to phase of largest magnitude in sample of eigengene
