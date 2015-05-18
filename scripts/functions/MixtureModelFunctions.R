@@ -1,6 +1,14 @@
 # MixtureModelFunctions.R
 # 2015-04-27
 
+# Example script
+# mixmdl <- normalmixEM(exprs.vec, lambda = c(0.25, 0.75), mu = c(2.5, 9), k = 2)
+# plot(mixmdl,which=2)
+# lines(density(exprs.vec), lty=2, lwd=2)
+# 
+# cutoff <- optimize(ShannonEntropyMixMdl, interval = c(2, 8), mixmdl = mixmdl, maximum = TRUE)
+# cutoff <- cutoff$maximum  # cutoff = 4.883356
+
 ShannonEntropyMixMdl <- function(x, mixmdl){
   p1 <- PredictFromMM(mixmdl, x)
   p2 <- 1 - p1
@@ -34,3 +42,4 @@ PredictFromMM <- function(mixmdl, x){
   p1.given.x <- density.1 / p.of.x
   return(p1.given.x)
 }
+
