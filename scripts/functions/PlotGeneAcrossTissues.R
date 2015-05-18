@@ -24,10 +24,10 @@ PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE){
     jtitle = paste(jgene, jtranscript)
   }
   if (log2.transform == FALSE){
-    m <- ggplot(dat, aes(x = time, y = tpm, group = transcript_id, colour = transcript_id)) 
+    m <- ggplot(dat, aes(x = time, y = tpm, group = transcript_id, colour = transcript_id, shape = transcript_id)) 
     jylab <- "TPM expression"
   } else {
-    m <- ggplot(dat, aes(x = time, y = log2(tpm + 0.01), group = transcript_id, colour = transcript_id))
+    m <- ggplot(dat, aes(x = time, y = log2(tpm + 0.01), group = transcript_id, colour = transcript_id, shape = transcript_id))
     jylab <- "log2 TPM expression"
   }
   m <- m + 
