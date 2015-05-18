@@ -19,13 +19,15 @@ PlotGeneAcrossTissues <- function(dat, jtitle){
 PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE){
   library(ggplot2)
   if (missing(jtitle)){
-    jtitle = unique(dat$gene_name)
+    jgene <- unique(dat$gene_name)
+    jtranscript <- unique(dat$transcript_id)
+    jtitle = paste(jgene, jtranscript)
   }
   if (log2.transform == FALSE){
-    m <- ggplot(dat, aes(x = time, y = tpm)) 
+    m <- ggplot(dat, aes(x = time, y = tpm, group = transcript_id, colour = transcript_id)) 
     jylab <- "TPM expression"
   } else {
-    m <- ggplot(dat, aes(x = time, y = log2(tpm)))
+    m <- ggplot(dat, aes(x = time, y = log2(tpm + 0.01), group = transcript_id, colour = transcript_id))
     jylab <- "log2 TPM expression"
   }
   m <- m + 
