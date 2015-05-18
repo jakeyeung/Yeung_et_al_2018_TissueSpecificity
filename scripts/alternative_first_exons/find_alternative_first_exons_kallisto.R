@@ -48,13 +48,13 @@ LoadKallisto <- function(path.kallisto){
   return(tpm.long)
 }
 
-IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05){
+IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05, cutoff = 4.89){
   # given list of pvals, check if it contains pvals less than pval.min and greater than pval.max.
   # check if pval contains values less than pval.min (rhythmic) and greater than pval.max (flat)
   # if so, return TRUE, otherwise FALSE
-  pvals <- jdf$pval
   avg.exprs <- jdf$int.rnaseq
-  pvals.filt <- pvals[which(!is.nan(pvals))]
+  pvals <- jdf$pval
+  pvals.filt <- pvals[which(!is.nan(pvals) & avg.exprs > cutoff)]
   if (min(pvals.filt) < pval.min & max(pvals.filt) > pval.max){
     jdf$is.tissue.spec.circ <- rep(TRUE, length(pvals))
   } else {
@@ -63,7 +63,7 @@ IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05){
   return(jdf)
 }
 
-IsRhythmic2 <- function(pval, pval.min = 1e-5){
+IsRhythmic2 <- function(pval, avg.exprs, pval.min = 1e-5){
   # check if pval is less than pval.min
   if (is.nan(pval)){
     return(NA)
@@ -87,6 +87,14 @@ ModelRhythmicity <- function(dat, jformula=tpm_normalized ~ is.rhythmic){
   jcoef <- coef(jfit)[[2]]
   pval <- summary(jfit)$coefficients["is.rhythmicTRUE", "Pr(>|t|)"]
   return(data.frame(int = int, coef = jcoef, pval = pval))
+}
+
+CalculateFractionIsoformUsage <- function(tpm, pseudocount = 0){
+  # given tpm of a sample across known isoforms, compute
+  # fraction of isoform usage. 
+  # 
+  # Add pseudo count to increase robustness to lowly expressed genes
+  tpm_normalized <- (tpm + pseudocount) / (sum(tpm + pseudocount))
 }
 
 # Load data ---------------------------------------------------------------
@@ -123,28 +131,22 @@ dat.rhyth$is.rhythmic <- sapply(dat.rhyth$pval, IsRhythmic2)
 # 
 # cutoff <- optimize(ShannonEntropyMixMdl, interval = c(2, 8), mixmdl = mixmdl, maximum = TRUE)
 # cutoff <- cutoff$maximum  # cutoff = 4.883356
-cutoff <- 4.883356
-
-print(paste("Cutoff:", cutoff))
+# cutoff <- 4.883356
+# 
+# print(paste("Cutoff:", cutoff))
 
 # Which genes are rhythmic in a tissue-specific manner? -------------------
 
 dat.rhyth <- dat.rhyth %>%
   group_by(gene) %>%
-  do(IsTissueSpecific2(.))
+  do(IsTissueSpecific2(., pval.min = 1e-5, pval.max = 0.05, cutoff = 6))
 
 tissue.spec.circ.genes <- unique(dat.rhyth[which(dat.rhyth$is.tissue.spec.circ == TRUE), ]$gene)
 
+print(paste("Number of tissue specific genes:", length(tissue.spec.circ.genes)))
+
 # Calculate fractional isoform usage --------------------------------------
 
-
-CalculateFractionIsoformUsage <- function(tpm, pseudocount = 0){
-  # given tpm of a sample across known isoforms, compute
-  # fraction of isoform usage. 
-  # 
-  # Add pseudo count to increase robustness to lowly expressed genes
-  tpm_normalized <- (tpm + pseudocount) / (sum(tpm + pseudocount))
-}
 
 tpm.afe <- tpm.long %>%
   group_by(gene_name, tissue, time) %>%
@@ -193,29 +195,46 @@ sprintf("%s hits found out of %s tissue-specific circadian genes tested. %f perc
 
 # Sanity checks -----------------------------------------------------------
 
+# print top 100 hits
+head(data.frame(fit.afe.summary[order(fit.afe.summary$pval), ]), n = 100)
+
 jgene <- "Abi2"
 jgene <- "Bcat1"; jtranscript="ENSMUST00000123930"
 jgene <- "Slc6a19"; jtranscript="ENSMUST00000124406"
 jgene <- "Csrp3"; jtranscript="ENSMUST00000032658"
 jgene <- "Insig2"; jtranscript="ENSMUST00000003818"
-jgene <- "Hnf4a"; jtranscript="ENSMUST00000109411"
+# jgene <- "Hnf4a"; jtranscript="ENSMUST00000109411"
+jgene <- "Clcn1"; jtranscript="ENSMUST00000031894"
+jgene <- "Ift80"; jtranscript="ENSMUST00000136448"
+jgene <- "Il18r1"; jtranscript="ENSMUST00000087983"  # false positive
+jgene <- "Atp6v1c2"; jtranscript="ENSMUST00000020884"
 
-PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene & transcript_id == jtranscript), log2.transform=FALSE)
-PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene), jtitle = paste(jgene, jtranscript), log2.transform=FALSE)
+# PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene & transcript_id == jtranscript), log2.transform=FALSE)
+
+# check rhythmicity status
+subset(dat.rhyth, gene == jgene)
+
+# jgene2 <- "Dbp"
+# jgene2 <- "Elovl3"
+# jgene2 <- "Rgs16"
+# PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene2), jtitle = jgene2, log2.transform=TRUE)
+# PlotGeneAcrossTissues(subset(dat.long, gene == jgene2))
+
+test.gene <- subset(tpm.afe.filt, gene_name == jgene)
+test <- subset(tpm.afe.filt, gene_name == jgene & transcript_id == jtranscript)
+
+PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
 PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
 
-jgene2 <- "Dbp"
-jgene2 <- "Elovl3"
-jgene2 <- "Rgs16"
-PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene2), jtitle = jgene2, log2.transform=TRUE)
-PlotGeneAcrossTissues(subset(dat.long, gene == jgene2))
-
-test <- subset(tpm.afe.filt, gene_name == jgene & transcript_id == jtranscript)
+ggplot(test.gene, aes(y = tpm_normalized, x = transcript_id)) + 
+  geom_boxplot() + 
+  facet_wrap(~tissue) + 
+  ggtitle(jgene)
 
 ggplot(test, aes(y = tpm_normalized, x = transcript_id)) + 
   geom_boxplot() + 
   facet_wrap(~tissue) + 
-  ggtitle(jgene)
+  ggtitle(paste(jgene, jtranscript))
 
 ggplot(test, 
        aes(y = tpm_normalized, x = is.rhythmic)) + 
