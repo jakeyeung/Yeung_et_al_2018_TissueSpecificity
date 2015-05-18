@@ -63,9 +63,10 @@ IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05, cutoff = 4.
   return(jdf)
 }
 
-IsRhythmic2 <- function(pval, avg.exprs, pval.min = 1e-5){
+IsRhythmic2 <- function(pval, avg.exprs, pval.min = 1e-5, cutoff = 6){
+  # ask if gene is rhythmic, not rhythmic or NA (lowly expressed or 0)
   # check if pval is less than pval.min
-  if (is.nan(pval)){
+  if (is.nan(pval) | avg.exprs < cutoff){
     return(NA)
   }
   if (pval < pval.min){
@@ -97,6 +98,28 @@ CalculateFractionIsoformUsage <- function(tpm, pseudocount = 0){
   tpm_normalized <- (tpm + pseudocount) / (sum(tpm + pseudocount))
 }
 
+PlotDiagnostics <- function(jgene, jtranscript){
+  # Plot diagnostic plots, given a gene and transcript
+  # jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
+  test.gene <- subset(tpm.afe.filt, gene_name == jgene)
+  test <- subset(test.gene, transcript_id == jtranscript)
+  
+  print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene)))
+  
+  print(PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=FALSE))
+  print(PlotTpmAcrossTissues(test, jtitle = paste(jgene, jtranscript), log2.transform=TRUE))
+  
+  print(ggplot(test.gene, aes(y = tpm_normalized, x = transcript_id)) + 
+    geom_boxplot() + 
+    facet_wrap(~tissue) + 
+    ggtitle(jgene))
+  
+  print(ggplot(test, 
+         aes(y = tpm_normalized, x = is.rhythmic)) + 
+    geom_boxplot() + 
+    ggtitle(paste(jgene, jtranscript, "\n", unique(test$tissue[which(test$is.rhythmic == TRUE)]))))
+}
+
 # Load data ---------------------------------------------------------------
 
 tpm.long <- LoadKallisto()
@@ -118,7 +141,8 @@ ggplot(test.afe, aes(y = tpm_normalized, x = transcript_id)) + geom_boxplot() + 
 
 dat.rhyth <- FitRhythmicDatLong(dat.long)
 
-dat.rhyth$is.rhythmic <- sapply(dat.rhyth$pval, IsRhythmic2)
+# dat.rhyth$is.rhythmic <- sapply(dat.rhyth$pval, IsRhythmic2)
+dat.rhyth$is.rhythmic <- mapply(IsRhythmic2, pval = dat.rhyth$pval, avg.exprs = dat.rhyth$int.rnaseq)
 
 
 # Find cutoff for rhythmicity ---------------------------------------------
@@ -171,6 +195,7 @@ tpm.afe.filt$is.rhythmic <- rhythmic.dic[paste(tpm.afe.filt$gene_name, tpm.afe.f
 
 # 2: Associate tissue-specific rhythms with fractional isoform usage
 fit.afe <- tpm.afe.filt %>%
+  filter(!is.na(is.rhythmic)) %>%  # filter out NA's. Onl consider TRUE and FALSE
   group_by(gene_name, transcript_id) %>%
   do(ModelRhythmicity(., jformula = tpm_normalized ~ is.rhythmic))
 
@@ -196,7 +221,15 @@ sprintf("%s hits found out of %s tissue-specific circadian genes tested. %f perc
 # Sanity checks -----------------------------------------------------------
 
 # print top 100 hits
-head(data.frame(fit.afe.summary[order(fit.afe.summary$pval), ]), n = 100)
+top.hits <- data.frame(fit.afe.summary[order(fit.afe.summary$pval), ])
+top.hits <- head(top.hits, n = 10)
+
+start <- Sys.time()
+pdf("plots/alternative_exon_usage/kallisto_diagnostics4.pdf", width = 21, height = 7, paper = "USr")
+jgenes <- as.character(top.hits$gene_name); jtranscripts <- as.character(top.hits$transcript_id)
+mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts)
+dev.off()
+print(Sys.time() - start)
 
 jgene <- "Abi2"
 jgene <- "Bcat1"; jtranscript="ENSMUST00000123930"
@@ -208,6 +241,12 @@ jgene <- "Clcn1"; jtranscript="ENSMUST00000031894"
 jgene <- "Ift80"; jtranscript="ENSMUST00000136448"
 jgene <- "Il18r1"; jtranscript="ENSMUST00000087983"  # false positive
 jgene <- "Atp6v1c2"; jtranscript="ENSMUST00000020884"
+jgene <- "Rnf24"; jtranscript="ENSMUST00000110194"
+jgene <- "Slc12a6"; jtranscript="ENSMUST00000053666"  # false positive? not really rhythmic this transcript
+jgene <- "Insig2"; jtranscript="ENSMUST00000071064"  # probably real
+jgene <- "Gne"; jtranscript="ENSMUST00000173274"  # probably real
+jgene <- "Sparc"; jtranscript="ENSMUST00000125787"  # false positive
+jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
 
 # PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene & transcript_id == jtranscript), log2.transform=FALSE)
 
@@ -220,11 +259,14 @@ subset(dat.rhyth, gene == jgene)
 # PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene2), jtitle = jgene2, log2.transform=TRUE)
 # PlotGeneAcrossTissues(subset(dat.long, gene == jgene2))
 
-test.gene <- subset(tpm.afe.filt, gene_name == jgene)
-test <- subset(tpm.afe.filt, gene_name == jgene & transcript_id == jtranscript)
-
-PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
 PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
+
+test.gene <- subset(tpm.afe.filt, gene_name == jgene)
+test <- subset(test.gene, transcript_id == jtranscript)
+
+PlotTpmAcrossTissues(test, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
+PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
+PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=FALSE)
 
 ggplot(test.gene, aes(y = tpm_normalized, x = transcript_id)) + 
   geom_boxplot() + 
@@ -239,9 +281,12 @@ ggplot(test, aes(y = tpm_normalized, x = transcript_id)) +
 ggplot(test, 
        aes(y = tpm_normalized, x = is.rhythmic)) + 
   geom_boxplot() + 
-  ggtitle(paste(jgene, jtranscript))
+  ggtitle(paste(jgene, jtranscript, "\n", unique(test$tissue[which(test$is.rhythmic == TRUE)])))
 
-
+ggplot(test.gene, aes(x = log2(tpm + 0.001))) + 
+  geom_density() + 
+  facet_wrap(~tissue) +
+  ggtitle(paste(jgene))
 
 # Plot density of TPM reads -----------------------------------------------
 
