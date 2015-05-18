@@ -1,8 +1,9 @@
 # Load Kallisto abundance estimates and try to find first exons from there
 # 2015-05-12
 
-detach("package:plyr", unload=TRUE)  # prevents bugs
+# detach("package:plyr", unload=TRUE)  # run this if you get dplyr bugs
 library(dplyr)
+library(mixtools)
 
 # Functions ---------------------------------------------------------------
 
@@ -10,6 +11,8 @@ source("scripts/functions/GetTissueTimes.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/AlternativeFirstExonsFunctions.R")
+source("scripts/functions/MixtureModelFunctions.R")
 
 LoadKallisto <- function(path.kallisto){
   source("scripts/functions/ConvertRNASeqTissueNamesToArray.R")
@@ -50,6 +53,7 @@ IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05){
   # check if pval contains values less than pval.min (rhythmic) and greater than pval.max (flat)
   # if so, return TRUE, otherwise FALSE
   pvals <- jdf$pval
+  avg.exprs <- jdf$int.rnaseq
   pvals.filt <- pvals[which(!is.nan(pvals))]
   if (min(pvals.filt) < pval.min & max(pvals.filt) > pval.max){
     jdf$is.tissue.spec.circ <- rep(TRUE, length(pvals))
@@ -107,6 +111,21 @@ ggplot(test.afe, aes(y = tpm_normalized, x = transcript_id)) + geom_boxplot() + 
 dat.rhyth <- FitRhythmicDatLong(dat.long)
 
 dat.rhyth$is.rhythmic <- sapply(dat.rhyth$pval, IsRhythmic2)
+
+
+# Find cutoff for rhythmicity ---------------------------------------------
+
+# plot(density(dat.rhyth$int.rnaseq))  # visual inspection
+# # mixture of two gaussians?
+# mixmdl <- normalmixEM(dat.rhyth$int.rnaseq, lambda = c(0.50, 0.50), mu = c(2, 10), k = 2)
+# plot(mixmdl,which=2)
+# lines(density(dat.rhyth$int.rnaseq), lty=2, lwd=2)
+# 
+# cutoff <- optimize(ShannonEntropyMixMdl, interval = c(2, 8), mixmdl = mixmdl, maximum = TRUE)
+# cutoff <- cutoff$maximum  # cutoff = 4.883356
+cutoff <- 4.883356
+
+print(paste("Cutoff:", cutoff))
 
 # Which genes are rhythmic in a tissue-specific manner? -------------------
 
@@ -182,7 +201,14 @@ jgene <- "Insig2"; jtranscript="ENSMUST00000003818"
 jgene <- "Hnf4a"; jtranscript="ENSMUST00000109411"
 
 PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene & transcript_id == jtranscript), log2.transform=FALSE)
+PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene), jtitle = paste(jgene, jtranscript), log2.transform=FALSE)
 PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
+
+jgene2 <- "Dbp"
+jgene2 <- "Elovl3"
+jgene2 <- "Rgs16"
+PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene2), jtitle = jgene2, log2.transform=TRUE)
+PlotGeneAcrossTissues(subset(dat.long, gene == jgene2))
 
 test <- subset(tpm.afe.filt, gene_name == jgene & transcript_id == jtranscript)
 
