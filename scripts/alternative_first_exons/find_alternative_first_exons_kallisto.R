@@ -98,26 +98,31 @@ CalculateFractionIsoformUsage <- function(tpm, pseudocount = 0){
   tpm_normalized <- (tpm + pseudocount) / (sum(tpm + pseudocount))
 }
 
-PlotDiagnostics <- function(jgene, jtranscript){
+PlotDiagnostics <- function(dat.tpm, dat.arrayrnaseq, jgene, jtranscript){
   # Plot diagnostic plots, given a gene and transcript
   # jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
-  test.gene <- subset(tpm.afe.filt, gene_name == jgene)
+  
+  test.gene <- subset(dat.tpm, gene_name == jgene)
   test <- subset(test.gene, transcript_id == jtranscript)
   
-  print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene)))
+  rhythmic.tissues <- paste(unique(test$tissue[which(test$is.rhythmic == TRUE)]), collapse = ",")
+  notrhythmic.tissues <- paste(unique(test$tissue[which(test$is.rhythmic == FALSE)]), collapse = ",")
+  
+  print(PlotGeneAcrossTissues(subset(dat.arrayrnaseq, gene == jgene), 
+                              jtitle = paste(jgene, "\nRhythmic Tissues:", rhythmic.tissues, "\nFlat Tissues:", notrhythmic.tissues)))
   
   print(PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=FALSE))
   print(PlotTpmAcrossTissues(test, jtitle = paste(jgene, jtranscript), log2.transform=TRUE))
   
-  print(ggplot(test.gene, aes(y = tpm_normalized, x = transcript_id)) + 
+  print(ggplot(test.gene, aes(y = tpm_normalized, x = tissue)) + 
     geom_boxplot() + 
-    facet_wrap(~tissue) + 
+    facet_wrap(~transcript_id) + 
     ggtitle(jgene))
   
   print(ggplot(test, 
          aes(y = tpm_normalized, x = is.rhythmic)) + 
     geom_boxplot() + 
-    ggtitle(paste(jgene, jtranscript, "\n", unique(test$tissue[which(test$is.rhythmic == TRUE)]))))
+    ggtitle(paste(jgene, jtranscript)))
 }
 
 # Load data ---------------------------------------------------------------
@@ -177,11 +182,16 @@ tpm.afe <- tpm.long %>%
   mutate(tpm_normalized = CalculateFractionIsoformUsage(tpm, pseudocount = 1))
 
 jgene <- "Insig2"
-ggplot(subset(tpm.afe, gene_name == jgene), aes(y = tpm_normalized, x = transcript_id)) + 
-  geom_boxplot() + 
-  facet_wrap(~tissue) + 
-  ggtitle(jgene)
+jgene <- "Srsf11"
+# ggplot(subset(tpm.afe, gene_name == jgene), aes(y = tpm_normalized, x = transcript_id)) + 
+#   geom_boxplot() + 
+#   facet_wrap(~tissue) + 
+#   ggtitle(jgene)
 
+ggplot(subset(tpm.afe, gene_name == jgene), aes(y = tpm_normalized, x = tissue)) + 
+  geom_boxplot() + 
+  facet_wrap(~transcript_id) + 
+  ggtitle(jgene)
 
 # Find associations between fractional isoform usage and rhythmici --------
 
@@ -222,12 +232,14 @@ sprintf("%s hits found out of %s tissue-specific circadian genes tested. %f perc
 
 # print top 100 hits
 top.hits <- data.frame(fit.afe.summary[order(fit.afe.summary$pval), ])
-top.hits <- head(top.hits, n = 10)
+top.hits <- top.hits[1:707, ]
 
 start <- Sys.time()
-pdf("plots/alternative_exon_usage/kallisto_diagnostics4.pdf", width = 21, height = 7, paper = "USr")
+pdf("plots/alternative_exon_usage/kallisto_diagnostics.top707.pdf", width = 21, height = 7, paper = "USr")
 jgenes <- as.character(top.hits$gene_name); jtranscripts <- as.character(top.hits$transcript_id)
-mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts)
+dat.tpm <- subset(tpm.afe.filt, gene_name %in% jgenes); dat.arrayrnaseq <- subset(dat.long, gene %in% jgenes)
+mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts, 
+       MoreArgs = list(dat.tpm = dat.tpm, dat.arrayrnaseq = dat.arrayrnaseq))
 dev.off()
 print(Sys.time() - start)
 
