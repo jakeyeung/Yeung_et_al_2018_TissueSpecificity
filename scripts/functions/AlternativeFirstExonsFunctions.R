@@ -1,3 +1,59 @@
+# Functions: kallisto -----------------------------------------------------
+
+IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05, cutoff = 4.89){
+  # given list of pvals, check if it contains pvals less than pval.min and greater than pval.max.
+  # check if pval contains values less than pval.min (rhythmic) and greater than pval.max (flat)
+  # if so, return TRUE, otherwise FALSE
+  avg.exprs <- jdf$int.rnaseq
+  pvals <- jdf$pval
+  pvals.filt <- pvals[which(!is.nan(pvals) & avg.exprs > cutoff)]
+  if (min(pvals.filt) < pval.min & max(pvals.filt) > pval.max){
+    jdf$is.tissue.spec.circ <- rep(TRUE, length(pvals))
+  } else {
+    jdf$is.tissue.spec.circ<- rep(FALSE, length(pvals))
+  }
+  return(jdf)
+}
+
+IsRhythmic2 <- function(pval, avg.exprs, pval.min = 1e-5, cutoff = 6){
+  # ask if gene is rhythmic, not rhythmic or NA (lowly expressed or 0)
+  # check if pval is less than pval.min
+  if (is.nan(pval) | avg.exprs < cutoff){
+    return(NA)
+  }
+  if (pval < pval.min){
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+ModelRhythmicity <- function(dat, jformula=tpm_normalized ~ is.rhythmic){
+  # check it contains both Rhythmic and NotRhythmic elements
+  if (length(unique(dat$is.rhythmic)) != 2){
+    return(data.frame(int = NA, coef = NA, pval = NA))
+  }
+  jfit <- lm(data = dat, formula = jformula)
+  # int <- summary(jfit)$mat["(Intercept)", "Coef"]
+  # jcoef <- summary(jfit)$mat["rhythmic.or.notRhythmic", "Coef"]
+  int <- coef(jfit)[[1]]
+  jcoef <- coef(jfit)[[2]]
+  pval <- summary(jfit)$coefficients["is.rhythmicTRUE", "Pr(>|t|)"]
+  return(data.frame(int = int, coef = jcoef, pval = pval))
+}
+
+CalculateFractionIsoformUsage <- function(tpm, pseudocount = 0){
+  # given tpm of a sample across known isoforms, compute
+  # fraction of isoform usage. 
+  # 
+  # Add pseudo count to increase robustness to lowly expressed genes
+  tpm_normalized <- (tpm + pseudocount) / (sum(tpm + pseudocount))
+}
+
+
+# Functions: alternative first exons --------------------------------------
+
+
 KsTestPosNeg <- function(jdf){
   # 
   x.neg <- jdf$sitecount[which(jdf$hit.or.not == "Neg")]
