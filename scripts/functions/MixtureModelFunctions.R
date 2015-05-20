@@ -2,6 +2,7 @@
 # 2015-04-27
 
 # Example script
+# library(mixtools)
 # mixmdl <- normalmixEM(exprs.vec, lambda = c(0.25, 0.75), mu = c(2.5, 9), k = 2)
 # plot(mixmdl,which=2)
 # lines(density(exprs.vec), lty=2, lwd=2)
