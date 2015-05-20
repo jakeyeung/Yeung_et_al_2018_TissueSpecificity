@@ -22,6 +22,8 @@ source("scripts/functions/GrepRikGenes.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
+source("scripts/functions/PlotSitecounts.R")
+source("scripts/functions/LoadSitecounts.R")
 
 # Load RNASeq ---------------------------------------------------
 
@@ -281,9 +283,6 @@ heatmap.2(cov.m, density.info = "histogram", trace = "none", margins = c(5, 14),
 
 
 # Explore sitecount differences in hit -------------------------------------------------------------
-
-source("scripts/functions/PlotSitecounts.R")
-source("scripts/functions/LoadSitecounts.R")
 
 N.list <- LoadSitecounts(gene_ids=FALSE)  # list of N and N.promoter
 N.annot <- LoadEnsemblToPromoter()
