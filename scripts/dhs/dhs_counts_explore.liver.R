@@ -43,13 +43,6 @@ i.reps <- GetReplicates(colnames(dhs.dat))
 n.samps <- length(i.reps)
 
 
-# Plot densities  ---------------------------------------------------------
-
-dhs.reps.liversub <- dhs.reps[rows.sub, ]
-for (i in 1:ncol(dhs.reps.liversub)){
-  plot(density(log2(dhs.reps[rows.sub, i])), main = paste("rep", i))
-}
-
 # Normalize by total counts -----------------------------------------------
 
 dhs.reps <- dhs.dat[, i.reps]
@@ -57,6 +50,13 @@ sum.samps <- apply(dhs.reps, 2, sum)
 dhs.reps <- dhs.reps / sum.samps * 10^6
 
 barplot(sum.samps, las = 2)
+
+# Plot densities  ---------------------------------------------------------
+
+dhs.reps.liversub <- dhs.reps[rows.sub, ]
+for (i in 1:ncol(dhs.reps.liversub)){
+  plot(density(log2(dhs.reps[rows.sub, i])), main = paste("rep", i))
+}
 
 # Identify outlier --------------------------------------------------------
 
