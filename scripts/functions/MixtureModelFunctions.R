@@ -10,6 +10,15 @@
 # cutoff <- optimize(ShannonEntropyMixMdl, interval = c(2, 8), mixmdl = mixmdl, maximum = TRUE)
 # cutoff <- cutoff$maximum  # cutoff = 4.883356
 
+FindCutoff <- function(x, lambdas, mus, k = 2){
+
+  mixmdl = normalmixEM(x, lambda=lambdas, mu=mus, k = k)
+  plot(mixmdl,which=2)
+  lines(density(x), lty=2, lwd=2)
+  cutoff <- optimize(f = ShannonEntropyMixMdl, interval = range(x), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
+  return(cutoff)
+}
+
 ShannonEntropyMixMdl <- function(x, mixmdl){
   p1 <- PredictFromMM(mixmdl, x)
   p2 <- 1 - p1

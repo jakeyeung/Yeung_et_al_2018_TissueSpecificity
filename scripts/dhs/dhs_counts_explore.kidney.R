@@ -69,3 +69,25 @@ plot(mixmdl,which=2)
 lines(density(normcounts), lty=2, lwd=2)
 
 cutoff <- optimize(f = ShannonEntropyMixMdl, interval = range(normcounts), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
+
+cutoff.norm <- 2^cutoff$maximum  # normal scale
+
+print(paste("Using cutoff:", cutoff.norm))
+
+# Filter output by cutoff (take mean of replicates) -----------------------
+
+dhs.clean <- data.frame(chr = dhs.dat$chr,
+                        start = dhs.dat$start,
+                        end = dhs.dat$end,
+                        filtered_norm_counts = apply(dhs.reps, 1, mean))
+
+dhs.clean.filtered <- dhs.clean[which(dhs.clean$filtered_norm_counts > cutoff.norm), ]
+
+if (exists(dhs.clean.filtered)) rm(dhs.clean)
+
+plot(density(log2(dhs.clean.filtered$filtered_norm_counts)))
+
+# Write to file -----------------------------------------------------------
+
+write.table(dhs.clean.filtered, file = "data/beds/filtered_beds/encode_kidney_peaks.bed", 
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
