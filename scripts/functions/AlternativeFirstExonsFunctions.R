@@ -1,5 +1,35 @@
 # Functions: kallisto -----------------------------------------------------
 
+PlotDiagnostics <- function(dat.tpm, dat.arrayrnaseq, jgene, jtranscript){
+  source('scripts/functions/PlotGeneAcrossTissues.R')
+  # uses data objects from find_alternative_first_exons_kallisto.R OR filter_kallisto_for_start_sites.R
+  # Plot diagnostic plots, given a gene and transcript
+  # jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
+  
+  test.gene <- subset(dat.tpm, gene_name == jgene)
+  test <- subset(test.gene, transcript_id == jtranscript)
+  
+  rhythmic.tissues <- paste(unique(test$tissue[which(test$is.rhythmic == TRUE)]), collapse = ",")
+  notrhythmic.tissues <- paste(unique(test$tissue[which(test$is.rhythmic == FALSE)]), collapse = ",")
+  
+  print(PlotGeneAcrossTissues(subset(dat.arrayrnaseq, gene == jgene), 
+                              jtitle = paste(jgene, "\nRhythmic Tissues:", rhythmic.tissues, "\nFlat Tissues:", notrhythmic.tissues)))
+  
+  print(PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=FALSE))
+  print(PlotTpmAcrossTissues(test, jtitle = paste(jgene, jtranscript), log2.transform=TRUE))
+  
+  print(ggplot(test.gene, aes(y = tpm_normalized, x = tissue)) + 
+          geom_boxplot() + 
+          facet_wrap(~transcript_id) + 
+          ggtitle(jgene) +
+          theme(axis.text.x = element_text(angle = 90, hjust = 1)))
+  
+  print(ggplot(test, 
+               aes(y = tpm_normalized, x = is.rhythmic)) + 
+          geom_boxplot() + 
+          ggtitle(paste(jgene, jtranscript)))
+}
+
 IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05, cutoff = 4.89){
   # given list of pvals, check if it contains pvals less than pval.min and greater than pval.max.
   # check if pval contains values less than pval.min (rhythmic) and greater than pval.max (flat)

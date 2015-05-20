@@ -14,33 +14,6 @@ source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
 source("scripts/functions/MixtureModelFunctions.R")
 
-PlotDiagnostics <- function(dat.tpm, dat.arrayrnaseq, jgene, jtranscript){
-  # Plot diagnostic plots, given a gene and transcript
-  # jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
-  
-  test.gene <- subset(dat.tpm, gene_name == jgene)
-  test <- subset(test.gene, transcript_id == jtranscript)
-  
-  rhythmic.tissues <- paste(unique(test$tissue[which(test$is.rhythmic == TRUE)]), collapse = ",")
-  notrhythmic.tissues <- paste(unique(test$tissue[which(test$is.rhythmic == FALSE)]), collapse = ",")
-  
-  print(PlotGeneAcrossTissues(subset(dat.arrayrnaseq, gene == jgene), 
-                              jtitle = paste(jgene, "\nRhythmic Tissues:", rhythmic.tissues, "\nFlat Tissues:", notrhythmic.tissues)))
-  
-  print(PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=FALSE))
-  print(PlotTpmAcrossTissues(test, jtitle = paste(jgene, jtranscript), log2.transform=TRUE))
-  
-  print(ggplot(test.gene, aes(y = tpm_normalized, x = tissue)) + 
-    geom_boxplot() + 
-    facet_wrap(~transcript_id) + 
-    ggtitle(jgene))
-  
-  print(ggplot(test, 
-         aes(y = tpm_normalized, x = is.rhythmic)) + 
-    geom_boxplot() + 
-    ggtitle(paste(jgene, jtranscript)))
-}
-
 # Load data ---------------------------------------------------------------
 
 tpm.long <- LoadKallisto()
@@ -91,7 +64,6 @@ tissue.spec.circ.genes <- unique(dat.rhyth[which(dat.rhyth$is.tissue.spec.circ =
 print(paste("Number of tissue specific genes:", length(tissue.spec.circ.genes)))
 
 # Calculate fractional isoform usage --------------------------------------
-
 
 tpm.afe <- tpm.long %>%
   group_by(gene_name, tissue, time) %>%
@@ -159,6 +131,10 @@ mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts,
 dev.off()
 print(Sys.time() - start)
 
+
+# Individual checks -------------------------------------------------------
+
+
 jgene <- "Abi2"
 jgene <- "Bcat1"; jtranscript="ENSMUST00000123930"
 jgene <- "Slc6a19"; jtranscript="ENSMUST00000124406"
@@ -176,49 +152,49 @@ jgene <- "Gne"; jtranscript="ENSMUST00000173274"  # probably real
 jgene <- "Sparc"; jtranscript="ENSMUST00000125787"  # false positive
 jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
 
-# PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene & transcript_id == jtranscript), log2.transform=FALSE)
-
-# check rhythmicity status
-subset(dat.rhyth, gene == jgene)
-
-# jgene2 <- "Dbp"
-# jgene2 <- "Elovl3"
-# jgene2 <- "Rgs16"
-# PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene2), jtitle = jgene2, log2.transform=TRUE)
-# PlotGeneAcrossTissues(subset(dat.long, gene == jgene2))
-
-PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
-
-test.gene <- subset(tpm.afe.filt, gene_name == jgene)
-test <- subset(test.gene, transcript_id == jtranscript)
-
-PlotTpmAcrossTissues(test, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
-PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
-PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=FALSE)
-
-ggplot(test.gene, aes(y = tpm_normalized, x = transcript_id)) + 
-  geom_boxplot() + 
-  facet_wrap(~tissue) + 
-  ggtitle(jgene)
-
-ggplot(test, aes(y = tpm_normalized, x = transcript_id)) + 
-  geom_boxplot() + 
-  facet_wrap(~tissue) + 
-  ggtitle(paste(jgene, jtranscript))
-
-ggplot(test, 
-       aes(y = tpm_normalized, x = is.rhythmic)) + 
-  geom_boxplot() + 
-  ggtitle(paste(jgene, jtranscript, "\n", unique(test$tissue[which(test$is.rhythmic == TRUE)])))
-
-ggplot(test.gene, aes(x = log2(tpm + 0.001))) + 
-  geom_density() + 
-  facet_wrap(~tissue) +
-  ggtitle(paste(jgene))
-
-# Plot density of TPM reads -----------------------------------------------
-
-plot(density(log2(tpm.long$tpm + 0.01)))
+# # PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene & transcript_id == jtranscript), log2.transform=FALSE)
+# 
+# # check rhythmicity status
+# subset(dat.rhyth, gene == jgene)
+# 
+# # jgene2 <- "Dbp"
+# # jgene2 <- "Elovl3"
+# # jgene2 <- "Rgs16"
+# # PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene2), jtitle = jgene2, log2.transform=TRUE)
+# # PlotGeneAcrossTissues(subset(dat.long, gene == jgene2))
+# 
+# PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
+# 
+# test.gene <- subset(tpm.afe.filt, gene_name == jgene)
+# test <- subset(test.gene, transcript_id == jtranscript)
+# 
+# PlotTpmAcrossTissues(test, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
+# PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=TRUE)
+# PlotTpmAcrossTissues(test.gene, jtitle = paste(jgene, jtranscript), log2.transform=FALSE)
+# 
+# ggplot(test.gene, aes(y = tpm_normalized, x = transcript_id)) + 
+#   geom_boxplot() + 
+#   facet_wrap(~tissue) + 
+#   ggtitle(jgene)
+# 
+# ggplot(test, aes(y = tpm_normalized, x = transcript_id)) + 
+#   geom_boxplot() + 
+#   facet_wrap(~tissue) + 
+#   ggtitle(paste(jgene, jtranscript))
+# 
+# ggplot(test, 
+#        aes(y = tpm_normalized, x = is.rhythmic)) + 
+#   geom_boxplot() + 
+#   ggtitle(paste(jgene, jtranscript, "\n", unique(test$tissue[which(test$is.rhythmic == TRUE)])))
+# 
+# ggplot(test.gene, aes(x = log2(tpm + 0.001))) + 
+#   geom_density() + 
+#   facet_wrap(~tissue) +
+#   ggtitle(paste(jgene))
+# 
+# # Plot density of TPM reads -----------------------------------------------
+# 
+# plot(density(log2(tpm.long$tpm + 0.01)))
 
 
 

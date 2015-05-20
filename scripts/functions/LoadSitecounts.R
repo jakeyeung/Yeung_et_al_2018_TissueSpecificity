@@ -15,8 +15,8 @@ LoadSitecounts <- function(N.path, N.promoterpath, gene_ids=TRUE){
   N <- N[, 2:ncol(N)]
   
   N.promoter <- read.table(N.promoterpath, header = FALSE, sep = '\t')
-  N.promoter <- data.frame(Gene.ID=make.names(N.promoter$V7, unique = TRUE), maraid=N.promoter$V4, saeedid=N.promoter$V10)
-  rownames(N.promoter) <- N.promoter$Gene.ID
+  N.promoter <- data.frame(Gene.ID=make.names(N.promoter$V7, unique = FALSE), maraid=N.promoter$V4, saeedid=N.promoter$V10)
+  rownames(N.promoter) <- make.names(N.promoter$Gene.ID, unique = TRUE)
   return(list(N=N, N.promoter=N.promoter))
 }
 
