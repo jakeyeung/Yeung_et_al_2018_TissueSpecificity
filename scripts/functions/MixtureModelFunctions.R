@@ -16,6 +16,7 @@ FindCutoff <- function(x, lambdas, mus, k = 2){
   plot(mixmdl,which=2)
   lines(density(x), lty=2, lwd=2)
   cutoff <- optimize(f = ShannonEntropyMixMdl, interval = range(x), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
+  abline(v = cutoff$maximum)  # should intersect two gaussians
   return(cutoff)
 }
 

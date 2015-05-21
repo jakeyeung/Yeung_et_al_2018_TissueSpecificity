@@ -1,3 +1,13 @@
+FilterReadcounts <- function(dhs.dat, dhs.reps, good.samples){
+  dhs.clean <- data.frame(chr = dhs.dat$chr,
+                          start = dhs.dat$start,
+                          end = dhs.dat$end,
+                          filtered_norm_counts = apply(dhs.reps[, good.samples], 1, mean))
+  dhs.clean.filtered <- dhs.clean[which(dhs.clean$filtered_norm_counts > cutoff), ]
+  plot(hist(log2(dhs.clean.filtered$filtered_norm_counts), 100))
+  return(dhs.clean.filtered)
+}
+
 GetPeakwidth <- function(col1){
   # Given column 1 row 1 of autocorrelation.txt from homer,
   # get Peakwidth
