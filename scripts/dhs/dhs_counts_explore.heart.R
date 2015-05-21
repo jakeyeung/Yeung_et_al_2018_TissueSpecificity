@@ -1,6 +1,6 @@
 # Look at DHS counts data
 # Date: 2015-03-17
-# rm(list=ls())
+rm(list=ls())
 
 library(ggplot2)
 
@@ -55,3 +55,43 @@ for (i in 1:ncol(dhs.reps.sub)){
   plot(density(log2(unlist(dhs.reps.sub[, i]))), main = paste(jtissue, "rep", i))
 }
 
+
+# Remove replicate 1, keep replicate 2 and 3 ------------------------------
+
+outlier <- "UwStam_mHeart.DS18138.FC6323D.1_001"
+
+good.samples <- colnames(dhs.reps.sub)[which(colnames(dhs.reps.sub) != outlier)]
+
+head(dhs.reps[, good.samples])
+
+
+# Find cutoff -------------------------------------------------------------
+
+source("scripts/functions/MixtureModelFunctions.R")
+
+counts <- unlist(c(dhs.reps[rows.sub, good.samples]))
+counts <- log2(as.numeric(counts[which(counts > 0)]))
+plot(density(counts))
+
+cutoff.log2 <- FindCutoff(x = counts, lambdas = c(0.6, 0.4), mus = c(-5, 0))
+abline(v = cutoff.log2$maximum)  # should intersect two gaussians
+
+cutoff <- 2^cutoff.log2$maximum
+
+print(paste("Cutoff:", cutoff, "log2 Cutoff:", cutoff.log2$maximum))
+
+# Take mean of good samples, filter for cutoff ----------------------------
+
+dhs.clean <- data.frame(chr = dhs.dat$chr,
+                        start = dhs.dat$start,
+                        end = dhs.dat$end,
+                        filtered_norm_counts = apply(dhs.reps[, good.samples], 1, mean))
+
+dhs.clean.filtered <- dhs.clean[which(dhs.clean$filtered_norm_counts > cutoff), ]
+
+plot(hist(log2(dhs.clean.filtered$filtered_norm_counts), 100))
+
+# Write to output ---------------------------------------------------------
+
+write.table(dhs.clean.filtered, file = "data/beds/filtered_beds/encode_peaks.heart.bed", 
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
