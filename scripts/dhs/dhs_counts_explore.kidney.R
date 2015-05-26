@@ -1,10 +1,13 @@
 # Look at DHS counts data
 # Date: 2015-03-17
-# rm(list=ls())
+rm(list=ls())
 
 library(ggplot2)
 
 # Functions ---------------------------------------------------------------
+
+source("scripts/functions/MixtureModelFunctions.R")
+source("scripts/functions/DhsFunctions.R")
 
 GetReplicates <- function(cnames, get.index=TRUE){
   # from colnames of data, retrieve replicate names
@@ -44,50 +47,38 @@ n.samps <- length(i.reps)
 
 # Normalize by total counts -----------------------------------------------
 
-dhs.reps.sub <- dhs.dat[rows.sub, i.reps]
-sum.samps <- apply(dhs.dat[, i.reps], 2, sum)
-dhs.reps <- dhs.dat[, i.reps] / sum.samps * 10^6
+sum.samps <- colSums(dhs.dat[, i.reps])
+dhs.reps <- sweep(dhs.dat[, i.reps], 2, sum.samps, "/") * 10^6
 
 barplot(sum.samps, las = 2)
+
+dhs.reps.sub <- dhs.dat[rows.sub, i.reps]  # for plotting
 
 pairs(log2(dhs.reps.sub))
 
 for (i in 1:ncol(dhs.reps.sub)){
-  plot(density(log2(unlist(dhs.reps.sub[, i]))), main = paste("rep", i))
+  print(colnames(dhs.reps.sub)[i])
+  plot(density(log2(unlist(dhs.reps.sub[, i]))), main = paste(jtissue, colnames(dhs.reps.sub)[i]))
 }
 
 
-# Mixture models two Gaussians --------------------------------------------
+# Find cutoff -------------------------------------------------------------
 
-library(mixtools)
-source("scripts/functions/MixtureModelFunctions.R")
-normcounts <- c(dhs.reps[rows.sub, 1], dhs.reps[rows.sub, 2])
-normcounts <- normcounts[which(normcounts > 0)]
-normcounts <- log2(normcounts)
-mixmdl = normalmixEM(normcounts, lambda=c(0.5, 0.5), mu=c(-6, -2))
-plot(mixmdl,which=2)
-lines(density(normcounts), lty=2, lwd=2)
+good.samples <- colnames(dhs.reps.sub)  # all good
+counts <- unlist(c(dhs.reps[rows.sub, good.samples]))
+counts <- log2(as.numeric(counts[which(counts > 0)]))
+plot(density(counts))
 
-cutoff <- optimize(f = ShannonEntropyMixMdl, interval = range(normcounts), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
+cutoff.log2 <- FindCutoff(x = counts, lambdas = c(0.6, 0.4), mus = c(-5, -1))
+cutoff <- 2^cutoff.log2$maximum
+print(paste("Cutoff:", cutoff, "log2 Cutoff:", cutoff.log2$maximum))
 
-cutoff.norm <- 2^cutoff$maximum  # normal scale
-
-print(paste("Using cutoff:", cutoff.norm))
 
 # Filter output by cutoff (take mean of replicates) -----------------------
 
-dhs.clean <- data.frame(chr = dhs.dat$chr,
-                        start = dhs.dat$start,
-                        end = dhs.dat$end,
-                        filtered_norm_counts = apply(dhs.reps, 1, mean))
-
-dhs.clean.filtered <- dhs.clean[which(dhs.clean$filtered_norm_counts > cutoff.norm), ]
-
-if (exists(dhs.clean.filtered)) rm(dhs.clean)
-
-plot(density(log2(dhs.clean.filtered$filtered_norm_counts)))
+dhs.clean.filtered <- FilterReadcounts(dhs.dat, dhs.reps, good.samples, cutoff)
 
 # Write to file -----------------------------------------------------------
 
-write.table(dhs.clean.filtered, file = "data/beds/filtered_beds/encode_kidney_peaks.bed", 
+write.table(dhs.clean.filtered, file = "data/beds/filtered_beds/encode_peaks.kidney.bed", 
             quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)

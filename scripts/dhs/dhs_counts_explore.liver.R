@@ -6,6 +6,9 @@ library(ggplot2)
 
 # Functions ---------------------------------------------------------------
 
+source("scripts/functions/MixtureModelFunctions.R")
+source("scripts/functions/DhsFunctions.R")
+
 GetReplicates <- function(cnames, get.index=TRUE){
   # from colnames of data, retrieve replicate names
   # expects that colnames are not called "chr", "start", "end", "zscore" or "total"
@@ -45,87 +48,47 @@ n.samps <- length(i.reps)
 
 # Normalize by total counts -----------------------------------------------
 
-dhs.reps <- dhs.dat[, i.reps]
-sum.samps <- apply(dhs.reps, 2, sum)
-dhs.reps <- dhs.reps / sum.samps * 10^6
+sum.samps <- colSums(dhs.dat[, i.reps])
+dhs.reps <- sweep(dhs.dat[, i.reps], 2, sum.samps, "/") * 10^6
 
+dhs.reps.sub <- dhs.dat[rows.sub, i.reps]  # for plotting
+
+pdf("plots/dhs/liver_pairs_plot.pdf")
+pairs(log2(dhs.reps.sub[sample(1:nrow(dhs.reps.sub), size = 0.01 * nrow(dhs.reps.sub), replace = FALSE), ]))  # quick scan
+dev.off()
+
+pdf("plots/dhs/liver_diagnostics.pdf")
 barplot(sum.samps, las = 2)
-
-# Plot densities  ---------------------------------------------------------
-
-dhs.reps.liversub <- dhs.reps[rows.sub, ]
-for (i in 1:ncol(dhs.reps.liversub)){
-  plot(density(log2(dhs.reps[rows.sub, i])), main = paste("rep", i))
+for (i in 1:ncol(dhs.reps.sub)){
+  print(colnames(dhs.reps.sub)[i])
+  plot(density(log2(unlist(dhs.reps.sub[, i]))), main = paste(jtissue, colnames(dhs.reps.sub)[i]))
 }
-
-# Identify outlier --------------------------------------------------------
-
-samp.outlier <- "UwStam_mLiver.DS16858.FC62FJY.4_004"
-samp.normal <- "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep1"
-samp.normal2 <- "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep2"
-
-# plot pairs
-n.sub.forpairs <- 0.001 * nrow(dhs.reps)
-rows.subpair <- sample(seq(1:nrow(dhs.reps)), n.sub.forpairs)
-# this takes super long and prone to crashes
-# pdf("plots/dhs/pair_plots_scattermatrix.pdf")
-# pairs(log2(dhs.dat[rows.subpair, i.reps]))  # UwStam_mLiver.DS16858.FC62FJY.4_004 is an outlier
-# dev.off()
-
-# Plot pairwise between outlier and normal and normal-normal
-pairs(log2(dhs.reps[rows.subpair, c(samp.outlier, samp.normal), ]))
-pairs(log2(dhs.reps[rows.subpair, c(samp.normal2, samp.normal), ]))
-pairs((log2(dhs.reps[rows.subpair, c("UwStam.mLiver.DS16740.FC62FJL.7", "UwStam_mLiver.DS16853.FC62FJY.3_004"), ])))
-
-# Plot density distributions for outlier and two normals
-counts.outlier <- dhs.reps[, samp.outlier][which(dhs.reps[, samp.outlier] > 0)]
-counts.normal <- dhs.reps[, samp.normal][which(dhs.reps[, samp.normal] > 0)]
-counts.normal2 <- dhs.reps[, samp.normal2][which(dhs.reps[, samp.normal2] > 0)]
-qplot(x = counts.outlier, geom = "density") + scale_x_log10() + ggtitle(paste0("Sample ", samp.outlier))
-qplot(x = counts.normal, geom = "density") + scale_x_log10() + ggtitle(paste0("Sample ", samp.normal))
-qplot(x = counts.normal2, geom = "density") + scale_x_log10() + ggtitle(paste0("Sample ", samp.normal2))
-
-# Remove outlier ----------------------------------------------------------
-
-dhs.dat.no.out <- dhs.reps
-dhs.dat.no.out[, samp.outlier] <- NULL
-
-# get mean and sd ---------------------------------------------------------
-
-epsilon <- 10^-3
-sums.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, sum)
-# dhs.dat.no.out <- scale(dhs.dat.no.out)
-means.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, mean)
-sds.reps <- apply(dhs.dat.no.out[rows.sub, ], 1, sd)
-
-qplot(x = sums.reps + 1, geom = "density") + scale_x_log10()
-
-ggplot(data = data.frame(Mean = means.reps, SD = sds.reps), 
-       aes(x = Mean, y = SD)) + 
-  geom_point(alpha = 0.05) + 
-  scale_x_log10() + 
-  scale_y_log10() +
-  ggtitle("Standard deviation vs mean")
-
-ggplot(data = data.frame(Mean = means.reps, CV = sds.reps / means.reps), 
-       aes(x = Mean, y = CV)) + 
-  geom_point(alpha = 0.05) + 
-  scale_x_log10() + 
-  scale_y_log10() +
-  ggtitle("Coefficient of variation vs mean")
+dev.off()
 
 
-# # Fit functions -----------------------------------------------------------
-# 
-# # fitting code
-# y = sds.log2.reps / means.log2.reps
-# x = means.log2.reps
-# 
-# fitModel = nls(y ~ fit(x, a, b), start = list(a = -1, b = 1))
-# params = coef(fitModel)
-# 
-# plot(log2(means.reps + 1), log2(sds.reps + 1), main = paste0("SD vs Mean: ", jtissue), xlab = "log2(Mean)", ylab = "log2(SD)")
-# 
-# # Plot log CV against log counts
-# plot(log2(means.reps / sds.reps + 1), log2(means.reps), main = paste0("CV vs mean: ", jtissue), xlab = "log2(mean)", ylab = "log2(CV)")
+# Remove outliers ---------------------------------------------------------
 
+good.samples <- c("UwStam.mLiver.DS16740.FC62FJL.7", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep2", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep9", "UwStam_mLiver.DS16858.FC62FKY.2_", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep1", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep8", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep7")
+
+pairs(log2(dhs.reps.sub[sample(1:nrow(dhs.reps.sub), size = 0.1 * nrow(dhs.reps.sub), replace = FALSE), ]))  # detailed pairs analysis
+
+counts <- unlist(c(dhs.reps[rows.sub, good.samples]))
+counts <- log2(as.numeric(counts[which(counts > 0)]))
+plot(density(counts))
+
+# cutoff.log2 <- FindCutoff(x = counts, lambdas = c(0.6, 0.4), mus = c(-5, -1))
+# cutoff <- 2^cutoff.log2$maximum  # -4.393
+# print(paste("Cutoff:", cutoff, "log2 Cutoff:", cutoff.log2$maximum))
+
+cutoff.log2 <- -3
+abline(v = cutoff.log2)
+(cutoff <- 2^cutoff.log2)
+
+# Filter output by cutoff (take mean of replicates) -----------------------
+
+dhs.clean.filtered <- FilterReadcounts(dhs.dat, dhs.reps, good.samples, cutoff)
+
+# Write to file -----------------------------------------------------------
+
+write.table(dhs.clean.filtered, file = "data/beds/filtered_beds/encode_peaks.liver.bed", 
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)

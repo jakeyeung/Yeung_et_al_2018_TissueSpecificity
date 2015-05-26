@@ -6,6 +6,10 @@ library(ggplot2)
 
 # Functions ---------------------------------------------------------------
 
+source("scripts/functions/MixtureModelFunctions.R")
+source("scripts/functions/DhsFunctions.R")
+
+
 GetReplicates <- function(cnames, get.index=TRUE){
   # from colnames of data, retrieve replicate names
   # expects that colnames are not called "chr", "start", "end", "zscore" or "total"
@@ -43,16 +47,20 @@ n.samps <- length(i.reps)
 
 # Normalize by total counts -----------------------------------------------
 
-dhs.reps.sub <- dhs.dat[rows.sub, i.reps]
-sum.samps <- apply(dhs.dat[, i.reps], 2, sum)
-dhs.reps <- dhs.dat[, i.reps] / sum.samps * 10^6
+sum.samps <- colSums(dhs.dat[, i.reps])
+dhs.reps <- sweep(dhs.dat[, i.reps], 2, sum.samps, "/") * 10^6
+
+barplot(sum.samps, las = 2)
+
+dhs.reps.sub <- dhs.dat[rows.sub, i.reps]  # for plotting
 
 barplot(sum.samps, las = 2)
 
 pairs(log2(dhs.reps.sub))
 
 for (i in 1:ncol(dhs.reps.sub)){
-  plot(density(log2(unlist(dhs.reps.sub[, i]))), main = paste(jtissue, "rep", i))
+  print(colnames(dhs.reps.sub)[i])
+  plot(density(log2(unlist(dhs.reps.sub[, i]))), main = paste(jtissue, colnames(dhs.reps.sub)[i]))
 }
 
 
@@ -67,29 +75,21 @@ head(dhs.reps[, good.samples])
 
 # Find cutoff -------------------------------------------------------------
 
-source("scripts/functions/MixtureModelFunctions.R")
-
 counts <- unlist(c(dhs.reps[rows.sub, good.samples]))
 counts <- log2(as.numeric(counts[which(counts > 0)]))
 plot(density(counts))
 
-cutoff.log2 <- FindCutoff(x = counts, lambdas = c(0.6, 0.4), mus = c(-5, 0))
-abline(v = cutoff.log2$maximum)  # should intersect two gaussians
+# cutoff.log2 <- FindCutoff(x = counts, lambdas = c(0.6, 0.4), mus = c(-5, -1))
+# cutoff <- 2^cutoff.log2$maximum
+# print(paste("Cutoff:", cutoff, "log2 Cutoff:", cutoff.log2$maximum))
 
-cutoff <- 2^cutoff.log2$maximum
-
-print(paste("Cutoff:", cutoff, "log2 Cutoff:", cutoff.log2$maximum))
+cutoff.log2 <- -3.5
+abline(v = cutoff.log2)
+cutoff <- 2^cutoff.log2
 
 # Take mean of good samples, filter for cutoff ----------------------------
 
-dhs.clean <- data.frame(chr = dhs.dat$chr,
-                        start = dhs.dat$start,
-                        end = dhs.dat$end,
-                        filtered_norm_counts = apply(dhs.reps[, good.samples], 1, mean))
-
-dhs.clean.filtered <- dhs.clean[which(dhs.clean$filtered_norm_counts > cutoff), ]
-
-plot(hist(log2(dhs.clean.filtered$filtered_norm_counts), 100))
+dhs.clean.filtered <- FilterReadcounts(dhs.dat, dhs.reps, good.samples, cutoff)
 
 # Write to output ---------------------------------------------------------
 
