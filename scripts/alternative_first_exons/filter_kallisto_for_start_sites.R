@@ -142,15 +142,15 @@ PlotDiagnostics(dat.tpm, dat.long, "Myo1b", "ENSMUST00000144694")
 PlotDiagnostics(dat.tpm, dat.long, "Tcp1", "ENSMUST00000089024,ENSMUST00000151287,ENSMUST00000143961,ENSMUST00000129632,ENSMUST00000133003,ENSMUST00000151715")
 
 
-start <- Sys.time()
-# 18 minutes: super slow. Comment out if not needed.
-pdf("plots/alternative_exon_usage/kallisto_diagnostics.start_site_merged.top100.pdf", width = 21, height = 7, paper = "USr")
-jgenes <- as.character(top.hits$gene_name); jtranscripts <- as.character(top.hits$transcript_id)
-dat.tpm <- subset(tpm.afe.filt, gene_name %in% jgenes); dat.arrayrnaseq <- subset(dat.long, gene %in% jgenes)
-mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts, 
-       MoreArgs = list(dat.tpm = dat.tpm, dat.arrayrnaseq = dat.arrayrnaseq))
-dev.off()
-print(Sys.time() - start)
+# start <- Sys.time()
+# # 18 minutes: super slow. Comment out if not needed.
+# pdf("plots/alternative_exon_usage/kallisto_diagnostics.start_site_merged.top100.pdf", width = 21, height = 7, paper = "USr")
+# jgenes <- as.character(top.hits$gene_name); jtranscripts <- as.character(top.hits$transcript_id)
+# dat.tpm <- subset(tpm.afe.filt, gene_name %in% jgenes); dat.arrayrnaseq <- subset(dat.long, gene %in% jgenes)
+# mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts, 
+#        MoreArgs = list(dat.tpm = dat.tpm, dat.arrayrnaseq = dat.arrayrnaseq))
+# dev.off()
+# print(Sys.time() - start)
 
 
 # What is the distribution of tissues in tissue-specific circadian --------
