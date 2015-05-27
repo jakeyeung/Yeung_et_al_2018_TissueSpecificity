@@ -1,4 +1,4 @@
-FilterReadcounts <- function(dhs.dat, dhs.reps, good.samples){
+FilterReadcounts <- function(dhs.dat, dhs.reps, good.samples, cutoff){
   dhs.clean <- data.frame(chr = dhs.dat$chr,
                           start = dhs.dat$start,
                           end = dhs.dat$end,

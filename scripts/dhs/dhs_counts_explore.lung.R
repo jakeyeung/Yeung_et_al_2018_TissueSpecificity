@@ -1,7 +1,7 @@
 # Look at DHS counts data
 # Date: 2015-03-17
 rm(list=ls())
-
+setwd("~/projects/tissue-specificity")
 library(ggplot2)
 
 # Functions ---------------------------------------------------------------
@@ -63,6 +63,12 @@ for (i in 1:ncol(dhs.reps.sub)){
 # All samples look good, find cutoff with mixmdl -----------------------------
 
 good.samples <- colnames(dhs.reps.sub)
+sink("data/beds/filtered_beds/encode_lung_good_samples.txt")
+for (s in good.samples){
+  cat(s)
+  cat("\n")
+}
+sink()
 
 counts <- unlist(dhs.reps[rows.sub, good.samples])
 counts <- log2(counts[which(counts > 0)])

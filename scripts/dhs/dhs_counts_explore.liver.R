@@ -2,6 +2,8 @@
 # Date: 2015-03-17
 rm(list=ls())
 
+setwd("~/projects/tissue-specificity")
+
 library(ggplot2)
 
 # Functions ---------------------------------------------------------------
@@ -68,7 +70,23 @@ dev.off()
 
 # Remove outliers ---------------------------------------------------------
 
-good.samples <- c("UwStam.mLiver.DS16740.FC62FJL.7", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep2", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep9", "UwStam_mLiver.DS16858.FC62FKY.2_", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep1", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep8", "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep7")
+good.samples <- c("wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep2", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep9", 
+                  "UwStam_mLiver.DS16858.FC62FKY.2_", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep1", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep2", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep3", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep4", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep5", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep6", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep8", 
+                  "wgEncodeUwDnaseLiverC57bl6MAdult8wksRawDataRep9")
+sink("data/beds/filtered_beds/encode_liver_good_samples.txt")
+for (s in good.samples){
+  cat(s)
+  cat("\n")
+}
+sink()
 
 pairs(log2(dhs.reps.sub[sample(1:nrow(dhs.reps.sub), size = 0.1 * nrow(dhs.reps.sub), replace = FALSE), ]))  # detailed pairs analysis
 

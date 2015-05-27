@@ -1,7 +1,7 @@
 # Look at DHS counts data
 # Date: 2015-03-17
 rm(list=ls())
-
+setwd("~/projects/tissue-specificity")
 library(ggplot2)
 
 # Functions ---------------------------------------------------------------
@@ -65,7 +65,12 @@ for (i in 1:ncol(dhs.reps.sub)){
 # Remove outliers ---------------------------------------------------------
 
 (good.samples <- colnames(dhs.reps.sub)[which(colnames(dhs.reps.sub) != "UwStam_mMuscle_Skeletal.DS18130.FC6323D.1_004")])
-
+sink("data/beds/filtered_beds/encode_skeletalmuscle_good_samples.txt")
+for (s in good.samples){
+  cat(s)
+  cat("\n")
+}
+sink()
 counts <- unlist(dhs.reps[rows.sub, good.samples])
 counts <- log2(counts[which(counts > 0)])
 plot(density(counts))

@@ -2,6 +2,8 @@
 # Date: 2015-03-17
 rm(list=ls())
 
+setwd("~/projects/tissue-specificity")
+
 library(ggplot2)
 
 # Functions ---------------------------------------------------------------
@@ -69,6 +71,12 @@ for (i in 1:ncol(dhs.reps.sub)){
 outlier <- "UwStam_mHeart.DS18138.FC6323D.1_001"
 
 good.samples <- colnames(dhs.reps.sub)[which(colnames(dhs.reps.sub) != outlier)]
+sink("data/beds/filtered_beds/encode_heart_good_samples.txt")
+for (s in good.samples){
+  cat(s)
+  cat("\n")
+}
+sink()
 
 head(dhs.reps[, good.samples])
 

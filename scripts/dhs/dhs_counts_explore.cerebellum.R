@@ -1,6 +1,8 @@
 # Look at DHS counts data
 # Date: 2015-03-17
-# rm(list=ls())
+rm(list=ls())
+
+setwd("~/projects/tissue-specificity")
 
 library(ggplot2)
 
@@ -62,6 +64,12 @@ for (i in 1:ncol(dhs.reps.sub)){
 
 (good.samples <- colnames(dhs.reps.sub)[which(colnames(dhs.reps.sub) %in% c("wgEncodeUwDnaseCbellumC57bl6MAdult8wksRawDataRep2", 
                                                                             "wgEncodeUwDnaseCerebellumC57bl6MAdult8wksRawDataRep1"))])
+sink("data/beds/filtered_beds/encode_cerebelllum_good_samples.txt")
+for (s in good.samples){
+  cat(s)
+  cat("\n")
+}
+sink()
 
 counts <- unlist(dhs.reps[rows.sub, good.samples])
 counts <- log2(counts[which(counts > 0)])

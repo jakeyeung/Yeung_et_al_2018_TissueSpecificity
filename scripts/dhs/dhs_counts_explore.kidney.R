@@ -1,7 +1,7 @@
 # Look at DHS counts data
 # Date: 2015-03-17
 rm(list=ls())
-
+setwd("~/projects/tissue-specificity")
 library(ggplot2)
 
 # Functions ---------------------------------------------------------------
@@ -65,6 +65,13 @@ for (i in 1:ncol(dhs.reps.sub)){
 # Find cutoff -------------------------------------------------------------
 
 good.samples <- colnames(dhs.reps.sub)  # all good
+sink("data/beds/filtered_beds/encode_kidney_good_samples.txt")
+for (s in good.samples){
+  cat(s)
+  cat("\n")
+}
+sink()
+
 counts <- unlist(c(dhs.reps[rows.sub, good.samples]))
 counts <- log2(as.numeric(counts[which(counts > 0)]))
 plot(density(counts))
