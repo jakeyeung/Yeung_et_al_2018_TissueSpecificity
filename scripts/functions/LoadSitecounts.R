@@ -50,3 +50,35 @@ LoadEnsemblToPromoter <- function(annot.path){
   annot$ensemblid = transcriptid
   return(annot)
 }
+
+LoadSitecountsEncode <- function(inpath, tissue){
+  jdf <- read.table(inpath, header = TRUE, sep = "\t")
+  rnames <- as.character(jdf$ensemblid)
+  genes <- sapply(rnames, function(s) strsplit(s, ";")[[1]][[1]])
+  ensemblids <- sapply(rnames, function(s) strsplit(s, ";")[[1]][[2]])
+  rownames(jdf) <- rnames
+  jdf$ensemblid <- NULL
+  jdf.long <- data.frame(gene = rep(genes, length(colnames(jdf))),
+                         ensemblid = rep(ensemblids, length(colnames(jdf))),
+                         motif = rep(colnames(jdf), each = length(rep(rownames(jdf)))),
+                         motevo.value = unlist(jdf))
+  jdf.long$tissue <- rep(tissue, nrow(jdf.long))
+  return(jdf.long)
+}
+
+LoadSitecountsEncodeAll <- function(maindir){
+  # Load ENCODE sitecounts
+  if (missing(maindir)){
+    maindir <- "data/sitecounts/motevo/encode_sitecount_matrix"
+  }
+  tissues <- c("Liver", "Cerebellum", "SkeletalMuscle", "Kidney", "Heart", "Lung")  # matches with Hogenesch data
+  suffix <- "sitecounts.matrix"
+  fnames <- paste(tissues, suffix, sep=".")
+  paths <- paste(maindir, fnames, sep="/")
+  motevo.df.list <- list()
+  for (p in paths){
+    tissue <- strsplit(basename(p), "\\.")[[1]][[1]]
+    motevo.df.list[[tissue]] <- LoadSitecountsEncode(p, tissue)
+  }
+  motevo.long <- do.call("rbind", motevo.df.list)
+}

@@ -7,6 +7,7 @@ library(mixtools)
 
 # Functions ---------------------------------------------------------------
 
+source("scripts/functions/LoadKallisto.R")
 source("scripts/functions/GetTissueTimes.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")

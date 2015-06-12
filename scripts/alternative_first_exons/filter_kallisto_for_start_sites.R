@@ -1,9 +1,10 @@
 # 2015-05-19
 # filter_kallisto_for_start_sites.R
 
-library(dplyr)
 library(gplots)
 library(reshape2)
+library(dplyr)
+library(ggplot2)
 
 # Functions ---------------------------------------------------------------
 
@@ -13,6 +14,7 @@ source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotSitecounts.R")
 source("scripts/functions/LoadSitecounts.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
 
 GetOverlaps <- function(starts, ends){
   for (i in 1:length(starts)){
@@ -77,6 +79,27 @@ resetPar <- function() {
   op
 }
 
+
+PlotSitesBar <- function(m, jgene){
+  rownames(m) <- m$promoterid
+  m$promoterid <- NULL
+  m <- m[which(m > 0.25), drop = FALSE]
+  m <- m[order(m, decreasing = TRUE)]
+  par(mar=c(6, 20, 4.1, 2.1))  
+  PlotSitecounts(unlist(m), title = jgene, jcex = 0.5)
+}
+
+PlotSitesHeat <- function(m, jgene){
+  rownames(m) <- m$promoterid
+  m$promoterid <- NULL
+  m <- as.matrix(m)
+  m <- m[, which(colSums(m) > 0.25)]
+  par(mar=c(5.1, 12, 4.1, 2.1))
+  my_palette <- colorRampPalette(c("white", "black"))(n = 299)
+  heatmap.2(t(m), density.info = "density", trace = "none", margins = c(1, 14), main = jgene, col = my_palette, cexRow=0.50)
+}
+
+
 # Load data ---------------------------------------------------------------
 
 tpm.merged <- LoadKallisto(path.kallisto = "data/alternative_exon_usage/abundance.merged.annotated.sorted.pythonmerged.bed")
@@ -136,10 +159,10 @@ top.hits <- head(data.frame(fit.afe.summary[order(fit.afe.summary$pval), ]), n =
 (subset(top.hits, select = -transcript_id))
 
 
-PlotDiagnostics(dat.tpm, dat.long, "Srrm2", "ENSMUST00000191385,ENSMUST00000190293")
-PlotDiagnostics(dat.tpm, dat.long, "Adipoq", "ENSMUST00000023593")
-PlotDiagnostics(dat.tpm, dat.long, "Myo1b", "ENSMUST00000144694")
-PlotDiagnostics(dat.tpm, dat.long, "Tcp1", "ENSMUST00000089024,ENSMUST00000151287,ENSMUST00000143961,ENSMUST00000129632,ENSMUST00000133003,ENSMUST00000151715")
+# PlotDiagnostics(dat.tpm, dat.long, "Srrm2", "ENSMUST00000191385,ENSMUST00000190293")
+# PlotDiagnostics(dat.tpm, dat.long, "Adipoq", "ENSMUST00000023593")
+# PlotDiagnostics(dat.tpm, dat.long, "Myo1b", "ENSMUST00000144694")
+# PlotDiagnostics(dat.tpm, dat.long, "Tcp1", "ENSMUST00000089024,ENSMUST00000151287,ENSMUST00000143961,ENSMUST00000129632,ENSMUST00000133003,ENSMUST00000151715")
 
 
 # start <- Sys.time()
@@ -220,5 +243,68 @@ m <- m[, which(colSums(m) > 0.25)]
 par(mar=c(5.1, 12, 4.1, 2.1))
 my_palette <- colorRampPalette(c("white", "black"))(n = 299)
 heatmap.2(t(m), density.info = "density", trace = "none", margins = c(1, 14), main = jgene, col = my_palette, cexRow=0.75)
+
+
+# Look at tissue-specific circadian genes with ONE promoter ---------------
+
+tpm.one.promoter <- tpm.afe.filt[which(tpm.afe.filt$tpm_normalized == 1), ]  # 1184 unique genes
+
+# rank by "most rhythmic"
+dat.rhyth.one.promoter <- dat.rhyth[which(dat.rhyth$gene %in% tpm.one.promoter$gene_name), ]
+
+dat.rhyth.one.promoter.summary <- dat.rhyth.one.promoter %>%
+  group_by(gene) %>%
+  summarise(min.pval=min(pval), max.amp=max(amp)) %>%
+  arrange(min.pval)
+
+head(data.frame(dat.rhyth.one.promoter.summary), n = 100)
+
+top.genes <- as.character(dat.rhyth.one.promoter.summary$gene[1:100])
+N.annot.top.genes <- subset(N.annot, Gene.ID %in% top.genes)
+
+jgene <- "Agpat6"
+jgene <- "Ppp1r3c"
+jgene <- "Ypel2"
+jgene <- "Elovl3"
+jgene <- "Osbpl8"
+jgene <- "Ddc"
+
+jgene <- "Cry1"
+jgene <- "Myod1"
+jgene <- "Ddc"
+
+
+# Save Robjs for loading elsewhere ----------------------------------------
+
+# save(dat.rhyth.one.promoter, file = "Robjs/dat.rhyth.one.promoter.Robj")
+# save(tpm.afe.filt, file = "Robjs/tpm.afe.filt.Robj")
+# save(fit.afe, file = "Robjs/fit.afe.Robj")
+# save(dat.rhyth, file = "Robjs/dat.rhyth.Robj")
+
+# pdf("plots/tissue_specific_rhythmic_genes/sitecounts_single_promoter.top100.cex.pdf")
+# for (jgene in top.genes){
+#   print(jgene)
+#   print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene)))
+#   # Look at sitecounts for single motifs ------------------------------------
+#   test <- subset(N.annot.top.genes, Gene.ID == jgene)  # faster
+#   # test <- subset(N.annot, Gene.ID == jgene)
+#   if (nrow(test) == 0){
+#     print(paste(jgene, "Nothing found, skipping."))
+#     next
+#   }
+#   promoterids <- as.character(unique(test$saeedid))
+#   sitecounts <- subset(N.long, promoterid %in% promoterids)
+#   
+#   m <- dcast(data = sitecounts, formula = promoterid ~ motif, value.var = "sitecount")
+#   if (nrow(m) > 1){
+#     PlotSitesHeat(m, jgene)
+#   } else if (nrow(m) == 1){
+#     PlotSitesBar(m, jgene)
+#   }
+# }
+# dev.off()
+
+
+# Let's look at sitecounts of different promoters (subset of tissu --------
 
 
