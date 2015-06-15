@@ -1,3 +1,13 @@
+PlotMeanActivitiesWithSE.singleintercept <- function(df){
+  jgene <- unique(df$gene)
+  ggplot(df,
+         aes(x = tissue, y = exprs)) + 
+    geom_line() + 
+    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+    ylab("Activity") +
+    ggtitle(jgene)
+}
+
 ConvertArgToPhase <- function(phase.rads, omega){
   # convert phase in radians to phase in time, using omega.
   # expect phase to be between -pi to pi, convert that
