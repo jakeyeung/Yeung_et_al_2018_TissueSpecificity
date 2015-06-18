@@ -17,13 +17,14 @@ source("scripts/functions/RegressionFunctions.R")
 saturation <- function(params, r) params[2] + (params[1] * r) / (params[3] + r)
 saturation.inv <- function(params, m) params[3] * (m - params[2]) / (params[2] + params[1] - m)
 
-# LINEAR FUNCTIONS
-linear <- function(params, x) params[1] + params[2] * x
-linear.inv <- function(params, y) {
-  if (is.na(params[2])){
-    params[2] <- Inf
-  }
-  (y - params[1]) / params[2]
+saturation2 <- function(a, b, k, r){
+  b + (a * r ) / (k + r)
+}
+saturation.inv2 <- function(a, b, k, m) {
+  k * (m - b) / (b + a - m)
+}
+linear.inv2 <- function(int, slope, y) {
+  (y - int) / slope
 }
 
 
@@ -60,12 +61,19 @@ GetGeneList <- function(){
   return(clockgenes)
 }
 
-LoadKallistoGene <- function(inpath, gene_colname = "gene_name", log2.pseudocount=FALSE){
+LoadKallistoGene <- function(inpath, gene_colname = "gene_name", log2.pseudocount=FALSE, form = "long"){
   source("scripts/functions/ConvertRNASeqTissueNamesToArray.R")
-  
-  
+    
   if (missing(inpath)){
     inpath <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
+  }
+  if (form == "wide"){
+    dat <- read.table(inpath, header = TRUE, row.names = 1)
+    tissues <- sapply(colnames(dat), function(s) strsplit(s, "_")[[1]][[1]])
+    tissues <- ConvertRNASeqTissueNamesToArray(tissues)
+    times <- GetTimes(colnames(dat), get_unique = FALSE)
+    colnames(dat) <- paste(tissues, times, sep = '')
+    return(dat)
   }
   
   dat <- read.table(inpath, header = TRUE)
@@ -201,132 +209,18 @@ MergeRnaseqArray <- function(kallisto.long, array.long, array.var = "signal.norm
   return(merge.long)
 }
 
-GetWeightsFromVar <- function(dat, fit.noise){
-  # from array signal, estimate the noise in the estimate from fit.noise
-  # We can't have negative values, so take the smallest non-negative number
-  # in the signal as a proxy
-  
-  # BEGIN: Set variance as weights
-  M.var <- predict(fit.noise, dat$array.signal)
-  # adjust M.var so all values less than 0 take on smallest non-negative number
-  M.var.min <- min(M.var[which(M.var > 0)])
-  # if M.var.min is infinity, probably RNA-Seq has no expression, default weights to 1
-  if (is.infinite(M.var.min)){
-    gene <- dat$gene[1]
-    warning(paste("Gene:", gene, "...adjusting infinites to 1 for variance."))
-    M.var.min <- 1
-  }
-  M.var[which(M.var < 0)] <- M.var.min
-  weights <- 1 / M.var
-  # END: Set variance as weights
-  return(weights)
-}
-
-FitSaturationCurve <- function(dat, fit.noise, array.wide){
-  if (sum(dat$tpm) == 0){
-    # all zeros, then return linear slope with slope = infinity
-    return(data.frame(model = "lm", 
-                      a = NA, 
-                      b = NA,
-                      k = NA,
-                      int = 1,
-                      slope = Inf))
-  }
-  gene <- dat$gene[1]
-  M.full <- array.wide[gene, ]
-  # BEGIN: Constants
-  # x.factor: make fit not so close to saturation points
-  # x.factor = 1: best fit
-  # x.factor > 1: force saturation points farhter from data points
-  x.factor <- 1.2
-  # bg.factor: make fit not so close to background
-  bg.factor <- 0.8
-  
-  # lower and upper bounds: saturation model
-  bmin <- 0
-  kmin <- 0
-  amin <- max(M.full) * x.factor
-  bmax <- min(M.full) * bg.factor
-  amax <- Inf
-  kmax <- Inf
-  # init vals: saturation model
-  b0 <- 2^4
-  k0 <- 2^6  # large to begin in linear regime
-  a0 <- amin + 10  # expect it close to amin
-  # lower and upper bounds: 
-  slopemin <- 0
-  intmin <- 0
-  slopemax <- Inf
-  intmax <- min(M.full) * bg.factor
-  
-  # Linear fit constraints
-  slope0 <- 0.07  # may need adjusting
-  int0 <- 10
-  # END: Constants
-  
-  weights <- GetWeightsFromVar(dat, fit.noise)
-  
-  fit <- tryCatch({
-    fit.saturation <- nls(data = dat,
-                          formula = array.signal ~ b + (a * tpm) / (k + tpm),
-                          algorithm = "port",
-                          start=list(a=a0, 
-                                     b=b0,
-                                     k=k0),
-                          lower=list(a=amin,
-                                     b=bmin,
-                                     k=kmin),
-                          upper=list(a=amax,
-                                     b=bmax,
-                                     k=kmax),
-                          weights=weights)
-    
-    #     fit.lm <- FitLmConstraint2(dat, weights,
-    #                                int0, slope0,
-    #                                intmin, slopemin,
-    #                                intmax, slopemax)
-    fit.lm <- c(int = NA, slope = NA)
-    return(data.frame(model = "saturation", 
-                      a = coefficients(fit.saturation)[["a"]], 
-                      b = coefficients(fit.saturation)[["b"]],
-                      k = coefficients(fit.saturation)[["k"]],
-                      int = NA,
-                      slope = NA))
-  }, error = function(e){
-    #     fit.saturation <- nls(data = dat,
-    #                           formula = array.signal ~ b + (a * tpm) / (k + tpm),
-    #                           algorithm = "port",
-    #                           start=list(a=a0, 
-    #                                      b=b0,
-    #                                      k=k0),
-    #                           lower=list(a=amin,
-    #                                      b=bmin,
-    #                                      k=kmin),
-    #                           upper=list(a=amax,
-    #                                      b=bmax,
-    #                                      k=kmax),
-    #                           weights=weights)
-    fit.saturation <- c(a = NA, b = NA, k = NA)
-    fit.lm <- FitLmConstraint2(dat, weights,
-                               int0, slope0,
-                               intmin, slopemin,
-                               intmax, slopemax)
-    return(data.frame(model = fit.lm[["method"]], 
-                      a = NA, 
-                      b = NA,
-                      k = NA,
-                      int = fit.lm[["int"]],
-                      slope = fit.lm[["slope"]]))
-  })
-}
 
 # Load matrices -----------------------------------------------------------
 
 kallisto.path <- "data/kallisto/abundance.genecounts.matrix.txt"
 array.path <- "data/array_exprs_colnames_fixed.best.probe.selected.txt"
-kallisto.long <- LoadKallistoGene(kallisto.path)
+kallisto.long <- LoadKallistoGene(kallisto.path, form = "long")
+kallisto.wide <- LoadKallistoGene(kallisto.path, form = "wide")
 array.long <- LoadArray(array.path, get.norm = TRUE, form = "long")
 array.wide <- LoadArray(array.path, get.norm = TRUE, form = "wide")
+
+common.samps <- intersect(colnames(kallisto.wide), colnames(array.wide))
+unique.samps <- setdiff(colnames(array.wide), colnames(kallisto.wide))
 
 # jgene <- "Elovl3"
 # PlotGeneTpm(kallisto.long, jgene, log2.pseudocount=0.001, scale = 1)
@@ -397,26 +291,81 @@ fits.test <- subset(merge.long, gene %in% c(GetGeneList())) %>%
   group_by(gene) %>%
   do(FitSaturationCurve(., fit.noise, array.wide))
 # 
+jgene <- "Arf6"
 test <- subset(merge.long, gene == "BC053393")
+test <- subset(merge.long, gene == "1600029I14Rik")
+test <- subset(merge.long, gene == jgene)
 test.fit <- FitSaturationCurve(test, fit.noise, array.wide)
 
-# # head(merge.long)
+# head(merge.long)
+# start <- Sys.time()  # ~4 minutes total
 # fits.all <- merge.long %>%
 #   group_by(gene) %>%
 #   do(FitSaturationCurve(., fit.noise, array.wide))
 # save(fits.all, file = "Robjs/adjust_array_to_kallisto.fits.all.Robj")
+# print(Sys.time() - start)
 
+load(file = "Robjs/adjust_array_to_kallisto.fits.all.Robj")
+rownames(fits.all) <- fits.all$gene
+fits.all <- data.frame(fits.all)
 
-# Do some diagnostic plots ------------------------------------------------
+# # Do some diagnostic plots ------------------------------------------------
 # 
-testgenes <- GetGeneList()
-g <- testgenes[1]
+gene <- "1600029I14Rik"
+gene <- "4930427A07Rik"
+gene <- "Arf6"
 
+PlotDiagnostics2(gene, kallisto.wide, array.wide, fits.all)
 
+genes <- intersect(fits.all$gene, GetGeneList())
+pdf("plots/adjust_array_to_kallisto_diagnostics/diagnostics.pdf")
+for (gene in genes){
+  PlotDiagnostics2(gene, kallisto.wide, array.wide, fits.all)
+}
+dev.off()
 
+PlotDiagnostics2 <- function(gene, kallisto.wide, array.wide, fits){
+  common.samps <- intersect(colnames(kallisto.wide), colnames(array.wide))
+  unique.samps <- setdiff(colnames(array.wide), colnames(kallisto.wide))
+  
+  R <- as.matrix(kallisto.wide[gene, common.samps])
+  M <- as.matrix(array.wide[gene, common.samps])
+  M.full <- as.matrix(array.wide[gene, ])
+  M.uniq <- as.matrix(array.wide[gene, unique.samps])
+  
+  fit <- fits[gene, ]
+  
+  if (fit$model == "saturation"){
+    yspace <- seq(min(M.full) * 0.9, max(M.full) * 1.1, length.out = 55)
+    xspace <- sapply(yspace, function(m) saturation.inv2(a = fit$a, b = fit$b, k = fit$k, m = m))
+    
+    xspace2 <- seq(min(R) * 0.9, max(R) * 1.1, length.out = 55)
+    yspace2 <- sapply(xspace2, function(m) saturation.inv2(fit$a, fit$b, fit$k, m))
+    
+    plot(x = R, y = M, main = gene, xlim = c(min(R), max(R)), ylim = c(min(M.full), max(M.full)))
+    lines(xspace, yspace, type = 'l')
+    plot(xspace, yspace, type = 'l')
+    points(x = rep(min(R), length(M.full)), y = M.full, pch = 8, cex = 0.5)
+  } else {
+    yspace <- seq(min(M.full) * 0.9, max(M.full) * 1.1, length.out = 55)
+    xspace <- sapply(yspace, function(m) linear.inv2(int = fit$int, slope = fit$slope, y = m))
+    plot(x = R, y = M, main = gene)
+    lines(xspace, yspace, type = 'l')
+    points(x = rep(0, length(M.full)), y = M.full, pch = 8, cex = 0.5)
+  }
+}
 
+R <- kallisto.wide[gene, common.samps]
+M <- array.wide[gene, common.samps]
+M.full <- array.wide[gene, ]
+M.uniq <- array.wide[gene, unique.samps]
 
+xspace <- seq(0, 50)
+yspace <- sapply(xspace, function(r) saturation2(x[[3]], x[[4]], x[[5]], r))
 
-# Fit saturation curve ----------------------------------------------------
+yspace2 <- seq(0, 160)
+xspace2 <- sapply(yspace, function(m) saturation.inv2(x[[3]], x[[4]], x[[5]], m))
 
+plot(as.matrix(R), as.matrix(M))
+lines(xspace2, yspace2)
 

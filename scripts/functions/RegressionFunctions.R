@@ -158,6 +158,39 @@ FitLmConstraint <- function(M.exprs, R.exprs, weights,
   return(fit.lm)
 }
 
+FitLmConstraint2 <- function(dat, weights, 
+                            int0, slope0, 
+                            intmin, slopemin, 
+                            intmax, slopemax,
+                            slope.var="tpm"){
+  # fit model y = b + a * x with constraints.
+  # if error, then do y = b + a * x without constraints.
+  fit.lm <- tryCatch({
+    fit.lm <- nls(data = dat,
+                  formula = array.signal ~ int + slope * tpm,
+                  algorithm = "port",
+                  start=list(int=int0,
+                             slope=slope0),
+                  lower=list(int=intmin,
+                             slope=slopemin),
+                  upper=list(int=intmax,
+                             slope=slopemax),
+                  weights=weights)
+    return(list(int = coefficients(fit.lm)[["int"]],
+           slope = coefficients(fit.lm)[["slope"]],
+           method = "lm.nls"))
+  }, error = function(e){
+    warning(e)  # print error message as a warning message.
+    fit.lm <- lm(data = dat,
+                 array.signal ~ tpm, 
+                 weights=weights)
+    return(list(int = coefficients(fit.lm)[["(Intercept)"]],
+           slope = coefficients(fit.lm)[[slope.var]],
+           method = "lm"))
+  })
+  return(fit.lm)
+}
+
 PvalFromFit <- function(fit){
   # From lm fit, get a pvalue from beta distribution of R squared value.
   # http://www.combustion-modeling.com/downloads/beta-distribution-for-testing-r-squared.pdf
@@ -173,4 +206,123 @@ PvalFromFit <- function(fit){
   R.squared <- summary(fit)$r.squared[[1]]  # R.squared value of fit
   pval <- pbeta(R.squared, (p - 1)/2, n.minus.p / 2, lower.tail = FALSE, log.p = FALSE)
   return(pval)
+}
+
+GetWeightsFromVar <- function(dat, fit.noise){
+  # from array signal, estimate the noise in the estimate from fit.noise
+  # We can't have negative values, so take the smallest non-negative number
+  # in the signal as a proxy
+  
+  # BEGIN: Set variance as weights
+  M.var <- predict(fit.noise, dat$array.signal)
+  # adjust M.var so all values less than 0 take on smallest non-negative number
+  M.var.min <- min(M.var[which(M.var > 0)])
+  # if M.var.min is infinity, probably RNA-Seq has no expression, default weights to 1
+  if (is.infinite(M.var.min)){
+    gene <- as.character(dat$gene[1])
+    warning(paste("Gene:", gene, "...adjusting infinites to 1 for variance."))
+    M.var.min <- 1
+  }
+  M.var[which(M.var < 0)] <- M.var.min
+  weights <- 1 / M.var
+  # END: Set variance as weights
+  return(weights)
+}
+
+FitSaturationCurve <- function(dat, fit.noise, array.wide){
+  if (sum(dat$tpm) == 0){
+    # all zeros, then return linear slope with slope = infinity
+    return(data.frame(model = "lm", 
+                      a = NA, 
+                      b = NA,
+                      k = NA,
+                      int = 1,
+                      slope = Inf))
+  }
+  gene <- as.character(dat$gene[1])
+  M.full <- array.wide[gene, ]
+  # BEGIN: Constants
+  # x.factor: make fit not so close to saturation points
+  # x.factor = 1: best fit
+  # x.factor > 1: force saturation points farhter from data points
+  x.factor <- 1.2
+  # bg.factor: make fit not so close to background
+  bg.factor <- 0.8
+  
+  # lower and upper bounds: saturation model
+  bmin <- 0
+  kmin <- 0
+  amin <- max(M.full) * x.factor
+  bmax <- min(M.full) * bg.factor
+  amax <- Inf
+  kmax <- Inf
+  # init vals: saturation model
+  b0 <- 2^4
+  k0 <- 2^6  # large to begin in linear regime
+  a0 <- amin + 10  # expect it close to amin
+  # lower and upper bounds: 
+  slopemin <- 0
+  intmin <- 0
+  slopemax <- Inf
+  intmax <- min(M.full) * bg.factor
+  
+  # Linear fit constraints
+  slope0 <- 0.07  # may need adjusting
+  int0 <- 10
+  # END: Constants
+  
+  weights <- GetWeightsFromVar(dat, fit.noise)
+  
+  fit <- tryCatch({
+    fit.saturation <- nls(data = dat,
+                          formula = array.signal ~ b + (a * tpm) / (k + tpm),
+                          algorithm = "port",
+                          start=list(a=a0, 
+                                     b=b0,
+                                     k=k0),
+                          lower=list(a=amin,
+                                     b=bmin,
+                                     k=kmin),
+                          upper=list(a=amax,
+                                     b=bmax,
+                                     k=kmax),
+                          weights=weights)
+    
+    #     fit.lm <- FitLmConstraint2(dat, weights,
+    #                                int0, slope0,
+    #                                intmin, slopemin,
+    #                                intmax, slopemax)
+    fit.lm <- c(int = NA, slope = NA)
+    return(data.frame(model = "saturation", 
+                      a = coefficients(fit.saturation)[["a"]], 
+                      b = coefficients(fit.saturation)[["b"]],
+                      k = coefficients(fit.saturation)[["k"]],
+                      int = NA,
+                      slope = NA))
+  }, error = function(e){
+    #     fit.saturation <- nls(data = dat,
+    #                           formula = array.signal ~ b + (a * tpm) / (k + tpm),
+    #                           algorithm = "port",
+    #                           start=list(a=a0, 
+    #                                      b=b0,
+    #                                      k=k0),
+    #                           lower=list(a=amin,
+    #                                      b=bmin,
+    #                                      k=kmin),
+    #                           upper=list(a=amax,
+    #                                      b=bmax,
+    #                                      k=kmax),
+    #                           weights=weights)
+    fit.saturation <- c(a = NA, b = NA, k = NA)
+    fit.lm <- FitLmConstraint2(dat, weights,
+                               int0, slope0,
+                               intmin, slopemin,
+                               intmax, slopemax)
+    return(data.frame(model = fit.lm[["method"]], 
+                      a = NA, 
+                      b = NA,
+                      k = NA,
+                      int = fit.lm[["int"]],
+                      slope = fit.lm[["slope"]]))
+  })
 }
