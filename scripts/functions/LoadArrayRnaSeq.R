@@ -1,19 +1,21 @@
 # LoadArrayRnaSeq.R
 # February 25 2015
 
-LoadArrayRnaSeq <- function(){
+LoadArrayRnaSeq <- function(normalized.array.path, rna.seq.path){
   scripts.dir <- "scripts"
   funcs.dir <- "functions"
   source(file.path(scripts.dir, funcs.dir, "LoadAndHandleData.R"))
   source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
   # Define dirs -------------------------------------------------------------
   
-  # define dirs
-  data.dir <- "data"
-  normalized.array.fname <- "array.adj.0.07.txt"
-  normalized.array.path <- file.path(data.dir, normalized.array.fname)
-  rna.seq.fname <- "rna_seq_deseq_counts_colnames_fixed.txt"
-  rna.seq.path <- file.path(data.dir, rna.seq.fname)
+  if (missing(normalized.array.path) & missing(rna.seq.path)){
+    # define dirs
+    data.dir <- "data"
+    normalized.array.fname <- "array.adj.0.07.txt"
+    normalized.array.path <- file.path(data.dir, normalized.array.fname)
+    rna.seq.fname <- "rna_seq_deseq_counts_colnames_fixed.txt"
+    rna.seq.path <- file.path(data.dir, rna.seq.fname) 
+  }
   
   # Load file ---------------------------------------------------------------
   

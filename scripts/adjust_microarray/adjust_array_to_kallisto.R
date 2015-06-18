@@ -11,6 +11,7 @@ library(dplyr)
 
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/PlotGeneTpm.R")
 source("scripts/functions/GetTissueTimes.R")
 source("scripts/functions/RegressionFunctions.R")
 
@@ -87,84 +88,6 @@ GetGeneList <- function(){
   
   return(clockgenes)
 }
-
-LoadKallistoGene <- function(inpath, gene_colname = "gene_name", log2.pseudocount=FALSE, form = "long"){
-  source("scripts/functions/ConvertRNASeqTissueNamesToArray.R")
-    
-  if (missing(inpath)){
-    inpath <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
-  }
-  if (form == "wide"){
-    dat <- read.table(inpath, header = TRUE, row.names = 1)
-    tissues <- sapply(colnames(dat), function(s) strsplit(s, "_")[[1]][[1]])
-    tissues <- ConvertRNASeqTissueNamesToArray(tissues)
-    times <- GetTimes(colnames(dat), get_unique = FALSE)
-    colnames(dat) <- paste(tissues, times, sep = '')
-    return(dat)
-  }
-  
-  dat <- read.table(inpath, header = TRUE)
-  
-  genes <- dat[, gene_colname]
-  dat.mat <- dat[, colnames(dat)[which(colnames(dat) != gene_colname)]]
-  
-  if (log2.pseudocount != FALSE){
-    dat.mat <- log2(dat.mat + log2.pseudocount)  # add a pseudocount
-  }
-  
-  tissues <- sapply(colnames(dat.mat), function(s) strsplit(s, '_')[[1]][[1]])
-  tissues <- ConvertRNASeqTissueNamesToArray(tissues)
-  times <- GetTimes(colnames(dat.mat), get_unique=FALSE)
-  
-  tpm.long <- data.frame(gene = rep(genes, ncol(dat.mat)),
-                         tissue = rep(tissues, each = nrow(dat.mat)),
-                         time = as.numeric(rep(times, each = nrow(dat.mat))),
-                         tpm = unlist(dat.mat))
-}
-
-PlotGeneTpm <- function(dat, jgene, log2.pseudocount=FALSE, scale=FALSE){
-  dat.sub <- subset(dat, gene == jgene)
-  if (scale != FALSE){
-    dat.sub$tpm <- dat.sub$tpm * scale
-  }
-  if (log2.pseudocount != FALSE){
-    dat.sub$tpm <- log2(dat.sub$tpm + log2.pseudocount)
-  }
-
-  ggplot(dat.sub, aes(x = time, y = tpm)) + geom_point() + geom_line() + facet_wrap(~tissue)
-}
-
-LoadArray <- function(inpath, gene_colname = "gene", get.norm = FALSE, form = "long"){
-  if (missing(inpath)){
-    inpath <- "/home/yeung/projects/tissue-specificity/data/array_exprs_colnames_fixed.best.probe.selected.txt"
-  }
-  dat <- read.table(inpath, header=TRUE)
-  dat.mat <- dat[, colnames(dat)[which(colnames(dat) != gene_colname)]]
-  if (form == "wide"){
-    rownames(dat) <- dat[[gene_colname]]
-    dat[[gene_colname]] <- NULL
-  } 
-  if (form == "wide" & get.norm == FALSE){
-    return(dat)
-  } else if(form == "wide" & get.norm == TRUE){
-    # genes <- as.character(dat[[gene_colname]])
-    # dat.mat <- 2 ^ dat.mat
-    return(2 ^ dat)
-  }  
-  tissues <- GetTissues(colnames(dat.mat), get_unique = FALSE)
-  times <- GetTimes(colnames(dat.mat), get_unique = FALSE)
-  
-  genes <- dat[[gene_colname]]
-  array.long <- data.frame(gene = rep(genes, ncol(dat.mat)),
-                           tissue = rep(tissues, each = nrow(dat.mat)),
-                           time = as.numeric(rep(times, each = nrow(dat.mat))),
-                           signal = unlist(dat.mat))
-  if (get.norm == TRUE){
-    array.long$signal.norm <- 2 ^ array.long$signal
-  }
-  return(array.long)
-}
-
 
 GetMeanVarByTissues <- function(exprs, tissue.names){
   # Calculate mean and variance for each gene per tissue
