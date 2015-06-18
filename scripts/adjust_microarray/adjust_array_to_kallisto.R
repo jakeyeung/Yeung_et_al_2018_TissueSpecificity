@@ -28,6 +28,33 @@ linear.inv2 <- function(int, slope, y) {
 }
 
 
+PlotDiagnostics2 <- function(gene, kallisto.wide, array.wide, fits){
+  common.samps <- intersect(colnames(kallisto.wide), colnames(array.wide))
+  unique.samps <- setdiff(colnames(array.wide), colnames(kallisto.wide))
+  
+  R <- as.matrix(kallisto.wide[gene, common.samps])
+  M <- as.matrix(array.wide[gene, common.samps])
+  M.full <- as.matrix(array.wide[gene, ])
+  M.uniq <- as.matrix(array.wide[gene, unique.samps])
+  
+  fit <- fits[gene, ]
+  
+  if (fit$model == "saturation"){
+    yspace <- seq(min(M.full) * 0.9, max(M.full) * 1.1, length.out = 55)
+    xspace <- sapply(yspace, function(m) saturation.inv2(a = fit$a, b = fit$b, k = fit$k, m = m))
+    
+    plot(x = R, y = M, main = gene, xlim = c(min(R), max(R)), ylim = c(min(M.full), max(M.full)))
+    lines(xspace, yspace, type = 'l')
+    points(x = rep(min(R), length(M.full)), y = M.full, pch = 8, cex = 0.5)
+  } else {
+    yspace <- seq(min(M.full) * 0.9, max(M.full) * 1.1, length.out = 55)
+    xspace <- sapply(yspace, function(m) linear.inv2(int = fit$int, slope = fit$slope, y = m))
+    plot(x = R, y = M, main = gene)
+    lines(xspace, yspace, type = 'l')
+    points(x = rep(min(R), length(M.full)), y = M.full, pch = 8, cex = 0.5)
+  }
+}
+
 GetGeneList <- function(){
   # for testing
   # Clock genes --------------------------------------------------------
@@ -42,7 +69,7 @@ GetGeneList <- function(){
   
   # Tissue genes ------------------------------------------------------------
   
-  clockgenes <- c("Plbd1","Acacb","Hadh","Decr1","Acadl","Ech1","Acsl1","Cpt2","Acaa2")  # PCA 1 from explore_data.R
+  clockgenes <- c(clockgenes, "Plbd1","Acacb","Hadh","Decr1","Acadl","Ech1","Acsl1","Cpt2","Acaa2")  # PCA 1 from explore_data.R
   clockgenes <- c(clockgenes, "Elovl1","Slc35b3","Fkbp15","Slc39a8","Sep15","Mospd2","Med11","Slco2a1","Arf6","Yipf6")  # PCA 2 from explore_data.R
   
   
@@ -209,6 +236,27 @@ MergeRnaseqArray <- function(kallisto.long, array.long, array.var = "signal.norm
   return(merge.long)
 }
 
+AdjustArray <- function(dat, fits.all){
+  gene <- as.character(dat$gene[1])
+  fit <- fits.all[gene, ]
+#   if (all(is.na(fit))){
+#     #     dat$signal <- NULL  # makes output DF slimmer, we only need the signal.norm column
+#     #     dat$origin <- rep('unadj', nrow(dat))
+#     return(data.frame(NULL))
+#   }
+  if (fit$model == "saturation"){
+    signal.adj <- sapply(dat$signal.norm, 
+                         function(m) saturation.inv2(a = fit$a, b = fit$b,k = fit$k, m))
+  } else {
+    signal.adj <- sapply(dat$signal.norm,
+                         function(m) linear.inv2(int = fit$int, slope = fit$slope, m))
+  }
+  dat.new <- data.frame(gene = rep(dat$gene, 2),
+                        tissue = rep(dat$tissue, 2),
+                        time = rep(dat$time, 2),
+                        signal.norm = c(dat$signal.norm, signal.adj),
+                        origin = c(rep('unadj', nrow(dat)), rep('adj', nrow(dat))))
+}
 
 # Load matrices -----------------------------------------------------------
 
@@ -324,48 +372,60 @@ for (gene in genes){
 }
 dev.off()
 
-PlotDiagnostics2 <- function(gene, kallisto.wide, array.wide, fits){
-  common.samps <- intersect(colnames(kallisto.wide), colnames(array.wide))
-  unique.samps <- setdiff(colnames(array.wide), colnames(kallisto.wide))
-  
-  R <- as.matrix(kallisto.wide[gene, common.samps])
-  M <- as.matrix(array.wide[gene, common.samps])
-  M.full <- as.matrix(array.wide[gene, ])
-  M.uniq <- as.matrix(array.wide[gene, unique.samps])
-  
-  fit <- fits[gene, ]
-  
-  if (fit$model == "saturation"){
-    yspace <- seq(min(M.full) * 0.9, max(M.full) * 1.1, length.out = 55)
-    xspace <- sapply(yspace, function(m) saturation.inv2(a = fit$a, b = fit$b, k = fit$k, m = m))
-    
-    xspace2 <- seq(min(R) * 0.9, max(R) * 1.1, length.out = 55)
-    yspace2 <- sapply(xspace2, function(m) saturation.inv2(fit$a, fit$b, fit$k, m))
-    
-    plot(x = R, y = M, main = gene, xlim = c(min(R), max(R)), ylim = c(min(M.full), max(M.full)))
-    lines(xspace, yspace, type = 'l')
-    plot(xspace, yspace, type = 'l')
-    points(x = rep(min(R), length(M.full)), y = M.full, pch = 8, cex = 0.5)
-  } else {
-    yspace <- seq(min(M.full) * 0.9, max(M.full) * 1.1, length.out = 55)
-    xspace <- sapply(yspace, function(m) linear.inv2(int = fit$int, slope = fit$slope, y = m))
-    plot(x = R, y = M, main = gene)
-    lines(xspace, yspace, type = 'l')
-    points(x = rep(0, length(M.full)), y = M.full, pch = 8, cex = 0.5)
-  }
+
+# Adjust array to RNA-Seq -------------------------------------------------
+
+array.adj <- array.long %>%
+  subset(., gene %in% common.genes) %>%
+  group_by(gene) %>%
+  do(AdjustArray(., fits.all))
+
+# Append RNA-Seq info
+kallisto.long$origin <- rep("rnaseq", nrow(kallisto.long))
+colnames(kallisto.long)[which(colnames(kallisto.long) == "tpm")] <- "signal.norm"  # temporarily change colnames to match array.adj
+
+array.adj <- rbind(array.adj, kallisto.long)
+colnames(kallisto.long)[which(colnames(kallisto.long) == "signal.norm")] <- "tpm"  # change it back
+
+# Diagnostics on some genes -----------------------------------------------
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+scale_colour_manual(values=cbPalette)
+
+array.sub <- subset(array.adj, gene %in% GetGeneList())
+pdf("plots/adjust_array_to_kallisto_diagnostics/final_adj.pdf")
+for (jgene in GetGeneList()){
+  print(ggplot(subset(array.sub, gene == jgene), aes(x = time, y = log2(signal.norm + 0.001), colour = origin, group = origin, fill = origin)) + 
+    scale_colour_manual(values=cbPalette) +
+    geom_point() + geom_line() + facet_wrap(~tissue) +
+    ggtitle(jgene))
 }
+dev.off()
 
-R <- kallisto.wide[gene, common.samps]
-M <- array.wide[gene, common.samps]
-M.full <- array.wide[gene, ]
-M.uniq <- array.wide[gene, unique.samps]
+pdf("plots/adjust_array_to_kallisto_diagnostics/final_adj2.pdf")
+for (jgene in GetGeneList()){
+  print(ggplot(subset(array.sub, gene == jgene & origin %in% c("adj", "rnaseq")), aes(x = time, y = log2(signal.norm + 0.001) , colour = origin, group = origin, fill = origin)) + 
+    scale_colour_manual(values=cbPalette) +
+    geom_point() + geom_line() + facet_wrap(~tissue) +
+    ggtitle(jgene))
+}
+dev.off()
 
-xspace <- seq(0, 50)
-yspace <- sapply(xspace, function(r) saturation2(x[[3]], x[[4]], x[[5]], r))
 
-yspace2 <- seq(0, 160)
-xspace2 <- sapply(yspace, function(m) saturation.inv2(x[[3]], x[[4]], x[[5]], m))
+# Print out new table -----------------------------------------------------
 
-plot(as.matrix(R), as.matrix(M))
-lines(xspace2, yspace2)
+array.adj.out <- subset(array.adj, origin == "adj") %>%
+  dcast(., formula = gene ~ tissue + time, value.var = "signal.norm")
 
+# fix colnames and set rownames
+rownames(array.adj.out) <- array.adj.out$gene
+array.adj.out$gene <- NULL
+# Adr_24 -> Adr24 keeps life consistent
+colnames(array.adj.out) <- sapply(colnames(array.adj.out), 
+                                  function(s) paste(strsplit(s, "_")[[1]], collapse = ''))
+
+# Sanity checks
+rowmins <- apply(array.adj.out, 1, min)
+write.table(x = array.adj.out, quote = FALSE, sep = "\t", row.names = TRUE, col.names = NA,
+            file = "data/exprs_matrices/array_adj_to_kallisto.slope07.txt")
+            

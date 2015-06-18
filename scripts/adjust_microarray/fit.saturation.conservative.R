@@ -145,7 +145,9 @@ mean.var.df <- GetMeanVarByTissues(exprs=array.exprs, tissue.names)
 n.per.bin <- 150
 
 mean.var.df <- mean.var.df[with(mean.var.df, order(mean)), ]
+library(plyr)
 mean.var.df$bins.order <- factor(round_any(seq(1:nrow(mean.var.df)), n.per.bin))
+detach("package:plyr", unload=TRUE)
 
 # Bin mean and bin variance: by order -------------------------------------
 
@@ -253,7 +255,6 @@ for (gene in common.genes){
   weights <- 1 / M.var
   
   fits <- tryCatch({
-    
     fit.saturation <- nls(M.exprs ~ b + (a * R.exprs) / (k + R.exprs),
                           algorithm = "port",
                           start=list(a=a0, 
