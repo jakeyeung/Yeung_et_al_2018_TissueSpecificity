@@ -19,32 +19,6 @@ FindMostRhythmic <- function(dat, colname="amp", decreasing = TRUE){
   return(dat[order(dat[[colname]], decreasing = decreasing), ][1, ])
 }
 
-LoadLong <- function(array.path, rna.seq.path, scale.factor = 1, pseudocount = 1e-5){
-  kallisto.wide <- LoadKallistoGene(rna.seq.path, form = "wide")  # adjusts colnames to match array
-  array.wide <- read.table(array.path)
-  # remove rows with negatives (should be 7 of them)
-  problem.genes <- rownames(array.wide[which(apply(array.wide, 1, min) < 0), ])
-  print("Problem genes:")
-  print(problem.genes)
-  good.genes <- setdiff(rownames(array.wide), problem.genes)
-  array.wide <- array.wide[good.genes, ]
-  common.genes <- intersect(rownames(kallisto.wide), rownames(array.wide))
-  kallisto.sub <- kallisto.wide[common.genes, ]
-  array.sub <- array.wide[common.genes, ]
-  
-  tissues.rnaseq <- GetTissues(colnames(kallisto.sub), get_unique = FALSE)
-  times.rnaseq <- GetTimes(colnames(kallisto.sub), get_unique = FALSE)
-  tissues.array <- GetTissues(colnames(array.sub), get_unique = FALSE)
-  times.array <- GetTimes(colnames(array.sub), get_unique = FALSE)
-  
-  ka.long <- data.frame(gene = c(rep(rownames(kallisto.sub), ncol(kallisto.sub)), rep(rownames(array.sub), ncol(array.sub))),
-                        tissue = c(rep(tissues.rnaseq, each = nrow(kallisto.sub)), rep(tissues.array, each = nrow(array.sub))),
-                        time = as.numeric(c(rep(times.rnaseq, each = nrow(kallisto.sub)), rep(times.array, each = nrow(array.sub)))),
-                        exprs = c(unlist(kallisto.sub), unlist(array.sub)),
-                        experiment = c(rep("rnaseq", nrow(kallisto.sub) * ncol(kallisto.sub)), rep("array", nrow(array.sub) * ncol(array.sub))))
-  ka.long$exprs <- log2(scale.factor * ka.long$exprs + pseudocount)
-  return(ka.long)
-}
 
 PlotGeneAcrossTissues2 <- function(dat, jgene){
   dat.sub <- subset(dat, gene == jgene)
@@ -60,71 +34,6 @@ GetAmpRelToMax <- function(dat, fits.mostrhythmic){
   dat$relamp <- dat$amp / amp.max
   return(dat)
 }
-
-FixColname <- function(tiss, time, exper){
-  # Make MARA compatible colnames e.g., Adr22_array
-  fixed_cname <- paste0(tiss, time, "_", exper)
-  return(fixed_cname)
-}
-
-FixColnamesForMARA <- function(m){
-  # Make colnames compatible with MARA
-  # gene colname is "Gene.ID" (first column)
-  # samples are TissueTime_arrayORrnaseq (e.g., Adr22_array)
-  # 
-  # Rearrrange colnames also to make put all arrays, THEN all rna-seq
-  cnames <- colnames(m)
-  genestr <- "Gene.ID"
-  
-  # Fix sample names (ignore first column which is gene)
-  tissues <- sapply(cnames[2:length(cnames)], function(s) strsplit(s, "_")[[1]][[1]])
-  times <- sapply(cnames[2:length(cnames)], function(s) strsplit(s, "_")[[1]][[2]])
-  experiment <- sapply(cnames[2:length(cnames)], function(s) strsplit(s, "_")[[1]][[3]])
-  
-  sampnames <- mapply(FixColname, tissues, times, experiment)
-  
-  cnames.new <- c(genestr, sampnames)
-  colnames(m) <- cnames.new
-  
-  # reorder colnames now
-  array.samps <- cnames.new[grep("_array", cnames.new)]
-  array.rnaseq <- cnames.new[grep("_rnaseq", cnames.new)]
-  
-  m <- m[, c(genestr, array.samps, array.rnaseq)]
-  return(m)
-}
-
-WriteGeneListMat <- function(fits.rhyth.tiss, ka.long, outdir){
-  # input: list of rhythmic genes by tissues (gene and tissue colnames), should be only ONE tissue (for dplyr)
-  # dataframe of long matrix: (colnames: gene tissue time exprs experiment)
-  # 
-  # NOTE: expression should be centered across all samples! Otherwise it's a weird MARA model
-  tiss <- unique(as.character(fits.rhyth.tiss$tissue))
-  if (length(tiss) != 1){
-    print('Warning: expect tissue length = 1')
-  }
-  fname.genelist <- paste(tiss, "genelist", sep = ".")
-  fname.mat <- paste(tiss, "mat", sep=".")
-  
-  genes <- as.character(fits.rhyth.tiss$gene) 
-  # write genelist
-  sink(file = file.path(outdir, fname.genelist))
-  for (g in genes){
-    cat(g)
-    cat("\n")
-  }
-  sink()
-  
-  # write matrix expression
-  ka.sub <- subset(ka.long, gene %in% genes & tissue == tiss)
-  m <- dcast(data = ka.sub, formula = gene ~ tissue + time + experiment, value.var = "exprs.centered")
-  
-  m <- FixColnamesForMARA(m)
-  
-  write.table(m, file = file.path(outdir, fname.mat), quote = FALSE, sep = '\t', col.names = TRUE, row.names = FALSE)
-  return(data.frame(NULL))
-}
-
 
 # Load matrix -------------------------------------------------------------
 

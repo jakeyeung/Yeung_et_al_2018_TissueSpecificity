@@ -10,6 +10,8 @@
 # cutoff <- optimize(ShannonEntropyMixMdl, interval = c(2, 8), mixmdl = mixmdl, maximum = TRUE)
 # cutoff <- cutoff$maximum  # cutoff = 4.883356
 
+library(mixtools)
+
 FindCutoff <- function(x, lambdas, mus, k = 2, outdir = FALSE){
   if (outdir != FALSE){
     pdf(file.path(outdir, "mixturefit.pdf"))
