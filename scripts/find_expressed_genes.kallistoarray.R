@@ -34,7 +34,7 @@ cutoff <- FindCutoff(x = exprs.log2, lambdas = c(0.2, 0.8), mus = c(1, 10), k = 
 
 # Filter genes based on median gene expression ----------------------------
 
-row.meds <- apply(kallisto.wide, 1, function(x) median(x))
+row.meds <- apply(kallisto.wide, 1, function(x) quantile(x, probs = 11 / 12))
 
 expressed.genes <- names(row.meds[which(row.meds >= cutoff)])
 
