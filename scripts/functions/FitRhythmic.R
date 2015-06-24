@@ -38,10 +38,23 @@ FitRhythmicDatLong <- function(dat.long){
   print("Finding rhythmic genes (~3 minutes)")
   start <- Sys.time()
   dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
-    do(.data = jdf, FitRhythmic(df = .))
+    rhyth <- jdf %>%
+      group_by(gene) %>%
+      do(FitRhythmic(dat = .))
   }, mc.cores = 12)
   dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
   print(Sys.time() - start)
   return(dat.fitrhyth)
 }
 
+FindMostRhythmic <- function(dat, colname="amp", decreasing = TRUE){
+  # return first row after sorting by colname
+  return(dat[order(dat[[colname]], decreasing = decreasing), ][1, ])
+}
+
+GetAmpRelToMax <- function(dat, fits.mostrhythmic){
+  tissue <- as.character(dat$tissue[1])
+  amp.max <- fits.mostrhythmic[tissue, ]$amp 
+  dat$relamp <- dat$amp / amp.max
+  return(dat)
+}
