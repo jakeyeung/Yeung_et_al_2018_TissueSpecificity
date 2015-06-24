@@ -13,27 +13,7 @@ source("scripts/functions/LoadKallistoGene.R")
 source("scripts/functions/GetTissueTimes.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
-
-FindMostRhythmic <- function(dat, colname="amp", decreasing = TRUE){
-  # return first row after sorting by colname
-  return(dat[order(dat[[colname]], decreasing = decreasing), ][1, ])
-}
-
-
-PlotGeneAcrossTissues2 <- function(dat, jgene){
-  dat.sub <- subset(dat, gene == jgene)
-  m <- ggplot(dat.sub, aes(x = time, y = tpm, colour = experiment, group = experiment, fill = experiment)) +
-    geom_point() + geom_line() + facet_wrap(~tissue)
-    ggtitle(jgene)
-  print(m)
-}
-
-GetAmpRelToMax <- function(dat, fits.mostrhythmic){
-  tissue <- as.character(dat$tissue[1])
-  amp.max <- fits.mostrhythmic[tissue, ]$amp 
-  dat$relamp <- dat$amp / amp.max
-  return(dat)
-}
+source("scripts/functions/WriteGeneListMat.R")
 
 # Load matrix -------------------------------------------------------------
 
@@ -55,7 +35,7 @@ ka.centered <- ka.long %>%
 fits <- FitRhythmicDatLong(ka.long)
 
 save(fits, file = "Robjs/kallistoarray.fits.Robj")
-
+# load(file = "Robjs/kallistoarray.fits.Robj")
 
 # P-value adjuist ---------------------------------------------------------
 
@@ -78,7 +58,7 @@ fits.mostrhythmic <- fits %>%
   do(FindMostRhythmic(.)) %>%
   data.frame(.)
 
-rownames(fits.mostrhythmic) <- fits.sort$tissue  # indexing
+rownames(fits.mostrhythmic) <- fits.mostrhythmic$tissue  # indexing
 
 
 # Get amplitude relative to max amp ---------------------------------------
