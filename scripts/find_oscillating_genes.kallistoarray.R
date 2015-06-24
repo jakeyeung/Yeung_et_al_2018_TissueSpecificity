@@ -48,7 +48,7 @@ PlotGeneAcrossTissues(subset(ka.long, gene == "Arntl"))
 
 ka.centered <- ka.long %>%
   group_by(gene) %>%
-  mutate(exprs.centered = scale(exprs, center = TRUE, scale = FALSE)
+  mutate(exprs.centered = scale(exprs, center = TRUE, scale = FALSE))
 
 # Fit rhythmic ------------------------------------------------------------
 
@@ -109,7 +109,7 @@ print(rhyth.by.tiss)
 
 # Print gene list and expression matrix -----------------------------------
 
-outdir <- paste0("/home/yeung/projects/tissue-specificity/data/gene_lists/rhythmic_genes_by_tissues_kallistoarray", ".pval", max.pval, ".relamp", min.relamp)
+outdir <- paste0("/home/yeung/projects/tissue-specificity/data/gene_lists/rhythmic_genes_by_tissues_kallistoarray2", ".pval", max.pval, ".relamp", min.relamp)
 dir.create(outdir)
 
 fits.rhyth %>%
