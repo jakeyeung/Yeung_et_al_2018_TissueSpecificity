@@ -1,15 +1,19 @@
 # Load Kallisto abundance estimates and try to find first exons from there
 # 2015-05-12
+# 2015-06-24
+# Dont use DESeq counts, use Kallisto and array-adjusted to Kallisto
 
 # detach("package:plyr", unload=TRUE)  # run this if you get dplyr bugs
 library(dplyr)
-library(mixtools)
+# library(mixtools)
+library(ggplot2)
 
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/LoadKallisto.R")
 source("scripts/functions/GetTissueTimes.R")
-source("scripts/functions/LoadArrayRnaSeq.R")
+# source("scripts/functions/LoadArrayRnaSeq.R")
+source("scripts/functions/LoadLong.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
@@ -18,7 +22,7 @@ source("scripts/functions/MixtureModelFunctions.R")
 # Load data ---------------------------------------------------------------
 
 tpm.long <- LoadKallisto()
-dat.long <- LoadArrayRnaSeq()
+dat.long <- LoadLong()
 
 head(tpm.long)
 
@@ -34,6 +38,7 @@ ggplot(test.afe, aes(y = tpm_normalized, x = transcript_id)) + geom_boxplot() + 
 
 # Fit rhythmic ------------------------------------------------------------
 
+library(parallel)
 dat.rhyth <- FitRhythmicDatLong(dat.long)
 
 # dat.rhyth$is.rhythmic <- sapply(dat.rhyth$pval, IsRhythmic2)
@@ -123,35 +128,36 @@ sprintf("%s hits found out of %s tissue-specific circadian genes tested. %f perc
 top.hits <- data.frame(fit.afe.summary[order(fit.afe.summary$pval), ])
 top.hits <- top.hits[1:707, ]
 
-start <- Sys.time()
-pdf("plots/alternative_exon_usage/kallisto_diagnostics.top707.pdf", width = 21, height = 7, paper = "USr")
-jgenes <- as.character(top.hits$gene_name); jtranscripts <- as.character(top.hits$transcript_id)
-dat.tpm <- subset(tpm.afe.filt, gene_name %in% jgenes); dat.arrayrnaseq <- subset(dat.long, gene %in% jgenes)
-mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts, 
-       MoreArgs = list(dat.tpm = dat.tpm, dat.arrayrnaseq = dat.arrayrnaseq))
-dev.off()
-print(Sys.time() - start)
+# start <- Sys.time()
+# pdf("plots/alternative_exon_usage/kallisto_diagnostics.top707.pdf", width = 21, height = 7, paper = "USr")
+# jgenes <- as.character(top.hits$gene_name); jtranscripts <- as.character(top.hits$transcript_id)
+# dat.tpm <- subset(tpm.afe.filt, gene_name %in% jgenes); dat.arrayrnaseq <- subset(dat.long, gene %in% jgenes)
+# mapply(PlotDiagnostics, jgene = jgenes, jtranscript = jtranscripts, 
+#        MoreArgs = list(dat.tpm = dat.tpm, dat.arrayrnaseq = dat.arrayrnaseq))
+# dev.off()
+# print(Sys.time() - start)
 
+PlotDiagnostics(tpm.afe.filt, dat.long, jgene = "Ddc", jtranscript = "ENSMUST00000178704")
 
 # Individual checks -------------------------------------------------------
 
 
-jgene <- "Abi2"
-jgene <- "Bcat1"; jtranscript="ENSMUST00000123930"
-jgene <- "Slc6a19"; jtranscript="ENSMUST00000124406"
-jgene <- "Csrp3"; jtranscript="ENSMUST00000032658"
-jgene <- "Insig2"; jtranscript="ENSMUST00000003818"
-# jgene <- "Hnf4a"; jtranscript="ENSMUST00000109411"
-jgene <- "Clcn1"; jtranscript="ENSMUST00000031894"
-jgene <- "Ift80"; jtranscript="ENSMUST00000136448"
-jgene <- "Il18r1"; jtranscript="ENSMUST00000087983"  # false positive
-jgene <- "Atp6v1c2"; jtranscript="ENSMUST00000020884"
-jgene <- "Rnf24"; jtranscript="ENSMUST00000110194"
-jgene <- "Slc12a6"; jtranscript="ENSMUST00000053666"  # false positive? not really rhythmic this transcript
-jgene <- "Insig2"; jtranscript="ENSMUST00000071064"  # probably real
-jgene <- "Gne"; jtranscript="ENSMUST00000173274"  # probably real
-jgene <- "Sparc"; jtranscript="ENSMUST00000125787"  # false positive
-jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
+# jgene <- "Abi2"
+# jgene <- "Bcat1"; jtranscript="ENSMUST00000123930"
+# jgene <- "Slc6a19"; jtranscript="ENSMUST00000124406"
+# jgene <- "Csrp3"; jtranscript="ENSMUST00000032658"
+# jgene <- "Insig2"; jtranscript="ENSMUST00000003818"
+# # jgene <- "Hnf4a"; jtranscript="ENSMUST00000109411"
+# jgene <- "Clcn1"; jtranscript="ENSMUST00000031894"
+# jgene <- "Ift80"; jtranscript="ENSMUST00000136448"
+# jgene <- "Il18r1"; jtranscript="ENSMUST00000087983"  # false positive
+# jgene <- "Atp6v1c2"; jtranscript="ENSMUST00000020884"
+# jgene <- "Rnf24"; jtranscript="ENSMUST00000110194"
+# jgene <- "Slc12a6"; jtranscript="ENSMUST00000053666"  # false positive? not really rhythmic this transcript
+# jgene <- "Insig2"; jtranscript="ENSMUST00000071064"  # probably real
+# jgene <- "Gne"; jtranscript="ENSMUST00000173274"  # probably real
+# jgene <- "Sparc"; jtranscript="ENSMUST00000125787"  # false positive
+# jgene <- "Sorbs1"; jtranscript="ENSMUST00000165469"  # Liver and BFAT looks rhythmic, but assigned as "not rhythmic"
 
 # # PlotTpmAcrossTissues(subset(tpm.afe, gene_name == jgene & transcript_id == jtranscript), log2.transform=FALSE)
 # 
