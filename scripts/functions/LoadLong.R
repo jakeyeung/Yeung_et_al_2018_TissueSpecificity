@@ -1,4 +1,4 @@
-LoadLong <- function(array.path, rna.seq.path, scale.factor = 1, pseudocount = 1e-5){
+LoadLong <- function(array.path, rna.seq.path, scale.factor = 100, pseudocount = 1){
   if (missing(array.path) & missing(rna.seq.path)){
     array.path <- "data/exprs_matrices/array_adj_to_kallisto.slope07.txt"
     rna.seq.path <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
