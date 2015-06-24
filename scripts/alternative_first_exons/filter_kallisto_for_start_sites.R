@@ -10,11 +10,12 @@ library(ggplot2)
 
 source("scripts/functions/LoadKallisto.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
-source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotSitecounts.R")
 source("scripts/functions/LoadSitecounts.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/LoadLong.R")
+
 
 GetOverlaps <- function(starts, ends){
   for (i in 1:length(starts)){
@@ -103,7 +104,8 @@ PlotSitesHeat <- function(m, jgene){
 # Load data ---------------------------------------------------------------
 
 tpm.merged <- LoadKallisto(path.kallisto = "data/alternative_exon_usage/abundance.merged.annotated.sorted.pythonmerged.bed")
-dat.long <- LoadArrayRnaSeq()
+# dat.long <- LoadArrayRnaSeq()
+dat.long <- LoadLong()
 
 # find tissue-specific circadian genes ------------------------------------------------------------
 
