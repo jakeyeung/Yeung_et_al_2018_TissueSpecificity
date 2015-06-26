@@ -1,9 +1,9 @@
 LoadLong <- function(array.path, rna.seq.path, scale.factor = 100, pseudocount = 1){
   if (missing(array.path) & missing(rna.seq.path)){
-    array.path <- "data/exprs_matrices/array_adj_to_kallisto.slope07.txt"
+    array.path <- "/home/yeung/projects/tissue-specificity/data/exprs_matrices/array_adj_to_kallisto.slope07.txt"
     rna.seq.path <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
   }
-  source("scripts/functions/LoadKallistoGene.R")
+  source("/home/yeung/projects/tissue-specificity/scripts/functions/LoadKallistoGene.R")
   kallisto.wide <- LoadKallistoGene(rna.seq.path, form = "wide")  # adjusts colnames to match array
   array.wide <- read.table(array.path)
   # remove rows with negatives (should be 7 of them)
