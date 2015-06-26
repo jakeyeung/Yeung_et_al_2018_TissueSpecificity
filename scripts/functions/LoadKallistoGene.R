@@ -1,6 +1,6 @@
 LoadKallistoGene <- function(inpath, gene_colname = "gene_name", log2.pseudocount=FALSE, form = "long"){
-  source("scripts/functions/ConvertRNASeqTissueNamesToArray.R")
-  source("scripts/functions/GetTissueTimes.R")
+  source("/home/yeung/projects/tissue-specificity/scripts/functions/ConvertRNASeqTissueNamesToArray.R")
+  source("/home/yeung/projects/tissue-specificity/scripts/functions/GetTissueTimes.R")
   
   if (missing(inpath)){
     inpath <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
