@@ -9,32 +9,10 @@ source("scripts/functions/ActivitiesMergedFunctions.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
+source("scripts/functions/LoadActivitiesLong.R")
+
 library(dplyr)  # problems with plyr old package
 library(reshape2)
-
-LoadActivitiesLong <- function(indir, act.file="activities.all", se.file="standarderrors.all"){
-  merged.act <- read.table(file.path(indir, act.file))
-  merged.se <- read.table(file.path(indir, se.file))
-  
-  # Rename colnames ---------------------------------------------------------
-  
-  colnames(merged.act) <- GetMergedColnames(colnames(merged.act))
-  colnames(merged.se) <- GetMergedColnames(colnames(merged.se))
-  
-  # Create long -------------------------------------------------------------
-  
-  tissues <- GetTissues.merged(colnames(merged.act))
-  times <- GetTimes.merged(colnames(merged.act))
-  experiments <- GetExperiments.merged(colnames(merged.act))
-  
-  act.long <- data.frame(gene = rep(rownames(merged.act), ncol(merged.act)),
-                         tissue = rep(tissues, each = nrow(merged.act)),
-                         time = as.numeric(rep(times, each = nrow(merged.act))),
-                         exprs = as.numeric(unlist(merged.act)),
-                         se = as.numeric(unlist(merged.se)),
-                         experiment = rep(experiments, each = nrow(merged.act)))
-  return(act.long)
-}
 
 # Load --------------------------------------------------------------------
 
@@ -42,6 +20,19 @@ indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_k
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_kallisto/"
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1"
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/outputs_MARA_dhs_sitecounts_array_kallisto"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1.dist_filt"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_kallisto.threshold-5.572458.promoters/"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1.union.dist_filt"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_kallisto.threshold-5.572458.dist_filt/"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_kallisto.threshold-5.572458.promoters/"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/tissue_specific_rhythmic_genes.pvalmax0.05pvalmin1e-04relamp0.1.dist_filt/"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/tissue_specific_rhythmic_genes.pvalmax0.05pvalmin1e-05relamp0.1.dist_filt/"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Liver_rhythmic_genes.pvalmax0.05pvalmin1e-05.relamp0.1"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Liver_rhythmic_genes.pvalmax0.05pvalmin1e-05relamp0.1"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Kidney_rhythmic_genes.pvalmax0.05pvalmin1e-04relamp0.1"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Lung_rhythmic_genes.pvalmax0.05pvalmin0.001relamp0.1"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Heart_rhythmic_genes.pvalmax0.05pvalmin0.001relamp0.1"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_kallisto-threshold-5.572458"
 
 act.long <- LoadActivitiesLong(indir)
 
@@ -49,12 +40,17 @@ act.long <- LoadActivitiesLong(indir)
 # Plot stuff --------------------------------------------------------------
 
 PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "REST.p3"))
 PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "CTCF.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "SOX17.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "NANOG.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ATF6.p2"))
 
 
 # Which ones are most rhythmic? -------------------------------------------
@@ -140,7 +136,7 @@ for (comp in seq(length(act.svd$d))){
   # rotate eigengene by -phase ref
   eigengene <- eigengene * Conj(rotate.factor)
   # rotate eigensamp by +phase ref
-  eigensamp <- eigensamp * rotate.factor
+  eigensamp <- eigensamp * Conj(rotate.factor)
   
   v.plot <- PlotComplex2(eigengene, labels = colnames(act.complex.mat), omega = omega, title = paste("Right singular value", comp))
   u.plot <- PlotComplex2(eigensamp, labels = rownames(act.complex.mat), omega = omega, title = paste("Left singular value", comp)) 
