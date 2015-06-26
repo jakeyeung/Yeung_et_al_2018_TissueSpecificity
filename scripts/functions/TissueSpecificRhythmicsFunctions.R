@@ -19,3 +19,30 @@ Is.RhythmicAcrossTissues <- function(pval, amp, cutoff.pval = 1e-5, cutoff.amp =
     return(FALSE)
   }
 }
+
+IsTissueSpecificDplyr <- function(dat){
+  gene <- dat$gene[1]
+  n.trues <- length(dat$is.rhythmic[which(dat$is.rhythmic == TRUE)])
+  n.falses <- length(dat$is.rhythmic[which(dat$is.rhythmic == FALSE)])
+  if (n.trues > 0 & n.falses > 0){
+    dat$is.tiss.spec <- TRUE
+    return(dat)
+    #     return(data.frame(gene = gene, is.tiss.spec.rhyth = TRUE))
+  } else {
+    dat$is.tiss.spec <- FALSE
+    return(dat)
+    #     return(data.frame(gene = gene, is.tiss.spec.rhyth = FALSE))
+  }
+}
+
+
+GetTissueSpecific <- function(dat, tissues){
+  gene <- dat$gene[1]
+  dat.sub <- subset(dat, is.rhythmic == TRUE)
+  other.tissues <- as.character(dat.sub$tissue[which(!dat.sub$tissue %in% tissues)])
+  if (length(other.tissues) != 0){
+    return(data.frame(gene = gene, tiss.spec = TRUE))
+  } else{
+    return(data.frame(gene = gene, tiss.spec = FALSE))
+  }
+}
