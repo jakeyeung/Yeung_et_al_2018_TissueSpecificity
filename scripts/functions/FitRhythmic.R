@@ -58,3 +58,38 @@ GetAmpRelToMax <- function(dat, fits.mostrhythmic){
   dat$relamp <- dat$amp / amp.max
   return(dat)
 }
+
+GetRelamp <- function(fits, max.pval = 1e-3){
+  # using FindMostRhythmic and GetAmpRelToMax together
+  fits.mostrhythmic <- fits %>%
+    group_by(tissue) %>%
+    filter(pval <= max.pval) %>%
+    #   filter(pval.adj <= max.pvaladj) %>%
+    do(FindMostRhythmic(.)) %>%
+    data.frame(.)
+  rownames(fits.mostrhythmic) <- fits.mostrhythmic$tissue  # indexing
+  
+  # Get amplitude relative to max amp ---------------------------------------
+  fits.relamp <- fits %>%
+    group_by(tissue) %>%
+    do(GetAmpRelToMax(., fits.mostrhythmic))
+  return(fits.relamp)
+}
+
+
+IsRhythmicApply <- function(x, pval.min = 1e-4, pval.max = 0.05, relamp.max = 0.1, cutoff = 5.6){
+  # hard-coded shit... not the best but works fast, you should do quick sanity check 
+  pval <- as.numeric(x[7])
+  relamp <- as.numeric(x[10])
+  avg.exprs <- as.numeric(x[9])
+  if (is.nan(pval) | avg.exprs < cutoff){
+    return(NA)
+  }
+  if (pval <= pval.min & relamp >= relamp.max){
+    return(TRUE)
+  } else if (pval >= pval.max & relamp <= relamp.max){
+    return(FALSE)
+  } else {
+    return("Between")
+  }
+}
