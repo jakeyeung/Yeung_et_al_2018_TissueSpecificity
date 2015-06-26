@@ -3,12 +3,14 @@
 # 2015-06-24
 # Filter kallisto long by a gene list, then write matrix to file
 
+
 library(dplyr)
 library(reshape2)
 
 # Function ----------------------------------------------------------------
 
-source("scripts/functions/WriteGeneListMat.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/WriteGeneListMat.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/LoadLong.R")
 
 GetGenelist <- function(path){
   dat <- read.table(path, header = FALSE)
@@ -18,12 +20,17 @@ GetGenelist <- function(path){
 
 # Load --------------------------------------------------------------------
 
-# gene list
-genelist.path <- "/home/yeung/projects/tissue-specificity/data/gene_lists/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1/all.allgenelist"
+args <- commandArgs(trailingOnly = TRUE)
+genelist.path <- args[1]
+# genelist.path <- "/home/yeung/projects/tissue-specificity/data/gene_lists/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1/all.allgenelist"
+outdir <- args[2]
+# outdir <- "data/gene_lists/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1.union"
+dir.create(outdir)
+
 genelist <- GetGenelist(genelist.path)
 
 # ka.long
-array.path <- "data/exprs_matrices/array_adj_to_kallisto.slope07.txt"
+array.path <- "/home/yeung/projects/tissue-specificity/data/exprs_matrices/array_adj_to_kallisto.slope07.txt"
 rna.seq.path <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
 ka.long <- LoadLong(array.path, rna.seq.path, scale.factor = 100, pseudocount = 1)
 
@@ -34,7 +41,6 @@ ka.centered <- ka.long %>%
 
 
 # write matrix expression
-outdir <- "data/gene_lists/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1.union"
 
 tissues <- unique(as.character(ka.centered$tissue))
 for (tiss in tissues){
