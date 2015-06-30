@@ -77,11 +77,11 @@ GetRelamp <- function(fits, max.pval = 1e-3){
 }
 
 
-IsRhythmicApply <- function(x, pval.min = 1e-4, pval.max = 0.05, relamp.max = 0.1, cutoff = 5.6){
+IsRhythmicApply <- function(x, pval.min = 1e-4, pval.max = 0.05, relamp.max = 0.1, cutoff = 5.6, pvali = 7, relampi = 10, avg.exprsi = 9){
   # hard-coded shit... not the best but works fast, you should do quick sanity check 
-  pval <- as.numeric(x[7])
-  relamp <- as.numeric(x[10])
-  avg.exprs <- as.numeric(x[9])
+  pval <- as.numeric(x[pvali])
+  relamp <- as.numeric(x[relampi])
+  avg.exprs <- as.numeric(x[avg.exprsi])
   if (is.nan(pval) | avg.exprs < cutoff){
     return(NA)
   }
