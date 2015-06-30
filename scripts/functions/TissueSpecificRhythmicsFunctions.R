@@ -20,10 +20,14 @@ Is.RhythmicAcrossTissues <- function(pval, amp, cutoff.pval = 1e-5, cutoff.amp =
   }
 }
 
-IsTissueSpecificDplyr <- function(dat){
+IsTissueSpecificDplyr <- function(dat, include.betweens = FALSE){
   gene <- dat$gene[1]
   n.trues <- length(dat$is.rhythmic[which(dat$is.rhythmic == TRUE)])
-  n.falses <- length(dat$is.rhythmic[which(dat$is.rhythmic == FALSE)])
+  if (include.betweens == FALSE){
+    n.falses <- length(dat$is.rhythmic[which(dat$is.rhythmic == FALSE)])
+  } else {
+    n.falses <- length(dat$is.rhythmic[which(dat$is.rhythmic != TRUE)])
+  }
   if (n.trues > 0 & n.falses > 0){
     dat$is.tiss.spec <- TRUE
     return(dat)
