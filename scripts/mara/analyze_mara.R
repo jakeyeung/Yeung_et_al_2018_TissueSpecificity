@@ -33,25 +33,31 @@ indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Kidney_rhythmic_g
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Lung_rhythmic_genes.pvalmax0.05pvalmin0.001relamp0.1"
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/Heart_rhythmic_genes.pvalmax0.05pvalmin0.001relamp0.1"
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_kallisto-threshold-5.572458"
-
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/rhythmic_genes_by_tissues_kallistoarray.pval0.001.relamp0.1.union.promoters/"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_kallisto.threshold-5.572458.promoters"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 act.long <- LoadActivitiesLong(indir)
 
 
 # Plot stuff --------------------------------------------------------------
 
 PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "REST.p3"))
-PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "CTCF.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "CTCF.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "SOX17.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "NANOG.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "ATF6.p2"))
-
+PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & tissue %in% c("Liver", "Kidney")))
+# PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "SOX17.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "NANOG.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "ATF6.p2"))
+# 
 
 # Which ones are most rhythmic? -------------------------------------------
 act.fit <- act.long %>%
@@ -68,14 +74,13 @@ head(arrange(data.frame(act.fit), pval), n = 50)
 
 # Plot circle plot across all tissues -------------------------------------
 
-PlotAmpPhaseAllTissues(dat = subset(act.fit, pval.adj <= 5e-2))
-PlotAmpPhase(dat = subset(act.fit, pval.adj <= 5e-2 & tissue == "Liver"))
+pval.adj.cutoff <- 0.005
+
+PlotAmpPhaseAllTissues(dat = subset(act.fit, pval.adj <= pval.adj.cutoff))
+PlotAmpPhase(dat = subset(act.fit, pval.adj <= pval.adj.cutoff& tissue == "Heart"))
 
 # Find rhythmic regulators ------------------------------------------------
 
-# Filter for rhythmic
-
-pval.adj.cutoff <- 0.05
 
 rhythmic_genes <- act.fit %>%
   group_by(gene) %>%
@@ -85,6 +90,7 @@ rhythmic_genes <- act.fit %>%
 rhythmic_genes <- unique(rhythmic_genes$gene)
 
 act.filt <- subset(act.long, gene %in% rhythmic_genes)
+PlotAmpPhaseAllTissues(dat = subset(act.fit, gene %in% rhythmic_genes))
 
 library(plyr)
 source("scripts/functions/SvdFunctions.R")  # many script-specific functions here
@@ -127,7 +133,7 @@ plot(act.svd$d ^ 2 / sum(act.svd$d ^ 2), type = 'o')  # eigenvalues
 
 theme_set(theme_gray())
 # for (comp in seq(1, ncol(act.complex.mat))){
-for (comp in seq(length(act.svd$d))){
+for (comp in seq(3)){
   eigengene <- act.svd$v[, comp]
   eigensamp <- act.svd$u[, comp]
   # rotate to phase of largest magnitude in sample of eigengene
