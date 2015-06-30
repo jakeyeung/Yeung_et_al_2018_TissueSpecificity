@@ -2,7 +2,7 @@
 # February 25 2015
 
 LoadArrayRnaSeq <- function(normalized.array.path, rna.seq.path){
-  scripts.dir <- "scripts"
+  scripts.dir <- "/home/yeung/projects/tissue-specificity/scripts"
   funcs.dir <- "functions"
   source(file.path(scripts.dir, funcs.dir, "LoadAndHandleData.R"))
   source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
@@ -10,7 +10,7 @@ LoadArrayRnaSeq <- function(normalized.array.path, rna.seq.path){
   
   if (missing(normalized.array.path) & missing(rna.seq.path)){
     # define dirs
-    data.dir <- "data"
+    data.dir <- "/home/yeung/projects/tissue-specificity/data"
     normalized.array.fname <- "array.adj.0.07.txt"
     normalized.array.path <- file.path(data.dir, normalized.array.fname)
     rna.seq.fname <- "rna_seq_deseq_counts_colnames_fixed.txt"
