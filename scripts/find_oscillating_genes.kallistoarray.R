@@ -8,7 +8,7 @@ library(dplyr)
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/PlotGeneTpm.R")
-source("scripts/functions/LoadArray.R")
+source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/LoadKallistoGene.R")
 source("scripts/functions/GetTissueTimes.R")
 source("scripts/functions/FitRhythmic.R")
@@ -17,9 +17,10 @@ source("scripts/functions/WriteGeneListMat.R")
 
 # Load matrix -------------------------------------------------------------
 
-array.path <- "data/exprs_matrices/array_adj_to_kallisto.slope07.txt"
-rna.seq.path <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
-ka.long <- LoadLong(array.path, rna.seq.path, scale.factor = 100, pseudocount = 1)
+# array.path <- "data/exprs_matrices/array_adj_to_kallisto.slope07.txt"
+# rna.seq.path <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
+# ka.long <- LoadLong(array.path, rna.seq.path, scale.factor = 100, pseudocount = 1)
+ka.long <- LoadArrayRnaSeq()
 
 PlotGeneAcrossTissues(subset(ka.long, gene == "Arntl"))
 
