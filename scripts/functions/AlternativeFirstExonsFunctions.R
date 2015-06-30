@@ -363,3 +363,15 @@ FitRhythNonRhyth <- function(jdf, log2transf = FALSE){
   pval <- summary(jfit)$coefficients["rhythmic.or.notRhythmic", "Pr(>|t|)"]
   return(data.frame(int = int, coef = jcoef, pval = pval))
 }
+
+FitPromoterUsageToAmplitude <- function(dat){
+  #   jweights <- 1 / sqrt(dat$tpm_norm.var)
+  #   fit <- lm(formula = tpm_norm.avg ~ relamp, data = dat, weights = jweights)
+  fit <- lm(formula = tpm_norm.avg ~ relamp, data = dat)
+  int <- coef(fit)[["(Intercept)"]]
+  relamp <- coef(fit)[["relamp"]]
+  tpm_norm.range <- diff(range(dat$tpm_norm.avg))
+  relamp.range <- diff(range(dat$relamp))
+  pval <- summary(fit)$coefficient["relamp", "Pr(>|t|)"]
+  return(data.frame(int = int, relamp = relamp, pval = pval, tpm_norm.range = tpm_norm.range, relamp.range = relamp.range))
+}
