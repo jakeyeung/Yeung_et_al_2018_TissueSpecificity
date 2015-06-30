@@ -2,7 +2,7 @@
 # 2015-06-04
 # explore_dhs_sitecounts_at_start_sites.R
 
-rm(list=ls())
+# rm(list=ls())
 
 library(gplots)
 library(reshape2)
@@ -38,7 +38,7 @@ jgene <- "Tars"
 jgene <- "Hn1l"
 jgene <- "Rorc"
 
-jgene <- "Tars"
+jgene <- "Asap2"
 motevo.sub <- subset(motevo.long, gene == jgene)
 
 m <- dcast(data = motevo.sub, formula = motif ~ tissue, value.var = "motevo.value")
@@ -55,12 +55,13 @@ heatmap.2(m, density.info = "density", trace = "none", margins = c(5, 10), main 
 
 m.liver <- m[, "Liver"]
 m.other <- m[, c("Cerebellum", "Heart", "Kidney", "Lung", "SkeletalMuscle")]
+# m.other <- m[, c("Cerebellum", "Heart", "Lung", "SkeletalMuscle")]
 m.other.avg <- rowMeans(m.other)
 abs.diff <- m.liver - m.other.avg
 abs.diff <- abs.diff[order(abs.diff, decreasing = TRUE)]
 (head(sort(abs.diff, decreasing = TRUE), n = 100))
 
-par(mar=c(5, 12, 4.1, 2.1))
+par(mar=c(10, 12, 4.1, 2.1))
 barplot(abs.diff[1:50], names.arg = names(abs.diff[1:50]), las = 2)
 
 # Can we find enrichment of core clock motifs in tissue-specific r --------
