@@ -14,6 +14,7 @@ source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/LoadSitecounts.R")
 source("scripts/functions/FitMotifAmp.R")
 source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
+source("scripts/functions/LoadArrayRnaSeq.R")
 
 # Functions ---------------------------------------------------------------
 
@@ -22,7 +23,8 @@ source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
 # Load data ---------------------------------------------------------------
 
 tpm.merged <- LoadKallisto(path.kallisto = "data/alternative_exon_usage/abundance.merged.annotated.sorted.pythonmerged.bed")
-dat.long <- LoadLong()
+# dat.long <- LoadLong()
+dat.long <- LoadArrayRnaSeq()
 
 N.dir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/encode_dist_filtered_matrix"
 suffix <- "sitecounts.merged.matrix"
@@ -41,7 +43,7 @@ dat.rhyth.relamp <- GetRelamp(fits = dat.rhyth, max.pval = 1e-3)
 
 # Find tissue-specific genes ----------------------------------------------
 
-pval.min <- 1e-3
+pval.min <- 1e-5
 pval.max <- 0.05
 relamp.max <- 0.1
 mean.cutoff <- 6
@@ -82,7 +84,7 @@ if (!file.exists(outfile)){
 
 # Find Liver-only rhythmic genes ------------------------------------------
 
-jtissue <- "Heart"
+jtissue <- "Liver"
 liver.rhyth.genes <- dat.rhyth.relamp %>%
   subset(., is.tiss.spec == TRUE) %>%
   group_by(gene) %>%
@@ -113,6 +115,45 @@ sink()
 
 # Explore sitecounts ------------------------------------------------------
 
+jgene <- "Insig2"
+rhyth.tiss <- c("Liver")
+flat.tiss <- c("Cere", "Kidney", "Heart", "Lung", "Mus")
+# rhyth.tiss <- c("Liver", "Kidney")
+# flat.tiss <- c("Cere", "Heart", "Lung", "Mus")
+
+motevo.sub <- subset(N, gene == jgene)
+
+m <- dcast(data = motevo.sub, formula = motif ~ tissue, value.var = "motevo.value")
+rownames(m) <- m$motif
+m$motif <- NULL
+m <- as.matrix(m)
+(m["RORA.p2", ])
+# normalize by sum
+m <- sweep(m, 2, colSums(m),"/")
+m <- m[which(rowMeans(m) > 0), ]
+
+m.rhythmic <- m[, which(colnames(m) %in% rhyth.tiss)]
+
+# m.liver <- m[, "Liver"]
+# m.other <- m[, c("Cere", "Heart", "Kidney", "Lung", "Mus")]
+m.flat <- m[, which(colnames(m) %in% flat.tiss)]
+# m.flat <- m[, c("Liver", "Kidney")]
+if (!is.null(ncol(m.rhythmic))){
+  m.rhythmic.avg <- rowMeans(m.rhythmic)
+} else {
+  m.rhythmic.avg <- m.rhythmic
+}
+if (!is.null(ncol(m.flat))){
+  m.flat.avg <- rowMeans(m.flat)
+} else {
+  m.flat.avg <- m.flat
+}
+abs.diff <- m.rhythmic.avg - m.flat.avg
+abs.diff <- abs.diff[order(abs.diff, decreasing = TRUE)]
+# (head(sort(abs.diff, decreasing = TRUE), n = 100))
+
+par(mar=c(5, 15, 4.1, 2.1))
+barplot(abs.diff[1:50], names.arg = names(abs.diff[1:50]), las = 1, horiz = TRUE)
 
 # Are rhythmic-only genes enriched for some factors? ----------------------
 
