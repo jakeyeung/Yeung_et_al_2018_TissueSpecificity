@@ -1,7 +1,7 @@
 MergeToLong <- function(normalized.array, rna.seq.exprs, take.common.genes = FALSE){
   
   # Functions
-  scripts.dir <- "scripts"
+  scripts.dir <- "/home/yeung/projects/tissue-specificity/scripts"
   funcs.dir <- "functions"
   source(file.path(scripts.dir, funcs.dir, "GetTissueTimes.R"))
   
