@@ -6,7 +6,7 @@ GetTFs <- function(){
   # with promoter (obtained from get_TFs_from_associations.py script)
   
   # define dirs
-  data.dir <- "data"
+  data.dir <- "/home/yeung/projects/tissue-specificity/data"
   tf.fname <- "motifs_and_TFs.list"
   tf.path <- file.path(data.dir, tf.fname)
   
