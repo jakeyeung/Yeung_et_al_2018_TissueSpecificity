@@ -74,19 +74,23 @@ LoadSitecountsEncode <- function(inpath, tissue, with.ensemblid = TRUE){
   return(jdf.long)
 }
 
-LoadSitecountsEncodeAll <- function(maindir, suffix="sitecounts.matrix", with.ensemblid = TRUE, rename.tissues = FALSE){
+LoadSitecountsEncodeAll <- function(maindir, tissues, suffix="sitecounts.matrix", with.ensemblid = TRUE, rename.tissues = FALSE){
   # Load ENCODE sitecounts
   if (missing(maindir)){
     maindir <- "data/sitecounts/motevo/encode_sitecount_matrix"
   }
-  tissues <- c("Liver", "Cere", "Mus", "Kidney", "Heart", "Lung")  # matches with Hogenesch names
-  names(tissues) <- c("Liver", "Cerebellum", "SkeletalMuscle", "Kidney", "Heart", "Lung")  # matches with Hogenesch data
+  if (missing(tissues)){
+    tissues <- c("Liver", "Cere", "Mus", "Kidney", "Heart", "Lung")  # matches with Hogenesch names
+    names(tissues) <- c("Liver", "Cerebellum", "SkeletalMuscle", "Kidney", "Heart", "Lung")  # matches with Hogenesch data
+  } else {
+    # make names(tissues) equal tissues, solves a bug inelegantly
+    names(tissues) <- tissues
+  }
   # suffix <- "sitecounts.matrix"
   fnames <- paste(names(tissues), suffix, sep=".")
   paths <- paste(maindir, fnames, sep="/")
   motevo.df.list <- list()
   for (p in paths){
-    print(p)
     if (rename.tissues){
       tissue <- tissues[strsplit(basename(p), "\\.")[[1]][[1]]]
     } else {
