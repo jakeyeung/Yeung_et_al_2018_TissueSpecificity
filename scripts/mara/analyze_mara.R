@@ -44,6 +44,25 @@ act.long <- LoadActivitiesLong(indir)
 
 # Plot stuff --------------------------------------------------------------
 
+
+PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ZNF423.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ZNF384.p2"))
+
+PlotActivitiesWithSE(subset(act.long, gene == "ATF5_CREB3.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "NFE2L2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "HAND1.2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "SOX17.p2"))
+
+PlotActivitiesWithSE(subset(act.long, gene == "HBP1_HMGB_SSRP1_UBTF.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ZBTB16.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ALX1.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "FOXA2.p3"))
+PlotActivitiesWithSE(subset(act.long, gene == "NR4A2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "TEAD1.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "RFX1..5_RFXANK_RFXAP.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "MYFfamily.p2"))
+
 PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
