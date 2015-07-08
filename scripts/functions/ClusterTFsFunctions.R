@@ -32,3 +32,9 @@ Binarize <- function(mat, cutoff){
   mat[which(mat >= cutoff)] <- 1
   return(mat)
 }
+
+MaxExprsAcrossTissuesDplyr <- function(dat){
+  df.max.tiss <- dat %>%
+    group_by(tissue) %>%
+    summarise(max.exprs = max(exprs))
+}
