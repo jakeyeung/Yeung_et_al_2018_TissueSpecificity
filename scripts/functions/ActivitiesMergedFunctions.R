@@ -1,18 +1,21 @@
-PlotActivitiesWithSE <- function(df){
-  jgene <- unique(df$gene)
-  ggplot(df, 
+PlotActivitiesWithSE <- function(dat, jtitle){
+  jgene <- unique(dat$gene)
+  if (missing(jtitle)){
+    jtitle <- jgene
+  }
+  ggplot(dat, 
          aes(x = time, y = exprs, group = experiment, colour = experiment)) +
     geom_line() +
     geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
     facet_wrap(~tissue) + 
     xlab("CT") +
     ylab("Activity") + 
-    ggtitle(jgene)
+    ggtitle(jtitle)
 }
 
-PlotMeanActivitiesWithSE <- function(df){
-  jgene <- unique(df$gene)
-  ggplot(df,
+PlotMeanActivitiesWithSE <- function(dat){
+  jgene <- unique(dat$gene)
+  ggplot(dat,
          aes(x = tissue, y = exprs, group = experiment, colour = experiment)) + 
     geom_line() + 
     geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
@@ -20,22 +23,22 @@ PlotMeanActivitiesWithSE <- function(df){
     ggtitle(jgene)
 }
 
-GetExprsMean <- function(df){
-  # Input: long df filtered for a tissue and a gene.
+GetExprsMean <- function(dat){
+  # Input: long dat filtered for a tissue and a gene.
   # Expect "exprs", "se" and "experiment"
-  df.split <- split(df, df$experiment)
+  dat.split <- split(dat, dat$experiment)
   
   # get exprs
-  exprs.array.mean <- mean(df.split$array$exprs)
-  exprs.rnaseq.mean <- mean(df.split$rnaseq$exprs)
+  exprs.array.mean <- mean(dat.split$array$exprs)
+  exprs.rnaseq.mean <- mean(dat.split$rnaseq$exprs)
   
   # get se
-  var.array.mean <- mean(df.split$array$se^2)
+  var.array.mean <- mean(dat.split$array$se^2)
   se.array.mean <- sqrt(var.array.mean)
-  var.rnaseq.mean <- mean(df.split$rnaseq$se^2)
+  var.rnaseq.mean <- mean(dat.split$rnaseq$se^2)
   se.rnaseq.mean <- sqrt(var.rnaseq.mean)
   
-  df.out <- data.frame(tissue = unique(df$tissue),
+  dat.out <- data.frame(tissue = unique(dat$tissue),
                        exprs = c(exprs.array.mean, exprs.rnaseq.mean),
                        se = c(se.array.mean, se.rnaseq.mean),
                        experiment = c("array", "rnaseq"))
@@ -67,18 +70,25 @@ GetMergedColnames <- function(cnames.merged){
   })
 }
 
-FitRhythmicWeighted <- function(df, T = 24){
-  # Input: long df with exprs, time, se, experiment (array or rnaseq) for
+FitRhythmicWeighted <- function(dat, T = 24, intercepts=FALSE, df = NA){
+  # Input: long dat with exprs, time, se, experiment (array or rnaseq) for
   # a given tissue and a given gene. 
   # 
   # Fits a weighted regression model. With weights in SE
-  w = 2 * pi / T  # omega
-  tissue <- unique(df$tissue)
+  #
+  # intercepts=FALSE: do not output intercepts, otherwise do (saves space)
+  if (class(df) == "data.frame" & missing(dat)){
+    warning("You really should use dat= and not df=, switching df to dat for you.")
+    dat <- df
+  }
   
-  sigma.sq <- df$se ^ 2
+  w = 2 * pi / T  # omega
+  tissue <- unique(dat$tissue)
+  
+  sigma.sq <- dat$se ^ 2
   jweights <- 1 / sigma.sq
-  fit.rhyth <- lm(exprs ~ 0 + experiment + sin(w * time) + cos(w * time), data = df, weights = jweights)
-  fit.flat <- lm(exprs ~ 0 + experiment, data = df, weights = jweights)
+  fit.rhyth <- lm(exprs ~ 0 + experiment + sin(w * time) + cos(w * time), data = dat, weights = jweights)
+  fit.flat <- lm(exprs ~ 0 + experiment, data = dat, weights = jweights)
   ftest <- anova(fit.flat, fit.rhyth)
   ftest.pval <- ftest[["Pr(>F)"]][[2]]
   amp <- unname(sqrt(coef(fit.rhyth)["sin(w * time)"] ^ 2 + coef(fit.rhyth)["cos(w * time)"] ^ 2))
@@ -87,5 +97,9 @@ FitRhythmicWeighted <- function(df, T = 24){
     phase <- phase + 2 * pi
   }
   phase <- phase / w
-  df.out <- data.frame(tissue = tissue, amp = amp, phase = phase, pval = ftest.pval)
+  if (intercepts){
+    rnaseq.int <- coef(fit.rhyth)["experimentrnaseq"]
+    return(data.frame(tissue = tissue, amp = amp, phase = phase, pval = ftest.pval, rnaseq.int = rnaseq.int))
+  }
+  dat.out <- data.frame(tissue = tissue, amp = amp, phase = phase, pval = ftest.pval)
 }
