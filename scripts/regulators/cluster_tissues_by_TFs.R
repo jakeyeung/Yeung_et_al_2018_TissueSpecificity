@@ -3,7 +3,8 @@
 # March 9 2015
 
 library(ggplot2)
-library(plyr)
+# library(plyr)
+library(dplyr)
 library(reshape2)
 library(gplots)
 
@@ -20,6 +21,7 @@ source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/GetTFs.R")
 source("scripts/functions/FirstColToRowname.R")
 source("scripts/functions/ClusterTFsFunctions.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
 
 
 # Set pallette for heatmap colors -----------------------------------------
@@ -46,9 +48,11 @@ tfs <- GetTFs()
 
 dat.tfs <- subset(dat, gene %in% tfs & experiment == "rnaseq")
 
-# dat.tfs.avg <- ddply(dat.tfs, .(gene), AvgExprsAcrossTissues)
 dat.tfs.rnaseq <- subset(dat.tfs, experiment="rnaseq")
-dat.tfs.max <- ddply(dat.tfs.rnaseq, .(gene), MaxExprsAcrossTissues)
+
+dat.tfs.max <- dat.tfs.rnaseq %>%
+  group_by(gene) %>%
+  do(MaxExprsAcrossTissuesDplyr(.))
 
 dat.tfs.mat <- dcast(dat.tfs.max, gene ~ tissue, value.var = "max.exprs")
 
@@ -108,3 +112,21 @@ heatmap.2(dat.liver_v_adr.binary,
           # dendrogram="col",     # only draw a row dendrogram
           # Colv="NA")            # turn off column clustering
 )
+
+
+# Which ones are specific to only ONE tissues -----------------------------
+
+sums <- rowSums(dat.tfs.mat.binary)
+
+outfile <- paste0("plots/tissue_specific_rhythmic_genes/tissue_specific_factors.pdf")
+pdf(outfile)
+for (N in seq(12)){
+  tissue.specific <- names(sums[which(sums == N)])
+  if (length(tissue.specific) > 0){
+    for (g in tissue.specific){
+      jtitle = paste(g, N)
+      print(PlotGeneAcrossTissues(subset(dat.tfs.rnaseq, gene == g), jtitle = jtitle))
+    }
+  }
+}
+dev.off()
