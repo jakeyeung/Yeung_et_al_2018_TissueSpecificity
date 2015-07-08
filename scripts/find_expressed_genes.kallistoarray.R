@@ -14,6 +14,7 @@ source("scripts/functions/WriteGeneListMat.R")
 
 # Load --------------------------------------------------------------------
 
+rna.seq.path <- "/home/yeung/projects/tissue-specificity/data/kallisto/abundance.genecounts.matrix.txt"
 ka.long <- LoadLong(scale.factor = 100, pseudocount = 1)
 kallisto.wide <- LoadKallistoGene(rna.seq.path, form = "wide")
 kallisto.wide <- log2(scale.factor * kallisto.wide + pseudocount)
