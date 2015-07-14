@@ -372,6 +372,10 @@ FitPromoterUsageToAmplitude <- function(dat){
   relamp <- coef(fit)[["relamp"]]
   tpm_norm.range <- diff(range(dat$tpm_norm.avg))
   relamp.range <- diff(range(dat$relamp))
+  # handle if relamp is "NA"
+  if (is.na(fit$coefficients[["relamp"]])){
+    return(data.frame(int = NA, relamp = NA, pval = NA, tpm_norm.range = NA, relamp.range = NA))
+  }
   pval <- summary(fit)$coefficient["relamp", "Pr(>|t|)"]
   return(data.frame(int = int, relamp = relamp, pval = pval, tpm_norm.range = tpm_norm.range, relamp.range = relamp.range))
 }
