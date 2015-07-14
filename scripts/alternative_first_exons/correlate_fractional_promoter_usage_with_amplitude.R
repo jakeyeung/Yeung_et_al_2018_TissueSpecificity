@@ -14,6 +14,7 @@ source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
+source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
 
 # Functions ---------------------------------------------------------------
 
@@ -46,7 +47,7 @@ dat.rhyth.relamp$is.rhythmic <- apply(as.matrix(dat.rhyth.relamp), 1, IsRhythmic
 # Do not consider Cere, Hypo and BS into this -----------------------------
 
 filter.tissues <- c()
-filter.tissues <- c('Cere', 'BS', 'Hypo')
+# filter.tissues <- c('Cere', 'BS', 'Hypo')
 # 
 dat.rhyth.relamp <- subset(dat.rhyth.relamp, !tissue %in% filter.tissues)
 
@@ -106,7 +107,6 @@ head(data.frame(tpm.summary[order(tpm.summary$relamp.range, decreasing = TRUE), 
 head(data.frame(tpm.summary[order(tpm.summary$tpm_norm.range, decreasing = TRUE), which(colnames(tpm.summary) != "transcript_id")]), n = 100)
 head(data.frame(tpm.summary[order(tpm.summary$tpm_norm.range, decreasing = TRUE), ]), n = 100)
 
-
 tpm.summary.by.tpmrange <- data.frame(tpm.summary.filt[order(tpm.summary.filt$tpm_norm.range, decreasing = TRUE), which(colnames(tpm.summary.filt) != "transcript_id")])
 (tpm.summary.by.tpmrange)
 
@@ -118,6 +118,30 @@ tpm.summary.nothits <- subset(tpm.summary, pval > pval.cutoff)
 tissue.spec.alt.prom <- unique(subset(tpm.avg, gene_name %in% tissue.spec & tpm_norm.var > 0 & int.rnaseq > 4)$gene_name)
 sprintf("%s/%s genes correlate with alt promoter usage: %s",length(sig.hits), length(tissue.spec.alt.prom), length(sig.hits) / length(tissue.spec.alt.prom))
 
+
+# Which tissues are they rhythmic? ----------------------------------------
+
+n.pairs <- dat.rhyth.relamp %>%
+  group_by(gene) %>%
+  do(RhythTiss(.))
+
+# hash and annotate
+gene.keys <- n.pairs$gene
+gene.tissues.dic <- hash(gene.keys, n.pairs$tissues)
+
+tpm.summary.filt$rhyth.tiss <- sapply(X = tpm.summary.filt$gene_name, FUN = function(k) gene.tissues.dic[[as.character(k)]])
+
+head(data.frame(tpm.summary.filt[order(tpm.summary.filt$pval), which(colnames(tpm.summary.filt) != "transcript_id")]), n = 50)
+
+# plot distirbution of tissues
+tissue.counts <- tpm.summary.filt %>%
+  group_by(rhyth.tiss) %>%
+  summarise(count = length(rhyth.tiss)) %>%
+  arrange(desc(count))
+
+tissue.counts$rhyth.tiss <- factor(tissue.counts$rhyth.tiss, levels = tissue.counts$rhyth.tiss)
+
+ggplot(tissue.counts, aes(x = rhyth.tiss, y = count)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 # Sanity checks -----------------------------------------------------------
 
 # check hits
@@ -151,6 +175,8 @@ jgene <- "Insc"
 jgene <- "Ivd"
 jgene <- "Bbs9"
 jgene <- "Mpc1"
+jgene <- "Chn1"
+jgene <- "Cdkal1"
 
 # check not hits
 jgene <- "Csrp3"
@@ -158,11 +184,13 @@ jgene <- "Ncoa7"
 jgene <- "Slc38a3"
 jgene <- "Cdkn1a"
 jgene <- "Usp13"
+jgene <- "Upp2"
 
 tpm.sub <- subset(tpm.fit, gene_name == jgene)
-(tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ])
+# (tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ])
 jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
-data.frame(subset(tpm.afe, transcript_id == jtranscript))
+# data.frame(subset(tpm.afe, transcript_id == jtranscript))
+subset(tpm.summary, gene_name == jgene)
 PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
 ggplot(subset(tpm.avg.filt, transcript_id == jtranscript), aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + ggtitle(jgene) + geom_smooth(method = "lm")
 
