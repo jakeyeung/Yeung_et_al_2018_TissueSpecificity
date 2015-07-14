@@ -1,4 +1,6 @@
 LoadActivitiesLong <- function(indir, act.file="activities.all", se.file="standarderrors.all"){
+  source("~/projects/tissue-specificity/scripts/functions/ActivitiesMergedFunctions.R")
+  source("~/projects/tissue-specificity/scripts/functions/GetTissueTimes.R")
   merged.act <- read.table(file.path(indir, act.file))
   merged.se <- read.table(file.path(indir, se.file))
   
