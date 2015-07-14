@@ -50,3 +50,35 @@ GetTissueSpecific <- function(dat, tissues){
     return(data.frame(gene = gene, tiss.spec = FALSE))
   }
 }
+
+RhythTiss <- function(dat){
+  # Count how many tissues are rhythmic and
+  # record which tissues are rhythmic
+  n.tiss <- length(dat$is.rhythmic[which(dat$is.rhythmic == TRUE)])
+  if (n.tiss == 0){
+    return(data.frame(n.tiss = n.tiss, tissues = NA))
+  }
+  dat.sub <- subset(dat, is.rhythmic == TRUE)
+  tissues <- paste(dat.sub$tissue, collapse = ',')
+  n.tiss <- length(dat.sub$tissue)
+  return(data.frame(n.tiss = n.tiss, tissues = tissues))
+}
+
+GetPhaseDiff <- function(x, period = 24){
+  phase.diff <- diff(x)
+  if (abs(phase.diff) > (period / 2)){
+    phase.diff <- (period - abs(phase.diff)) * -(phase.diff / abs(phase.diff))
+  } 
+  return(phase.diff)
+}
+
+GetRhythmic <- function(dat){
+  subset(dat, is.rhythmic == TRUE)
+}
+
+GetTissueSpec <- function(dat, tissue.spec.rhyth){
+  # this script is used for find_oscillating_genes.pairs.R
+  tissue <- dat$tissue[1]
+  rhyth.genes <- subset(tissue.spec.rhyth, tissues == tissue)$gene
+  subset(dat, gene %in% rhyth.genes)
+}
