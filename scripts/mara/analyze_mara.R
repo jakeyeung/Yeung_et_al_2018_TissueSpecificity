@@ -67,7 +67,7 @@ PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "REST.p3"))
-# PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "CTCF.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & tissue %in% c("Liver", "Kidney")))
@@ -76,12 +76,15 @@ PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & tissue %in% c
 # PlotActivitiesWithSE(subset(act.long, gene == "NANOG.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "ATF6.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ELK1.4_GABP.A.B1..p3"))
+PlotActivitiesWithSE(subset(act.long, gene == "FOXA2.p3"))
+
 # 
 
 # Which ones are most rhythmic? -------------------------------------------
 act.fit <- act.long %>%
   group_by(tissue, gene) %>%
-  do(.data = ., FitRhythmicWeighted(df = .))
+  do(FitRhythmicWeighted(dat = .))
 
 # False discovery rate adj ------------------------------------------------
 
@@ -93,10 +96,13 @@ head(arrange(data.frame(act.fit), pval), n = 50)
 
 # Plot circle plot across all tissues -------------------------------------
 
-pval.adj.cutoff <- 0.005
+pval.adj.cutoff <- 1
 
 PlotAmpPhaseAllTissues(dat = subset(act.fit, pval.adj <= pval.adj.cutoff))
 PlotAmpPhase(dat = subset(act.fit, pval.adj <= pval.adj.cutoff& tissue == "Heart"))
+PlotAmpPhase(dat = subset(act.fit, pval.adj <= pval.adj.cutoff& tissue %in% c("BFAT", "Mus"))) + facet_wrap(~tissue)
+PlotAmpPhase(dat = subset(act.fit, pval.adj <= pval.adj.cutoff& tissue == "Liver"))
+PlotAmpPhase(dat = subset(act.fit, pval.adj <= pval.adj.cutoff& tissue == "Aorta"))
 
 # Find rhythmic regulators ------------------------------------------------
 
@@ -132,8 +138,11 @@ library(dplyr)
 
 
 # SVD on complex matrix ---------------------------------------------------
+# optinally filter out motifs
 
-act.complex.mat <- dcast(data = act.complex, formula = gene ~ tissue, value.var = "exprs.transformed")
+filter.motifs <- c("HNF4A_NR2F1.2.p2", "HNF1A.p2")
+# act.complex.mat <- dcast(data = act.complex, formula = gene ~ tissue, value.var = "exprs.transformed")
+act.complex.mat <- dcast(data = subset(act.complex, !gene %in% filter.motifs), formula = gene ~ tissue, value.var = "exprs.transformed")
 rownames(act.complex.mat) <- act.complex.mat[, "gene"]
 act.complex.mat <- act.complex.mat[, 2:ncol(act.complex.mat)]
 
@@ -152,7 +161,7 @@ plot(act.svd$d ^ 2 / sum(act.svd$d ^ 2), type = 'o')  # eigenvalues
 
 theme_set(theme_gray())
 # for (comp in seq(1, ncol(act.complex.mat))){
-for (comp in seq(3)){
+for (comp in seq(5)){
   eigengene <- act.svd$v[, comp]
   eigensamp <- act.svd$u[, comp]
   # rotate to phase of largest magnitude in sample of eigengene
@@ -168,3 +177,4 @@ for (comp in seq(3)){
   print(v.plot)
   print(u.plot)
 }
+
