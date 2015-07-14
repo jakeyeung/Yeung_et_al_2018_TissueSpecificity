@@ -42,6 +42,16 @@ act.flat <- act.fit %>%
 # dev.off()
 
 
+# PCA on regulators -------------------------------------------------------
+
+M <- dcast(act.fit, formula = gene ~ tissue, value.var = "rnaseq.int")
+rownames(M) <- M$gene
+M$gene <- NULL
+M <- t(scale(t(M), center = TRUE, scale = FALSE))
+s <- prcomp(M)
+screeplot(s)
+biplot(s)
+
 # And by rhythms? ---------------------------------------------------------
 
 act.rhyth <- act.fit %>%
