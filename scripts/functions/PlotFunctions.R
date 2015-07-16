@@ -1,4 +1,6 @@
 library(ggplot2)
+library(grid)
+
 PlotAmpPhase <- function(dat){
   # Expect amp and phase in data frame column names.
   # label as gene names
@@ -452,4 +454,38 @@ PlotArgsMatrix <- function(complex.mat, colors, main = "Title", jcex = 1){
        xpd=TRUE, 
        cex=1.5) 
   # ---------- END: PLOT MATRIX OF PHASE ANGLES ------------------- # 
+}
+
+PlotLoadings <- function(Loadings, title="Plot title", plot.colors, cex = 1) {
+  # Given vector from PCA, plot vector and color by tissue.
+  # Maybe give fancy legend
+  if (missing(plot.colors)){
+    plot.colors <- rep(1:12, each=24)
+  }
+  plot(Loadings, main=title, col=plot.colors, type='o',
+       cex.axis = cex,
+       cex.main = cex,
+       cex.lab = cex)
+}
+
+PCbiplot <- function(PC, jtitle="Plot title", x="PC1", y="PC2") {
+  # http://stackoverflow.com/questions/6578355/plotting-pca-biplot-with-ggplot2
+  # PC being a prcomp object
+  data <- data.frame(obsnames=row.names(PC$x), PC$x)
+  data$labsize <- data[[x]] ^ 2 + data[[y]]^2
+  plot <- ggplot(data, aes_string(x=x, y=y)) + geom_text(alpha=.3, aes(label=obsnames, size = labsize))
+  plot <- plot + geom_hline(aes(0), size=.2) + geom_vline(aes(0), size=.2)
+  datapc <- data.frame(varnames=rownames(PC$rotation), PC$rotation)
+  mult <- min(
+    (max(data[,y]) - min(data[,y])/(max(datapc[,y])-min(datapc[,y]))),
+    (max(data[,x]) - min(data[,x])/(max(datapc[,x])-min(datapc[,x])))
+  )
+  datapc <- transform(datapc,
+                      v1 = .7 * mult * (get(x)),
+                      v2 = .7 * mult * (get(y))
+  )
+  plot <- plot + coord_equal() + geom_text(data=datapc, aes(x=v1, y=v2, label=varnames), size = 5, vjust=1, color="red")
+  plot <- plot + geom_segment(data=datapc, aes(x=0, y=0, xend=v1, yend=v2), arrow=arrow(length=unit(0.2,"cm")), color="red")
+  plot <- plot + ggtitle(jtitle)
+  return(plot)
 }
