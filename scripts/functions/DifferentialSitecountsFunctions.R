@@ -125,7 +125,7 @@ MatchColumns <- function(X.motif, X.exprs){
   return(list(X.motif = X.motif, X.exprs = X.exprs))
 }
 
-PlotDiagnostics <- function(N, X.exprs, dat.rhyth.relamp, jgene, jscale = TRUE, jvar = "motevo.value"){
+PlotDiagnostics <- function(N, X.exprs, dat.rhyth.relamp, dat.long, jgene, jscale = TRUE, jvar = "motevo.value"){
   # get MOTIF matrix
   N.sub <- subset(N, gene == jgene)
   if (nrow(N.sub) == 0) return(NA)
