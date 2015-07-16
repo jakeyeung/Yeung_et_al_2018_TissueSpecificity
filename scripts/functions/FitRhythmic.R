@@ -76,6 +76,22 @@ GetRelamp <- function(fits, max.pval = 1e-3){
   return(fits.relamp)
 }
 
+GetAmpRelToGene <- function(dat, base.amp.dic){
+  tissue <- as.character(dat$tissue[1])
+  amp.base <- base.amp.dic[[tissue]]
+  dat$relamp <- dat$amp / amp.base
+  return(dat)
+}
+
+GetRelampByGene <- function(fits, by.gene = "Arntl"){
+  library(hash)
+  fits.base <- subset(fits, gene == by.gene)
+  base.amp.dic <- hash(as.character(fits.base$tissue), fits.base$amp)
+  fits.relamp <- fits %>%
+    group_by(tissue) %>%
+    do(GetAmpRelToGene(., base.amp.dic))
+  return(fits.relamp)
+}
 
 IsRhythmicApply <- function(x, pval.min = 1e-4, pval.max = 0.05, relamp.max = 0.1, cutoff = 5.6, pvali = 7, relampi = 10, avg.exprsi = 9){
   # hard-coded shit... not the best but works fast, you should do quick sanity check 
