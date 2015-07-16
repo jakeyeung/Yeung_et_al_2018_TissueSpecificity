@@ -7,24 +7,24 @@ library(reshape2)
 # library(PhaseHSV)
 library(ggplot2)
 
-ProjectToFrequency2 <- function(df, omega, add.tissue=FALSE){
+ProjectToFrequency2 <- function(dat, omega, add.tissue=FALSE){
   # simpler than ProjectToFrequency().
-  # expect df to be gene i in tissue c with column names time and exprs
-  exprs.transformed <- DoFourier(df$exprs, df$time, omega = omega)
+  # expect dat to be gene i in tissue c with column names time and exprs
+  exprs.transformed <- DoFourier(dat$exprs, dat$time, omega = omega)
   if (add.tissue){    
-    tissue <- unique(df$tissue)
-    df.out <- data.frame(tissue = tissue, exprs.transformed = exprs.transformed)
+    tissue <- unique(dat$tissue)
+    dat.out <- data.frame(tissue = tissue, exprs.transformed = exprs.transformed)
   } else {
-    df.out <- data.frame(exprs.transformed = exprs.transformed)
+    dat.out <- data.frame(exprs.transformed = exprs.transformed)
   }
-  return(df.out)
+  return(dat.out)
 }
 
-ProjectToFrequency <- function(df, my.omega, normalize = TRUE, rhythmic.only = FALSE, method = "ANOVA", pval.cutoff = 5e-3){
+ProjectToFrequency <- function(dat, my.omega, normalize = TRUE, rhythmic.only = FALSE, method = "ANOVA", pval.cutoff = 5e-3){
   # Perform fourier transform and normalize across all frequencies (squared and square root)
   # 
   # Input:
-  # df: long dataframe containing expression and time columns for one condition. Expect 'exprs' and 'time' columns.
+  # dat: long dataframe containing expression and time columns for one condition. Expect 'exprs' and 'time' columns.
   # to be transformed to frequency domain.
   # my.omega: the omega of interest.
   # normalize: converts transform into a sort of z-score
@@ -32,24 +32,24 @@ ProjectToFrequency <- function(df, my.omega, normalize = TRUE, rhythmic.only = F
   # 
   # omega in which we are interested.  
   if (rhythmic.only){
-    if (IsRhythmic(df, my.omega, pval.cutoff = pval.cutoff, method = "ANOVA")){
-      df.transformed <- Transform(df, my.omega, normalize)
+    if (IsRhythmic(dat, my.omega, pval.cutoff = pval.cutoff, method = "ANOVA")){
+      dat.transformed <- Transform(dat, my.omega, normalize)
     } else {
-      df.transformed <- data.frame(exprs.transformed = 0)
+      dat.transformed <- data.frame(exprs.transformed = 0)
     }
   } else {
-    df.transformed <- Transform(df, my.omega, normalize)
+    dat.transformed <- Transform(dat, my.omega, normalize)
   }
-  return(df.transformed)
+  return(dat.transformed)
 }
 
 
 
-Transform <- function(df, my.omega, normalize = TRUE){
+Transform <- function(dat, my.omega, normalize = TRUE){
   # Perform fourier transform and normalize across all frequencies (squared and square root)
   # 
   # Input:
-  # df: long dataframe containing expression and time columns for one condition. Expect 'exprs' and 'time' columns.
+  # dat: long dataframe containing expression and time columns for one condition. Expect 'exprs' and 'time' columns.
   # to be transformed to frequency domain.
   # my.omega: the omega of interest.
   # normalize: converts transform into a sort of z-score
@@ -59,7 +59,7 @@ Transform <- function(df, my.omega, normalize = TRUE){
   # if we normalize, get list of omegas.
   # otherwise we just use omega
   if (normalize){
-    # t <- sort(unique(df$time))
+    # t <- sort(unique(dat$time))
     # n.timepoints <- length(t)
     # interval <- t[2] - t[1]
     omegas <- GetOmegas(remove.zero = TRUE)
@@ -67,7 +67,7 @@ Transform <- function(df, my.omega, normalize = TRUE){
     omegas <- my.omega
   }
   
-  transforms <- sapply(omegas, DoFourier, exprs = df$exprs, time = df$time)
+  transforms <- sapply(omegas, DoFourier, exprs = dat$exprs, time = dat$time)
   my.transformed <- transforms[which(omegas == omega)]  # corresponds to omega of interest
   
   if (normalize){
@@ -75,7 +75,7 @@ Transform <- function(df, my.omega, normalize = TRUE){
     # if median is 0, then set factor to 0, otherwise 1
     factor <- 1
     cutoff <- 5
-    jmedian <- median(subset(df, experiment == "rnaseq")$exprs)
+    jmedian <- median(subset(dat, experiment == "rnaseq")$exprs)
     if (jmedian <= cutoff){
       factor <- 0
     }
@@ -87,20 +87,20 @@ Transform <- function(df, my.omega, normalize = TRUE){
 
 GetInterval <- function(time.vector){
   # Given vector of times (equally spaced time points), return the time interval
-  time.sort <- sort(unique(df$time))
+  time.sort <- sort(unique(dat$time))
   interval <- time.sort[2] - time.sort[1]
   return(interval)
 }
 
-IsRhythmic <- function(df, my.omega, pval.cutoff = 5e-3, method = "ANOVA"){
+IsRhythmic <- function(dat, my.omega, pval.cutoff = 5e-3, method = "ANOVA"){
   # Test if rhythmic by BIC model selection: fit through all omegas.
-  # df: long format, gene and condition
+  # dat: long format, gene and condition
   # my.omega: omega of interest
   # method = "BIC" or "ftest"
   # pval.cutoff: for method = "ftest"
   
-  fit.rhyth <- lm(exprs ~ 0 + experiment + sin(my.omega * time) + cos(my.omega * time), data = df)
-  fit.flat <- lm(exprs ~ 0 + experiment, data = df)  # intercept only
+  fit.rhyth <- lm(exprs ~ 0 + experiment + sin(my.omega * time) + cos(my.omega * time), data = dat)
+  fit.flat <- lm(exprs ~ 0 + experiment, data = dat)  # intercept only
   
   if (method == "BIC"){
     omegas.all <- GetOmegas(remove.zero = TRUE)
@@ -121,9 +121,9 @@ IsRhythmic <- function(df, my.omega, pval.cutoff = 5e-3, method = "ANOVA"){
     # fit noise
     fits.noise <- lapply(omegas.noise, 
                          function(w) lm(exprs ~ sin(w * time) + cos(w * time), 
-                                        data = df))
+                                        data = dat))
     bic.noise.min <- min(sapply(fits.noise, BIC))
-    # print(paste(unique(df$gene), "noise bic:", bic.noise.min, "rhyth bic:", rhyth.bic))
+    # print(paste(unique(dat$gene), "noise bic:", bic.noise.min, "rhyth bic:", rhyth.bic))
     if (rhyth.bic < bic.noise.min){
       return(TRUE)
     } else {
@@ -144,23 +144,23 @@ IsRhythmic <- function(df, my.omega, pval.cutoff = 5e-3, method = "ANOVA"){
   }
 }
 
-# fit.rhyth <- lm(exprs ~ sin(omega * time) + cos(omega * time), data = df)
-# fit.flat <- lm(exprs ~ 1, data = df)  # intercept only
-# # omega.noise <- 2 * pi / (GetInterval(df$time) * 4)  # period of every two intervals is noise.
+# fit.rhyth <- lm(exprs ~ sin(omega * time) + cos(omega * time), data = dat)
+# fit.flat <- lm(exprs ~ 1, data = dat)  # intercept only
+# # omega.noise <- 2 * pi / (GetInterval(dat$time) * 4)  # period of every two intervals is noise.
 # omega.noise <- 2 * pi / 12
-# fit.noise <- lm(exprs ~ sin(omega.noise * time) + cos(omega.noise * time), data = df)
+# fit.noise <- lm(exprs ~ sin(omega.noise * time) + cos(omega.noise * time), data = dat)
 # bic.test <- BIC(fit.rhyth, fit.flat, fit.noise)
 # (bic.test)
 # # extract rowname of minimum BIC
 # chosen.model <- rownames(bic.test)[which(bic.test$BIC == min(bic.test$BIC))]
 # if (chosen.model == "fit.rhyth"){
-#   df.transformed <- Transform(df, my.omega, normalize)
+#   dat.transformed <- Transform(dat, my.omega, normalize)
 # } else {
 #   # if not rhythmic, then do not do transform it.
-#   df.transformed <- data.frame(exprs.transformed = 0)
+#   dat.transformed <- data.frame(exprs.transformed = 0)
 # }
 # } else {
-#   df.transformed <- Transform(df, my.omega, normalize)
+#   dat.transformed <- Transform(dat, my.omega, normalize)
 # }
 
 DoFourier <- function(exprs, time, omega, normalize = TRUE){
@@ -227,4 +227,44 @@ ProjectOnVector <- function(input.complex, basis.complex){
   phase.diff <- Arg(input.complex) - Arg(basis.complex)
   projected.mod <- Mod(input.complex) * cos(phase.diff)
   return(projected.mod)
+}
+
+TemporalToFrequency <- function(dat, period = 24){
+  library(plyr)
+  omega <- 2 * pi / period
+  
+  start.time <- Sys.time()
+  dat.complex <- lapply(split(dat, dat$tissue), function(x){
+    ddply(x, .(gene), ProjectToFrequency2, omega = omega, add.tissue = TRUE)
+  }) %>%
+    do.call(rbind, .) %>%
+    mutate(magnitude = Mod(exprs.transformed)) %>%
+    arrange(desc(magnitude))
+  print(Sys.time() - start.time)
+  
+  detach("package:plyr", unload=TRUE)
+  library(dplyr)
+  return(dat.complex)
+}
+
+GetEigens <- function(s.complex, period, comp = 1){
+  source("scripts/functions/PlotFunctions.R")
+  if (missing(period)){
+    period <- 24
+  }
+  omega <- 2 * pi / period
+  
+  var.explained <- s.complex$d ^ 2 / sum(s.complex$d ^ 2)
+  eigengene <- s.complex$v[, comp]
+  eigensamp <- s.complex$u[, comp]
+  # rotate to phase of largest magnitude in sample of eigengene
+  phase.reference <- Arg(eigengene[which(Mod(eigengene) == max(Mod(eigengene)))])
+  rotate.factor <- complex(modulus = 1, argument = phase.reference)
+  # rotate eigengene by -phase ref
+  eigengene <- eigengene * Conj(rotate.factor)
+  # rotate eigensamp by +phase ref
+  eigensamp <- eigensamp * Conj(rotate.factor)
+  v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, title = paste0("Right singular value ", comp, " (", signif(var.explained[comp], 2), ")"))  
+  u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Left singular value ", comp, " (", signif(var.explained[comp], 2), ")"))
+  return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
 }
