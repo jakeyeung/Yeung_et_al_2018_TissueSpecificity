@@ -16,6 +16,7 @@ source("scripts/functions/GetTFs.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/ReadListToVector.R")
 source("scripts/functions/DifferentialSitecountsFunctions.R")
+source("scripts/functions/PlotFunctions.R")
 
 # Functions ---------------------------------------------------------------
 
@@ -29,19 +30,19 @@ source("scripts/functions/DifferentialSitecountsFunctions.R")
 # N.dir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/encode_dist_filtered_mean_matrix"
 # suffix <- "sitecounts.dist_filtered.mean.matrix"
 # N <- LoadSitecountsEncodeAll(maindir = N.dir, suffix = suffix, with.ensemblid = FALSE, rename.tissues = TRUE)  # merged by gene
-N.dir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/encode_dist_filtered_mean_matrix_bugfixed"
+# N.dir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/encode_dist_filtered_mean_matrix_bugfixed_redo"
+N.dir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/encode_dist_filtered_sum_matrix_bugfixed"
 suffix <- "dist_filt.bugfixed.sitecount.matrix"
 N <- LoadSitecountsEncodeAll(maindir = N.dir, tissues = c("Liver", "Kidney", "Cere", "Lung", "Heart", "Mus"),
                              suffix = suffix, with.ensemblid = FALSE, rename.tissues = FALSE)  # merged by gene
 dat.long <- LoadArrayRnaSeq()
 load(file = "Robjs/dat.rhyth.relamp.pvalmin1e-5.pvalmax0.05.relampmax.0.1.meancutoff6.Robj", verbose = T)
 
-N <- N %>%
-  group_by(gene, tissue) %>%
-  mutate(motevo.value.norm = motevo.value / sum(motevo.value))
+# N <- N %>%
+#   group_by(gene, tissue) %>%
+#   mutate(motevo.value.norm = motevo.value / sum(motevo.value))
 
 dhs.tiss <- unique(N$tissue)
-
 tfs <- GetTFs()
 
 # Explore -----------------------------------------------------------------
@@ -57,7 +58,8 @@ tfs <- GetTFs()
 # PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
 # PlotDifferentialSitecounts(N, jgene, rhyth.tiss, flat.tiss, val = "motevo.value")
 # 
-
+X.exprs <- dcast(data = subset(dat.rhyth.relamp, gene %in% tfs & tissue %in% dhs.tiss), formula = gene ~ tissue, value.var = "int.rnaseq")
+PlotDiagnostics(N, X.exprs, dat.rhyth.relamp, "", jscale = FALSE)
 
 # Do PCA and canonical correlation ----------------------------------------
 
