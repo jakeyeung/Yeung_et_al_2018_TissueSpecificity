@@ -247,7 +247,98 @@ TemporalToFrequency <- function(dat, period = 24){
   return(dat.complex)
 }
 
-GetEigens <- function(s.complex, period, comp = 1){
+GetFourierEntropy <- function(dat, n, interval, method = "direct"){
+  # Calculates entropy of all possibl fourier components
+  # method either "direct" or "fft". Direct allows uneven sampling.
+  # if fft, then it does not care about timing, it's all assumed to be even sampling
+  if (method == "direct"){
+    # here we are limited to the lowest sampling rate which is rnaseq
+    fund.T <- n * interval
+    periods <- fund.T / seq(24 / interval)  # for assessing "noise"
+    weights <- vector(mode = "numeric", length = length(periods))
+    for (i in seq(length(periods))){
+      source("~/projects/tissue-specificity/scripts/functions/ShannonEntropy.R")
+      p <- periods[i]
+      # loop through harmonics and add up weights
+      o <- 2 * pi / p
+      weights[i] <- Mod(DoFourier(dat$exprs, dat$time, omega = o)) ^ 2
+    }
+    T.max <- periods[which(weights == max(weights))]
+    # normalize by sum then calculate entropy
+    weights.norm <- weights / sum(weights)
+    H <- ShannonEntropy(weights.norm)
+    H.max <- log2(length(weights.norm))
+    log.H.weight <- log(H.max / H)
+  }
+  else if (method == "fft"){
+    # use fft instead of direct method because only on array gives us more harmonics maybe
+    # gives more accurate results of the "noise"
+    source("~/projects/tissue-specificity/scripts/functions/FourierFunctions.R")
+    freq.per <- CalculatePeriodogram(dat$exprs)
+    # ignore freq = 0
+    freq <- freq.and.periodogram$freq[2:length(freq.and.periodogram$freq)]
+    per <- freq.and.periodogram$p.scaled[2:length(freq.and.periodogram$freq)]
+    per.norm <- per / sum(per)
+    H <- ShannonEntropy(per.norm)
+    H.max <- log2(length(per.norm))
+    f.max <- FindMaxFreqs(freq, per)[1]  # take top
+    T.max <- (1 / f.max) * interval
+    log.H.weight <- log(H.max / H)
+  }
+  return(list(log.H.weight=log.H.weight, T.max=T.max, H.max=H.max, H=H))
+}
+
+TemporalToFrequency2 <- function(dat, period = 24, n = 8, interval = 6, add.entropy.method = "array"){
+  # use dplyr
+  # n: number of non-redundant timepoints over interval hours
+  # default n = 8, interval = 6 because we cannot reliable estimate 
+  # because we take the lowest sampling rate which is rnaseq
+  # add.entropy.method "array" | "both". Array may be better for assessing noise.
+  
+  # init by checking for exprs = 0, ignore those man
+  if (max(dat$exprs) == 0){
+    return(data.frame(NULL))
+  }
+  omega <- 2 * pi / period
+  # get the main fourier component
+  dat.complex <- ProjectToFrequency2(dat, omega, add.tissue = TRUE)
+  # get other fourier components  
+  if (add.entropy.method == "direct"){
+    H.list <- GetFourierEntropy(dat, n, interval, method = "direct")
+  }
+  else if (add.entropy.method == "array"){
+    dat.array <- subset(dat, experiment == "array")
+    n.array <- 24  # n.timepoints
+    n.interval <- 2  # 2 hrs per timepoint
+    H.list <- GetFourierEntropy(dat.array, n.array, n.interval, method = "direct")
+  } else {
+    warning("Must be 'array' or 'direct' for add.entropy.method")
+    print(add.entropy.method)
+  }
+  dat.complex$log.H.weight <- H.list$log.H.weight
+  dat.complex$T.max <- H.list$T.max
+  dat.complex$H.max <- H.list$H.max
+  dat.complex$H <- H.list$H
+  return(dat.complex)
+}
+
+TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 6, add.entropy.method = "array"){
+  # wrapper to run in parallel
+  library(parallel)
+  dat.long.by_genetiss <- group_by(dat.long, gene, tissue)
+  dat.long.by_genetiss.split <- split(dat.long.by_genetiss, dat.long.by_genetiss$tissue)
+  start <- Sys.time()
+  dat.complex.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
+    rhyth <- jdf %>%
+      group_by(gene) %>%
+      do(TemporalToFrequency2(., period, n, interval, add.entropy.method))
+  }, mc.cores = 12)
+  dat.complex <- do.call(rbind, dat.complex.split)
+  print(Sys.time() - start)
+  return(dat.complex)
+}
+
+GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase"){
   source("scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -264,7 +355,26 @@ GetEigens <- function(s.complex, period, comp = 1){
   eigengene <- eigengene * Conj(rotate.factor)
   # rotate eigensamp by +phase ref
   eigensamp <- eigensamp * Conj(rotate.factor)
-  v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, title = paste0("Right singular value ", comp, " (", signif(var.explained[comp], 2), ")"))  
-  u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Left singular value ", comp, " (", signif(var.explained[comp], 2), ")"))
+  v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, title = paste0("Right singular value ", comp, " (", signif(var.explained[comp], 2), ")"), xlab = xlab, ylab = ylab)  
+  u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Left singular value ", comp, " (", signif(var.explained[comp], 2), ")"), xlab = xlab, ylab = ylab)
   return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
+}
+
+SvdOnComplex <- function(dat.complex, value.var = "exprs.transformed"){
+  # used in heatmap_tissue_specific_rhythms.R
+  M.complex <- LongToMat(dat.complex, value.var = value.var)
+  s <- svd(M.complex)
+  # add row and colnames
+  rownames(s$u) <- rownames(M.complex)
+  rownames(s$v) <- colnames(M.complex)
+  # screeplot
+  plot(s$d ^ 2 / sum(s$d ^ 2), type = 'o')  # eigenvalues
+  return(s)
+}
+
+NormalizeComplexMat <- function(dat, dic){
+  key.tissue <- as.character(dat$tissue)[1]
+  norm.factor <- dic[[key.tissue]]  # magnitude of reference gene (e.g. Arntl)
+  dat$exprs.norm <- dat$exprs.transformed / norm.factor
+  return(dat)
 }
