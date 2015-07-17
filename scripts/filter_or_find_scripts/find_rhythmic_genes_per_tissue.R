@@ -5,12 +5,30 @@
 
 # Functions ---------------------------------------------------------------
 
-
+library(hash)
 library(dplyr)
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/GetClockGenes.R")
 
+WriteGeneListToFile <- function(genes, outfile, tissue, ampphasedic){
+  sink(file = outfile)
+  for (g in genes){
+    if (missing(ampphasedic) & missing(tissue)){
+      cat(g)
+      cat("\n")
+    } else{
+      jkey = paste(tissue, g, sep = ';')
+      jval <- ampphasedic[[jkey]]
+      amp <- strsplit(jval, ';')[[1]][[1]]
+      phase <- strsplit(jval, ';')[[1]][[2]]
+      pval <- strsplit(jval, ';')[[1]][[3]]
+      cat(g, "\t", amp, "\t", phase, "\t", pval, "\t")
+      cat('\n')
+    }
+  }
+  sink()
+}
 
 # Load data ---------------------------------------------------------------
 
@@ -31,6 +49,12 @@ dat.fit <- dat.long %>%
   do.call(rbind, .)
 print(Sys.time() - start)
 
+
+# Create hash to relate tissue;gene with amp and phase --------------------
+
+jkeys <- paste(dat.fit$tissue, dat.fit$gene, sep = ";")
+jvals <- paste(dat.fit$amp, dat.fit$phase, dat.fit$pval, sep = ';')
+ampphasedic <- hash(keys = jkeys, values = jvals)
 
 # Filter NaNs --------------------------------------------------------------
 
@@ -66,7 +90,8 @@ abline(h = 200)
 
 take.top.N <- 200
 for (tiss in names(top.hits)){
-  outname <- paste0(tiss, "_rhythmic_genes_", pval.cutoff)
+#   outname <- paste0(tiss, "_rhythmic_genes_", pval.cutoff)
+  outname <- paste0(tiss, "_rhythmic_genes_with_ampphase", pval.cutoff)
   outfile <- file.path("results/rhythmic_genes_by_tissue", outname)
   if (n.hits[[tiss]] < take.top.N){
     # Return top 200 genes
@@ -75,15 +100,7 @@ for (tiss in names(top.hits)){
     rhythmic.genes <- top.hits[[tiss]]$gene[which(top.hits[[tiss]]$pval.adj < pval.cutoff)]
   }
   print(paste0("Writing ", length(rhythmic.genes), " genes to ", outfile))
-  WriteGeneListToFile(rhythmic.genes, outfile)
+  WriteGeneListToFile(rhythmic.genes, outfile, tissue = tiss, ampphasedic = ampphasedic)
 }
 
-WriteGeneListToFile <- function(genes, outfile){
-  sink(file = outfile)
-  for (g in genes){
-    cat(g)
-    cat("\n")
-  }
-  sink()
-}
 

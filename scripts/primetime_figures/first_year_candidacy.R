@@ -11,6 +11,8 @@ outdir <- "/home/yeung/projects/tissue-specificity/plots/primetime_plots"
 library(hash)
 library(dplyr)
 library(ggplot2)
+library(grid)
+library(gplots)
 source("scripts/functions/LoadKallisto.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
@@ -18,6 +20,14 @@ source("scripts/functions/TissueSpecificRhythmicsFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
 source("~/projects/tissue-specificity/scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
+source("scripts/functions/DifferentialSitecountsFunctions.R")
+source("scripts/functions/LoadSitecounts.R")
+source("scripts/functions/GetTFs.R")
+source("scripts/functions/PlotFunctions.R")
+source("scripts/functions/SvdFunctions.R")
+source("scripts/functions/LongToMat.R")
+source("scripts/functions/ShannonEntropy.R")
+source("scripts/functions/FitRhythmic.R")
 
 GetActSvd <- function(act.long, pval.adj.cutoff = 0.05){
   # Which ones are most rhythmic? -------------------------------------------
@@ -69,75 +79,6 @@ GetActSvd <- function(act.long, pval.adj.cutoff = 0.05){
   return(act.svd)
 }
 
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  # http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
-  # Multiple plot function
-  #
-  # ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-  # - cols:   Number of columns in layout
-  # - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-  #
-  # If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-  # then plot 1 will go in the upper left, 2 will go in the upper right, and
-  # 3 will go all the way across the bottom.
-  #
-  
-  library(grid)
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots = length(plots)
-  
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                     ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-  
-  if (numPlots==1) {
-    print(plots[[1]])
-    
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-    
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-      
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
-
-GetEigens <- function(act.svd, period, comp = 1){
-  if (missing(period)){
-    period <- 24
-  }
-  omega <- 2 * pi / period
-  
-  var.explained <- act.svd$d ^ 2 / sum(act.svd$d ^ 2)
-  eigengene <- act.svd$v[, comp]
-  eigensamp <- act.svd$u[, comp]
-  # rotate to phase of largest magnitude in sample of eigengene
-  phase.reference <- Arg(eigengene[which(Mod(eigengene) == max(Mod(eigengene)))])
-  rotate.factor <- complex(modulus = 1, argument = phase.reference)
-  # rotate eigengene by -phase ref
-  eigengene <- eigengene * Conj(rotate.factor)
-  # rotate eigensamp by +phase ref
-  eigensamp <- eigensamp * Conj(rotate.factor)
-  v.plot <- PlotComplex2(eigengene, labels = rownames(act.svd$v), omega = omega, title = paste0("Right singular value ", comp, " (", signif(var.explained[comp], 2), ")"))  
-  u.plot <- PlotComplex2(eigensamp, labels = rownames(act.svd$u), omega = omega, title = paste0("Left singular value ", comp, " (", signif(var.explained[comp], 2), ")"))
-  return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
-}
-
 CorrelatePromoterUsageToAmp <- function(tpm.filt, dat.rhyth.relamp, avgexprsdic, filter.tissues, tissue.spec){
   source("scripts/functions/AlternativeFirstExonsFunctions.R")
   
@@ -176,13 +117,14 @@ CorrelatePromoterUsageToAmp <- function(tpm.filt, dat.rhyth.relamp, avgexprsdic,
   return(list(tpm.summary = tpm.summary, tpm.avg = tpm.avg, tpm.fit = tpm.fit))
 }
 
-
-# Begin PLOTTING ----------------------------------------------------------
-
-postscript(file.path(outdir, "first_year_candidacy_plots.eps"), height = 8, width = 10.245, paper = "special", onefile = TRUE, horizontal = TRUE)
+figcount <- 1
 
 # Figure 1: tissue-specific rhythms ---------------------------------------
 # first show MARA results
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+figcount <- figcount + 1
+
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 act.long <- LoadActivitiesLong(indir)
 
@@ -236,8 +178,82 @@ pairs.plot <- ggplot(subset(n.pairs.tissuecounts, n.tiss == 2), aes(x = tissues,
 jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 multiplot(eigens$u.plot, eigens$v.plot, n.tissues.rhyth.plot, pairs.plot, layout = jlayout)
 
+dev.off()
+
+
+# Figure 1 redo: tissue-specific and tissue-wide rhythms ------------------
+# from heatmap_tissue_specific_rhythms.R
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, "B_maxamp.pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+
+load(file = "Robjs/dat.fit.Robj", verbose = TRUE)
+load(file = "Robjs/dat.complex.maxexprs4.maxrelamp01.minpval1e-3.Robj", verbose = TRUE)
+
+ref.gene <- "Arntl"
+filt.tiss.lst <- list(c(), c("Cere", "BS", "Hypo"))
+
+for (filt.tiss in filt.tiss.lst){
+  dat.fit.relamp <- GetRelamp(dat.fit, max.pval = 1e-3)
+  print(subset(dat.fit.relamp, relamp == 1))
+  #   dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
+
+  
+  dat.fit.relamp <- dat.fit.relamp %>%
+    group_by(gene) %>%
+    mutate(max.exprs = max(int.rnaseq), min.pval = min(pval), max.relamp = max(relamp), relamp.norm = relamp / sum(relamp), amp.norm = amp / sum(amp))
+  
+  dat.entropy <- dat.fit.relamp %>%
+    #   subset(., min.pval <= 1e-5 & max.relamp > 0.1) %>%
+    subset(., max.exprs >= 4 & max.relamp >= 0.1 & min.pval <= 1e-3 & !tissue %in% filt.tiss) %>%
+    group_by(gene) %>%
+    summarise(entropy = ShannonEntropy(relamp / sum(relamp)))
+  
+  N <- 2000
+  n.genes <- nrow(dat.entropy)
+  low.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy), ]$gene, n = N)
+  high.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]$gene, n = N)
+  
+  M.low <- LongToMat(subset(dat.fit.relamp, gene %in% low.entropy.genes & !tissue %in% filt.tiss))
+  M.high <- LongToMat(subset(dat.fit.relamp, gene %in% high.entropy.genes & !tissue %in% filt.tiss))
+  
+  dat.complex$real <- Re(dat.complex$exprs.transformed)
+  dat.complex$imag <- Im(dat.complex$exprs.transformed)
+  
+  M.real <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "real"))
+  M.imag <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "imag"))
+  M.all <- cbind(M.real, M.imag)
+  hc <- hclust(dist(M.all, method = "euclidean"))
+  
+  dat.ref <- subset(dat.fit.relamp, relamp == 1)
+  dic <- hash(as.character(dat.ref$tissue), dat.ref$amp / 2)
+  
+  dat.complex <- dat.complex %>%
+    group_by(tissue) %>%
+    do(NormalizeComplexMat(., dic))
+  
+  dat.complex$real.norm <- Re(dat.complex$exprs.norm)
+  dat.complex$imag.norm <- Im(dat.complex$exprs.norm)
+  
+  M.real.norm <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "real.norm"))
+  M.imag.norm <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "imag.norm"))
+  M.all.norm <- cbind(M.real.norm, M.imag.norm)
+  hc.norm <- hclust(dist(M.all.norm, method = "euclidean"))
+  
+  par(mfrow=c(2,2))
+#   plot(hc, main = "Clustering on fourier component T=24h")
+  plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]), main = "Distribution of entropy in rhythmic genes")
+  plot(hc.norm, main = "Clustering: fourier T=24h (normalized by max amp)")
+  PlotRelampHeatmap(M.low, paste0("Low entropy rhythmic genes. N=", length(low.entropy.genes)))
+  PlotRelampHeatmap(M.high, paste0("High entropy rhythmic genes. N=", length(high.entropy.genes)))
+  
+}
+dev.off()
 
 # Figure 2: kidney-liver and bfat-liver -----------------------------------
+
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+figcount <- figcount + 1
 
 # BEGIN: Kidney to Liver comparison
 genes.kidliv <- subset(n.pairs, tissues == "Kidney,Liver")
@@ -281,8 +297,12 @@ bfat.mus.phase.plot <- ggplot(subset(phases.bfatmus), aes(x = phase, fill = tiss
 jlayout2 <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 multiplot(kidney.liver.phasediff.plot, kidney.liver.phase.plot, bfat.liver.phasediff.plot, bfat.liver.phase.plot, layout = jlayout2)
 
+dev.off()
 
 # Figure 3: Hnf and Mef2 --------------------------------------------------
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+figcount <- figcount + 1
 
 hnf4a.activity <- ggplot(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experiment == "rnaseq"), 
                          aes(x = time, y = exprs)) +
@@ -344,8 +364,12 @@ mef2c.regulated.examp <- ggplot(subset(mydat, gene == "Des" & experiment == "rna
 jlayout3 <- matrix(c(1, 2, 3, 4, 5, 6), 2, 3, byrow = TRUE)
 multiplot(hnf4a.activity, hnf4a.exprs, hnf4a.regulated.examp, mef2c.activity, mef2c.exprs, mef2c.regulated.examp, layout = jlayout3)
 
+dev.off()
 
 # Figure 4: Alternative promoter ------------------------------------------
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+figcount <- figcount + 1
 
 load(file = "Robjs/tpm.merged.Robj", verbose = T)
 
@@ -383,9 +407,38 @@ altprom.histo <- ggplot(tpm.fit, aes(x = pval)) + geom_histogram(binwidth = 0.00
 jlayout4 <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 multiplot(altprom.histo, upp2.altprom.plot, layout = jlayout4)
 
-
-# END PLOTTING ------------------------------------------------------------
-
 dev.off()
 
 
+# Figure 5: DHS and rhythmicity -------------------------------------------
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+figcount <- figcount + 1
+
+N.dir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/encode_dist_filtered_sum_matrix_bugfixed"
+suffix <- "dist_filt.bugfixed.sitecount.matrix"
+N <- LoadSitecountsEncodeAll(maindir = N.dir, tissues = c("Liver", "Kidney", "Cere", "Lung", "Heart", "Mus"),
+                             suffix = suffix, with.ensemblid = FALSE, rename.tissues = FALSE)  # merged by gene
+dhs.tiss <- unique(N$tissue)
+tfs <- GetTFs()
+
+jgene <- c("S100a10")
+
+PlotBiplot <- function(N, jgene){
+  X.motif <- GetMotifMat(N, jgene = jgene)
+  X.motif <- t(scale(t(X.motif), center = TRUE, scale = FALSE))
+  s <- prcomp(X.motif, center = FALSE, scale. = FALSE)
+  bplot <- PCbiplot(PC = s, jtitle = paste(jgene, "DHS site counts"))
+  return(bplot) 
+}
+
+# jgenes <- c("S100a10", "Fmo5", "Amt", "Sigmar1", "Mcm4")
+jgenes <- c("Ddc", "Pnp", "Insig2")
+
+exprs.plots <- lapply(jgenes, function(g) return(PlotRnaseqAcrossTissues(subset(mydat, gene == g & experiment == "rnaseq"), jtitle = paste(g, "RNA-seq profile"))))
+biplots <- lapply(jgenes, function(g) return(PlotBiplot(N, g)))
+
+jlayout5 <- matrix(c(1, 4, 2, 5, 3, 6), 3, 2, byrow = TRUE)
+do.call(multiplot, c(exprs.plots, biplots, list(layout = jlayout5)))
+
+dev.off()

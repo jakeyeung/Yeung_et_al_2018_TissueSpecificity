@@ -22,6 +22,13 @@ source("scripts/functions/ShannonEntropy.R")
 source("scripts/functions/DataHandlingFunctions.R")
 clockgenes <- GetClockGenes()
 
+FindMaxAmp <- function(dat, amp.var = "mag.norm"){
+  amp.max <- max(dat[[amp.var]])
+  gene.max <- dat$gene[which(dat[[amp.var]] == amp.max)]
+  return(data.frame(gene = gene.max, mag.norm = amp.max))
+}
+
+
 # Load --------------------------------------------------------------------
 
 dat.long <- LoadArrayRnaSeq()
@@ -32,10 +39,10 @@ dat.fit <- FitRhythmicDatLong(dat.long)
 
 # Get amplitude relative to Bmal1 -----------------------------------------
 
-ref.gene <- "Arntl"
+ref.gene <- "Nr1d1"
 
-dat.fit.relamp <- GetRelamp(dat.fit, max.pval = 1e-3)
-# dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
+# dat.fit.relamp <- GetRelamp(dat.fit, max.pval = 1e-3)
+dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
 
 dat.fit.relamp <- dat.fit.relamp %>%
   group_by(gene) %>%
@@ -43,52 +50,83 @@ dat.fit.relamp <- dat.fit.relamp %>%
 
 # Get entropy measure -----------------------------------------------------
 
-# filt.tiss <- c("Cere", "BS", "Hypo")
-filt.tiss <- c()
+# # filt.tiss <- c("Cere", "BS", "Hypo")
+# filt.tiss <- c()
+# 
+# # entropy
+# dat.entropy <- dat.fit.relamp %>%
+#   #   subset(., min.pval <= 1e-5 & max.relamp > 0.1) %>%
+#   subset(., max.exprs >= 4 & !tissue %in% filt.tiss) %>%
+#   group_by(gene) %>%
+#   #   summarise(entropy = ShannonEntropy(relamp / sum(relamp)))
+#   summarise(entropy = ShannonEntropy(amp / sum(amp)))
+# 
+# plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]))
+# 
+# dat.entropy[order(dat.entropy$entropy), ]
+# dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]
+# 
+# N <- floor(nrow(dat.entropy) / 3)
+# n.genes <- nrow(dat.entropy)
+# low.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy), ]$gene, n = N)
+# high.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]$gene, n = N)
+# med.entropy.genes <- dat.entropy[order(dat.entropy$entropy), ]$gene[N:(n.genes - N)]
 
-# entropy
-dat.entropy <- dat.fit.relamp %>%
-#   subset(., min.pval <= 1e-5 & max.relamp > 0.1) %>%
-  subset(., max.exprs >= 4 & max.relamp >= 0.1 & min.pval <= 1e-3 & !tissue %in% filt.tiss) %>%
+
+# Get complex matrix ------------------------------------------------------
+
+dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% dat.entropy$gene), period = 24, n = 8, interval = 6, add.entropy.method = "array")
+
+# adjust for "noise" and normalize to reference gene (Nr1d1)
+ref.amps <- subset(dat.complex, gene == ref.gene, select = c(tissue, gene, mag.norm))
+ref.amps.dic <- hash(ref.amps$tissue, ref.amps$mag.norm)
+
+dat.complex$exprs.adj <- dat.complex$exprs.transformed * dat.complex$frac.weight
+dat.complex$exprs.adj.norm <- mapply(function(tiss, exprs) exprs / ref.amps.dic[[tiss]], as.character(dat.complex$tissue), dat.complex$exprs.adj)
+dat.complex$mod.exprs.adj <- Mod(dat.complex$exprs.adj)
+dat.complex$mod.exprs.adj.norm <- Mod(dat.complex$exprs.adj.norm)
+
+# Get entropy measure from adjusted magnitude -----------------------------
+
+genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
+
+# ref gene should be max entropy as a check
+dat.entropy <- dat.complex %>%
+  subset(., gene %in% genes.exprs) %>%
   group_by(gene) %>%
-  summarise(entropy = ShannonEntropy(relamp / sum(relamp)))
+  summarise(entropy = ShannonEntropy(Mod(exprs.adj.norm) / sum(Mod(exprs.adj.norm))))
 
-plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]))
+plot(density(dat.entropy$entropy))
 
 dat.entropy[order(dat.entropy$entropy), ]
 dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]
 
-N <- 2000
+N <- floor(nrow(dat.entropy) / 3)
 n.genes <- nrow(dat.entropy)
 low.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy), ]$gene, n = N)
 high.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]$gene, n = N)
 med.entropy.genes <- dat.entropy[order(dat.entropy$entropy), ]$gene[N:(n.genes - N)]
 
+# Get entropy measure from Complex Matrix ---------------------------------
 
-# Get complex matrix ------------------------------------------------------
+# # normalize by ref.gene
+# dat.complex.sub <- subset(dat.complex, gene == ref.gene)
+# ref.mag <- hash(as.character(dat.complex.sub$tissue), dat.sub$mag.adj)
+# 
+# dat.complex$exprs.norm.std <- mapply(function(tiss, exprs) exprs / ref.mag[[as.character(tiss)]], 
+#                                     dat.complex$tissue, dat.complex$exprs.norm)
+# 
+# # normalize such that sum(Mod(x)) = 1
+# dat.complex <- dat.complex %>%
+#   group_by(gene) %>%
+#   mutate(exprs.norm.std.norm = exprs.norm.std / sum(Mod(exprs.norm.std)))
 
-# ~ a minute
-# dat.complex <- TemporalToFrequency(subset(dat.long, gene %in% dat.entropy$gene))
+# Get SVDs ----------------------------------------------------------------
 
-# take lowest sampling rate n=8, interval=6 -> rnaseq
-# slow ~ 5 minutes
-# dat.complex <- dat.long %>%
-#   subset(., gene %in% dat.entropy$gene) %>%
-#   group_by(gene, tissue) %>%
-#   do(TemporalToFrequency2(., period = 24, n = 8, interval = 6, add.entropy = TRUE))
-
-# ~ 1 minute
-# dat.complex <- dat.long %>%
-#   subset(., gene %in% dat.entropy$gene) %>%
-#   group_by(gene, tissue) %>%
-#   do(TemporalToFrequency2(.))
-
-dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% dat.entropy$gene), period = 24, n = 8, interval = 6, add.entropy.method = "array")
-dat.complex$magnitude <- Mod(dat.complex$exprs.transformed)
-dat.complex$exprs.norm <- dat.complex$exprs.transformed * dat.complex$log.H.weight
-
-s.all.norm <- SvdOnComplex(dat.complex, value.var = "exprs.norm")
-s.low.norm <- SvdOnComplex(subset(dat.complex, gene %in% low.entropy.genes), value.var = "exprs.norm")
+s.all.norm <- SvdOnComplex(dat.complex, value.var = "exprs.adj")
+s.low.norm <- SvdOnComplex(subset(dat.complex, gene %in% low.entropy.genes), value.var = "exprs.adj")
+s.high.norm <- SvdOnComplex(subset(dat.complex, gene %in% high.entropy.genes), value.var = "exprs.adj")
+s.med.norm <- SvdOnComplex(subset(dat.complex, gene %in% med.entropy.genes), value.var = "exprs.adj")
 
 s.low <- SvdOnComplex(subset(dat.complex, gene %in% low.entropy.genes))
 s.high <- SvdOnComplex(subset(dat.complex, gene %in% high.entropy.genes))
@@ -98,21 +136,27 @@ s.all <- SvdOnComplex(dat.complex)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 
 # All
-for (comp in seq(2)){
+for (comp in seq(3)){
   eigens.all <- GetEigens(s.all, period = 24, comp = comp)
   multiplot(eigens.all$v.plot, eigens.all$u.plot, layout = jlayout)
 }
 
 # All.norm
-for (comp in seq(2)){
+for (comp in seq(3)){
   eigens.all.norm <- GetEigens(s.all.norm, period = 24, comp = comp)
   multiplot(eigens.all.norm$v.plot, eigens.all.norm$u.plot, layout = jlayout)
 }
 
 # High
-for (comp in seq(1)){
+for (comp in seq(3)){
   eigens.high <- GetEigens(s.high, period=24, comp=comp)
   multiplot(eigens.high$v.plot, eigens.high$u.plot, layout = jlayout)
+}
+
+# High.norm
+for (comp in seq(2)){
+  eigens.high.norm <- GetEigens(s.high.norm, period = 24, comp = comp)
+  multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot, layout = jlayout)
 }
 
 # Low
@@ -122,7 +166,7 @@ for (comp in seq(3)){
 }
 
 # Low.norm
-for (comp in seq(3)){
+for (comp in seq(5)){
   eigens.low.norm <- GetEigens(s.low.norm, period=24, comp=comp)
   multiplot(eigens.low.norm$v.plot, eigens.low.norm$u.plot, layout = jlayout)
 }  
@@ -133,27 +177,36 @@ for (comp in seq(2)){
   multiplot(eigens.med$v.plot, eigens.med$u.plot, layout = jlayout)
 }
 
+# Medium.norm
+for (comp in seq(2)){
+  eigens.med.norm <- GetEigens(s.med.norm, period=24, comp=comp)
+  multiplot(eigens.med.norm$v.plot, eigens.med.norm$u.plot, layout = jlayout)
+}  
+
 # Heatmap low and high entropy genes -----------------------------------------------
 
 pdf(file.path(outdir, "low_entropy_heatmap.nobrain.pdf"))
-M <- LongToMat(subset(dat.fit.relamp, gene %in% low.entropy.genes & !tissue %in% filt.tiss))
+M <- LongToMat(subset(dat.complex, gene %in% low.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj.norm")
+# M <- LongToMat(subset(dat.fit.relamp, gene %in% low.entropy.genes & !tissue %in% filt.tiss))
 PlotRelampHeatmap(M, paste0("Low entropy rhythmic genes. N=", length(low.entropy.genes)))
 dev.off()
 
 pdf(file.path(outdir, "high_entropy_heatmap.nobrain.pdf"))
-M <- LongToMat(subset(dat.fit.relamp, gene %in% high.entropy.genes & !tissue %in% filt.tiss))
+# M <- LongToMat(subset(dat.fit.relamp, gene %in% high.entropy.genes & !tissue %in% filt.tiss))
+M <- LongToMat(subset(dat.complex, gene %in% high.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj.norm")
 PlotRelampHeatmap(M, paste0("High entropy rhythmic genes. N=", length(high.entropy.genes)))
 dev.off()
 
 pdf(file.path(outdir, "medium_entropy_heatmap.nobrain.pdf"))
-M <- LongToMat(subset(dat.fit.relamp, gene %in% med.entropy.genes & !tissue %in% filt.tiss))
+# M <- LongToMat(subset(dat.fit.relamp, gene %in% med.entropy.genes & !tissue %in% filt.tiss))
+M <- LongToMat(subset(dat.complex, gene %in% med.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj.norm")
 PlotRelampHeatmap(M, paste0("Medium entropy rhythmic genes. N=", length(med.entropy.genes)))
 dev.off()
 # Plot top low entropy genes ---------------------------------------------
 
 # heatmap
 plot.n <- 500
-outname <- paste0("low_entropy.", plot.n, ".nobrain.pdf")
+outname <- paste0("low_entropy.", plot.n, ".pdf")
 pdf(file.path(outdir, outname))
 dat.sub <- subset(dat.long, gene %in% low.entropy.genes)
 for (low.g in low.entropy.genes[1:plot.n]){
@@ -165,7 +218,7 @@ dev.off()
 
 # Plot top high entropy genes ----------------------------------------------
 
-outname <- paste0("high_entropy.", plot.n, ".nobrain.pdf")
+outname <- paste0("high_entropy.", plot.n, ".pdf")
 pdf(file.path(outdir, outname))
 dat.sub <- subset(dat.long, gene %in% high.entropy.genes)
 for (high.g in high.entropy.genes[1:plot.n]){
@@ -177,8 +230,8 @@ dev.off()
 
 # Plot hierarchical clustering  -------------------------------------------
 
-dat.complex$real <- Re(dat.complex$exprs.transformed)
-dat.complex$imag <- Im(dat.complex$exprs.transformed)
+dat.complex$real <- Re(dat.complex$exprs.adj)
+dat.complex$imag <- Im(dat.complex$exprs.adj)
 
 M.real <- t(LongToMat(dat.complex, value.var = "real"))
 M.imag <- t(LongToMat(dat.complex, value.var = "imag"))

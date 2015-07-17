@@ -277,6 +277,7 @@ GetFourierEntropy <- function(dat, n, interval, method = "direct"){
     freq.per <- CalculatePeriodogram(dat$exprs)
     # ignore freq = 0
     freq <- freq.and.periodogram$freq[2:length(freq.and.periodogram$freq)]
+    periods <- (1 / freq) * interval
     per <- freq.and.periodogram$p.scaled[2:length(freq.and.periodogram$freq)]
     per.norm <- per / sum(per)
     H <- ShannonEntropy(per.norm)
@@ -286,6 +287,47 @@ GetFourierEntropy <- function(dat, n, interval, method = "direct"){
     log.H.weight <- log(H.max / H)
   }
   return(list(log.H.weight=log.H.weight, T.max=T.max, H.max=H.max, H=H))
+}
+
+GetNoiseFactor <- function(dat, period, n, interval, method = "direct"){
+  # Calculate weight of other components to give a weight for period of interest
+  # method either "direct" or "fft". Direct allows uneven sampling.
+  # if fft, then it does not care about timing, it's all assumed to be even sampling
+  if (missing(period)){
+    period <- 24  # hrs
+  }
+  if (method == "direct"){
+    # here we are limited to the lowest sampling rate which is rnaseq
+    fund.T <- n * interval
+    periods <- fund.T / seq(24 / interval)  # for assessing "noise"
+    weights <- vector(mode = "numeric", length = length(periods))
+    for (i in seq(length(periods))){
+      source("~/projects/tissue-specificity/scripts/functions/ShannonEntropy.R")
+      p <- periods[i]
+      # loop through harmonics and add up weights
+      o <- 2 * pi / p
+      weights[i] <- Mod(DoFourier(dat$exprs, dat$time, omega = o)) ^ 2
+    }
+    T.max <- periods[which(weights == max(weights))]
+    # normalize by sum then calculate entropy
+    weights.norm <- weights / sum(weights)
+    frac.weight <- weights.norm[which(periods == period)]
+  }
+  else if (method == "fft"){
+    # use fft instead of direct method because only on array gives us more harmonics maybe
+    # gives more accurate results of the "noise"
+    source("~/projects/tissue-specificity/scripts/functions/FourierFunctions.R")
+    freq.per <- CalculatePeriodogram(dat$exprs)
+    # ignore freq = 0
+    freq <- freq.and.periodogram$freq[2:length(freq.and.periodogram$freq)]
+    periods <- (1 / freq) * interval
+    per <- freq.and.periodogram$p.scaled[2:length(freq.and.periodogram$freq)]
+    per.norm <- per / sum(per)
+    f.max <- FindMaxFreqs(freq, per)[1]  # take top
+    T.max <- (1 / f.max) * interval
+    frac.weight <- per.norm[which(periods == period)]
+  }
+  return(list(frac.weight = frac.weight, T.max=T.max))
 }
 
 TemporalToFrequency2 <- function(dat, period = 24, n = 8, interval = 6, add.entropy.method = "array"){
@@ -304,21 +346,24 @@ TemporalToFrequency2 <- function(dat, period = 24, n = 8, interval = 6, add.entr
   dat.complex <- ProjectToFrequency2(dat, omega, add.tissue = TRUE)
   # get other fourier components  
   if (add.entropy.method == "direct"){
-    H.list <- GetFourierEntropy(dat, n, interval, method = "direct")
+    H.list <- GetNoiseFactor(dat, period, n, interval, method = "direct")
   }
   else if (add.entropy.method == "array"){
     dat.array <- subset(dat, experiment == "array")
     n.array <- 24  # n.timepoints
     n.interval <- 2  # 2 hrs per timepoint
-    H.list <- GetFourierEntropy(dat.array, n.array, n.interval, method = "direct")
+    H.list <- GetNoiseFactor(dat.array, period, n.array, n.interval, method = "direct")
   } else {
     warning("Must be 'array' or 'direct' for add.entropy.method")
     print(add.entropy.method)
   }
-  dat.complex$log.H.weight <- H.list$log.H.weight
+  # using weight approach
   dat.complex$T.max <- H.list$T.max
-  dat.complex$H.max <- H.list$H.max
-  dat.complex$H <- H.list$H
+  dat.complex$frac.weight <- H.list$frac.weight
+#   # using entropy approach
+#   dat.complex$log.H.weight <- H.list$log.H.weight
+#   dat.complex$H.max <- H.list$H.max
+#   dat.complex$H <- H.list$H
   return(dat.complex)
 }
 
