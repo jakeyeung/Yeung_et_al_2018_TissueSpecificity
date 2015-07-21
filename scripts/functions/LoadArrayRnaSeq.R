@@ -1,11 +1,12 @@
 # LoadArrayRnaSeq.R
 # February 25 2015
 
-LoadArrayRnaSeq <- function(normalized.array.path, rna.seq.path){
+LoadArrayRnaSeq <- function(normalized.array.path, rna.seq.path, fix.rik.xgene = FALSE){
   scripts.dir <- "/home/yeung/projects/tissue-specificity/scripts"
   funcs.dir <- "functions"
   source(file.path(scripts.dir, funcs.dir, "LoadAndHandleData.R"))
   source(file.path(scripts.dir, funcs.dir, "MergeToLong.R"))
+  source(file.path(scripts.dir, funcs.dir, "GrepRikGenes.R"))
   # Define dirs -------------------------------------------------------------
   
   if (missing(normalized.array.path) & missing(rna.seq.path)){
@@ -45,5 +46,11 @@ LoadArrayRnaSeq <- function(normalized.array.path, rna.seq.path){
   # Merge data into long format ---------------------------------------------
   
   dat <- MergeToLong(normalized.array, rna.seq.exprs.filtered)  
+  
+  # Fix Rik genes ---------------------------------------------
+  if (fix.rik.xgene){
+    dat$gene <- FixRikGenes(dat$gene)
+  }
+  
   return(dat)
 }
