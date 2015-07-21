@@ -413,7 +413,7 @@ SvdOnComplex <- function(dat.complex, value.var = "exprs.transformed"){
   rownames(s$u) <- rownames(M.complex)
   rownames(s$v) <- colnames(M.complex)
   # screeplot
-  plot(s$d ^ 2 / sum(s$d ^ 2), type = 'o')  # eigenvalues
+  # plot(s$d ^ 2 / sum(s$d ^ 2), type = 'o')  # eigenvalues
   return(s)
 }
 
