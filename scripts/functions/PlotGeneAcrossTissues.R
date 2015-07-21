@@ -16,6 +16,21 @@ PlotGeneAcrossTissues <- function(dat, jtitle){
   return(m)
 }
 
+PlotGeneAcrossTissuesRnaseq <- function(dat, jtitle){
+  library(ggplot2)
+  if (missing(jtitle)){
+    jtitle = unique(dat$gene)
+  }
+  m <- ggplot(dat, aes(x = time, y = exprs)) + 
+    geom_line() + 
+    facet_wrap(~tissue) +
+    ggtitle(jtitle) + 
+    ylab(label = "log2 mRNA expression") +
+    xlab("CT") +
+    scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
+    theme(axis.text.x=element_text(angle=90,vjust = 0))
+}
+
 PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE){
   library(ggplot2)
   
