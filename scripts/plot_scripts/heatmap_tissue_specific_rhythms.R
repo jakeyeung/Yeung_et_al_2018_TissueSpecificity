@@ -33,9 +33,13 @@ FindMaxAmp <- function(dat, amp.var = "mag.norm"){
 
 dat.long <- LoadArrayRnaSeq()
 
+# filt.tiss <- c("Cere", "BS", "Hypo")
+filt.tiss <- c()
+
 # Fit relative amplitude --------------------------------------------------
 
-dat.fit <- FitRhythmicDatLong(dat.long)
+# dat.fit <- FitRhythmicDatLong(dat.long)
+load(file = "Robjs/dat.fit.Robj")
 
 # Get amplitude relative to Bmal1 -----------------------------------------
 
@@ -50,8 +54,7 @@ dat.fit.relamp <- dat.fit.relamp %>%
 
 # Get entropy measure -----------------------------------------------------
 
-# # filt.tiss <- c("Cere", "BS", "Hypo")
-# filt.tiss <- c()
+
 # 
 # # entropy
 # dat.entropy <- dat.fit.relamp %>%
@@ -75,20 +78,23 @@ dat.fit.relamp <- dat.fit.relamp %>%
 
 # Get complex matrix ------------------------------------------------------
 
-dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% dat.entropy$gene), period = 24, n = 8, interval = 6, add.entropy.method = "array")
+genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
 
-# adjust for "noise" and normalize to reference gene (Nr1d1)
-ref.amps <- subset(dat.complex, gene == ref.gene, select = c(tissue, gene, mag.norm))
-ref.amps.dic <- hash(ref.amps$tissue, ref.amps$mag.norm)
+dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% genes.exprs), period = 24, n = 8, interval = 6, add.entropy.method = "array")
 
 dat.complex$exprs.adj <- dat.complex$exprs.transformed * dat.complex$frac.weight
+
+# adjust for "noise" and normalize to reference gene (Nr1d1)
+ref.amps <- subset(dat.complex, gene == ref.gene, select = c(tissue, gene, exprs.adj))
+ref.amps.dic <- hash(ref.amps$tissue, ref.amps$exprs.adj)
+
 dat.complex$exprs.adj.norm <- mapply(function(tiss, exprs) exprs / ref.amps.dic[[tiss]], as.character(dat.complex$tissue), dat.complex$exprs.adj)
 dat.complex$mod.exprs.adj <- Mod(dat.complex$exprs.adj)
 dat.complex$mod.exprs.adj.norm <- Mod(dat.complex$exprs.adj.norm)
 
 # Get entropy measure from adjusted magnitude -----------------------------
 
-genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
+
 
 # ref gene should be max entropy as a check
 dat.entropy <- dat.complex %>%
@@ -166,7 +172,7 @@ for (comp in seq(3)){
 }
 
 # Low.norm
-for (comp in seq(5)){
+for (comp in seq(3)){
   eigens.low.norm <- GetEigens(s.low.norm, period=24, comp=comp)
   multiplot(eigens.low.norm$v.plot, eigens.low.norm$u.plot, layout = jlayout)
 }  
@@ -181,7 +187,59 @@ for (comp in seq(2)){
 for (comp in seq(2)){
   eigens.med.norm <- GetEigens(s.med.norm, period=24, comp=comp)
   multiplot(eigens.med.norm$v.plot, eigens.med.norm$u.plot, layout = jlayout)
-}  
+} 
+
+
+# Can we discover new circadian genes? ------------------------------------
+
+n.genes <- 200
+# eg X6430573F11Rik
+u1 <- sort(Mod(s.high.norm$u[, 1]), decreasing = TRUE)
+u1.sub <- head(u1, n = n.genes)
+
+dat.sub <- subset(dat.long, gene %in% names(u1.sub))
+
+fpath <- file.path(outdir, "circadian_genes.pdf")
+if (!file.exists(fpath)){
+  pdf(fpath)
+  barplot(u1.sub, names.arg = names(u1.sub), las = 2, horiz = FALSE, cex.names = 0.8)
+  for (g in names(u1.sub)){
+    print(PlotGeneAcrossTissues(subset(dat.sub, gene == g)))
+  }
+  dev.off()
+}
+
+sink(file = file.path(outdir, "circadian_genes.txt"))
+for (g in names(u1.sub)){
+  print(g)
+}
+sink()
+
+# Can we identify tissue-specific rhythmic genes? -------------------------
+
+n.genes <- 200
+# eg X6430573F11Rik
+for (comp in seq(3)){
+  u1 <- sort(Mod(s.low.norm$u[, comp]), decreasing = TRUE)
+  u1.sub <- head(u1, n = n.genes)
+  
+  dat.sub <- subset(dat.long, gene %in% names(u1.sub))
+  outname <- paste0("tissue_spec_mod_", comp)
+  fpath <- file.path(outdir, paste0(outname, ".pdf"))
+  if (!file.exists(fpath)){
+    pdf(fpath)
+    barplot(u1.sub, names.arg = names(u1.sub), las = 2, horiz = FALSE, cex.names = 0.8)
+    for (g in names(u1.sub)){
+      print(PlotGeneAcrossTissues(subset(dat.sub, gene == g)))
+    }
+    dev.off()
+    sink(file = file.path(outdir, paste0(outname, ".txt")))
+    for (g in names(u1.sub)){
+      print(g)
+    }
+    sink()
+  }
+}
 
 # Heatmap low and high entropy genes -----------------------------------------------
 

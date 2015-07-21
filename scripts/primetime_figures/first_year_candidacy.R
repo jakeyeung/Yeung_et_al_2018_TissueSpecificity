@@ -119,6 +119,94 @@ CorrelatePromoterUsageToAmp <- function(tpm.filt, dat.rhyth.relamp, avgexprsdic,
 
 figcount <- 1
 
+# Figure 1 redo: SVD analysis ---------------------------------------------
+
+load(file = "Robjs/dat.complex.maxexprs4.Robj")
+load(file = "Robjs/dat.fit.Robj")
+load(file = "Robjs/dat.long.Robj")
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, "C.pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+
+
+ref.gene <- "Nr1d1"
+
+# dat.fit.relamp <- GetRelamp(dat.fit, max.pval = 1e-3)
+dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
+
+dat.fit.relamp <- dat.fit.relamp %>%
+  group_by(gene) %>%
+  mutate(max.exprs = max(int.rnaseq), min.pval = min(pval), max.relamp = max(relamp), relamp.norm = relamp / sum(relamp), amp.norm = amp / sum(amp))
+
+# dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% dat.entropy$gene), period = 24, n = 8, interval = 6, add.entropy.method = "array")
+# # adjust for "noise" and normalize to reference gene (Nr1d1)
+# ref.amps <- subset(dat.complex, gene == ref.gene, select = c(tissue, gene, mag.norm))
+# ref.amps.dic <- hash(ref.amps$tissue, ref.amps$mag.norm)
+# dat.complex$exprs.adj <- dat.complex$exprs.transformed * dat.complex$frac.weight
+# dat.complex$exprs.adj.norm <- mapply(function(tiss, exprs) exprs / ref.amps.dic[[tiss]], as.character(dat.complex$tissue), dat.complex$exprs.adj)
+# dat.complex$mod.exprs.adj <- Mod(dat.complex$exprs.adj)
+# dat.complex$mod.exprs.adj.norm <- Mod(dat.complex$exprs.adj.norm)
+
+genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
+
+# ref gene should be max entropy as a check
+dat.entropy <- dat.complex %>%
+  subset(., gene %in% genes.exprs) %>%
+  group_by(gene) %>%
+  summarise(entropy = ShannonEntropy(Mod(exprs.adj.norm) / sum(Mod(exprs.adj.norm))))
+
+# split genes into 3rds
+N <- floor(nrow(dat.entropy) / 3)
+n.genes <- nrow(dat.entropy)
+low.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy), ]$gene, n = N)
+high.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]$gene, n = N)
+med.entropy.genes <- dat.entropy[order(dat.entropy$entropy), ]$gene[N:(n.genes - N)]
+
+s.low.norm <- SvdOnComplex(subset(dat.complex, gene %in% low.entropy.genes), value.var = "exprs.adj")
+s.high.norm <- SvdOnComplex(subset(dat.complex, gene %in% high.entropy.genes), value.var = "exprs.adj")
+
+jlayout <- matrix(c(1, 2, 3, 4, 5, 6), 2, 3, byrow = TRUE)
+
+eigens.high.norm <- GetEigens(s.high.norm, period = 24, comp = 1)
+eigens.high.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Dbp" & experiment == "rnaseq"))
+eigens.low1.norm <- GetEigens(s.low.norm, period = 24, comp = 1)
+eigens.low1.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ccrn4l" & experiment == "rnaseq"))
+multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot, eigens.high.examp, 
+          eigens.low1.norm$v.plot, eigens.low1.norm$u.plot, eigens.low1.examp, 
+          layout = jlayout)
+
+dev.off()
+
+# Figure 1 redo: tissue-specific and tissue-wide rhythms ------------------
+# from heatmap_tissue_specific_rhythms.R
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, "B.pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+
+filt.tiss <- c()
+
+# dat.fit.relmap, dat.complex obtained above
+M.low <- LongToMat(subset(dat.complex, gene %in% low.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj.norm")
+M.high <- LongToMat(subset(dat.complex, gene %in% high.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj.norm")
+
+dat.complex$real <- Re(dat.complex$exprs.adj)
+dat.complex$imag <- Im(dat.complex$exprs.adj)
+
+M.real <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "real"))
+M.imag <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "imag"))
+hc <- hclust(dist(cbind(M.real, M.imag), method = "euclidean"))
+
+par(mfrow=c(2,2))
+#   plot(hc, main = "Clustering on fourier component T=24h")
+plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]), main = "Distribution of entropy in rhythmic genes")
+# draw 2 vertical lines for specifying tissue-spec to tissue-wide
+abline(v = sort(dat.entropy$entropy)[N])
+abline(v = sort(dat.entropy$entropy)[length(dat.entropy$entropy) - N])
+
+plot(hc, main = "Clustering: fourier T=24h")
+PlotRelampHeatmap(M.low, paste0("Low entropy rhythmic genes. N=", length(low.entropy.genes)))
+PlotRelampHeatmap(M.high, paste0("High entropy rhythmic genes. N=", length(high.entropy.genes)))
+
+dev.off()
+
 # Figure 1: tissue-specific rhythms ---------------------------------------
 # first show MARA results
 
@@ -135,7 +223,6 @@ eigens <- GetEigens(act.svd, comp = 1)
 # now show some tissue-specific results
 # code from find_oscillating_genes.pairs.R
 load("Robjs/dat.rhyth.relamp.pvalmin1e-5.pvalmax0.05.relampmax.0.1.meancutoff6.Robj", verbose = T)
-load("Robjs/arrayrnaseq.mydat.Robj", verbose = T)
 
 # how many rhythmic genes?
 n.rhyth <- dat.rhyth.relamp %>%
@@ -180,74 +267,6 @@ multiplot(eigens$u.plot, eigens$v.plot, n.tissues.rhyth.plot, pairs.plot, layout
 
 dev.off()
 
-
-# Figure 1 redo: tissue-specific and tissue-wide rhythms ------------------
-# from heatmap_tissue_specific_rhythms.R
-
-pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, "B_maxamp.pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
-
-load(file = "Robjs/dat.fit.Robj", verbose = TRUE)
-load(file = "Robjs/dat.complex.maxexprs4.maxrelamp01.minpval1e-3.Robj", verbose = TRUE)
-
-ref.gene <- "Arntl"
-filt.tiss.lst <- list(c(), c("Cere", "BS", "Hypo"))
-
-for (filt.tiss in filt.tiss.lst){
-  dat.fit.relamp <- GetRelamp(dat.fit, max.pval = 1e-3)
-  print(subset(dat.fit.relamp, relamp == 1))
-  #   dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
-
-  
-  dat.fit.relamp <- dat.fit.relamp %>%
-    group_by(gene) %>%
-    mutate(max.exprs = max(int.rnaseq), min.pval = min(pval), max.relamp = max(relamp), relamp.norm = relamp / sum(relamp), amp.norm = amp / sum(amp))
-  
-  dat.entropy <- dat.fit.relamp %>%
-    #   subset(., min.pval <= 1e-5 & max.relamp > 0.1) %>%
-    subset(., max.exprs >= 4 & max.relamp >= 0.1 & min.pval <= 1e-3 & !tissue %in% filt.tiss) %>%
-    group_by(gene) %>%
-    summarise(entropy = ShannonEntropy(relamp / sum(relamp)))
-  
-  N <- 2000
-  n.genes <- nrow(dat.entropy)
-  low.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy), ]$gene, n = N)
-  high.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]$gene, n = N)
-  
-  M.low <- LongToMat(subset(dat.fit.relamp, gene %in% low.entropy.genes & !tissue %in% filt.tiss))
-  M.high <- LongToMat(subset(dat.fit.relamp, gene %in% high.entropy.genes & !tissue %in% filt.tiss))
-  
-  dat.complex$real <- Re(dat.complex$exprs.transformed)
-  dat.complex$imag <- Im(dat.complex$exprs.transformed)
-  
-  M.real <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "real"))
-  M.imag <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "imag"))
-  M.all <- cbind(M.real, M.imag)
-  hc <- hclust(dist(M.all, method = "euclidean"))
-  
-  dat.ref <- subset(dat.fit.relamp, relamp == 1)
-  dic <- hash(as.character(dat.ref$tissue), dat.ref$amp / 2)
-  
-  dat.complex <- dat.complex %>%
-    group_by(tissue) %>%
-    do(NormalizeComplexMat(., dic))
-  
-  dat.complex$real.norm <- Re(dat.complex$exprs.norm)
-  dat.complex$imag.norm <- Im(dat.complex$exprs.norm)
-  
-  M.real.norm <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "real.norm"))
-  M.imag.norm <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "imag.norm"))
-  M.all.norm <- cbind(M.real.norm, M.imag.norm)
-  hc.norm <- hclust(dist(M.all.norm, method = "euclidean"))
-  
-  par(mfrow=c(2,2))
-#   plot(hc, main = "Clustering on fourier component T=24h")
-  plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]), main = "Distribution of entropy in rhythmic genes")
-  plot(hc.norm, main = "Clustering: fourier T=24h (normalized by max amp)")
-  PlotRelampHeatmap(M.low, paste0("Low entropy rhythmic genes. N=", length(low.entropy.genes)))
-  PlotRelampHeatmap(M.high, paste0("High entropy rhythmic genes. N=", length(high.entropy.genes)))
-  
-}
-dev.off()
 
 # Figure 2: kidney-liver and bfat-liver -----------------------------------
 
@@ -315,7 +334,7 @@ hnf4a.activity <- ggplot(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experimen
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
   theme(axis.text.x=element_text(angle=90,vjust = 0))
 
-hnf4a.exprs <- ggplot(subset(mydat, gene == "Hnf4a" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
+hnf4a.exprs <- ggplot(subset(dat.long, gene == "Hnf4a" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
   facet_wrap(~tissue) +
   ggtitle("Hnf4a mRNA expression") + 
@@ -324,7 +343,7 @@ hnf4a.exprs <- ggplot(subset(mydat, gene == "Hnf4a" & experiment == "rnaseq"), a
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
   theme(axis.text.x=element_text(angle=90,vjust = 0))
 
-hnf4a.regulated.examp <- ggplot(subset(mydat, gene == "Upp2" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
+hnf4a.regulated.examp <- ggplot(subset(dat.long, gene == "Upp2" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
   facet_wrap(~tissue) +
   ggtitle("Upp2 (regulated by Hnf4a)") + 
@@ -343,7 +362,7 @@ mef2c.activity <- ggplot(subset(act.long, gene == "MEF2.A.B.C.D..p2" & experimen
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
   theme(axis.text.x=element_text(angle=90,vjust = 0))
 
-mef2c.exprs <- ggplot(subset(mydat, gene == "Mef2c" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
+mef2c.exprs <- ggplot(subset(dat.long, gene == "Mef2c" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
   facet_wrap(~tissue) +
   ggtitle("Mef2c mRNA expression") + 
@@ -352,7 +371,7 @@ mef2c.exprs <- ggplot(subset(mydat, gene == "Mef2c" & experiment == "rnaseq"), a
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
   theme(axis.text.x=element_text(angle=90,vjust = 0))
 
-mef2c.regulated.examp <- ggplot(subset(mydat, gene == "Des" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
+mef2c.regulated.examp <- ggplot(subset(dat.long, gene == "Des" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
   facet_wrap(~tissue) +
   ggtitle("Des (regulated by Mef2c)") + 
@@ -435,7 +454,7 @@ PlotBiplot <- function(N, jgene){
 # jgenes <- c("S100a10", "Fmo5", "Amt", "Sigmar1", "Mcm4")
 jgenes <- c("Ddc", "Pnp", "Insig2")
 
-exprs.plots <- lapply(jgenes, function(g) return(PlotRnaseqAcrossTissues(subset(mydat, gene == g & experiment == "rnaseq"), jtitle = paste(g, "RNA-seq profile"))))
+exprs.plots <- lapply(jgenes, function(g) return(PlotRnaseqAcrossTissues(subset(dat.long, gene == g & experiment == "rnaseq"), jtitle = paste(g, "RNA-seq profile"))))
 biplots <- lapply(jgenes, function(g) return(PlotBiplot(N, g)))
 
 jlayout5 <- matrix(c(1, 4, 2, 5, 3, 6), 3, 2, byrow = TRUE)
