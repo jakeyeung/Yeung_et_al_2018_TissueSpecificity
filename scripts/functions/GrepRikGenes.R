@@ -20,3 +20,12 @@ AddX <- function(genes){
     return(paste0("X", string))
   })
 }
+
+FixRikGenes <- function(gene.list){
+  gene.list <- as.character(gene.list)
+  Xgenes <- GrepRikGenes(gene.list)
+  genes <- RemoveX(Xgenes)
+  gene.list[which(gene.list %in% Xgenes)] <- genes
+  gene.list <- as.factor(gene.list)
+  return(gene.list)
+}
