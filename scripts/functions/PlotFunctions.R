@@ -562,12 +562,13 @@ ConvertArgToPhase <- function(phase.rads, omega){
   return(phase)
 }
 
-PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My title", ylab = "Amplitude of activity", xlab = "Phase of activity (CT)"){
+PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My title", ylab = "Amplitude of activity", xlab = "Phase of activity (CT)", ampscale = 2){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave
   # http://www.prosig.com/signal-processing/FourierAnalysis.pdf
-  df <- data.frame(amp = Mod(vec.complex) * 2,
+  # Default: ampscale = 2 because fourier amplitude is more like half-amplitude by default
+  df <- data.frame(amp = Mod(vec.complex) * ampscale,
                    phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
                    label = labels)
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
@@ -578,6 +579,25 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My t
     geom_text(aes(x = amp, y = phase, size = amp), vjust = 0) +
     ggtitle(title) +
     scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+}
+
+PlotComplexLong <- function(dat.complex, omega, jtitle = "Title", jxlab = "xlab", jylab = "ylab", ampscale = 2){
+  # Plot circle with long form dat input
+  if (missing(omega)){
+    omega <- 2 * pi / 24
+  }
+  dat.complex.ampphase <- data.frame(amp = Mod(dat.complex$exprs.transformed) * ampscale,
+                   phase = ConvertArgToPhase(Arg(dat.complex$exprs.transformed), omega = omega),
+                   jlabel = as.character(dat.complex$tissue))
+  m <- ggplot(data = dat.complex.ampphase, aes(x = amp, y = phase, label = jlabel)) + 
+    geom_point(size = 0.5) +
+    coord_polar(theta = "y") +
+    xlab(jxlab) +
+    ylab(jylab) +  
+    geom_text(aes(x = amp, y = phase, size = amp), vjust = 0) +
+    ggtitle(jtitle) +
+    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+  return(m)
 }
 
 PlotEigengene <- function(svd.obj, comp, omega = 2 * pi / 24, rotate=TRUE){
