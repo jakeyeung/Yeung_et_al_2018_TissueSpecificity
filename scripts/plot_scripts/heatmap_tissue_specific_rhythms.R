@@ -224,7 +224,7 @@ for (comp in seq(3)){
   u1.sub <- head(u1, n = n.genes)
   
   dat.sub <- subset(dat.long, gene %in% names(u1.sub))
-  outname <- paste0("tissue_spec_mod_", comp)
+  outname <- paste0("tissue_spec_mod_", comp, "_", n.genes)
   fpath <- file.path(outdir, paste0(outname, ".pdf"))
   if (!file.exists(fpath)){
     pdf(fpath)
