@@ -71,13 +71,16 @@ PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "CTCF.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & tissue %in% c("Liver", "Kidney")))
-# PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "SOX17.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "NANOG.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "ATF6.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "ELK1.4_GABP.A.B1..p3"))
 PlotActivitiesWithSE(subset(act.long, gene == "FOXA2.p3"))
+PlotActivitiesWithSE(subset(act.long, gene == "MYOD1.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "NFIL3.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "FOXD3.p2"))
 
 # 
 
