@@ -83,7 +83,7 @@ GetAmpRelToGene <- function(dat, base.amp.dic){
   return(dat)
 }
 
-GetRelampByGene <- function(fits, by.gene = "Arntl"){
+GetRelampByGene <- function(fits, by.gene = "Nr1d1"){
   library(hash)
   fits.base <- subset(fits, gene == by.gene)
   base.amp.dic <- hash(as.character(fits.base$tissue), fits.base$amp)
