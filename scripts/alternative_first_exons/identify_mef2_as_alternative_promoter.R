@@ -1,6 +1,7 @@
 # 2015-07-11
 # Find Mef2c as alternative promoter usage?
 
+library(dplyr)
 library(ggplot2)
 source("scripts/functions/LoadKallisto.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
