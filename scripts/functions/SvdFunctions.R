@@ -384,7 +384,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
 }
 
 GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase"){
-  source("scripts/functions/PlotFunctions.R")
+  source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
   }
@@ -400,12 +400,13 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase")
   eigengene <- eigengene * Conj(rotate.factor)
   # rotate eigensamp by +phase ref
   eigensamp <- eigensamp * Conj(rotate.factor)
-  v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, title = paste0("Right singular value ", comp, " (", signif(var.explained[comp], 2), ")"), xlab = xlab, ylab = ylab)  
-  u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Left singular value ", comp, " (", signif(var.explained[comp], 2), ")"), xlab = xlab, ylab = ylab)
+  v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, title = paste0("Tissue Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)  
+  u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)
   return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
 }
 
 SvdOnComplex <- function(dat.complex, value.var = "exprs.transformed"){
+  source("~/projects/tissue-specificity/scripts/functions/LongToMat.R")
   # used in heatmap_tissue_specific_rhythms.R
   M.complex <- LongToMat(dat.complex, value.var = value.var)
   s <- svd(M.complex)
