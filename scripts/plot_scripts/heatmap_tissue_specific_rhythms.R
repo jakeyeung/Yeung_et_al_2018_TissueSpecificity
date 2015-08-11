@@ -83,14 +83,23 @@ genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
 dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% genes.exprs), period = 24, n = 8, interval = 6, add.entropy.method = "array")
 
 dat.complex$exprs.adj <- dat.complex$exprs.transformed * dat.complex$frac.weight
+dat.complex$mod.exprs.adj <- Mod(dat.complex$exprs.adj)
 
 # adjust for "noise" and normalize to reference gene (Nr1d1)
 ref.amps <- subset(dat.complex, gene == ref.gene, select = c(tissue, gene, exprs.adj))
 ref.amps.dic <- hash(ref.amps$tissue, ref.amps$exprs.adj)
 
 dat.complex$exprs.adj.norm <- mapply(function(tiss, exprs) exprs / ref.amps.dic[[tiss]], as.character(dat.complex$tissue), dat.complex$exprs.adj)
-dat.complex$mod.exprs.adj <- Mod(dat.complex$exprs.adj)
 dat.complex$mod.exprs.adj.norm <- Mod(dat.complex$exprs.adj.norm)
+
+# adjust to total noise
+ref.amps.total <- dat.complex %>%
+  group_by(tissue) %>%
+  summarise(total_amp = sum(Mod(exprs.adj) ^ 2))
+ref.amps.total.dic <- hash(ref.amps.total$tissue, ref.amps.total$total_amp)
+dat.complex$exprs.adj.norm <- mapply(function(tiss, exprs) exprs / ref.amps.total.dic[[tiss]], as.character(dat.complex$tissue), dat.complex$exprs.adj)
+dat.complex$mod.exprs.adj.norm <- Mod(dat.complex$exprs.adj.norm)
+
 
 # Get entropy measure from adjusted magnitude -----------------------------
 
@@ -172,7 +181,7 @@ for (comp in seq(3)){
 }
 
 # Low.norm
-for (comp in seq(3)){
+for (comp in seq(4)){
   eigens.low.norm <- GetEigens(s.low.norm, period=24, comp=comp)
   multiplot(eigens.low.norm$v.plot, eigens.low.norm$u.plot, layout = jlayout)
 }  
