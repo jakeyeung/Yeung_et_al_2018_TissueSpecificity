@@ -114,18 +114,18 @@ plot(density(tpm.summary$pval[which(!is.na(tpm.summary$pval))]))
 
 hits <- head(data.frame(tpm.summary[order(tpm.summary$pval), which(colnames(tpm.summary) != "transcript_id")]), n = 200)$gene_name
 
-pdf("plots/alternative_exon_usage/linear_model_complex_mat_top_hits.pdf")
-tpm.hits <- subset(tpm.afe, gene_name %in% hits)
-tpm.avg.filt.hits <- subset(tpm.avg.filt, gene_name %in% hits)
-dat.long.hits <- subset(dat.long, gene %in% hits)
-for (jgene in hits){
-  tpm.sub <- subset(tpm.fit.hits, gene_name == jgene)
-  jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
-  PlotDiagnostics2(subset(tpm.hits, gene_name == jgene), 
-                   subset(tpm.avg.filt.hits, transcript_id == jtranscript), 
-                   subset(dat.long.hits, gene == jgene), jgene, jtranscript)
-}
-dev.off()
+# pdf("plots/alternative_exon_usage/linear_model_complex_mat_top_hits.pdf")
+# tpm.hits <- subset(tpm.afe, gene_name %in% hits)
+# tpm.avg.filt.hits <- subset(tpm.avg.filt, gene_name %in% hits)
+# dat.long.hits <- subset(dat.long, gene %in% hits)
+# for (jgene in hits){
+#   tpm.sub <- subset(tpm.fit.hits, gene_name == jgene)
+#   jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
+#   PlotDiagnostics2(subset(tpm.hits, gene_name == jgene), 
+#                    subset(tpm.avg.filt.hits, transcript_id == jtranscript), 
+#                    subset(dat.long.hits, gene == jgene), jgene, jtranscript)
+# }
+# dev.off()
 
 jgene <- "Upp2"
 jgene <- "Ddc"
@@ -139,9 +139,10 @@ tpm.sub <- subset(tpm.fit, gene_name == jgene)
 # (tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ])
 jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
 
-PlotDiagnostics2(tpm.afe, tpm.fit, dat.long, jgene, jtranscript)
+PlotDiagnostics2(tpm.afe, tpm.avg.filt, dat.long, jgene, jtranscript)
+# save(tpm.afe, tpm.avg.filt, tpm.fit, file = "Robjs/alt_promoter_usage_rel_nr1d1_complex.R")
 
-# data.frame(subset(tpm.afe, transcript_id == jtranscript))
-subset(tpm.summary, gene_name == jgene)
-PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
-ggplot(subset(tpm.avg.filt, transcript_id == jtranscript), aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + ggtitle(jgene) + geom_smooth(method = "lm")
+# # data.frame(subset(tpm.afe, transcript_id == jtranscript))
+# subset(tpm.summary, gene_name == jgene)
+# PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
+# ggplot(subset(tpm.avg.filt, transcript_id == jtranscript), aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + ggtitle(jgene) + geom_smooth(method = "lm")
