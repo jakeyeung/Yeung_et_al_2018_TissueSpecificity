@@ -1,9 +1,12 @@
 # PlotGeneAcrossTissues.R
 
-PlotGeneAcrossTissues <- function(dat, jtitle){
+PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE){
   library(ggplot2)
   if (missing(jtitle)){
     jtitle = unique(dat$gene)
+  }
+  if (convert.linear){
+    dat$exprs <- (2 ^ dat$exprs) - 1 
   }
   m <- ggplot(dat, aes(x = time, y = exprs,
                        group = experiment, 
@@ -64,5 +67,25 @@ PlotRnaseqAcrossTissues <- function(dat, jtitle){
     xlab("CT") +
     scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
     theme(axis.text.x=element_text(angle=90,vjust = 0))
+  return(p)
+}
+
+Center <- function(x){
+  # Running scale on dplyr doesnt work, try it manually
+  return(x - mean(x))
+}
+
+PlotGeneNormalized <- function(dat, jtitle){
+  if (missing(jtitle)){
+    jtitle <- unique(dat$gene)
+  }
+  dat.norm <- dat %>%
+    group_by(tissue) %>%
+    mutate(exprs.scaled = Center(exprs))
+  p <- ggplot(dat.norm, aes(x = time, y = exprs.scaled, group = tissue, colour = tissue, fill = tissue)) + 
+    geom_line() +
+    geom_point() + 
+    ylab("Centered mRNA expression") +
+    xlab("CT")
   return(p)
 }

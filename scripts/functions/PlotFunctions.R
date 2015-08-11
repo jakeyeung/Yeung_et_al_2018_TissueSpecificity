@@ -635,6 +635,8 @@ PlotRelampHeatmap <- function(M, jtitle = "Plot Title"){
   # # (optional) defines the color breaks manually for a "skewed" color transition
   col.breaks = c(seq(0, 0.15, length=150),  # black
                  seq(0.151, 1, length=151))  # yellow
+  # par(mar=c(17,8,4,8)+0.1) 
+  par(mar=c(5,4,4,2)+0.1)
   heatmap.2(as.matrix(M), 
             col=my.palette, 
             breaks = col.breaks, 
@@ -643,8 +645,9 @@ PlotRelampHeatmap <- function(M, jtitle = "Plot Title"){
             keysize=1.5, 
             density.info = "density", 
             trace="none", 
-            cexCol=0.9, 
+            cexCol=1.7, 
             labRow=NA, 
             dendrogram = "both",
-            main = jtitle)  
+            main = jtitle,
+            margins=c(8,30))
 }
