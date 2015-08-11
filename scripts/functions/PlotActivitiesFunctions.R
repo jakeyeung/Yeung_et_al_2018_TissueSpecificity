@@ -1,6 +1,46 @@
-PlotMeanActivitiesWithSE.singleintercept <- function(df){
-  jgene <- unique(df$gene)
-  ggplot(df,
+PlotActivitiesWithSE.dhs <- function(dat, jtitle){
+  # for DHS: we have no time, plot tissues on x axis
+  jgene <- unique(dat$gene)
+  if (missing(jtitle)){
+    jtitle <- jgene
+  }
+  ggplot(dat, aes(x = tissue, y = exprs)) +
+    geom_bar(stat = "identity") +
+    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+    xlab("") +
+    ylab("Activity") + 
+    ggtitle(jtitle)
+}
+
+PlotActivitiesWithSE <- function(dat, jtitle){
+  jgene <- unique(dat$gene)
+  if (missing(jtitle)){
+    jtitle <- jgene
+  }
+  ggplot(dat, 
+         aes(x = time, y = exprs, group = experiment, colour = experiment)) +
+    geom_line() +
+    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+    facet_wrap(~tissue) + 
+    xlab("CT") +
+    ylab("Activity") + 
+    ggtitle(jtitle)
+}
+
+PlotMeanActivitiesWithSE <- function(dat){
+  jgene <- unique(dat$gene)
+  ggplot(dat,
+         aes(x = tissue, y = exprs, group = experiment, colour = experiment)) + 
+    geom_line() + 
+    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+    ylab("Activity") +
+    ggtitle(jgene)
+}
+
+
+PlotMeanActivitiesWithSE.singleintercept <- function(dat){
+  jgene <- unique(dat$gene)
+  ggplot(dat,
          aes(x = tissue, y = exprs)) + 
     geom_line() + 
     geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +

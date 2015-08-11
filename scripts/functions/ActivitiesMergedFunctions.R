@@ -1,28 +1,3 @@
-PlotActivitiesWithSE <- function(dat, jtitle){
-  jgene <- unique(dat$gene)
-  if (missing(jtitle)){
-    jtitle <- jgene
-  }
-  ggplot(dat, 
-         aes(x = time, y = exprs, group = experiment, colour = experiment)) +
-    geom_line() +
-    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
-    facet_wrap(~tissue) + 
-    xlab("CT") +
-    ylab("Activity") + 
-    ggtitle(jtitle)
-}
-
-PlotMeanActivitiesWithSE <- function(dat){
-  jgene <- unique(dat$gene)
-  ggplot(dat,
-         aes(x = tissue, y = exprs, group = experiment, colour = experiment)) + 
-    geom_line() + 
-    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
-    ylab("Activity") +
-    ggtitle(jgene)
-}
-
 GetExprsMean <- function(dat){
   # Input: long dat filtered for a tissue and a gene.
   # Expect "exprs", "se" and "experiment"
