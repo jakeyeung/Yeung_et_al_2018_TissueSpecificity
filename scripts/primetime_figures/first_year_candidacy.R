@@ -4,7 +4,8 @@
 
 # library(Sushi)
 setwd("~/projects/tissue-specificity")
-outdir <- "/home/yeung/projects/tissue-specificity/plots/primetime_plots"
+outdir <- "/home/yeung/projects/tissue-specificity/plots/primetime_plots2"
+dir.create(outdir)
 
 # Functions ---------------------------------------------------------------
 
@@ -115,15 +116,24 @@ med.entropy.genes <- dat.entropy[order(dat.entropy$entropy), ]$gene[N:(n.genes -
 s.low.norm <- SvdOnComplex(subset(dat.complex, gene %in% low.entropy.genes), value.var = "exprs.adj")
 s.high.norm <- SvdOnComplex(subset(dat.complex, gene %in% high.entropy.genes), value.var = "exprs.adj")
 
-jlayout <- matrix(c(1, 2, 3, 4, 5, 6), 2, 3, byrow = TRUE)
+jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 
 eigens.high.norm <- GetEigens(s.high.norm, period = 24, comp = 1)
 eigens.high.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Dbp" & experiment == "rnaseq"))
 eigens.low1.norm <- GetEigens(s.low.norm, period = 24, comp = 1)
-eigens.low1.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ccrn4l" & experiment == "rnaseq"))
-multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot, eigens.high.examp, 
-          eigens.low1.norm$v.plot, eigens.low1.norm$u.plot, eigens.low1.examp, 
-          layout = jlayout)
+eigens.low1.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Rgs16" & experiment == "rnaseq"))
+eigens.low2.norm <- GetEigens(s.low.norm, period = 24, comp = 2)
+eigens.low2.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Myh7" & experiment == "rnaseq"))
+eigens.low3.norm <- GetEigens(s.low.norm, period = 24, comp = 3)
+eigens.low3.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ms4a1" & experiment == "rnaseq"))
+# multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot, eigens.high.examp, 
+#           eigens.low1.norm$v.plot, eigens.low1.norm$u.plot, eigens.low1.examp, 
+#           layout = jlayout)
+multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot,
+          eigens.low1.norm$v.plot, eigens.low1.norm$u.plot, layout = jlayout)
+multiplot(eigens.low2.norm$v.plot, eigens.low2.norm$u.plot, 
+          eigens.low3.norm$v.plot, eigens.low3.norm$u.plot, layout = jlayout)
+multiplot(eigens.high.examp, eigens.low1.examp, eigens.low2.examp, eigens.low3.examp, layout = jlayout)
 
 dev.off()
 
@@ -145,16 +155,40 @@ M.real <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "
 M.imag <- t(LongToMat(subset(dat.complex, !tissue %in% filt.tiss), value.var = "imag"))
 hc <- hclust(dist(cbind(M.real, M.imag), method = "euclidean"))
 
-par(mfrow=c(2,2))
-#   plot(hc, main = "Clustering on fourier component T=24h")
-plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]), main = "Distribution of entropy in rhythmic genes")
+# summarize by spectral power
+dat.mag <- dat.complex %>%
+  group_by(tissue) %>%
+  summarise(power = sum(mod.exprs.adj ^ 2)) %>%
+  arrange(desc(power))
+dat.mag$tissue <- factor(dat.mag$tissue, dat.mag$tissue)
+
+# # Plot cluster
+# M.args <- t(LongToMat(dat.complex, value.var = "exprs.transformed"))
+# hc.args <- hclust(dist(Arg(M.args), method = "euclidean"))
+# plot(hc.args)
+
+# par(mfrow=c(2,2))
+# #   plot(hc, main = "Clustering on fourier component T=24h")
+# plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]), main = "Distribution of entropy in rhythmic genes")
+# # draw 2 vertical lines for specifying tissue-spec to tissue-wide
+# abline(v = sort(dat.entropy$entropy)[N])
+# abline(v = sort(dat.entropy$entropy)[length(dat.entropy$entropy) - N])
+# plot(hc, main = "Clustering: fourier T=24h")
+
+# Plot spectral power
+ggplot(dat.mag, aes(x = tissue, y = power)) + geom_bar(stat = "identity") + xlab("Tissue") + ylab("Total 24-h amplitude") + 
+  theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0)) + ggtitle("Genome-wide circadian amplitude across tissues")
+
+# Plot heatmaps
+PlotRelampHeatmap(M.low, paste0("Low entropy genes.\nN=", length(low.entropy.genes)))
+PlotRelampHeatmap(M.high, paste0("High entropy genes.\nN=", length(high.entropy.genes)))
+
+# Plot entropy distributions
+plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]), 
+     main = "Distribution of entropy in rhythmic genes", cex.main = 1.75, cex.lab = 1.75, cex.axis = 1.75)
 # draw 2 vertical lines for specifying tissue-spec to tissue-wide
 abline(v = sort(dat.entropy$entropy)[N])
 abline(v = sort(dat.entropy$entropy)[length(dat.entropy$entropy) - N])
-
-plot(hc, main = "Clustering: fourier T=24h")
-PlotRelampHeatmap(M.low, paste0("Low entropy rhythmic genes. N=", length(low.entropy.genes)))
-PlotRelampHeatmap(M.high, paste0("High entropy rhythmic genes. N=", length(high.entropy.genes)))
 
 dev.off()
 
@@ -170,6 +204,8 @@ act.long <- LoadActivitiesLong(indir)
 act.svd <- GetActSvd(act.long, pval.adj.cutoff = 0.0005)
 
 eigens <- GetEigens(act.svd, comp = 1)
+eigens2 <- GetEigens(act.svd, comp = 2)
+eigens3 <- GetEigens(act.svd, comp = 3)
 
 # now show some tissue-specific results
 # code from find_oscillating_genes.pairs.R
@@ -213,8 +249,16 @@ pairs.plot <- ggplot(subset(n.pairs.tissuecounts, n.tiss == 2), aes(x = tissues,
   xlab("Number of tissues that is rhythmic for gene") +
   theme(axis.text.x=element_text(angle=90,vjust = 0))
 
-jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
-multiplot(eigens$u.plot, eigens$v.plot, n.tissues.rhyth.plot, pairs.plot, layout = jlayout)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# multiplot(eigens$u.plot, eigens$v.plot, n.tissues.rhyth.plot, pairs.plot, layout = jlayout)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+multiplot(eigens2$u.plot, eigens2$v.plot, layout = jlayout)
+multiplot(eigens3$u.plot, eigens3$v.plot, layout = jlayout)
+
+# jlayout <- matrix(c(1, 2), 2, 1, byrow = TRUE)
+# multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+# jlayout <- matrix(c(1, 2), 2, 1, byrow = TRUE)
+# multiplot(n.tissues.rhyth.plot, pairs.plot, layout = jlayout)
 
 dev.off()
 
@@ -297,7 +341,7 @@ hnf4a.exprs <- ggplot(subset(dat.long, gene == "Hnf4a" & experiment == "rnaseq")
 hnf4a.regulated.examp <- ggplot(subset(dat.long, gene == "Upp2" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
   facet_wrap(~tissue) +
-  ggtitle("Upp2 (regulated by Hnf4a)") + 
+  ggtitle("Upp2 (regulated by Bmal1)") + 
   ylab(label = "log2 mRNA expression") +
   xlab("CT") +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
@@ -341,41 +385,65 @@ dev.off()
 pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
 figcount <- figcount + 1
 
-load(file = "Robjs/tpm.merged.Robj", verbose = T)
+load(file = "Robjs/alt_promoter_usage_rel_nr1d1_complex.R", verbose = T)  # tpm.afe, tpm.avg.filt, tpm.fit
 
-# for annotating rhythmic genes
-keys <- paste(dat.rhyth.relamp$tissue, dat.rhyth.relamp$gene, sep = ";")
-relampdic <- hash(keys, dat.rhyth.relamp$relamp)
-avgexprsdic <- hash(keys, dat.rhyth.relamp$int.rnaseq)
 
-tissue.spec <- unique(subset(dat.rhyth.relamp, is.tiss.spec == TRUE)$gene)
-filter.tissues <- c()
-tpm.filt <- subset(tpm.merged, !tissue %in% filter.tissues & gene_name %in% tissue.spec)
+# plot examples
+hits <- c("Upp2", "Tpm3", "Prkd3", "Insig2", "Ddc")
 
-# ~50 seconds
-start.time <- Sys.time()
-tpm.output <- CorrelatePromoterUsageToAmp(tpm.filt, dat.rhyth.relamp, avgexprsdic, filter.tissues, tissue.spec)
-tpm.summary <- tpm.output$tpm.summary
-tpm.avg <- tpm.output$tpm.avg
-tpm.fit <- tpm.output$tpm.fit
-print(Sys.time() - start.time)
+jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
+for (jgene in hits){
+  tpm.sub <- subset(tpm.fit, gene_name == jgene)
+  jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
+  tpm.avg.sub <- subset(tpm.avg.filt, transcript_id == jtranscript)
+  exprs.plot <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == jgene & experiment == "rnaseq"))
+  lin.plot <- ggplot(tpm.avg.sub, aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + 
+    ggtitle(jgene) + geom_smooth(method = "lm") + ylab("Fractional promoter usage") + xlab("Relative amplitude")
+  multiplot(exprs.plot, lin.plot,  layout = jlayout)
+}
 
-pval.cutoff <- 0.05
-tpm.summary.filt <- subset(tpm.summary, pval <= pval.cutoff)
-sig.hits <- tpm.summary.filt$gene_name
+# plot pval distribution
+tpm.summary <- tpm.fit %>%
+  group_by(gene_name) %>%
+  do(SubsetMinPval(jdf = .))
 
-# plot examples or top hits
-jgene <- "Upp2"
-tpm.sub <- subset(tpm.fit, gene_name == jgene)
-jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
-upp2.altprom.plot <- ggplot(subset(tpm.avg, transcript_id == jtranscript), aes(y = tpm_norm.avg, x = relamp, label = tissue)) + 
-  geom_point() + geom_text() + ggtitle(jgene) + geom_smooth(method = "lm") + xlab("Relative amplitude") + ylab("Fraction promoter usage")
+print(ggplot(tpm.summary, aes(x = pval)) + geom_histogram(binwidth = 0.01) + ggtitle("Distribution of p-values from regression") + xlab("P-value") + ylab("Frequency"))
 
-# plot histogram of p-values
-altprom.histo <- ggplot(tpm.fit, aes(x = pval)) + geom_histogram(binwidth = 0.0075) + xlab("P-value")
-
-jlayout4 <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
-multiplot(altprom.histo, upp2.altprom.plot, layout = jlayout4)
+# load(file = "Robjs/tpm.merged.Robj", verbose = T)
+# 
+# # for annotating rhythmic genes
+# keys <- paste(dat.rhyth.relamp$tissue, dat.rhyth.relamp$gene, sep = ";")
+# relampdic <- hash(keys, dat.rhyth.relamp$relamp)
+# avgexprsdic <- hash(keys, dat.rhyth.relamp$int.rnaseq)
+# 
+# tissue.spec <- unique(subset(dat.rhyth.relamp, is.tiss.spec == TRUE)$gene)
+# filter.tissues <- c()
+# tpm.filt <- subset(tpm.merged, !tissue %in% filter.tissues & gene_name %in% tissue.spec)
+# 
+# # ~50 seconds
+# start.time <- Sys.time()
+# tpm.output <- CorrelatePromoterUsageToAmp(tpm.filt, dat.rhyth.relamp, avgexprsdic, filter.tissues, tissue.spec)
+# tpm.summary <- tpm.output$tpm.summary
+# tpm.avg <- tpm.output$tpm.avg
+# tpm.fit <- tpm.output$tpm.fit
+# print(Sys.time() - start.time)
+# 
+# pval.cutoff <- 0.05
+# tpm.summary.filt <- subset(tpm.summary, pval <= pval.cutoff)
+# sig.hits <- tpm.summary.filt$gene_name
+# 
+# # plot examples or top hits
+# jgene <- "Upp2"
+# tpm.sub <- subset(tpm.fit, gene_name == jgene)
+# jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
+# upp2.altprom.plot <- ggplot(subset(tpm.avg, transcript_id == jtranscript), aes(y = tpm_norm.avg, x = relamp, label = tissue)) + 
+#   geom_point() + geom_text() + ggtitle(jgene) + geom_smooth(method = "lm") + xlab("Relative amplitude") + ylab("Fraction promoter usage")
+# 
+# # plot histogram of p-values
+# altprom.histo <- ggplot(tpm.fit, aes(x = pval)) + geom_histogram(binwidth = 0.0075) + xlab("P-value")
+# 
+# jlayout4 <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# multiplot(altprom.histo, upp2.altprom.plot, layout = jlayout4)
 
 dev.off()
 
@@ -412,3 +480,40 @@ jlayout5 <- matrix(c(1, 4, 2, 5, 3, 6), 3, 2, byrow = TRUE)
 do.call(multiplot, c(exprs.plots, biplots, list(layout = jlayout5)))
 
 dev.off()
+
+
+# Regression model on DHS signal ------------------------------------------
+
+source("scripts/functions/LoadActivitiesLong.R")
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+
+figcount <- figcount + 1
+
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_DHS/MARA_dhs_gene_region_cutoff_filter/"
+zscores.path <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_DHS/MARA_dhs_gene_region_cutoff_filter/"
+act.dhs.long <- LoadActivitiesLongDhs(indir, act.file = "Activities", se.file = "StandardError")
+zscores <- read.table(zscores.path, header=FALSE, sep="\t", col.names = c("motif", "zscore"))
+zscores <- zscores[order(zscores$zscore, decreasing = TRUE), ]
+
+act.sum <- act.dhs.long %>%
+  group_by(gene) %>%
+  summarise(exprs.sum = sum(exprs))
+
+hits <- c("ONECUT1.2.p2", "NKX2.1.4.p2", "HNF4A_NR2F1.2.p2", "FOXA2.p3", "RFX1..5_RFXANK_RFXAP.p2")
+
+for (jgene in hits){
+  print(PlotActivitiesWithSE.dhs(subset(act.dhs.long, gene == jgene)) + theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0)))
+}
+
+dev.off()
+
+
+# Tars as an example of cooperative binding -------------------------------
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+figcount <- figcount + 1
+
+print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Tars" & experiment == "rnaseq")) + theme_gray(24))
+
+dev.off()
+
