@@ -30,16 +30,17 @@ PlotDiagnostics <- function(dat.tpm, dat.arrayrnaseq, jgene, jtranscript){
           ggtitle(paste(jgene, jtranscript)))
 }
 
-PlotDiagnostics2 <- function(dat.tpm, tpm.fit, dat.long, jgene, jtranscript){
+PlotDiagnostics2 <- function(dat.tpm, tpm.avg, dat.long, jgene, jtranscript){
   source('scripts/functions/PlotGeneAcrossTissues.R')
   # updated version plotting the linear trend
   dat.gene <- subset(dat.tpm, gene_name == jgene)
   dat.transcript <- subset(dat.gene, transcript_id == jtranscript)
+  tpm.avg.sub <- subset(tpm.avg, transcript_id == jtranscript)
   
   print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene), jtitle = paste(jgene, jtranscript, sep = "\n")))
   print(PlotTpmAcrossTissues(dat.gene, jtitle = paste("linear-scale", jgene, jtranscript, sep = "\n"), log2.transform=FALSE))
   print(PlotTpmAcrossTissues(dat.transcript, jtitle = paste("log-scale", jgene, jtranscript, sep = "\n"), log2.transform=TRUE))
-  print(ggplot(tpm.fit, aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + ggtitle(jgene) + geom_smooth(method = "lm"))
+  print(ggplot(tpm.avg.sub, aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + ggtitle(jgene) + geom_smooth(method = "lm"))
 }
 
 IsTissueSpecific2 <- function(jdf, pval.min = 1e-5, pval.max = 0.05, cutoff = 4.89){
