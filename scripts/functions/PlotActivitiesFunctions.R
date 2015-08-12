@@ -1,5 +1,8 @@
-PlotActivitiesWithSE.dhs <- function(dat, jtitle){
+PlotActivitiesWithSE.dhs <- function(dat, jtitle, sort.by.tissue = TRUE, by.var = "exprs"){
   # for DHS: we have no time, plot tissues on x axis
+  source("~/projects/tissue-specificity/scripts/functions/SortByTissue.R")
+  dat <- SortByTissue(dat, by.var = by.var)
+  
   jgene <- unique(dat$gene)
   if (missing(jtitle)){
     jtitle <- jgene
@@ -9,7 +12,9 @@ PlotActivitiesWithSE.dhs <- function(dat, jtitle){
     geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
     xlab("") +
     ylab("Activity") + 
-    ggtitle(jtitle)
+    ggtitle(jtitle) + 
+    theme_gray(24) +
+    theme(axis.text.x=element_text(angle=90, vjust = 0, hjust = 1))
 }
 
 PlotActivitiesWithSE <- function(dat, jtitle){

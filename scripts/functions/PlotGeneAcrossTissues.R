@@ -89,3 +89,15 @@ PlotGeneNormalized <- function(dat, jtitle){
     xlab("CT")
   return(p)
 }
+
+PlotEncodeRnaseq <- function(dat, jtitle, sort.by.tissue = TRUE, by.var = "tpm"){
+  source("~/projects/tissue-specificity/scripts/functions/SortByTissue.R")
+  dat <- SortByTissue(dat, by.var = by.var)
+  
+  if (missing(jtitle)){
+    jtitle <- unique(dat$gene)
+  }
+  p <- ggplot(dat, aes(x = tissue, y = tpm)) + geom_bar(stat = "identity") + ggtitle(jtitle) + xlab("Tissue") + ylab("TPM") +
+    theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+  return(p)
+}
