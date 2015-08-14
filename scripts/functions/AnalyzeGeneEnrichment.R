@@ -62,7 +62,7 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   # which.ontology: "BP", "MF", "CC"
   # node.size: prune GO hierarchy from terms which have less than node.size genes
   # FDR.cutoff: Fisher's exact test FDR-adjusted pvals cutoff to be significant
-  # write.path:
+  # write.path: if false jsut return object, if true also write to file given by write.path
   #
   # OUTPUT:
   # all.res: topGO results object
@@ -112,6 +112,11 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   
   all.res <- all.res[all.res$FDRadj <= FDR.cutoff, ]
   
+  # Add all genes that were considered (can recapitulate contTable) ---------
+  N.genes <- length(genes(GOdata))
+  
+  all.res$N.genes <- N.genes
+  
   # Write to file -----------------------------------------------------------
   if (write.path != FALSE){
     write.table(all.res, file = write.path, 
@@ -121,4 +126,114 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
                 col.names = TRUE) 
   }
   return(all.res)
+}
+
+
+
+
+EnrichmentBinnedToFile <- function(sorted.hits, bin.vector, fname.base, sym2entrez, entrez2GO){
+  # Take sorted hits and take top bin.vector[i] genes for enrichment
+  # to see how enrichment of certain processes evolve over time
+  # 
+  # sorted.hits: list of genes sorted by "relevance" 
+  # bin.vector: vector of integers to bin genes (take top 10 genes, then top 20 ... etc )
+  # fname.base: full path of filename, we will add _i_Ontology.GOtop to end of file
+  
+  for (i in bin.vector){
+    genes.hit <- sorted.hits[1:i]
+    for (onto in c("BP", "MF", "CC")){
+      fname.out <- paste0(fname.base, '_', i, '_', onto, '.GOtop')
+      res <- AnalyzeGeneEnrichment(sorted.hits, genes.hit, 
+                                   sym2entrez, entrez2GO, 
+                                   convert.sym.to.entrez = TRUE, 
+                                   which.ontology = onto, 
+                                   write.path = fname.out, 
+                                   node.size = 5, 
+                                   FDR.cutoff = 0.05)
+    }
+  }
+}
+
+GetGoObject <- function(genes.hit, genes.bg, onto, node.size, sym2entrez, entrez2GO){
+  # Run GO
+  
+}
+
+GetEnrichment <- function(sorted.hits, bin, onto, sym2entrez, entrez2GO){
+  # Same as getEnrichmentOverBins but for just one bin, that way we can parallelize it 
+  genes.hit <- sorted.hits[1:bin]  
+  res <- AnalyzeGeneEnrichment(sorted.hits, genes.hit, 
+                               sym2entrez, entrez2GO, 
+                               convert.sym.to.entrez = TRUE, 
+                               which.ontology = onto, 
+                               write.path = FALSE, 
+                               node.size = 5, 
+                               FDR.cutoff = 1)
+  return(res)
+}
+
+GetEnrichmentParallel <- function(sorted.hits, bin.vector, onto, sym2entrez, entrez2GO, n.cores = 4){
+  # Run GetEnrichment in parallel over all bins in bin.vector
+  library(parallel)
+  print("Running GO (~4 minutes)")
+  start <- Sys.time()
+  res.split <- mclapply(bin.vector, function(bin){
+    genes.hit <- sorted.hits[1:bin]
+    res <- AnalyzeGeneEnrichment(sorted.hits, genes.hit, 
+                                 sym2entrez, entrez2GO, 
+                                 convert.sym.to.entrez = TRUE, 
+                                 which.ontology = onto, 
+                                 write.path = FALSE, 
+                                 node.size = 5, 
+                                 FDR.cutoff = 1)
+    res$bin <- bin
+    return(res)
+  }, mc.cores = n.cores)
+  print(Sys.time() - start)
+  res.all <- do.call(rbind, res.split)
+  return(res.all)
+}
+
+GetEnrichmentOverBins <- function(sorted.hits, bin.vector, onto, go.terms, sym2entrez, entrez2GO){
+  # Iterate over bins and find enrichment for a specific go term
+  # track this enrichment as we sweep across the bins
+  
+  # init output matrix: 8 columns ("GO.ID", "Term", "Annotated", "Significant", "Expected", "classicFisher", "FDRadj", "N.genes", "bin")
+  res.out <- matrix(NA, nrow = length(bin.vector) * length(go.terms), ncol = 9)
+  colnames(res.out) <- c("GO.ID", "Term", "Annotated", "Significant", "Expected", "classicFisher", "FDRadj", "N.genes", "bin")
+  
+  rowcount <- 1
+  for (i in 1:length(bin.vector)){
+    n.genes <- bin.vector[i]
+    
+    genes.hit <- sorted.hits[1:n.genes]
+    
+    res <- AnalyzeGeneEnrichment(sorted.hits, genes.hit, 
+                                 sym2entrez, entrez2GO, 
+                                 convert.sym.to.entrez = TRUE, 
+                                 which.ontology = onto, 
+                                 write.path = FALSE, 
+                                 node.size = 5, 
+                                 FDR.cutoff = 1)
+    res.sub <- subset(res, Term %in% go.terms)
+    res.sub$bin <- n.genes
+    # make into matrix, makes life easier later
+    res.sub <- as.matrix(res.sub)
+    res.sub[, 3:ncol(res.sub)] <- as.numeric(res.sub[, 3:ncol(res.sub)])
+    
+    rowstart <- rowcount
+    rowend <- rowstart + length(go.terms) - 1
+    res.out[rowstart:rowend, ] <- res.sub
+    rowcount <- rowcount + length(go.terms)
+  }
+#     # make to dataframe and unfactor things
+#   res.out <- data.frame(noquote(res.out))
+#   for (cname in c("Annotated", "Significant", "Expected", "classicFisher", "FDRadj")){
+#     res.out[[cname]] <- as.numeric(res.out[[cname]])
+#   }
+#   res.out <- data.frame(res.out)
+#   for (cname in c("Annotated", "Significant", "Expected", "classicFisher", "FDRadj", "bin")){
+#     res.out[[cname]] <- as.numeric(as.character(res.out[[cname]]))
+#   }
+  return(res.out)
 }

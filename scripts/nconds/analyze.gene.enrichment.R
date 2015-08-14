@@ -20,9 +20,7 @@ fnames <- unlist(sapply(fnames, FixGeneName))
 genes.bg <- ReadListToVector("plots/nconds/7_conds_filtered_05_amp/filtered_genes.txt")
 genes.bg <- unlist(sapply(genes.bg, FixGeneName))
 
-# precalculation of these objs makes things go faster
-sym2entrez <- CreateSym2Entrez()
-entrez2GO <- CreateEntrez2GO()
+
 
 for (fname in fnames){
   genes.hit <- read.table(fname)
