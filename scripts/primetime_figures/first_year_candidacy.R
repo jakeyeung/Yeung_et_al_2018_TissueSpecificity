@@ -30,6 +30,7 @@ source("scripts/functions/LongToMat.R")
 source("scripts/functions/ShannonEntropy.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/GetActSvd.R")
+source("scripts/functions/SortByTissue.R")
 
 CorrelatePromoterUsageToAmp <- function(tpm.filt, dat.rhyth.relamp, avgexprsdic, filter.tissues, tissue.spec){
   source("scripts/functions/AlternativeFirstExonsFunctions.R")
@@ -177,7 +178,7 @@ dat.mag$tissue <- factor(dat.mag$tissue, dat.mag$tissue)
 
 # Plot spectral power
 ggplot(dat.mag, aes(x = tissue, y = power)) + geom_bar(stat = "identity") + xlab("Tissue") + ylab("Total 24-h amplitude") + 
-  theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0)) + ggtitle("Genome-wide circadian amplitude across tissues")
+  theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + ggtitle("Genome-wide circadian amplitude across tissues")
 
 # Plot heatmaps
 PlotRelampHeatmap(M.low, paste0("Low entropy genes.\nN=", length(low.entropy.genes)))
@@ -247,7 +248,7 @@ pairs.plot <- ggplot(subset(n.pairs.tissuecounts, n.tiss == 2), aes(x = tissues,
   ggtitle("Genes rhythmic in pairs of tissues") +
   ylab("Number of genes") +
   xlab("Number of tissues that is rhythmic for gene") +
-  theme(axis.text.x=element_text(angle=90,vjust = 0))
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 # multiplot(eigens$u.plot, eigens$v.plot, n.tissues.rhyth.plot, pairs.plot, layout = jlayout)
@@ -327,7 +328,7 @@ hnf4a.activity <- ggplot(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experimen
   ylab("Activity") + 
   ggtitle("Hnf4a motif activity") +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
-  theme(axis.text.x=element_text(angle=90,vjust = 0))
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
 hnf4a.exprs <- ggplot(subset(dat.long, gene == "Hnf4a" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
@@ -336,7 +337,7 @@ hnf4a.exprs <- ggplot(subset(dat.long, gene == "Hnf4a" & experiment == "rnaseq")
   ylab(label = "log2 mRNA expression") +
   xlab("CT") +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
-  theme(axis.text.x=element_text(angle=90,vjust = 0))
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
 hnf4a.regulated.examp <- ggplot(subset(dat.long, gene == "Upp2" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
@@ -345,7 +346,7 @@ hnf4a.regulated.examp <- ggplot(subset(dat.long, gene == "Upp2" & experiment == 
   ylab(label = "log2 mRNA expression") +
   xlab("CT") +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
-  theme(axis.text.x=element_text(angle=90,vjust = 0))
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
 mef2c.activity <- ggplot(subset(act.long, gene == "MEF2.A.B.C.D..p2" & experiment == "rnaseq"), aes(x = time, y = exprs)) +
   geom_line() +
@@ -355,7 +356,7 @@ mef2c.activity <- ggplot(subset(act.long, gene == "MEF2.A.B.C.D..p2" & experimen
   ylab("Activity") + 
   ggtitle("Mef2 motif activity") +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
-  theme(axis.text.x=element_text(angle=90,vjust = 0))
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
 mef2c.exprs <- ggplot(subset(dat.long, gene == "Mef2c" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
@@ -364,7 +365,7 @@ mef2c.exprs <- ggplot(subset(dat.long, gene == "Mef2c" & experiment == "rnaseq")
   ylab(label = "log2 mRNA expression") +
   xlab("CT")  +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
-  theme(axis.text.x=element_text(angle=90,vjust = 0))
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
 mef2c.regulated.examp <- ggplot(subset(dat.long, gene == "Des" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
   geom_line() + 
@@ -373,10 +374,42 @@ mef2c.regulated.examp <- ggplot(subset(dat.long, gene == "Des" & experiment == "
   ylab(label = "log2 mRNA expression") +
   xlab("CT")  +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
-  theme(axis.text.x=element_text(angle=90,vjust = 0))
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
+# mef2c.log2.activity <- ggplot(subset(act.long, gene == "MEF2.A.B.C.D..p2" & experiment == "rnaseq"), aes(x = time, y = 2 ^ exprs - 1)) +
+#   geom_line() +
+#   # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+#   facet_wrap(~tissue) + 
+#   xlab("CT") +
+#   ylab("Activity") + 
+#   ggtitle("Mef2 motif activity") +
+#   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
+#   theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+
+mef2c.log2.exprs <- ggplot(subset(dat.long, gene == "Mef2c" & experiment == "rnaseq"), aes(x = time, y = 2 ^ exprs - 1)) + 
+  geom_line() + 
+  facet_wrap(~tissue) +
+  ggtitle("Mef2c mRNA expression") + 
+  ylab(label = "mRNA expression (linear scale)") +
+  xlab("CT")  +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+
+mef2c.log2.regulated.examp <- ggplot(subset(dat.long, gene == "Des" & experiment == "rnaseq"), aes(x = time, y = 2 ^ exprs - 1)) + 
+  geom_line() + 
+  facet_wrap(~tissue) +
+  ggtitle("Des (regulated by Mef2c)") + 
+  ylab(label = "mRNA expression (linear scale)") +
+  xlab("CT")  +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+
+# jlayout3 <- matrix(c(1, 2, 3, 4, 5, 6, 0, 7, 8), 3, 3, byrow = TRUE)
 jlayout3 <- matrix(c(1, 2, 3, 4, 5, 6), 2, 3, byrow = TRUE)
-multiplot(hnf4a.activity, hnf4a.exprs, hnf4a.regulated.examp, mef2c.activity, mef2c.exprs, mef2c.regulated.examp, layout = jlayout3)
+multiplot(hnf4a.activity, hnf4a.exprs, hnf4a.regulated.examp, 
+          mef2c.activity, mef2c.log2.exprs, mef2c.log2.regulated.examp, 
+          # mef2c.log2.exprs, mef2c.log2.regulated.examp, 
+          layout = jlayout3)
 
 dev.off()
 
@@ -500,10 +533,35 @@ act.sum <- act.dhs.long %>%
   summarise(exprs.sum = sum(exprs))
 
 hits <- c("ONECUT1.2.p2", "NKX2.1.4.p2", "HNF4A_NR2F1.2.p2", "FOXA2.p3", "RFX1..5_RFXANK_RFXAP.p2")
+hits.rnaseq <- c("Onecut1", "Nkx2-1", "Hnf4a", "Foxa2", "Rfxank")
 
-for (jgene in hits){
-  print(PlotActivitiesWithSE.dhs(subset(act.dhs.long, gene == jgene)) + theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0)))
+# Load RNA-Seq from ENCODE data to plot side by side
+load("Robjs/dat.encode.Robj")
+
+dhsplots <- lapply(hits, function(jgene) {
+  dat.sub <- SortByTissue(subset(act.dhs.long, gene == jgene), by.var = "exprs")
+  return(PlotActivitiesWithSE.dhs(SortByTissue(subset(act.dhs.long, gene == jgene), by.var = "exprs")) + theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)))
+  })
+
+encodeplots <- lapply(hits.rnaseq, function(jgene) {
+  dat.sub <- SortByTissue(subset(dat.encode, gene == jgene & !tissue %in% c("Colon", "Duodenum", "Small Intestine", "Stomach", "Placenta")), by.var = "tpm")
+  m <- ggplot(dat.sub, aes(x = tissue, y = tpm)) + geom_bar(stat = "identity") + ggtitle(jgene) + xlab("") + ylab("TPM") +
+    theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+  return(m)
+})
+
+for (i in 1:length(hits)){
+  dhsgene <- hits[i]
+  encodegene <- hits.rnaseq[i]
+  dhsplot <- PlotActivitiesWithSE.dhs(subset(act.dhs.long, gene == dhsgene))
+  encodeplot <- PlotEncodeRnaseq(subset(dat.encode, gene == encodegene & !tissue %in% c("Colon", "Duodenum", "Small Intestine", "Stomach", "Placenta")))
+  
+  multiplot(dhsplot, encodeplot, cols = 2)
 }
+
+# for (jgene in hits){
+#   print(PlotActivitiesWithSE.dhs(subset(act.dhs.long, gene == jgene)) + theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)))
+# }
 
 dev.off()
 
