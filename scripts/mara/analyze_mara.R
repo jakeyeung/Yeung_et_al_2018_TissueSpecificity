@@ -82,7 +82,22 @@ PlotActivitiesWithSE(subset(act.long, gene == "MYOD1.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "NFIL3.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "FOXD3.p2"))
 
-# 
+
+# SVD on RNASeq motif activities ------------------------------------------
+
+act.rnaseq <- act.long %>%
+  subset(., experiment == "rnaseq") %>% 
+  group_by(tissue, gene) %>%
+  summarise(exprs.avg = mean(exprs))
+
+act.rnaseq.mat <- dcast(act.rnaseq, formula = gene ~ tissue, value.var = "exprs.avg")
+rownames(act.rnaseq.mat) <- act.rnaseq.mat$gene
+act.rnaseq.mat$gene <- NULL
+
+act.svd <- prcomp(t(scale(t(act.rnaseq.mat), center = TRUE, scale = FALSE)), center = FALSE, scale. = FALSE)
+
+screeplot(act.svd, type = "lines")
+biplot(act.svd, choices = c(1,2))
 
 # Which ones are most rhythmic? -------------------------------------------
 act.fit <- act.long %>%
