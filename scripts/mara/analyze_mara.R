@@ -10,6 +10,7 @@ source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
+source("scripts/functions/RemoveP2Name.R")
 
 library(dplyr)  # problems with plyr old package
 library(reshape2)
@@ -91,13 +92,19 @@ act.rnaseq <- act.long %>%
   summarise(exprs.avg = mean(exprs))
 
 act.rnaseq.mat <- dcast(act.rnaseq, formula = gene ~ tissue, value.var = "exprs.avg")
+act.rnaseq.mat$gene <- sapply(as.character(act.rnaseq.mat$gene), RemoveP2Name)
 rownames(act.rnaseq.mat) <- act.rnaseq.mat$gene
 act.rnaseq.mat$gene <- NULL
 
 act.svd <- prcomp(t(scale(t(act.rnaseq.mat), center = TRUE, scale = FALSE)), center = FALSE, scale. = FALSE)
 
-screeplot(act.svd, type = "lines")
-biplot(act.svd, choices = c(1,2))
+frac.var <- act.svd$sdev ^ 2 / sum(act.svd$sdev ^ 2)
+plot(frac.var, type = 'o')
+choice1 <- 1
+choice2 <- 2
+jxlab <- paste0("PC1 (", signif(frac.var[choice1], 2), ") of total variance")
+jylab <- paste0("PC2 (", signif(frac.var[choice2], 2), ") of total variance")
+biplot(act.svd, choices = c(choice1,choice2), cex = c(1,1.5), cex.lab = 2, xlab = jxlab, ylab = jylab)
 
 # Which ones are most rhythmic? -------------------------------------------
 act.fit <- act.long %>%
