@@ -8,8 +8,20 @@ PlotAmpPhase <- function(dat){
     geom_point() + 
     geom_text(aes(x = amp, y = phase, size = amp)) + 
     coord_polar(theta = "y") +
-    xlab("Phase") +
-    ylab("Amp") +
+    ylab("Phase") +
+    xlab("Amp") +
+    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+}
+
+PlotAmpPhaseTissue <- function(dat, ampsize = 5){
+  # Expect amp and phase in data frame column names.
+  # label as tissues
+  ggplot(data = dat, aes(x = amp, y = phase, label = tissue)) + 
+    geom_point() + 
+    geom_text(aes(x = amp, y = phase), size = ampsize) + 
+    coord_polar(theta = "y") +
+    ylab("Phase") +
+    xlab("Amp") +
     scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
 }
 
@@ -562,7 +574,9 @@ ConvertArgToPhase <- function(phase.rads, omega){
   return(phase)
 }
 
-PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My title", ylab = "Amplitude of activity", xlab = "Phase of activity (CT)", ampscale = 2){
+PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, 
+                         title = "My title", xlab = "Amplitude of activity", ylab = "Phase of activity (CT)", 
+                         ampscale = 2, constant.amp = FALSE){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave
@@ -571,14 +585,20 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My t
   df <- data.frame(amp = Mod(vec.complex) * ampscale,
                    phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
                    label = labels)
+  
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
     geom_point(size = 0.5) +
     coord_polar(theta = "y") + 
     xlab(xlab) +
     ylab(ylab) +
-    geom_text(aes(x = amp, y = phase, size = amp), vjust = 0) +
     ggtitle(title) +
     scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+  if (constant.amp != FALSE){
+    m <- m + geom_text(aes(x = amp, y = phase), vjust = 0, size = constant.amp)
+  } else {
+    m <- m + geom_text(aes(x = amp, y = phase, size = amp), vjust = 0)
+  }
+  return(m)
 }
 
 PlotComplexLong <- function(dat.complex, omega, jtitle = "Title", jxlab = "xlab", jylab = "ylab", ampscale = 2){
@@ -629,12 +649,12 @@ PlotEigensamp <- function(svd.obj, comp, omega = 2 * pi / 24, rotate=TRUE){
 
 # Heatmaps ----------------------------------------------------------------
 
-PlotRelampHeatmap <- function(M, jtitle = "Plot Title"){
+PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellowstart = 0.151, dist.method = "manhattan"){
   library(gplots)
   my.palette <- colorRampPalette(c("black", "yellow"))(n = 300)
   # # (optional) defines the color breaks manually for a "skewed" color transition
-  col.breaks = c(seq(0, 0.15, length=150),  # black
-                 seq(0.151, 1, length=151))  # yellow
+  col.breaks = c(seq(0, blackend, length=150),  # black
+                 seq(yellowstart, 1, length=151))  # yellow
   # par(mar=c(17,8,4,8)+0.1) 
   par(mar=c(5,4,4,2)+0.1)
   heatmap.2(as.matrix(M), 
@@ -649,5 +669,6 @@ PlotRelampHeatmap <- function(M, jtitle = "Plot Title"){
             labRow=NA, 
             dendrogram = "both",
             main = jtitle,
-            margins=c(8,30))
+            margins=c(8,30),
+            distfun = function(x) dist(x, method = dist.method))
 }
