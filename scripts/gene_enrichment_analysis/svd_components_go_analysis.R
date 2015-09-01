@@ -115,29 +115,37 @@ for (comp in comps){
 
 # Find most "significant" modules -----------------------------------------
 
-# res.all$classicFisher <- as.numeric(res.all$classicFisher)
-# res.all$log10pval <- -log10(res.all$classicFisher)
-# 
-# res.all$bin <- factor(res.all$bin)
-# 
-# res.mat <- dcast(res.all, GO.ID + Term ~ bin, value.var = "log10pval")
-# # res.mat <- dcast(res.all, GO.ID ~ bin, value.var = "log10pval")
-# 
-# rownames(res.mat) <- make.names(res.mat$Term, unique = TRUE)
-# 
-# res.mat <- res.mat[, 3:ncol(res.mat)]
-# 
-# # res.mat <- res.mat[which(rowSums(res.mat) == 0), ]
-# 
-# res.pca <- prcomp(t(res.mat), center = FALSE)
-# 
-# biplot(res.pca)
+load("Robjs/GO_objs/GO_low_entropy_module_1.manual.Robj", verbose = T)
+load("Robjs/GO_high_entropy_module_1.Robj", verbose = T)
+res.all$classicFisher <- as.numeric(res.all$classicFisher)
+res.all$log10pval <- -log10(res.all$classicFisher)
+
+res.all$bin <- factor(res.all$bin)
+
+res.mat <- dcast(res.all, GO.ID + Term ~ bin, value.var = "log10pval")
+# res.mat <- dcast(res.all, GO.ID ~ bin, value.var = "log10pval")
+
+rownames(res.mat) <- make.names(res.mat$Term, unique = TRUE)
+
+res.mat <- res.mat[, 3:ncol(res.mat)]
+
+# res.mat <- res.mat[which(rowSums(res.mat) == 0), ]
+
+res.pca <- prcomp(t(res.mat), center = FALSE)
+
+biplot(res.pca)
 
 # Plot for circadian and cellular response --------------------------------
 # 
-# ggplot(subset(res.all, Term %in% c("response to organic substance", "single-organism metabolic process")), 
-#        aes(x = bin, y = log10pval, group = Term, colour = Term, fill = Term)) + 
-#   geom_point() + geom_line()
+
+ggplot(subset(res.all, Term %in% c("response to organic substance", "single-organism metabolic process")), 
+       aes(x = bin, y = log10pval, group = Term, colour = Term, fill = Term)) + 
+  geom_point() + geom_line()
+
+
+ggplot(subset(res.all, Term %in% c("rhythmic process", "cellular response to chemical stimulus", "cellular catabolic process")), 
+       aes(x = bin, y = log10pval, group = Term, colour = Term, fill = Term)) + 
+  geom_point() + geom_line()
 
 # # Run Fisher's exact test individually ------------------------------------
 # 
