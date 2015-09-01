@@ -383,7 +383,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
   return(dat.complex)
 }
 
-GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase"){
+GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -393,15 +393,48 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase")
   var.explained <- s.complex$d ^ 2 / sum(s.complex$d ^ 2)
   eigengene <- s.complex$v[, comp]
   eigensamp <- s.complex$u[, comp]
-  # rotate to phase of largest magnitude in sample of eigengene
+  if (eigenval){
+    eigensamp <- eigensamp * s.complex$d[comp]
+  }
+  # BEGIN: rotate to phase of largest magnitude in sample of eigengene
   phase.reference <- Arg(eigengene[which(Mod(eigengene) == max(Mod(eigengene)))])
   rotate.factor <- complex(modulus = 1, argument = phase.reference)
   # rotate eigengene by -phase ref
   eigengene <- eigengene * Conj(rotate.factor)
   # rotate eigensamp by +phase ref
   eigensamp <- eigensamp * Conj(rotate.factor)
-  v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, title = paste0("Tissue Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)  
-  u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)
+  # END: rotate to phase of largest magnitude in sample of eigengene
+  
+  # BEGIN: adjust so largest magnitude in sample of eigengene = 1
+  # amp.factor: increases half amplitude to full amplitude. Makes life interpretable.
+  if (adj.mag){
+    mag.reference <- Mod(eigengene[which(Mod(eigengene) == max(Mod(eigengene)))])
+    eigengene <- eigengene / mag.reference
+    eigensamp <- eigensamp * mag.reference
+  }
+  # END: adjust largest magnitude to 1
+
+  # BEGIN: optinally remove P2 from motif names
+  if (pretty.names){
+    source("~/projects/tissue-specificity/scripts/functions/RemoveP2Name.R")
+    rownames(s.complex$u) <- sapply(rownames(s.complex$u), RemoveP2Name)
+  }
+  # END
+  
+  # BEGIN: for gene module: only label the top label.n genes
+  names(eigensamp) <- rownames(s.complex$u)
+  eigensamp.sorted <- eigensamp[order(Mod(eigensamp), decreasing = TRUE)]
+  names(eigensamp.sorted)[(label.n + 1):length(eigensamp.sorted)] <- ""
+  # END
+
+  gene.labels <- rownames(s.complex$u)
+  v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, 
+                         title = paste0("Tissue Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), 
+                         xlab = xlab, ylab = ylab, ampscale = 1)  
+  # u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)
+  u.plot <- PlotComplex2(eigensamp.sorted, labels = names(eigensamp.sorted), omega = omega, 
+                         title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), 
+                         xlab = xlab, ylab = ylab, ampscale = 2)
   return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
 }
 
