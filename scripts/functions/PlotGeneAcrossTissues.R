@@ -7,6 +7,9 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE){
   }
   if (convert.linear){
     dat$exprs <- (2 ^ dat$exprs) - 1 
+    jylab <- "mRNA expression (linear scale)"
+  } else {
+    jylab <- "mRNA expression (log2 scale)"
   }
   m <- ggplot(dat, aes(x = time, y = exprs,
                        group = experiment, 
@@ -15,20 +18,27 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE){
     geom_line() + 
     facet_wrap(~tissue) +
     ggtitle(jtitle) + 
-    ylab(label = "log2 expression")
+    ylab(label = jylab)
   return(m)
 }
 
-PlotGeneAcrossTissuesRnaseq <- function(dat, jtitle){
+PlotGeneAcrossTissuesRnaseq <- function(dat, jtitle, convert.linear = FALSE){
   library(ggplot2)
   if (missing(jtitle)){
     jtitle = unique(dat$gene)
   }
+  if (convert.linear){
+    dat$exprs <- (2 ^ dat$exprs) - 1 
+    jylab <- "mRNA expression (linear scale)"
+  } else {
+    jylab <- "mRNA expression (log2 scale)"
+  }
+  
   m <- ggplot(dat, aes(x = time, y = exprs)) + 
     geom_line() + 
     facet_wrap(~tissue) +
     ggtitle(jtitle) + 
-    ylab(label = "log2 mRNA expression") +
+    ylab(label = jylab) +
     xlab("CT") +
     scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
     theme(axis.text.x=element_text(angle=90,vjust = 0))
@@ -97,7 +107,9 @@ PlotEncodeRnaseq <- function(dat, jtitle, sort.by.tissue = TRUE, by.var = "tpm")
   if (missing(jtitle)){
     jtitle <- unique(dat$gene)
   }
-  p <- ggplot(dat, aes(x = tissue, y = tpm)) + geom_bar(stat = "identity") + ggtitle(jtitle) + xlab("Tissue") + ylab("TPM") +
-    theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+  p <- ggplot(dat, aes(x = tissue, y = tpm)) + geom_bar(stat = "identity") + ggtitle(jtitle) + xlab("") + ylab("Gene expression (TPM)") + 
+    theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1),
+                         panel.grid.major = element_blank(),
+                         panel.grid.minor = element_blank())
   return(p)
 }
