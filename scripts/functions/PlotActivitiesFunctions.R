@@ -13,23 +13,34 @@ PlotActivitiesWithSE.dhs <- function(dat, jtitle, sort.by.tissue = TRUE, by.var 
     xlab("") +
     ylab("Activity") + 
     ggtitle(jtitle) + 
-    theme_gray(24) +
-    theme(axis.text.x=element_text(angle=90, vjust = 0, hjust = 1))
+    theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1),
+                         panel.grid.major = element_blank(),
+                         panel.grid.minor = element_blank())
 }
 
-PlotActivitiesWithSE <- function(dat, jtitle){
+PlotActivitiesWithSE <- function(dat, jtitle, showSE = TRUE){
   jgene <- unique(dat$gene)
   if (missing(jtitle)){
     jtitle <- jgene
   }
-  ggplot(dat, 
-         aes(x = time, y = exprs, group = experiment, colour = experiment)) +
-    geom_line() +
-    geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
-    facet_wrap(~tissue) + 
-    xlab("CT") +
-    ylab("Activity") + 
-    ggtitle(jtitle)
+  if (showSE){
+    ggplot(dat, 
+           aes(x = time, y = exprs, group = experiment, colour = experiment)) +
+      geom_line() +
+      geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+      facet_wrap(~tissue) + 
+      xlab("CT") +
+      ylab("Activity") + 
+      ggtitle(jtitle)
+  } else {
+    ggplot(dat, 
+           aes(x = time, y = exprs)) +
+      geom_line() +
+      facet_wrap(~tissue) + 
+      xlab("CT") +
+      ylab("Activity") + 
+      ggtitle(jtitle)
+  }
 }
 
 PlotMeanActivitiesWithSE <- function(dat){
