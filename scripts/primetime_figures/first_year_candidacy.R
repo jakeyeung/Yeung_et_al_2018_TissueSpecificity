@@ -113,20 +113,27 @@ n.genes <- nrow(dat.entropy)
 low.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy), ]$gene, n = N)
 high.entropy.genes <- head(dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]$gene, n = N)
 med.entropy.genes <- dat.entropy[order(dat.entropy$entropy), ]$gene[N:(n.genes - N)]
+lowmed.entropy.genes <- c(as.character(low.entropy.genes), as.character(med.entropy.genes))
 
 s.low.norm <- SvdOnComplex(subset(dat.complex, gene %in% low.entropy.genes), value.var = "exprs.adj")
 s.high.norm <- SvdOnComplex(subset(dat.complex, gene %in% high.entropy.genes), value.var = "exprs.adj")
+s.lowmed.norm <- SvdOnComplex(subset(dat.complex, gene %in% lowmed.entropy.genes), value.var = "exprs.adj")
 
 jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 
-eigens.high.norm <- GetEigens(s.high.norm, period = 24, comp = 1)
+eigens.high.norm <- GetEigens(s.high.norm, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE)
 eigens.high.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Dbp" & experiment == "rnaseq"))
-eigens.low1.norm <- GetEigens(s.low.norm, period = 24, comp = 1)
+eigens.low1.norm <- GetEigens(s.low.norm, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE)
 eigens.low1.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Rgs16" & experiment == "rnaseq"))
-eigens.low2.norm <- GetEigens(s.low.norm, period = 24, comp = 2)
+eigens.low2.norm <- GetEigens(s.low.norm, period = 24, comp = 2, eigenval = TRUE, adj.mag = TRUE)
 eigens.low2.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Myh7" & experiment == "rnaseq"))
-eigens.low3.norm <- GetEigens(s.low.norm, period = 24, comp = 3)
+eigens.low3.norm <- GetEigens(s.low.norm, period = 24, comp = 3, eigenval = TRUE, adj.mag = TRUE)
 eigens.low3.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ms4a1" & experiment == "rnaseq"))
+eigens.lowmed1.norm <- GetEigens(s.low.norm, period = 24, comp = 1, eigenval = TRUE, adj.mag = TRUE)
+eigens.lowmed2.norm <- GetEigens(s.low.norm, period = 24, comp = 2, eigenval = TRUE, adj.mag = TRUE)
+eigens.lowmed3.norm <- GetEigens(s.low.norm, period = 24, comp = 3, eigenval = TRUE, adj.mag = TRUE)
+eigens.lowmed4.norm <- GetEigens(s.low.norm, period = 24, comp = 4, eigenval = TRUE, adj.mag = TRUE)
+# eigens.lowmed.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ms4a1" & experiment == "rnaseq"))
 # multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot, eigens.high.examp, 
 #           eigens.low1.norm$v.plot, eigens.low1.norm$u.plot, eigens.low1.examp, 
 #           layout = jlayout)
@@ -134,6 +141,10 @@ multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot,
           eigens.low1.norm$v.plot, eigens.low1.norm$u.plot, layout = jlayout)
 multiplot(eigens.low2.norm$v.plot, eigens.low2.norm$u.plot, 
           eigens.low3.norm$v.plot, eigens.low3.norm$u.plot, layout = jlayout)
+multiplot(eigens.lowmed1.norm$v.plot, eigens.lowmed1.norm$u.plot, 
+          eigens.lowmed2.norm$v.plot, eigens.lowmed2.norm$u.plot, layout = jlayout)
+multiplot(eigens.lowmed3.norm$v.plot, eigens.lowmed3.norm$u.plot, 
+          eigens.lowmed4.norm$v.plot, eigens.lowmed4.norm$u.plot, layout = jlayout)
 multiplot(eigens.high.examp, eigens.low1.examp, eigens.low2.examp, eigens.low3.examp, layout = jlayout)
 
 dev.off()
@@ -148,6 +159,8 @@ filt.tiss <- c()
 # dat.fit.relmap, dat.complex obtained above
 M.low <- LongToMat(subset(dat.complex, gene %in% low.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj.norm")
 M.high <- LongToMat(subset(dat.complex, gene %in% high.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj.norm")
+M.high.notnorm <- LongToMat(subset(dat.complex, gene %in% high.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj")
+M.low.notnorm <- LongToMat(subset(dat.complex, gene %in% low.entropy.genes & !tissue %in% filt.tiss), value.var = "mod.exprs.adj")
 
 dat.complex$real <- Re(dat.complex$exprs.adj)
 dat.complex$imag <- Im(dat.complex$exprs.adj)
@@ -177,16 +190,24 @@ dat.mag$tissue <- factor(dat.mag$tissue, dat.mag$tissue)
 # plot(hc, main = "Clustering: fourier T=24h")
 
 # Plot spectral power
-ggplot(dat.mag, aes(x = tissue, y = power)) + geom_bar(stat = "identity") + xlab("Tissue") + ylab("Total 24-h amplitude") + 
-  theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + ggtitle("Genome-wide circadian amplitude across tissues")
+ggplot(dat.mag, aes(x = tissue, y = power)) + geom_bar(stat = "identity") + xlab("Tissue") + ylab("Amplitude of log2 expression") + 
+  theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + ggtitle("Genome-wide circadian amplitude across tissues") + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 
 # Plot heatmaps
-PlotRelampHeatmap(M.low, paste0("Low entropy genes.\nN=", length(low.entropy.genes)))
-PlotRelampHeatmap(M.high, paste0("High entropy genes.\nN=", length(high.entropy.genes)))
+PlotRelampHeatmap(M.low, paste0("Low entropy genes.\nN=", length(low.entropy.genes)), blackend = 0.085, yellowstart = 0.086)
+PlotRelampHeatmap(M.high, paste0("High entropy genes.\nN=", length(high.entropy.genes)), blackend = 0.085, yellowstart = 0.086)
+PlotRelampHeatmap(M.low.notnorm, paste0("Low entropy genes.\nN=", length(low.entropy.genes)), blackend = 0.15, yellowstart = 0.151)
+PlotRelampHeatmap(M.high.notnorm, paste0("High entropy genes.\nN=", length(high.entropy.genes)), blackend = 0.15, yellowstart = 0.151)
+PlotRelampHeatmap(M.low.notnorm, paste0("Low entropy genes.\nN=", length(low.entropy.genes)), blackend = 0.085, yellowstart = 0.086)
+PlotRelampHeatmap(M.high.notnorm, paste0("High entropy genes.\nN=", length(high.entropy.genes)), blackend = 0.085, yellowstart = 0.086)
 
 # Plot entropy distributions
 plot(density(dat.entropy$entropy[which(!is.na(dat.entropy$entropy))]), 
-     main = "Distribution of entropy in rhythmic genes", cex.main = 1.75, cex.lab = 1.75, cex.axis = 1.75)
+     main = "Distribution of entropy in rhythmic genes", cex.main = 1.75, cex.lab = 1.75, cex.axis = 1.75,
+     xlab = "Bits")
 # draw 2 vertical lines for specifying tissue-spec to tissue-wide
 abline(v = sort(dat.entropy$entropy)[N])
 abline(v = sort(dat.entropy$entropy)[length(dat.entropy$entropy) - N])
@@ -204,9 +225,9 @@ act.long <- LoadActivitiesLong(indir)
 
 act.svd <- GetActSvd(act.long, pval.adj.cutoff = 0.0005)
 
-eigens <- GetEigens(act.svd, comp = 1)
-eigens2 <- GetEigens(act.svd, comp = 2)
-eigens3 <- GetEigens(act.svd, comp = 3)
+eigens <- GetEigens(act.svd, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, pretty.names = TRUE)
+eigens2 <- GetEigens(act.svd, comp = 2, label.n = 15, eigenval = TRUE, adj.mag = TRUE, pretty.names = TRUE)
+eigens3 <- GetEigens(act.svd, comp = 3, label.n = 15, eigenval = TRUE, adj.mag = TRUE, pretty.names = TRUE)
 
 # now show some tissue-specific results
 # code from find_oscillating_genes.pairs.R
@@ -319,6 +340,17 @@ dev.off()
 pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
 figcount <- figcount + 1
 
+# ebox.activity <- ggplot(subset(act.long, gene == "bHLH_family.p2" & experiment == "array"), 
+#                          aes(x = time, y = exprs)) +
+#   geom_line() +
+#   geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+#   facet_wrap(~tissue) + 
+#   xlab("CT") +
+#   ylab("Activity") + 
+#   ggtitle("BMAL1 motif activity") +
+#   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
+#   theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+
 hnf4a.activity <- ggplot(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experiment == "rnaseq"), 
                          aes(x = time, y = exprs)) +
   geom_line() +
@@ -326,7 +358,7 @@ hnf4a.activity <- ggplot(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experimen
   facet_wrap(~tissue) + 
   xlab("CT") +
   ylab("Activity") + 
-  ggtitle("Hnf4a motif activity") +
+  ggtitle("HNF4A motif activity") +
   scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
   theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
 
@@ -431,7 +463,10 @@ for (jgene in hits){
   tpm.avg.sub <- subset(tpm.avg.filt, transcript_id == jtranscript)
   exprs.plot <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == jgene & experiment == "rnaseq"))
   lin.plot <- ggplot(tpm.avg.sub, aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + 
-    ggtitle(jgene) + geom_smooth(method = "lm") + ylab("Fractional promoter usage") + xlab("Relative amplitude")
+    ggtitle(jgene) + geom_smooth(method = "lm") + ylab("Fractional promoter usage") + xlab("Relative amplitude") + theme_bw(24) +
+    theme(aspect.ratio=1,
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
   multiplot(exprs.plot, lin.plot,  layout = jlayout)
 }
 
@@ -440,7 +475,11 @@ tpm.summary <- tpm.fit %>%
   group_by(gene_name) %>%
   do(SubsetMinPval(jdf = .))
 
-print(ggplot(tpm.summary, aes(x = pval)) + geom_histogram(binwidth = 0.01) + ggtitle("Distribution of p-values from regression") + xlab("P-value") + ylab("Frequency"))
+print(ggplot(tpm.summary, aes(x = pval)) + geom_histogram(binwidth = 0.01) + ggtitle("Distribution of p-values") + xlab("P-value") + ylab("Frequency") +
+        theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + 
+        theme(aspect.ratio=1,
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank()))
 
 # load(file = "Robjs/tpm.merged.Robj", verbose = T)
 # 
@@ -540,20 +579,19 @@ load("Robjs/dat.encode.Robj")
 
 dhsplots <- lapply(hits, function(jgene) {
   dat.sub <- SortByTissue(subset(act.dhs.long, gene == jgene), by.var = "exprs")
-  return(PlotActivitiesWithSE.dhs(SortByTissue(subset(act.dhs.long, gene == jgene), by.var = "exprs")) + theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)))
+  return(PlotActivitiesWithSE.dhs(SortByTissue(subset(act.dhs.long, gene == jgene), by.var = "exprs")))
   })
 
 encodeplots <- lapply(hits.rnaseq, function(jgene) {
   dat.sub <- SortByTissue(subset(dat.encode, gene == jgene & !tissue %in% c("Colon", "Duodenum", "Small Intestine", "Stomach", "Placenta")), by.var = "tpm")
-  m <- ggplot(dat.sub, aes(x = tissue, y = tpm)) + geom_bar(stat = "identity") + ggtitle(jgene) + xlab("") + ylab("TPM") +
-    theme_gray(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+  m <- ggplot(dat.sub, aes(x = tissue, y = tpm)) + geom_bar(stat = "identity") + ggtitle(jgene) + xlab("") + ylab("TPM")
   return(m)
 })
 
 for (i in 1:length(hits)){
   dhsgene <- hits[i]
   encodegene <- hits.rnaseq[i]
-  dhsplot <- PlotActivitiesWithSE.dhs(subset(act.dhs.long, gene == dhsgene))
+  dhsplot <- PlotActivitiesWithSE.dhs(subset(act.dhs.long, gene == dhsgene)) 
   encodeplot <- PlotEncodeRnaseq(subset(dat.encode, gene == encodegene & !tissue %in% c("Colon", "Duodenum", "Small Intestine", "Stomach", "Placenta")))
   
   multiplot(dhsplot, encodeplot, cols = 2)
@@ -571,7 +609,231 @@ dev.off()
 pdf(file.path(outdir, paste0("first_year_candidacy_plots_figure", figcount, ".pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
 figcount <- figcount + 1
 
-print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Tars" & experiment == "rnaseq")) + theme_gray(24))
+print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Tars" & experiment == "rnaseq")) + theme_bw(24))
+
+dev.off()
+
+
+# Supplementary figures ---------------------------------------------------
+
+act.complex <- TemporalToFrequencyDatLong(act.long, period = 24, n = 8, interval = 6, add.entropy.method = "array")
+act.complex$exprs.adj <- act.complex$exprs.transformed * act.complex$frac.weight
+act.complex$mod.exprs <- Mod(act.complex$exprs.transformed)
+act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
+
+print(head(act.complex))
+
+print(unique(act.complex$gene))
+
+
+print("Printing supplemental figures")
+
+pdf(file.path(outdir, paste0("first_year_candidacy_plots_supplemental_figure.bugged.pdf")), height = 8, width = 10.245, paper = "special", onefile = TRUE)
+
+print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Nr1d1" & experiment == "rnaseq")) + theme_bw(24))
+print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Rgs16" & experiment == "rnaseq")) + theme_bw(24))
+print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Leo1" & experiment == "rnaseq")) + theme_bw(24))
+print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Rasl11a" & experiment == "rnaseq")) + theme_bw(24))
+
+print(ggplot(subset(act.long, gene == "HBP1_HMGB_SSRP1_UBTF.p2" & experiment == "array"), 
+                         aes(x = time, y = exprs)) +
+  geom_line() +
+  # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+  facet_wrap(~tissue) + 
+  xlab("CT") +
+  ylab("Activity") + 
+  ggtitle("HBP1 motif activity") +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) + theme_bw(24) +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)))
+
+print(ggplot(subset(act.long, gene == "RORA.p2" & experiment == "array"), 
+             aes(x = time, y = exprs)) +
+        geom_line() +
+        # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+        facet_wrap(~tissue) + 
+        xlab("CT") +
+        ylab("Activity") + 
+        ggtitle("RORA motif activity") +
+        scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) + theme_bw(24)  +
+        theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)))
+
+print(ggplot(subset(act.long, gene == "HSF1.2.p2" & experiment == "array"), 
+             aes(x = time, y = exprs)) +
+        geom_line() +
+        # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+        facet_wrap(~tissue) + 
+        xlab("CT") +
+        ylab("Activity") + 
+        ggtitle("HSF1 motif activity") +
+        scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) + theme_bw(24) +
+        theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)))
+
+print(ggplot(subset(act.long, gene == "SRF.p3" & experiment == "array"), 
+             aes(x = time, y = exprs)) +
+        geom_line() +
+        # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+        facet_wrap(~tissue) + 
+        xlab("CT") +
+        ylab("Activity") + 
+        ggtitle("SRF motif activity") +
+        scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +  theme_bw(24) +
+        theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)))
+
+
+print(PlotComplex2(subset(act.complex, gene == "HSF1.2.p2")$exprs.adj, labels = subset(act.complex, gene == "HSF1.2.p2")$tissue, title = "Activity of HSF1 motif") + theme_gray(24))
+print(PlotComplex2(subset(act.complex, gene == "HBP1_HMGB_SSRP1_UBTF.p2")$exprs.adj, labels = subset(act.complex, gene == "HBP1_HMGB_SSRP1_UBTF.p2")$tissue, title = "Activity of HBP1 motif") + theme_gray(24))
+print(PlotComplex2(subset(act.complex, gene == "RORA.p2")$exprs.adj, labels = subset(act.complex, gene == "RORA.p2")$tissue, title = "Activity of RORA motif") + theme_gray(24))
+print(PlotComplex2(subset(act.complex, gene == "SRF.p3")$exprs.adj, labels = subset(act.complex, gene == "SRF.p3")$tissue, title = "Activity of SRF motif") + theme_gray(24))
+
+
+dev.off()
+
+
+# Supplemental for presentation -------------------------------------------
+
+# # Plot ddc in a way that shows rhythms clearly
+# pdf("plots/primetime_plots2/ddc_array.pdf")
+# print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ddc" & experiment == "array" & tissue %in% c("Adr", "BS", "Hypo", "Kidney", "Liver", "Cere")))+ theme_bw(36))
+# dev.off()("plots/primetime_plots2/ddc_array.pdf")
+# 
+# # Plot first eigensamp for high entropy to show decay
+pdf("plots/primetime_plots2/amplitudes_module1_high_entropy.pdf")
+module.sorted <- eigens.high.norm$eigensamp[order(Mod(eigens.high.norm$eigensamp), decreasing = TRUE)]
+module.sorted <- module.sorted[1:250]
+mygenes <- names(module.sorted)[1:15]
+mygenes <- c(mygenes, c("Per1", "Cry1", "Clock" , "Rorc", "Tspan4", "Por", "Leo1", "Rasl11a", "Cirbp", "Fkbp5", "Cldn1"))
+mygenes.i <- which(names(module.sorted) %in% mygenes)
+mygenes <- names(module.sorted)[mygenes.i]
+names(module.sorted) <- sapply(names(module.sorted), function(s) s <- " ")
+names(module.sorted)[mygenes.i] <- mygenes
+library(wordcloud)  # for showing text without jumbling
+textplot(x = 1:length(module.sorted), y = Mod(module.sorted), words = names(module.sorted), cex = 1.1, xlab = "Index", ylab = "Amplitude", cex.lab = 1.5)
+dev.off()
+
+
+# Plot Hn4a and Rora motifs -----------------------------------------------
+pdf("plots/primetime_plots2/hnf4a_rora_activities.pdf")
+
+jgene <- "bHLH_family.p2"
+jgene.name <- "E-box motif"
+act.sub <- subset(act.long, gene == jgene)
+act.scaled <- act.sub %>%
+  group_by(tissue) %>%
+  mutate(exprs.scaled = scale(exprs, scale = FALSE, center = TRUE))
+
+jgene.activity <- ggplot(act.scaled, aes(x = time, y = exprs.scaled, group = experiment)) +
+  geom_line() +
+  # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+  facet_wrap(~tissue) + 
+  xlab("CT") +
+  ylab("Activity (centered)") + 
+  ggtitle(jgene.name) +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + 
+  theme_bw(24)
+print(jgene.activity)
+
+hnf4a.activity <- ggplot(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experiment == "rnaseq"), 
+                        aes(x = time, y = exprs)) +
+  geom_line() +
+  # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+  facet_wrap(~tissue) + 
+  xlab("CT") +
+  ylab("Activity") + 
+  ggtitle("HNF4A motif activity") +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + 
+  theme_bw(24)
+print(hnf4a.activity)
+
+hnf1a.activity <- ggplot(subset(act.long, gene == "HNF1A.p2" & experiment == "rnaseq"), 
+                         aes(x = time, y = exprs)) +
+  geom_line() +
+  # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+  facet_wrap(~tissue) + 
+  xlab("CT") +
+  ylab("Activity") + 
+  ggtitle("HNF1A motif activity") +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + 
+  theme_bw(24)
+print(hnf1a.activity)
+
+mef2.activity <- ggplot(subset(act.long, gene == "MEF2.A.B.C.D..p2" & experiment == "rnaseq"), 
+                         aes(x = time, y = exprs)) +
+  geom_line() +
+  # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+  facet_wrap(~tissue) + 
+  xlab("CT") +
+  ylab("Activity") + 
+  ggtitle("MEF2 motif activity") +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + 
+  theme_bw(24)
+print(mef2.activity)
+
+mef2c.exprs <- ggplot(subset(dat.long, gene == "Mef2c" & experiment == "rnaseq"), aes(x = time, y = exprs)) + 
+  geom_line() + 
+  facet_wrap(~tissue) +
+  ggtitle("Mef2c mRNA expression") + 
+  ylab(label = "log2 mRNA expression") +
+  xlab("CT")  +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) +
+  theme_bw(24)
+print(mef2c.exprs)
+PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Mef2c" & experiment == "rnaseq"), convert.linear = TRUE) +
+  theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1))
+
+rest.activity <- ggplot(subset(act.long, gene == "REST.p3" & experiment == "rnaseq"), 
+                        aes(x = time, y = exprs)) +
+  geom_line() +
+  # geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+  facet_wrap(~tissue) + 
+  xlab("CT") +
+  ylab("Activity") + 
+  ggtitle("REST motif activity") +
+  scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
+  theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + 
+  theme_bw(24)
+print(rest.activity)
+
+jgene <- "RORA.p2"
+jgene.name <- "ROR Motif"
+act.sub <- subset(act.complex, gene == jgene)
+print(PlotComplex2(act.sub$exprs.transformed, labels = act.sub$tissue, title = jgene.name, ylab = "Phase (CT)", 
+                   xlab = "Amplitude of activity", constant.amp = 6.5) + theme_gray(24))
+
+# Plot ROR motif in Liver only
+PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2" & experiment == "array" & tissue == "Liver"), jtitle = "Activity of Rev-erb/ROR element", showSE = FALSE) + theme_bw(24)
+
+dev.off()
+
+# PCA on mean activity tissues  -------------------------------------------
+
+pdf("plots/primetime_plots2/mean_activities_pca.pdf")
+
+source("scripts/functions/RemoveP2Name.R")
+
+act.rnaseq <- act.long %>%
+  subset(., experiment == "rnaseq") %>% 
+  group_by(tissue, gene) %>%
+  summarise(exprs.avg = mean(exprs))
+
+act.rnaseq.mat <- dcast(act.rnaseq, formula = gene ~ tissue, value.var = "exprs.avg")
+act.rnaseq.mat$gene <- sapply(as.character(act.rnaseq.mat$gene), RemoveP2Name)
+rownames(act.rnaseq.mat) <- act.rnaseq.mat$gene
+act.rnaseq.mat$gene <- NULL
+
+act.svd <- prcomp(t(scale(t(act.rnaseq.mat), center = TRUE, scale = FALSE)), center = FALSE, scale. = FALSE)
+
+frac.var <- act.svd$sdev ^ 2 / sum(act.svd$sdev ^ 2)
+plot(frac.var, type = 'o')
+choice1 <- 1
+choice2 <- 2
+jxlab <- paste0("PC1 (", signif(frac.var[choice1], 2), ") of total variance")
+jylab <- paste0("PC2 (", signif(frac.var[choice2], 2), ") of total variance")
+biplot(act.svd, choices = c(choice1,choice2), cex = c(1,1.7), cex.lab = 2, xlab = jxlab, ylab = jylab)
 
 dev.off()
 
