@@ -20,6 +20,8 @@ indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_
 act.long <- LoadActivitiesLong(indir)
 
 PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "bHLH_family.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "MYOD1.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "REST.p3"))
@@ -49,8 +51,8 @@ act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
 
 # Plot examples -----------------------------------------------------------
 
-jgene <- "KLF4.p3"
-act.sub <- subset(act.complex, gene == "RUNX1..3.p2")
+jgene <- "HSF1.2.p2"
+# act.sub <- subset(act.complex, gene == "RUNX1..3.p2")
 act.sub <- subset(act.complex, gene == jgene)
 print(PlotComplex2(act.sub$exprs.transformed, labels = act.sub$tissue))
 print(PlotComplex2(act.sub$exprs.adj, labels = act.sub$tissue))
