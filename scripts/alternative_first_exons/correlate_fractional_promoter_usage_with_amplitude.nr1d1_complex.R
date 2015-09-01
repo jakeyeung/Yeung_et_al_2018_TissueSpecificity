@@ -98,7 +98,9 @@ tpm.summary <- tpm.fit %>%
   group_by(gene_name) %>%
   do(SubsetMinPval(jdf = .))
 
-pval.cutoff <- 0.05
+tpm.summary$pval.adj <- p.adjust(tpm.summary$pval)
+
+pval.cutoff <- 0.005
 tpm.summary.filt <- subset(tpm.summary, pval <= pval.cutoff)
 sig.hits <- tpm.summary.filt$gene_name
 
