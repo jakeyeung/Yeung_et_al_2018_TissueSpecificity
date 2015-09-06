@@ -118,6 +118,7 @@ lowmed.entropy.genes <- c(as.character(low.entropy.genes), as.character(med.entr
 s.low.norm <- SvdOnComplex(subset(dat.complex, gene %in% low.entropy.genes), value.var = "exprs.adj")
 s.high.norm <- SvdOnComplex(subset(dat.complex, gene %in% high.entropy.genes), value.var = "exprs.adj")
 s.lowmed.norm <- SvdOnComplex(subset(dat.complex, gene %in% lowmed.entropy.genes), value.var = "exprs.adj")
+s.med.norm <- SvdOnComplex(subset(dat.complex, gene %in% med.entropy.genes), value.var = "exprs.adj")
 
 jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 
@@ -129,10 +130,14 @@ eigens.low2.norm <- GetEigens(s.low.norm, period = 24, comp = 2, eigenval = TRUE
 eigens.low2.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Myh7" & experiment == "rnaseq"))
 eigens.low3.norm <- GetEigens(s.low.norm, period = 24, comp = 3, eigenval = TRUE, adj.mag = TRUE)
 eigens.low3.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ms4a1" & experiment == "rnaseq"))
-eigens.lowmed1.norm <- GetEigens(s.low.norm, period = 24, comp = 1, eigenval = TRUE, adj.mag = TRUE)
-eigens.lowmed2.norm <- GetEigens(s.low.norm, period = 24, comp = 2, eigenval = TRUE, adj.mag = TRUE)
-eigens.lowmed3.norm <- GetEigens(s.low.norm, period = 24, comp = 3, eigenval = TRUE, adj.mag = TRUE)
-eigens.lowmed4.norm <- GetEigens(s.low.norm, period = 24, comp = 4, eigenval = TRUE, adj.mag = TRUE)
+eigens.lowmed1.norm <- GetEigens(s.lowmed.norm, period = 24, comp = 1, eigenval = TRUE, adj.mag = TRUE)
+eigens.lowmed2.norm <- GetEigens(s.lowmed.norm, period = 24, comp = 2, eigenval = TRUE, adj.mag = TRUE)
+eigens.lowmed3.norm <- GetEigens(s.lowmed.norm, period = 24, comp = 3, eigenval = TRUE, adj.mag = TRUE)
+eigens.lowmed4.norm <- GetEigens(s.lowmed.norm, period = 24, comp = 4, eigenval = TRUE, adj.mag = TRUE)
+eigens.med1.norm <- GetEigens(s.med.norm, period = 24, comp = 1, eigenval = TRUE, adj.mag = TRUE)
+eigens.med2.norm <- GetEigens(s.med.norm, period = 24, comp = 2, eigenval = TRUE, adj.mag = TRUE)
+eigens.med3.norm <- GetEigens(s.med.norm, period = 24, comp = 3, eigenval = TRUE, adj.mag = TRUE)
+eigens.med4.norm <- GetEigens(s.med.norm, period = 24, comp = 4, eigenval = TRUE, adj.mag = TRUE)
 # eigens.lowmed.examp <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ms4a1" & experiment == "rnaseq"))
 # multiplot(eigens.high.norm$v.plot, eigens.high.norm$u.plot, eigens.high.examp, 
 #           eigens.low1.norm$v.plot, eigens.low1.norm$u.plot, eigens.low1.examp, 
@@ -145,6 +150,10 @@ multiplot(eigens.lowmed1.norm$v.plot, eigens.lowmed1.norm$u.plot,
           eigens.lowmed2.norm$v.plot, eigens.lowmed2.norm$u.plot, layout = jlayout)
 multiplot(eigens.lowmed3.norm$v.plot, eigens.lowmed3.norm$u.plot, 
           eigens.lowmed4.norm$v.plot, eigens.lowmed4.norm$u.plot, layout = jlayout)
+multiplot(eigens.med1.norm$v.plot, eigens.med1.norm$u.plot,
+          eigens.med2.norm$v.plot, eigens.med2.norm$u.plot, layout = jlayout)
+multiplot(eigens.med3.norm$v.plot, eigens.med3.norm$u.plot,
+          eigens.med4.norm$v.plot, eigens.med4.norm$u.plot, layout = jlayout)
 multiplot(eigens.high.examp, eigens.low1.examp, eigens.low2.examp, eigens.low3.examp, layout = jlayout)
 
 dev.off()
