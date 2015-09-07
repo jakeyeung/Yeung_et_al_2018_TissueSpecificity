@@ -98,3 +98,15 @@ write.table(dat.filt, file = outbed, quote = FALSE, sep = "\t", row.names = FALS
 dat.filt <- dat
 dat.filt$V4[which(dat.filt$V4 < cutoff.gamma)] <- 0
 write.table(dat.filt, file = file.path(outdir, paste0(fname.base, ".gamma_filtered.bed")), quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+# Normalize by total counts
+norm.factor <- sum(dat$V4) / 1000000
+dat.filt$V4 <- dat.filt$V4 / norm.factor
+write.table(dat.filt, file = file.path(outdir, paste0(fname.base, ".gamma_filtered.normalized.bed")), quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+
+# Plot filtered distributions ---------------------------------------------
+
+pdf(file.path(outdir, paste0(fname.base, ".filtered_density.pdf")))
+plot(density(log2(dat.filt$V4)))
+dev.off()
