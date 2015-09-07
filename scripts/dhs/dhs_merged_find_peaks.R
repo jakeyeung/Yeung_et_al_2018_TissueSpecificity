@@ -100,7 +100,7 @@ dat.filt$V4[which(dat.filt$V4 < cutoff.gamma)] <- 0
 write.table(dat.filt, file = file.path(outdir, paste0(fname.base, ".gamma_filtered.bed")), quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 
 # Normalize by total counts
-norm.factor <- sum(dat$V4) / 1000000
+norm.factor <- sum(dat$V4) / 10^9
 dat.filt$V4 <- dat.filt$V4 / norm.factor
 write.table(dat.filt, file = file.path(outdir, paste0(fname.base, ".gamma_filtered.normalized.bed")), quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 
