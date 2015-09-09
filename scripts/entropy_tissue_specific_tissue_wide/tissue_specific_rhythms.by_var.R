@@ -43,15 +43,6 @@ GetHighLowEntropy <- function(dat.byvar, split.by = 2, colname = "entropy"){
   return(list(lowE=low.entropy.genes, medE=med.entropy.genes, highE=high.entropy.genes))
 }
 
-PlotFirstNComponents <- function(svd.complex, comps = c(1), period = 24){
-  # Plot first N.comps
-  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  for (comp in comps){
-    eigens <- GetEigens(svd.complex, period=24, comp=comp)
-    multiplot(eigens$v.plot, eigens$u.plot, layout = jlayout)
-  }
-}
-
 # Load --------------------------------------------------------------------
 
 dat.long <- LoadArrayRnaSeq(fix.rik.xgene = TRUE)
