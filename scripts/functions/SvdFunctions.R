@@ -353,8 +353,11 @@ TemporalToFrequency2 <- function(dat, period = 24, n = 8, interval = 6, add.entr
     n.array <- 24  # n.timepoints
     n.interval <- 2  # 2 hrs per timepoint
     H.list <- GetNoiseFactor(dat.array, period, n.array, n.interval, method = "direct")
+  }
+  else if (add.entropy.method == FALSE){
+    return(dat.complex)
   } else {
-    warning("Must be 'array' or 'direct' for add.entropy.method")
+    warning("Must be 'array' or 'direct' or 'FALSE' for add.entropy.method")
     print(add.entropy.method)
   }
   # using weight approach
@@ -372,14 +375,14 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
   library(parallel)
   dat.long.by_genetiss <- group_by(dat.long, gene, tissue)
   dat.long.by_genetiss.split <- split(dat.long.by_genetiss, dat.long.by_genetiss$tissue)
-  start <- Sys.time()
+  # start <- Sys.time()
   dat.complex.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
     rhyth <- jdf %>%
       group_by(gene) %>%
       do(TemporalToFrequency2(., period, n, interval, add.entropy.method))
   }, mc.cores = 12)
   dat.complex <- do.call(rbind, dat.complex.split)
-  print(Sys.time() - start)
+  # print(Sys.time() - start)
   return(dat.complex)
 }
 
