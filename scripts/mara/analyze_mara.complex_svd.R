@@ -18,20 +18,20 @@ library(reshape2)
 
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low_med_entropy_genes.centeredTRUE"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low.entropy.genes.centeredTRUE/"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low_med_entropy_genes.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low.entropy.genes.centeredTRUE/"
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/high.entropy.genes.centeredTRUE/"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/lowmedhigh.entropy.genes.centeredTRUE/"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/med.entropy.genes.centeredTRUE/"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/lowmedhigh.entropy.genes.centeredTRUE/"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/med.entropy.genes.centeredTRUE/"
 act.long <- LoadActivitiesLong(indir)
 
 PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "NFIL3.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "bHLH_family.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "TLX1..3_NFIC.dimer..p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "FOSL2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "RFX1..5_RFXANK_RFXAP.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "NFIL3.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "bHLH_family.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "TLX1..3_NFIC.dimer..p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "FOSL2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "RFX1..5_RFXANK_RFXAP.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "MYOD1.p2"))
 # # PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
 # # PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
@@ -79,7 +79,9 @@ print(PlotComplex2(act.sub$exprs.transformed, labels = act.sub$tissue, title = j
 # SVD ---------------------------------------------------------------------
 
 s.act <- SvdOnComplex(act.complex, value.var = "exprs.adj")
+# s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 for (comp in seq(3)){
   eigens.act <- GetEigens(s.act, period = 24, comp = comp)
   multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
