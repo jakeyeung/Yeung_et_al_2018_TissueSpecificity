@@ -1,7 +1,11 @@
-LoadNormalizedArray <- function(normalized.array.path, remove.negs=TRUE){
+LoadNormalizedArray <- function(normalized.array.path, remove.negs=TRUE, fix.rik.xgene = FALSE){
   # Normalizing has caused strange behaviours in very flat genes, causing
   # the resulting output of one or two genes to be negative.
-  # We need to remove these from subsequent analysis.
+  # We need to remove these from subsequent analysis.\
+  # fix.rik.xgene optional
+  scripts.dir <- "/home/yeung/projects/tissue-specificity/scripts"
+  funcs.dir <- "functions"
+  source(file.path(scripts.dir, funcs.dir, "GrepRikGenes.R"))
   
   normalized.array <- read.table(normalized.array.path)
   
@@ -22,6 +26,11 @@ LoadNormalizedArray <- function(normalized.array.path, remove.negs=TRUE){
   normalized.array <- normalized.array[filtered.genes, ]
   
   print(paste("Removed problem genes:", problem.genes))
+  
+  # optionally fix gene names
+  if (fix.rik.xgene){
+    rownames(normalized.array) <- FixRikGenes(rownames(normalized.array))
+  }
   return(normalized.array)
 }
 
