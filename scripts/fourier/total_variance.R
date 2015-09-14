@@ -27,6 +27,13 @@ OrderDecreasing <- function(dat, jfactor, jval){
   return(dat)
 }
 
+GetIndex <- function(x){
+  # Get ith estimate given vector
+  # make a hash table
+  x.o <- order(x, decreasing = TRUE)
+  sapply(x, function(y) which(x.o == which(x == y)))
+}
+
 # Load data ---------------------------------------------------------------
 
 dat.long <- LoadArrayRnaSeq(fix.rik.xgene = TRUE)
@@ -132,3 +139,38 @@ ggplot(dat.var.s1_adj, aes(x = tissue, y = s1_normalized)) + geom_bar(stat = "id
 # plot 24h spectral power
 ggplot(OrderDecreasing(subset(dat.var.s, period == 24), "tissue", "sum_sqr_mod"), aes(x = tissue, y = sum_sqr_mod)) + geom_bar(stat = "identity") +
   theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1)) + xlab("") + ylab("24h spectral power (not normalized)")
+
+
+# Why is amplitude between between Liver and Hypo so large in Nr1d --------
+
+load("Robjs/dat.complex.maxexprs4.Robj", verbose = T)
+head(dat.complex)
+subset(dat.complex, gene == "Nr1d1")
+
+
+# Plot distribution of genes yo -------------------------------------------
+
+dat.complex <- dat.complex %>%
+  group_by(tissue) %>%
+  mutate(i.exprs.transformed = GetIndex(Mod(exprs.transformed)),
+         i.exprs.adj = GetIndex(Mod(exprs.adj)))
+
+ggplot(subset(dat.complex, i.exprs.transformed < 500), aes(x = i.exprs.transformed, y = Mod(exprs.transformed) ^ 2)) + 
+  geom_line() + 
+  facet_wrap(~tissue) + 
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank()) + xlab("Gene Index")
+
+ggplot(subset(dat.complex, i.exprs.adj < 500), aes(x = i.exprs.adj, y = Mod(exprs.adj) ^ 2)) + 
+  geom_line() + 
+  facet_wrap(~tissue) + 
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank()) + xlab("Gene Index")
+
+
+# dat.sub <- subset(dat.complex, tissue == "Hypo")
+# dat.sub$i <- GetIndex(Mod(dat.sub$exprs.transformed))
+# 
+# # dat.sub$gene <- factor(as.character(dat.sub$gene), levels = dat.sub$gene[order(Mod(dat.sub$exprs.transformed), decreasing = TRUE)])
+# ggplot(dat.sub[order(dat.sub$i), ], aes(x = i, y = Mod(exprs.transformed))) + 
+#   geom_point() + 
+#   facet_wrap(~tissue) + 
+#   theme(axis.ticks = element_blank(), axis.text.x = element_blank())
