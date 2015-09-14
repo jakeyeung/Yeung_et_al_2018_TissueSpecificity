@@ -23,9 +23,9 @@ GetTimes <- function(samp.names, get_unique=TRUE){
     substr(samp.name, nchar(samp.name) - 1, nchar(samp.name))
   }))
   if (get_unique){
-    return(unique(times))
+    return(as.numeric(unique(times)))
   } else {
-    return(times)
+    return(as.numeric(times))
   }
 }
 
