@@ -105,7 +105,7 @@ dat.var.all <- dat.var.s %>%
   summarise(sum_sqr_mod.total = sum(sum_sqr_mod))
 dat.var.all$tissue <- factor(dat.var.all$tissue,
                              levels = dat.var.all$tissue[order(dat.var.all$sum_sqr_mod.total, decreasing = TRUE)])
-
+# for ordering the facet_wrap plot across tissues by total variance
 dat.var.s$tissue <- factor(dat.var.s$tissue,
                            levels = dat.var.all$tissue[order(dat.var.all$sum_sqr_mod.total, decreasing = TRUE)])
 
