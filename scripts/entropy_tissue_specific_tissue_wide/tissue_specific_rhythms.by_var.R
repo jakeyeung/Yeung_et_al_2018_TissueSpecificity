@@ -6,9 +6,22 @@
 setwd("~/projects/tissue-specificity")
 outdir <- "/home/yeung/projects/tissue-specificity/plots/entropy_genes"
 
-# HARDCODED USER-MODIFIABLE
-filt.tiss <- c("Liver")
-writedir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/entropy_genes_split_by_2.no_liver"
+# HARDCODED USER-MODIFIABLE\
+writedir.prefix <- "/home/yeung/projects/tissue-specificity/data/gene_lists/entropy_genes_split_by_"
+filt.tiss <- c("Liver", "BFAT", "Mus")
+# filt.tiss <- c("Liver")
+# filt.tiss <- c("Liver", "Adr", "Aorta", "BFAT", "BS", "Hypo", "WFAT")
+# filt.tiss <- c()
+N.groups <- 2
+if (length(filt.tiss) == 0){
+  tissues.filtered <- "all_tissues"
+} else {
+  tissues.filtered <- paste0("no", paste(filt.tiss, collapse=""))
+}
+writedir <- paste0(writedir.prefix, N.groups, ".", tissues.filtered)
+print(paste("Writing to:", writedir))
+# writedir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/entropy_genes_split_by_3.noliver"
+
 dir.create(writedir)
 
 start.time <- Sys.time()
@@ -21,6 +34,7 @@ library(reshape2)
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/GetClockGenes.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/LongToMat.R")
@@ -35,7 +49,7 @@ FindMaxAmp <- function(dat, amp.var = "mag.norm"){
 }
 
 GetHighLowEntropy <- function(dat.byvar, split.by = 2, colname = "entropy"){
-  N <- floor(nrow(dat.byvar) / 2)
+  N <- floor(nrow(dat.byvar) / split.by)
   n.genes <- nrow(dat.byvar)
   low.entropy.genes <- head(dat.byvar[order(dat.byvar[[colname]]), ]$gene, n = N)
   high.entropy.genes <- head(dat.byvar[order(dat.byvar[[colname]], decreasing = TRUE), ]$gene, n = N)
@@ -53,6 +67,8 @@ dat.long <- LoadArrayRnaSeq(fix.rik.xgene = TRUE)
 
 # dat.fit <- FitRhythmicDatLong(dat.long)
 load(file = "Robjs/dat.fit.Robj")
+
+dat.fit <- subset(dat.fit, ! tissue %in% filt.tiss)
 
 # Get amplitude relative to Bmal1 -----------------------------------------
 
@@ -101,22 +117,19 @@ dat.var <- dat.complex %>%
   summarise(var.noise.norm = var(mod.exprs.adj / sum(mod.exprs.adj)),
             var.noise.norm.log10 = -log10(var.noise.norm))
 
-plot(density(dat.var$var.noise.norm.log10))
+# dat.var <- dat.complex %>%
+#   group_by(gene) %>%
+#   summarise(var.noise.norm = var(mod.exprs.adj),
+#             var.noise.norm.log10 = -log10(var.noise.norm))
+
+plot(density(dat.var$var.noise.norm.log10),
+     main = "Distribution of -log10(var)", cex.main = 1.75, cex.lab = 1.75, cex.axis = 1.75,
+     xlab = "-log10(var)")
+abline(v = sort(dat.var$var.noise.norm.log10)[5244])
+abline(v = sort(dat.var$var.noise.norm.log10)[length(dat.var$var.noise.norm.log10) - 5244])
 
 dat.var[order(dat.var$var.noise.norm.log10, decreasing = TRUE), ]
 
-
-# By entropy: not normalized by Nr1d1 -------------------------------------
-
-dat.entropy.notadj <- dat.complex %>%
-  subset(., gene %in% genes.exprs) %>%
-  group_by(gene) %>%
-  summarise(entropy = ShannonEntropy(Mod(exprs.adj) / sum(Mod(exprs.adj))))
-
-plot(density(dat.entropy.notadj$entropy))
-
-dat.entropy[order(dat.entropy.notadj$entropy), ]
-dat.entropy[order(dat.entropy.notadj$entropy, decreasing = TRUE), ]
 
 # Get entropy measure from adjusted magnitude -----------------------------
 # normalized by Nr1d1
@@ -132,10 +145,20 @@ plot(density(dat.entropy$entropy))
 dat.entropy[order(dat.entropy$entropy), ]
 dat.entropy[order(dat.entropy$entropy, decreasing = TRUE), ]
 
+# By entropy: not normalized by Nr1d1 -------------------------------------
+
+dat.entropy.notadj <- dat.complex %>%
+  subset(., gene %in% genes.exprs) %>%
+  group_by(gene) %>%
+  summarise(entropy = ShannonEntropy(Mod(exprs.adj) / sum(Mod(exprs.adj))))
+
+plot(density(dat.entropy.notadj$entropy))
+
+dat.entropy.notadj[order(dat.entropy.notadj$entropy), ]
+dat.entropy.notadj[order(dat.entropy.notadj$entropy, decreasing = TRUE), ]
 
 # Get low, med, high entropy genes ----------------------------------------
 
-N.groups <- 2
 entropy.genes <- GetHighLowEntropy(dat.entropy, split.by = N.groups, colname = "entropy")
 entropy.genes.notadj <- GetHighLowEntropy(dat.entropy.notadj, split.by = N.groups, colname = "entropy")
 entropy.genes.var <- GetHighLowEntropy(dat.var, split.by = N.groups, colname = "var.noise.norm.log10")
@@ -160,22 +183,46 @@ lapply(s.low.norm.all, PlotFirstNComponents, comps = 1)
 # Write gene lists to file to run MARA ------------------------------------
 
 
-for (E in names(low.entropy.genes.all)){
-  outname <- paste0(E, ".low_entropy.gene_list")
-  sink(file = file.path(writedir, outname))
-  for (g in low.entropy.genes.all[[E]]){
-    cat(g)
-    cat("\n")
-  }
-  sink()
-  outname <- paste0(E, ".high_entropy.gene_list")  # assume E is common between low and high
-  sink(file = file.path(writedir, outname))
-  for (g in high.entropy.genes.all[[E]]){
-    cat(g)
-    cat("\n")
-  }
-  sink()
+# for (E in names(low.entropy.genes.all)){
+#   outname <- paste0(E, ".low_entropy.gene_list")
+#   sink(file = file.path(writedir, outname))
+#   for (g in low.entropy.genes.all[[E]]){
+#     cat(g)
+#     cat("\n")
+#   }
+#   sink()
+#   outname <- paste0(E, ".high_entropy.gene_list")  # assume E is common between low and high
+#   sink(file = file.path(writedir, outname))
+#   for (g in high.entropy.genes.all[[E]]){
+#     cat(g)
+#     cat("\n")
+#   }
+#   sink()
+# }
+
+# Var only
+E = "Var"
+outname <- paste0(E, ".low_entropy.gene_list")
+sink(file = file.path(writedir, outname))
+for (g in low.entropy.genes.all[[E]]){
+  cat(g)
+  cat("\n")
 }
+sink()
+outname <- paste0(E, ".high_entropy.gene_list")  # assume E is common between low and high
+sink(file = file.path(writedir, outname))
+for (g in high.entropy.genes.all[[E]]){
+  cat(g)
+  cat("\n")
+}
+sink()
+outname <- paste0("expressed_genes.gene_list")  # assume E is common between low and high
+sink(file = file.path(writedir, outname))
+for (g in genes.exprs){
+  cat(g)
+  cat("\n")
+}
+sink()
 
 # Run MARA on these sets of genes -----------------------------------------
 
