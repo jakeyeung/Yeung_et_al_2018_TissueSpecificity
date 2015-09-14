@@ -1,6 +1,13 @@
 library(ggplot2)
 library(grid)
 
+OrderDecreasing <- function(dat, jfactor, jval){
+  # Reorder factors by decreasing value of jval
+  # used in conjunction with barplots makes life easier
+  dat[[jfactor]] <- factor(dat[[jfactor]], levels = dat[[jfactor]][order(dat[[jval]], decreasing = TRUE)])
+  return(dat)
+}
+
 PlotFirstNComponents <- function(svd.complex, comps = c(1), period = 24){
   # Plot first N.comps
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
