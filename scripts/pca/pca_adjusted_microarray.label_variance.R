@@ -151,8 +151,15 @@ head(pca.long)
 ggplot(subset(pca.long, pc == "PC1"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
 ggplot(subset(pca.long, pc == "PC14" & tissue != "WFAT"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
 ggplot(subset(pca.long, pc == "PC15"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
-pcs <- c("PC14", "PC15")
-ggplot(subset(pca.long, tissue == "BFAT" & pc %in% pcs), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~pc)
+pcs <- c("PC13", "PC14", "PC15", "PC16", "PC17", "PC18", "PC19", "PC20", "PC21")
+ggplot(subset(pca.long, tissue == "Liver" & pc %in% pcs), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~pc)
+pcs.pair <- c("PC20", "PC21")
+
+x <- subset(pca.long, tissue == "Liver" & pc == pcs.pair[1])$loading
+y <- subset(pca.long, tissue == "Liver" & pc == pcs.pair[2])$loading
+time <- subset(pca.long, tissue == "Liver" & pc == pcs.pair[2])$time
+dat.plot <- data.frame(x = x, y = y, time = time %% 24)
+ggplot(dat.plot, aes(x = x, y = y, label = time)) + geom_text()
 
 
 # Analyze whether each PC is rhythmic or not ------------------------------
@@ -190,162 +197,3 @@ pca.p.med$T.max.med <- sapply(pca.p.med$T.max.med, function(x){
 })
 
 ggplot(subset(pca.p.med, pc.num < 25 & pc.num >= 9), aes(x = pc.num, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
-
-# Plot PCA: tissue components ----------------------------------------------------
-
-# Loop to plot scatter plot of PCA i versus PCA i + 1
-for (x_comp in 1:2) {
-  
-  y_comp <- x_comp + 1  # plot x PCA component i on x-axis, PCA component i+1 on y-axis
-  
-  
-  # Show PCA plot of tissues ----------------------------------------------------  
-  # 2. 
-  # Color by tissue
-  colors.by.tissue <- rep(1:12, each=24)
-  textplot(dat_pca$x[, x_comp], dat_pca$x[, y_comp], rownames(dat_pca$x), cex=0.7, col=colors.by.tissue, 
-           main=paste("Component", x_comp, "vs.", y_comp))
-  PlotLoadings(dat_pca$x[, x_comp], title=paste("Vector Loadings for PCA component:", x_comp))
-}
-
-# Which vector loadings have oscillating components? ----------------------
-# We will fit two linear models:
-# 1) linear model with common intercept and common oscillating component
-# 2) linear model with tissue-specific intercept 
-# and common oscillating component
-
-# Optional: can MeanCenter the vector y to remove cross-tissue differences
-# and focus only on oscillations.
-
-N <- nrow(dat_pca$x)  # number of samples.
-T <- 24  # 24 hours in a period
-
-# Fit PCA component of interest: loop to try many different PCAs
-# user changeable range
-for (pca_vector in 10:20) {
-  # Create response vector, which is loadings
-  
-  y <- dat_pca$x[, pca_vector]
-  
-  # Optional: 
-  # y <- MeanCenterAcrossGroups(y)
-  
-  # BEGIN: plot periodograms to see which frequency has high activity
-  freq.and.periodogram <- CalculatePeriodogram(y)  # returns a list
-  freq <- freq.and.periodogram$freq
-  periodogram <- freq.and.periodogram$p.scaled
-  periodogram.unscaled <- freq.and.periodogram$p.unscaled
-  
-  # Calculate top 5 frequencies
-  max.freqs <- FindMaxFreqs(freq, periodogram)
-  
-  PlotPeriodogram(freq, periodogram, title=paste("Periodogram for PCA component:", pca_vector))
-  # add vertical line at max frequency
-  max.f <- max.freqs[1]
-  # calculate period from frequency
-  max.T <- (1 / max.f) * 2  # multiply by 2 because samples are every 2 hours 
-  abline(v=max.f, col='blue', lwd=2)
-  # add text to show freq and period.
-  # x offset of +0.02 so you can see the text
-  text(max.f + 0.02, 0, paste0("T=", signif(max.T, digits=3), "hrs"))
-  
-  PlotLoadings(y, title=paste("Vector Loadings for PCA component:", pca_vector))
-  # END: plot periodograms to see which frequency has high activity
-  
-#   # BEGIN: Linear fit for period of 24 hours
-#   # Create sequence of t = [0, 2, 4, ... (N - 1)]
-#   t <- seq(0, 2 * N - 1, 2)
-#   
-#   # set my angular frequency
-#   omega <- (2 * pi) / (T)
-#   
-#   # set my tissue specific factors, matches my response y to a 
-#   # specific tissue. 12 tissues, 24 time points
-#   n.tissues <- 11  # 11 conditions because WFAT removed
-#   n.timepoints <- 24  # 24 time points
-#   
-#   tissue.factors <- GetTissueSpecificMatrix(n.tissues, n.timepoints)
-#   
-#   # fit my lm using cos and sin with angular frequency
-#   fit <- lm(y ~ cos(omega * t) + sin(omega * t))
-#   fit.multi <- lm(y ~ 0 + tissue.factors + cos(omega * t) + sin(omega * t))
-#   # END: Linear fit for period of 24 hours
-  
-#   # Print some statementsy to describe fit
-#   cat("*********************************\n")
-#   cat(paste0("PCA ", pca_vector, "\n"))
-#   cat("\n")
-#   
-#   cat("Max freqs\n")
-#   print(max.freqs)
-#   
-#   cat("Simple fit:\n")
-#   print(anova(fit))
-#   cat("\n")
-#   
-#   cat("Multi fit:\n")
-#   print(anova(fit.multi))
-#   cat("\n")
-#   
-#   cat("Comparing simple and multi fit:\n")
-#   print(anova(fit, fit.multi))
-#   cat("\n")  
-}
-
-# Plot combinations of rhythmicity ----------------------------------------
-
-# rhyth.comps <- c(20, 19, 17, 16, 14, 13)  # normal scale
-# rhyth.comps <- c(13, 14, 15, 16, 17, 20)  # if log2 
-rhyth.comps <- c(14, 20, 16)
-library(combinat)
-library(PhaseHSV)
-tissues <- c("Liver", "Adr", "Kidney", "BFAT", "Aorta", "Mus", "Mus", "Heart")
-tissues <- c("Kidney")
-combos <- combn(rhyth.comps, 2)
-t <- rep(seq(0, 22, 2), 2)  # for one tissue
-time.cols <- hsv(PhaseToHsv(2 * pi * t/ 24, 0, 2 *pi), s=1, v=1)
-for (tissue in tissues){
-  for (i in 1:ncol(combos)){
-    combo <- combos[, i]
-    x_comp <- combo[1]
-    y_comp <- combo[2]
-    t <- rep(seq(1, 12), 2)
-    plot(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp], 
-         dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp], 
-         cex = 0.7, col = "black", 
-         main=paste(tissue, "Component", x_comp, "vs", y_comp),
-         xlab = paste("Component", x_comp),
-         ylab = paste("Component", y_comp))
-    text(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp],
-         dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp],
-         rownames(dat_pca$x)[which(grepl(tissue, rownames(dat_pca$x)))],
-         col = time.cols)
-  }  
-}
-
-
-# All tissues -------------------------------------------------------------
-
-# rhyth.comps <- c(20, 19, 17, 16, 14, 13)
-# library(combinat)
-# tissues <- c("Liver", "Adr", "Kidney", "BFAT", "Aorta", "Mus", "Mus", "Heart")
-# tissue <- paste0(tissues, collapse = "|")
-# combos <- combn(rhyth.comps, 2)
-# t <- rep(rep(seq(0, 22, 2), 2), length(tissues))  # for all tissues
-# time.cols <- hsv(PhaseToHsv(2 * pi * t/ 24, 0, 2 *pi), s=1, v=1)
-# for (i in 1:ncol(combos)){
-#   combo <- combos[, i]
-#   x_comp <- combo[1]
-#   y_comp <- combo[2]
-#   t <- rep(seq(1, 12), 2)
-#   plot(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp], 
-#        dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp], 
-#        cex = 0.7, col = "black", 
-#        main=paste("Component", x_comp, "vs", y_comp),
-#        xlab = paste("Component", x_comp),
-#        ylab = paste("Component", y_comp))
-#   text(dat_pca$x[grepl(tissue, rownames(dat_pca$x)), x_comp],
-#        dat_pca$x[grepl(tissue, rownames(dat_pca$x)), y_comp],
-#        rownames(dat_pca$x)[which(grepl(tissue, rownames(dat_pca$x)))],
-#        col = time.cols)
-# }  
