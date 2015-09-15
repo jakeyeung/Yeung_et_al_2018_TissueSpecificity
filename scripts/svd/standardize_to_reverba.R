@@ -31,9 +31,13 @@ genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
 
 dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% genes.exprs), period = 24, n = 8, interval = 6, add.entropy.method = "array")
 
-# z-score
+# z-score total
+dat.complex$z.total <- dat.complex$exprs.transformed / dat.complex$sum.weight
+dat.complex$mod.z.total <- Mod(dat.complex$z.total)
+
+# z-score (fraction of 24h variance)
 dat.complex$z <- dat.complex$exprs.transformed * dat.complex$frac.weight
-dat.complex$mod.z <- Mod(dat.complex$z)
+dat.complex$mod.z <- Mod(dat.complex$z) ^ 2
 
 # Adjust to nr1d1 but not to z-score
 ref.amps <- subset(dat.complex, gene == ref.gene, select = c(tissue, gene, exprs.transformed))
