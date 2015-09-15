@@ -312,6 +312,7 @@ GetNoiseFactor <- function(dat, period, n, interval, method = "direct"){
     # normalize by sum then calculate entropy
     weights.norm <- weights / sum(weights)
     frac.weight <- weights.norm[which(periods == period)]
+    sum.weight <- sum(weights)
   }
   else if (method == "fft"){
     # use fft instead of direct method because only on array gives us more harmonics maybe
@@ -326,8 +327,9 @@ GetNoiseFactor <- function(dat, period, n, interval, method = "direct"){
     f.max <- FindMaxFreqs(freq, per)[1]  # take top
     T.max <- (1 / f.max) * interval
     frac.weight <- per.norm[which(periods == period)]
+    sum.weight <- sum(per)
   }
-  return(list(frac.weight = frac.weight, T.max=T.max))
+  return(list(frac.weight = frac.weight, T.max=T.max, sum.weight = sum.weight))
 }
 
 TemporalToFrequency2 <- function(dat, period = 24, n = 8, interval = 6, add.entropy.method = "array"){
@@ -363,6 +365,7 @@ TemporalToFrequency2 <- function(dat, period = 24, n = 8, interval = 6, add.entr
   # using weight approach
   dat.complex$T.max <- H.list$T.max
   dat.complex$frac.weight <- H.list$frac.weight
+  dat.complex$sum.weight <- H.list$sum.weight
 #   # using entropy approach
 #   dat.complex$log.H.weight <- H.list$log.H.weight
 #   dat.complex$H.max <- H.list$H.max
