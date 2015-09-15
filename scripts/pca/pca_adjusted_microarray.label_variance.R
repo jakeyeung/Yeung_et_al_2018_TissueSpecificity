@@ -19,6 +19,22 @@ source(file.path(funcs.dir, "GrepRikGenes.R"))
 source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "PCAFunctions.R"))
 
+BinVector <- function(x, ...){
+  # bin vector into discrete bins i
+  ends <- c(...)
+  starts <- c(1, ends[1:length(ends) - 1])
+  bins <- sapply(x, function(y){
+    for (i in seq(length(starts))){
+      if (y >= starts[i] & y <= ends[i]){
+        return(i)
+      } else {
+        next
+      }
+    }
+  })
+  return(unlist(bins))
+}
+
 
 # Load data, log transform ------------------------------------------------
 
@@ -45,7 +61,9 @@ dat <- log(dat, base = 2)
 
 # Calculate PCA and Screeplot ---------------------------------------------
 
-dat_pca <- prcomp(t(dat), center=TRUE, scale.=TRUE)
+# center data
+dat <- t(scale(t(dat), center = TRUE, scale = FALSE))
+dat_pca <- prcomp(t(dat), center=FALSE, scale.=FALSE)
 
 # screeplot(dat_pca, type="lines", npcs = min(100, length(dat_pca$sdev)), log="y", main = "")
 npcs <- 100
@@ -121,4 +139,34 @@ pca.p.med$T.max.med <- sapply(pca.p.med$T.max.med, function(x){
   return(x)
 })
 
-ggplot(subset(pca.p.med, pc.num < 25 & pc.num >= 9), aes(x = pc.num, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
+# bin pca.p.med so I can plot many barplots with facet_wrap()
+pca.p.med$bini <- BinVector(pca.p.med$pc.num, 10, 100, 288)
+
+# T.max.med should be factor to get colors right
+pca.p.med$T.max.med <- factor(pca.p.med$T.max.med, levels = c("Inf", "24", "Other"))
+
+starts <- c(1, 10, 100)
+ends <- c(9, 99, 288)
+
+for (i in seq(length(starts))){
+  start <- starts[i]
+  end <- ends[i]
+  break.i <- floor((end - start ) / 4)
+  # http://stackoverflow.com/questions/6919025/how-to-assign-colors-to-categorical-variables-in-ggplot2-that-have-stable-mappin
+  # getting the right colours in different subsets is not trivial!
+  m <- ggplot(subset(pca.p.med, pc.num <= end & pc.num >= start), aes(x = pc.num, y = eigenvals, colour = T.max.med, alpha = N / 12)) + 
+    geom_bar(stat = "identity", size = 1.1) + scale_colour_discrete(drop=TRUE, limits = levels(pca.p.med$T.max.med)) + scale_x_continuous(breaks=seq(start, end, break.i)) +
+    xlab("Component") + ylab("Fraction of total sqr eigenvals")
+  print(m)
+}
+
+# # ggplot(pca.p.med, aes(x = pc, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity") + facet_wrap(~bini)
+# 
+# 
+# ggplot(subset(pca.p.med, pc.num < 25 & pc.num >= 9), aes(x = pc.num, y = eigenvals, colour = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
+# ggplot(subset(pca.p.med, pc.num < 288 & pc.num >= 100), aes(x = pc.num, y = eigenvals, colour = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
+# ggplot(subset(pca.p.med, pc.num < 100 & pc.num >= 10), aes(x = pc.num, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
+# ggplot(subset(pca.p.med, pc.num < 288 & pc.num >= 25), aes(x = pc.num, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
+# ggplot(subset(pca.p.med, pc.num < 100 & pc.num >= 10), aes(x = pc.num, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
+# ggplot(subset(pca.p.med, pc.num < 10 & pc.num >= 1), aes(x = pc.num, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
+# ggplot(subset(pca.p.med, pc.num < 25), aes(x = pc.num, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity")
