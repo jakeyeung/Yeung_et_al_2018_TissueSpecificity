@@ -1,5 +1,22 @@
 # used in pca_adjusted_microarray.label_variance.R
 
+PlotComponents <- function(pca.p.med, start, end){
+  # replacte gray with some dark blue
+  # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/#a-colorblind-friendly-palette
+  cbPalette <- c("#CC79A7", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  break.i <- floor((end - start ) / 4)
+  # http://stackoverflow.com/questions/6919025/how-to-assign-colors-to-categorical-variables-in-ggplot2-that-have-stable-mappin
+  # getting the right colours in different subsets is not trivial!
+  m <- ggplot(subset(pca.p.med, pc.num <= end & pc.num >= start), aes(x = pc.num, y = eigenvals, colour = T.max.med, alpha = N / 12)) + 
+    geom_bar(stat = "identity", size = 1.0) + scale_x_continuous(breaks=seq(start, end, break.i)) +
+    xlab("Component") + ylab("Fraction of total sqr eigenvals") +
+    scale_colour_manual(drop=TRUE, limits = levels(pca.p.med$T.max.med), values=cbPalette) +
+    scale_alpha_continuous(name = "Frac of tissues \\ with T.max") +
+    scale_color_discrete(name = "Mode of T.max")
+#   scale_colour_discrete(drop=TRUE, limits = levels(pca.p.med$T.max.med)) 
+  print(m)
+}
+
 Mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
@@ -12,7 +29,7 @@ PlotPCTissue <- function(dat){
 SummarisePeriodogram <- function(dat){
   # Summarize periodogram from GetPeriodogramFreq to 
   # get mode T.max, number of tissues with T.max, mean p.pmax for T.max = median(T.max)
-  T.max.med <- as.character(Mdoe(dat$T.max))
+  T.max.med <- as.character(Mode(dat$T.max))
   dat.sub <- subset(dat, T.max == T.max.med)
   N <- nrow(dat.sub)
   outdat <- data.frame(T.max.med = T.max.med, N = N)

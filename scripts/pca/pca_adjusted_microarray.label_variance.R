@@ -2,11 +2,12 @@
 # 2015-09-14
 # Jake Yeung
 
+rm(list=ls())
+
 library(ggplot2)
-library(reshape)
-library(wordcloud)  # for showing text without jumbling
 library(hash)
 
+ref.gene <- "Nr1d1"
 # Define my functions -----------------------------------------------------
 
 # First source my functions I wrote
@@ -18,6 +19,8 @@ source(file.path(funcs.dir, 'GetTissueSpecificMatrix.R'))  # as name says
 source(file.path(funcs.dir, "GrepRikGenes.R"))
 source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "PCAFunctions.R"))
+source(file.path(funcs.dir, "LoadAndHandleData.R"))
+source(file.path(funcs.dir, "FitRhythmic.R"))
 
 BinVector <- function(x, ...){
   # bin vector into discrete bins i
@@ -62,8 +65,8 @@ dat <- log(dat, base = 2)
 # Calculate PCA and Screeplot ---------------------------------------------
 
 # center data
-dat <- t(scale(t(dat), center = TRUE, scale = FALSE))
-dat_pca <- prcomp(t(dat), center=FALSE, scale.=FALSE)
+# dat <- t(scale(t(dat), center = TRUE, scale = FALSE))
+dat_pca <- prcomp(t(dat), center=TRUE, scale.=FALSE)
 
 # screeplot(dat_pca, type="lines", npcs = min(100, length(dat_pca$sdev)), log="y", main = "")
 npcs <- 100
@@ -145,20 +148,28 @@ pca.p.med$bini <- BinVector(pca.p.med$pc.num, 10, 100, 288)
 # T.max.med should be factor to get colors right
 pca.p.med$T.max.med <- factor(pca.p.med$T.max.med, levels = c("Inf", "24", "Other"))
 
-starts <- c(1, 10, 100)
-ends <- c(9, 99, 288)
+starts <- c(1, 13, 100)
+ends <- c(12, 99, 288)
 
 for (i in seq(length(starts))){
-  start <- starts[i]
-  end <- ends[i]
-  break.i <- floor((end - start ) / 4)
-  # http://stackoverflow.com/questions/6919025/how-to-assign-colors-to-categorical-variables-in-ggplot2-that-have-stable-mappin
-  # getting the right colours in different subsets is not trivial!
-  m <- ggplot(subset(pca.p.med, pc.num <= end & pc.num >= start), aes(x = pc.num, y = eigenvals, colour = T.max.med, alpha = N / 12)) + 
-    geom_bar(stat = "identity", size = 1.1) + scale_colour_discrete(drop=TRUE, limits = levels(pca.p.med$T.max.med)) + scale_x_continuous(breaks=seq(start, end, break.i)) +
-    xlab("Component") + ylab("Fraction of total sqr eigenvals")
-  print(m)
+  PlotComponents(pca.p.med, starts[i], ends[i])
 }
+
+# # replacte gray with some dark blue
+# # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/#a-colorblind-friendly-palette
+# cbPalette <- c("#CC79A7", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+# for (i in seq(length(starts))){
+#   start <- starts[i]
+#   end <- ends[i]
+#   break.i <- floor((end - start ) / 4)
+#   # http://stackoverflow.com/questions/6919025/how-to-assign-colors-to-categorical-variables-in-ggplot2-that-have-stable-mappin
+#   # getting the right colours in different subsets is not trivial!
+#   m <- ggplot(subset(pca.p.med, pc.num <= end & pc.num >= start), aes(x = pc.num, y = eigenvals, colour = T.max.med, alpha = N / 12)) + 
+#     geom_bar(stat = "identity", size = 1.1) + scale_colour_discrete(drop=TRUE, limits = levels(pca.p.med$T.max.med)) + scale_x_continuous(breaks=seq(start, end, break.i)) +
+#     xlab("Component") + ylab("Fraction of total sqr eigenvals") +
+#     scale_colour_manual(values=cbPalette)
+#   print(m)
+# }
 
 # # ggplot(pca.p.med, aes(x = pc, y = eigenvals, fill = T.max.med, alpha = N / 12)) + geom_bar(stat = "identity") + facet_wrap(~bini)
 # 
