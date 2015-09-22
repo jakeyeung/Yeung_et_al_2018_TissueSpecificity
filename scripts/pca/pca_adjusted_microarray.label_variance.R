@@ -2,7 +2,7 @@
 # 2015-09-14
 # Jake Yeung
 
-rm(list=ls())
+# rm(list=ls())
 
 library(ggplot2)
 library(hash)
@@ -21,6 +21,7 @@ source(file.path(funcs.dir, "GetTissueTimes.R"))
 source(file.path(funcs.dir, "PCAFunctions.R"))
 source(file.path(funcs.dir, "LoadAndHandleData.R"))
 source(file.path(funcs.dir, "FitRhythmic.R"))
+source(file.path(funcs.dir, "PlotGeneAcrossTissues.R"))
 
 BinVector <- function(x, ...){
   # bin vector into discrete bins i
@@ -62,22 +63,35 @@ dat <- dat[which(rownames(dat) %in% genes.exprs), ]
 
 dat <- log(dat, base = 2)
 
+
+# Filter out WFAT ---------------------------------------------------------
+
+# dat <- dat[, grepl("WFAT", colnames(dat))]
+
 # Calculate PCA and Screeplot ---------------------------------------------
 
 # center data
 # dat <- t(scale(t(dat), center = TRUE, scale = FALSE))
 dat_pca <- prcomp(t(dat), center=TRUE, scale.=FALSE)
 
+
 # screeplot(dat_pca, type="lines", npcs = min(100, length(dat_pca$sdev)), log="y", main = "")
-npcs <- 100
+npcs <- 23
 sdev.norm <- sapply(dat_pca$sdev, function(x) x ^ 2 / sum(dat_pca$sdev ^ 2))
 plot(x = 1:npcs, 
      sdev.norm[1:npcs], 
      type='o', 
-     log = "y", 
+     # log = "y", 
      main = paste0("Variance of first ", npcs, " components"),
      xlab = paste0("Components (", length(dat_pca$sdev), " total components)"),
      ylab = "Normalized variance (sum = 1)")
+
+
+# PCA1 and PCA2 -----------------------------------------------------------
+
+library(wordcloud)
+# plot(dat_pca$x[, "PC1"], dat_pca$x[, "PC2"])
+textplot(x = dat_pca$x[, "PC1"], y = dat_pca$x[, "PC2"], words = rownames(dat_pca$x))
 
 
 # Consolidate PCA into long -----------------------------------------------
@@ -95,6 +109,10 @@ head(pca.long)
 # Plot long PCA -----------------------------------------------------------
 
 ggplot(subset(pca.long, pc == "PC1"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
+ggplot(subset(pca.long, pc == "PC2"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
+ggplot(subset(pca.long, pc == "PC3"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
+ggplot(subset(pca.long, pc == "PC4"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
+
 ggplot(subset(pca.long, pc == "PC14" & tissue != "WFAT"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
 ggplot(subset(pca.long, pc == "PC15"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
 pcs <- c("PC13", "PC14", "PC15", "PC16", "PC17", "PC18", "PC19", "PC20", "PC21")
