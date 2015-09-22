@@ -113,3 +113,32 @@ PlotEncodeRnaseq <- function(dat, jtitle, sort.by.tissue = TRUE, by.var = "tpm")
                          panel.grid.minor = element_blank())
   return(p)
 }
+
+CalculatePeriodogramLong <- function(dat, jexperiment = "array", remove.inf = TRUE){
+  # interval between sampling points, in hours
+  if (jexperiment == "array"){
+    interval <- 2  # hrs
+  } else {
+    interval <- 6  # hrs
+  }
+  exprs <- subset(dat, experiment == jexperiment)$exprs
+  p <- CalculatePeriodogram(exprs)
+  periods <- signif(interval / p$freq, digits = 3)
+  dat.var.s <- data.frame(periodogram = p$p.scaled, period = periods)
+  dat.var.s$period <- factor(dat.var.s$period, 
+                              levels = sort(unique(dat.var.s$period), decreasing = TRUE))
+  if (remove.inf){
+    dat.var.s <- subset(dat.var.s, period != Inf)
+  }
+  return(dat.var.s)
+}
+
+PlotPeriodogramLong <- function(dat, jexperiment = "array", jtitle = "Plot title"){
+  # expect dat to be by gene
+  # Plot periodogram of the gene
+  source("~/projects/tissue-specificity/scripts/functions/FourierFunctions.R")
+  dat.periodogram <- dat %>%
+    group_by(gene, tissue) %>%
+    do(CalculatePeriodogramLong(., jexperiment))
+  ggplot(dat.periodogram, aes(x = period, y = periodogram)) + facet_wrap(~tissue) +  geom_bar(stat = "identity")
+}
