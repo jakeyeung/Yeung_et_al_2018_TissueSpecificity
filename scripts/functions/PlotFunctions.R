@@ -12,7 +12,7 @@ PlotFirstNComponents <- function(svd.complex, comps = c(1), period = 24){
   # Plot first N.comps
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   for (comp in comps){
-    eigens <- GetEigens(svd.complex, period=24, comp=comp)
+    eigens <- GetEigens(svd.complex, period=24, comp=comp, adj.mag = TRUE)
     multiplot(eigens$v.plot, eigens$u.plot, layout = jlayout)
   }
 }
