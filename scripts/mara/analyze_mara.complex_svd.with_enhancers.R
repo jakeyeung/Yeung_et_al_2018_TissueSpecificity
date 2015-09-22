@@ -24,16 +24,20 @@ PenalizeNoise <- function(act.complex){
 
 # Load --------------------------------------------------------------------
 
-indirs <- list(all="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene/expressed_genes_deseq_int.centeredTRUE",
-               high="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene/entropy.high_entropy.centeredTRUE",
-               low="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene/entropy.low_entropy.centeredTRUE")
+# indirs <- list(all="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene/expressed_genes_deseq_int.centeredTRUE",
+#                high="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene/entropy.high_entropy.centeredTRUE",
+#                low="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene/entropy.low_entropy.centeredTRUE")
+
+indirs <- list(all="/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int",
+               high="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.50000",
+               low="/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.1000")
 
 act.longs <- lapply(indirs, LoadActivitiesLong)
 
 # lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "ATF2.p2")
-lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "RORA.p2")
+# lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "RORA.p2")
 # lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "HNF4A_NR2F1.2.p2")
-lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "bHLH_family.p2")
+# lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "bHLH_family.p2")
 # lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "MYOD1.p2")
 # lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "ONECUT1.2.p2")
 # lapply(act.longs, function(dat, jgene) PlotActivitiesWithSE(subset(dat, gene == jgene)), jgene = "HNF1A.p2")
@@ -52,6 +56,7 @@ act.complexes <- lapply(act.complexes, PenalizeNoise)
 
 s.acts <- lapply(act.complexes, SvdOnComplex, value.var = "exprs.adj")
 
-lapply(s.acts, PlotFirstNComponents, comps = c(1, 2))
+
+lapply(s.acts, PlotFirstNComponents, comps = c(1))
 
 
