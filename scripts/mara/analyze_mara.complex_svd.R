@@ -17,15 +17,22 @@ library(reshape2)
 # Load --------------------------------------------------------------------
 
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low_med_entropy_genes.centeredTRUE"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low.entropy.genes.centeredTRUE/"
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/high.entropy.genes.centeredTRUE/"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/lowmedhigh.entropy.genes.centeredTRUE/"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/med.entropy.genes.centeredTRUE/"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.50000"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.500"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.5000"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.50000/expressed_genes_deseq_int.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int"
+
 act.long <- LoadActivitiesLong(indir)
 
-PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "NR5A1.2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "NFIL3.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "bHLH_family.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
@@ -64,26 +71,27 @@ act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
 
 # Plot examples -----------------------------------------------------------
 
-jgene <- "HSF1.2.p2"
-jgene <- "RORA.p2"
-jgene <- "PAX5.p2"
-jgene <- "ONECUT1.2.p2"
-jgene <- "HIC1.p2"
-jgene <- "TLX1..3_NFIC.dimer..p2"
-jgene <- "FOSL2.p2"
-jgene <- "POU5F1.p2"
-# act.sub <- subset(act.complex, gene == "RUNX1..3.p2")
-act.sub <- subset(act.complex, gene == jgene)
-print(PlotComplex2(act.sub$exprs.transformed, labels = act.sub$tissue, title = jgene))
+# jgene <- "HSF1.2.p2"
+# jgene <- "RORA.p2"
+# jgene <- "PAX5.p2"
+# jgene <- "ONECUT1.2.p2"
+# jgene <- "HIC1.p2"
+# jgene <- "TLX1..3_NFIC.dimer..p2"
+# jgene <- "FOSL2.p2"
+# jgene <- "POU5F1.p2"
+# # act.sub <- subset(act.complex, gene == "RUNX1..3.p2")
+# act.sub <- subset(act.complex, gene == jgene)
+# print(PlotComplex2(act.sub$exprs.transformed, labels = act.sub$tissue, title = jgene))
 
 # SVD ---------------------------------------------------------------------
 
+# s.act <- SvdOnComplex(subset(act.complex, ! gene %in% c("RORA.p2", "NFIL3.p2")), value.var = "exprs.adj")
 s.act <- SvdOnComplex(act.complex, value.var = "exprs.adj")
 # s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-for (comp in seq(3)){
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp)
+for (comp in seq(1)){
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE)
   multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
 }
 
