@@ -28,7 +28,9 @@ LoadArray <- function(inpath, gene_colname = "gene", get.norm = FALSE, form = "l
   array.long <- data.frame(gene = rep(genes, ncol(dat.mat)),
                            tissue = rep(tissues, each = nrow(dat.mat)),
                            time = as.numeric(rep(times, each = nrow(dat.mat))),
-                           signal = unlist(dat.mat))
+                           experiment = "array",
+                           exprs = unlist(dat.mat))
+#                          signal = unlist(dat.mat))
   if (get.norm == TRUE){
     array.long$signal.norm <- 2 ^ array.long$signal
   }
