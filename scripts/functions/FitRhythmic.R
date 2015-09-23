@@ -1,4 +1,4 @@
-FitRhythmic <- function(dat, T = 24){
+FitRhythmic <- function(dat, T = 24, get.residuals=FALSE){
   # Fit rhythmic model to long dat. Expect dat to be per tissue per gene.
   # use lapply and ddply to vectorize this code.
   # dat needs columns: tissue time experiment exprs
@@ -24,10 +24,21 @@ FitRhythmic <- function(dat, T = 24){
   amp <- sqrt(model.params$a ^ 2 + model.params$b ^ 2)
   phase.rad <- atan2(model.params$b, model.params$a)
   phase.time <- (phase.rad / w) %% T
-  dat.out <- data.frame(tissue = tissue, 
-                       cos.part = model.params$a, sin.part = model.params$b, 
-                       amp = amp, phase = phase.time, pval = pval,
-                       int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq)
+  if (get.residuals){
+    ssq.residuals <- anova(rhyth.fit)["Residuals", "Sum Sq"]
+    variance <- var(dat$exprs)
+    dat.out <- data.frame(ssq.residuals = ssq.residuals, variance = variance)
+#     dat.out <- data.frame(tissue = tissue, 
+#                           cos.part = model.params$a, sin.part = model.params$b, 
+#                           amp = amp, phase = phase.time, pval = pval,
+#                           int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq,
+#                           ssq.residuals = ssq.residuals)
+  } else {
+    dat.out <- data.frame(tissue = tissue, 
+                          cos.part = model.params$a, sin.part = model.params$b, 
+                          amp = amp, phase = phase.time, pval = pval,
+                          int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq)
+  }
   return(dat.out)
 }
 
