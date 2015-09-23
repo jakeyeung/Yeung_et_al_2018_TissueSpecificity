@@ -10,6 +10,8 @@ ref.gene <- "Nr1d1"
 library(hash)
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
+source("scripts/functions/FitRhythmic.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
 
 # Load data from heatmap_tissue_specific_rhythms.R ------------------------
 
@@ -20,6 +22,12 @@ load(file = "Robjs/dat.fit.Robj", verbose = T)
 # Get relamp --------------------------------------------------------------
 
 dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
+
+fits.mostrhythmic <- dat.fit %>%
+  group_by(tissue) %>%
+  filter(pval <= 1e-3) %>%
+  do(FindMostRhythmic(.)) %>%
+  data.frame(.)
 
 dat.fit.relamp <- dat.fit.relamp %>%
   group_by(gene) %>%
