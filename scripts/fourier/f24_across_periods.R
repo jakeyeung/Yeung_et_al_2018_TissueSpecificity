@@ -11,29 +11,6 @@ library(dplyr)
 library(ggplot2)
 setwd("/home/yeung/projects/tissue-specificity")
 
-FitRhythmicScanPeriods <- function(dat.long, periods, cores = 51){
-  # likely a filtered dat.long set
-  library(parallel)
-  #   periods <- list(periods)
-  dat.fitrhyth.period <- mclapply(periods, function(p){
-    dat.fit <- dat.long %>%
-      group_by(gene, tissue) %>%
-      do(FitRhythmic(., T = p, get.residuals=TRUE))
-    dat.fit$period = p
-    return(dat.fit)
-  }, mc.cores = 64)
-  dat.fitrhyth <- do.call(rbind, dat.fitrhyth.period)
-  return(dat.fitrhyth)
-}
-
-GetMinPeriod <- function(dat){
-  return(subset(dat, mean.ssq.residuals == min(dat$mean.ssq.residuals)))
-}
-
-GetMinPeriodSsqResiduals <- function(dat){
-  return(subset(dat, ssq.residuals == min(dat$ssq.residuals)))
-}
-
 
 
 # Source ------------------------------------------------------------------
@@ -71,7 +48,10 @@ head(dat.fit.periods)
 load(file = "Robjs/dat.fit.scan_periods.Robj")
 dat.fit.periods <- subset(dat.fit.periods, gene %in% clockgenes)
 
+dat.fit.periods$chi.sqr <- dat.fit.periods$ssq.residuals / dat.fit.periods$variance
+
 ggplot(dat.fit.periods, aes(x = period, y = ssq.residuals, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+ggplot(subset(dat.fit.periods, ! gene %in% "Asb12"), aes(x = period, y = chi.sqr, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
 
 
 # Get minimum per gene ----------------------------------------------------
