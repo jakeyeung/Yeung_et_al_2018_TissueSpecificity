@@ -12,6 +12,7 @@ source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/PlotFunctions.R")
 
 # Load data from heatmap_tissue_specific_rhythms.R ------------------------
 
@@ -36,6 +37,10 @@ dat.fit.relamp <- dat.fit.relamp %>%
 # Get dat.complex ---------------------------------------------------------
 
 genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
+
+dat.long <- dat.long %>%
+  group_by(gene) %>%
+  mutate(exprs = scale(exprs, center = TRUE, scale = FALSE))
 
 dat.complex <- TemporalToFrequencyDatLong(subset(dat.long, gene %in% genes.exprs), period = 24, n = 8, interval = 6, add.entropy.method = "array")
 
@@ -91,15 +96,23 @@ multiplot(eigens.all.nr1d1.z$v.plot, eigens.all.nr1d1.z$u.plot, layout = jlayout
 # Centering ---------------------------------------------------------------
 
 # z-score is best
-dat.complex <- dat.complex %>%
+# remove brains and wfat
+filt.tiss <- c("Hypo", "Cere", "BS", "WFAT")
+dat.complex <- subset(dat.complex, ! tissue %in% filt.tiss) %>%
   group_by(gene) %>% 
   mutate(z.center = scale(z, center = TRUE, scale = FALSE),
          mod.z.center = Mod(z.center))
 dat.complex$mod.exprs.adj <- NULL
 dat.complex$mod.exprs.adj.z <- NULL
 
-comp <- 3
+comp <- 2
 s.all.z.center <- SvdOnComplex(subset(dat.complex, ! tissue %in% filt.tiss), value.var = "z.center")
 eigens.all.z.center <- GetEigens(s.all.z.center, period = 24, comp = comp, adj.mag = TRUE)
 multiplot(eigens.all.z.center$v.plot, eigens.all.z.center$u.plot, layout = jlayout)
 
+PlotComplexLong(subset(dat.complex, gene == "Nr1d1"))
+
+jgene <- "Arntl"
+jgene <- "Npas2"
+PlotComplex2(subset(dat.complex, gene == jgene)$exprs.transformed, labels = subset(dat.complex, gene == jgene)$tissue, title = jgene)
+PlotComplex2(subset(dat.complex, gene == jgene)$z.center, labels = subset(dat.complex, gene == jgene)$tissue, title = jgene)
