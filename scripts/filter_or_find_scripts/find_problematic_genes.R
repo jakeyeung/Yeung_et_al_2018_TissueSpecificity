@@ -2,6 +2,15 @@
 # 2015-09-18
 # find_problematic_genes.R
 
+MergeRows <- function(dat){
+  # merge two rows into one to plot biological replicates
+  dat.out <- data.frame(exprs1 = dat$exprs[1], exprs2 = dat$exprs[2])
+  return(dat.out)
+}
+
+AssignIndex <- function(x){
+  return(seq(length(x)))
+}
 
 # Source ------------------------------------------------------------------
 
@@ -52,10 +61,6 @@ dat.maxvar <- dat.24var %>%
   group_by(gene, tissue, experiment) %>%
   summarise(max.Var = median(Var))
 
-AssignIndex <- function(x){
-  return(seq(length(x)))
-}
-
 dat.maxvar <- dat.maxvar %>%
   group_by(tissue) %>%
   arrange(desc(max.Var)) %>%
@@ -80,18 +85,12 @@ ggplot(dat.entropy, aes(x = H)) + stat_ecdf() + facet_wrap(~tissue)
 
 # Plot biological replicates ----------------------------------------------
 
-MergeRows <- function(dat){
-  # merge two rows into one to plot biological replicates
-  dat.out <- data.frame(exprs1 = dat$exprs[1], exprs2 = dat$exprs[2])
-  return(dat.out)
-}
-
 # 8 minutes
-dat.reps <- subset(dat.long, experiment == "rnaseq") %>%
-  group_by(gene, time.m, tissue, experiment) %>%
-  do(MergeRows(.))
-head(dat.reps)
-
+# dat.reps <- subset(dat.long, experiment == "rnaseq") %>%
+#   group_by(gene, time.m, tissue, experiment) %>%
+#   do(MergeRows(.))
+# head(dat.reps)
+load("Robjs/dat.reps.Robj", verbose = T)
 
 # Plot replicates across tissues ------------------------------------------
 
