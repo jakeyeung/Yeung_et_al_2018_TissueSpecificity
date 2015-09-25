@@ -3,11 +3,11 @@ AcosBsinToAmpPhase <- function(acos, bsin, per = 24){
   # to phase (modulo period) and amplitude. 
   amp <- sqrt(acos ^ 2 + bsin ^ 2)
   phase.rad <- atan2(acos, bsin)
-  phase.time <- (phase.rad / w) %% T
+  phase.time <- (phase.rad / w) %% T.period
   return(amp, phase.time)
 }
 
-FitRhythmic <- function(dat, T = 24, get.residuals=FALSE){
+FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE){
   # Fit rhythmic model to long dat. Expect dat to be per tissue per gene.
   # use lapply and ddply to vectorize this code.
   # dat needs columns: tissue time experiment exprs
@@ -24,7 +24,7 @@ FitRhythmic <- function(dat, T = 24, get.residuals=FALSE){
   
 #   tissue <- unique(dat$tissue)
   tissue <- dat$tissue[1]
-  w = 2 * pi / T
+  w = 2 * pi / T.period
   # Expect columns exprs and time
   rhyth.fit <- lm(exprs ~ 0 + experiment + cos(w * time) + sin(w * time), data = dat)
   flat.fit <- lm(exprs ~ 0 + experiment, data = dat)
@@ -33,7 +33,7 @@ FitRhythmic <- function(dat, T = 24, get.residuals=FALSE){
   model.params <- GetParamsRhythModel(rhyth.fit)  # y = experimentarray + experimentrnaseq + a cos(wt) + b sin(wt)
   amp <- sqrt(model.params$a ^ 2 + model.params$b ^ 2)
   phase.rad <- atan2(model.params$b, model.params$a)
-  phase.time <- (phase.rad / w) %% T
+  phase.time <- (phase.rad / w) %% T.period
   if (get.residuals){
     # only care about residuals: do this if you want to see how the fit varies by changing period.
     ssq.residuals <- anova(rhyth.fit)["Residuals", "Sum Sq"]
