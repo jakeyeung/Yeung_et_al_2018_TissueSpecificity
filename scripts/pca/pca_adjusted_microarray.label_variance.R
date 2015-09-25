@@ -66,7 +66,7 @@ dat <- log(dat, base = 2)
 
 # Filter out WFAT ---------------------------------------------------------
 
-# dat <- dat[, grepl("WFAT", colnames(dat))]
+dat <- dat[, grepl("WFAT", colnames(dat))]
 
 # Calculate PCA and Screeplot ---------------------------------------------
 
