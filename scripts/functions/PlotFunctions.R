@@ -665,12 +665,12 @@ PlotEigensamp <- function(svd.obj, comp, omega = 2 * pi / 24, rotate=TRUE){
 
 # Heatmaps ----------------------------------------------------------------
 
-PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellowstart = 0.151, dist.method = "manhattan"){
+PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellowstart = 0.151, maxval = 1, dist.method = "manhattan"){
   library(gplots)
   my.palette <- colorRampPalette(c("black", "yellow"))(n = 300)
   # # (optional) defines the color breaks manually for a "skewed" color transition
   col.breaks = c(seq(0, blackend, length=150),  # black
-                 seq(yellowstart, 1, length=151))  # yellow
+                 seq(yellowstart, maxval, length=151))  # yellow
   # par(mar=c(17,8,4,8)+0.1) 
   par(mar=c(5,4,4,2)+0.1)
   heatmap.2(as.matrix(M), 
