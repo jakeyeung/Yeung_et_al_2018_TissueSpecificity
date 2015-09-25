@@ -22,7 +22,8 @@ FitRhythmic <- function(dat, T = 24, get.residuals=FALSE){
                 b = model.params[4]))
   }
   
-  tissue <- unique(dat$tissue)
+#   tissue <- unique(dat$tissue)
+  tissue <- dat$tissue[1]
   w = 2 * pi / T
   # Expect columns exprs and time
   rhyth.fit <- lm(exprs ~ 0 + experiment + cos(w * time) + sin(w * time), data = dat)
@@ -36,13 +37,20 @@ FitRhythmic <- function(dat, T = 24, get.residuals=FALSE){
   if (get.residuals){
     # only care about residuals: do this if you want to see how the fit varies by changing period.
     ssq.residuals <- anova(rhyth.fit)["Residuals", "Sum Sq"]
-    variance <- var(dat$exprs)
-    dat.out <- data.frame(ssq.residuals = ssq.residuals, variance = variance)
-#     dat.out <- data.frame(tissue = tissue, 
-#                           cos.part = model.params$a, sin.part = model.params$b, 
-#                           amp = amp, phase = phase.time, pval = pval,
-#                           int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq,
-#                           ssq.residuals = ssq.residuals)
+    ssq.residuals.flat <- anova(flat.fit)["Residuals", "Sum Sq"]
+    variance <- ssq.residuals / nrow(dat) # both rhyth and flat the same
+#     chi_sqr.rhyth <- ssq.residuals / variance
+#     chi_sqr.flat <- ssq.residuals.flat / variance
+    
+#     dat.out <- data.frame(ssq.residuals = ssq.residuals, variance = variance)
+    dat.out <- data.frame(tissue = tissue, 
+                          cos.part = model.params$a, sin.part = model.params$b, 
+                          amp = amp, phase = phase.time, pval = pval,
+                          int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq,
+                          variance = variance,
+                          ssq.residuals = ssq.residuals,
+                          ssq.residuals.flat = ssq.residuals.flat,
+                          variance = variance)
   } else {
     dat.out <- data.frame(tissue = tissue, 
                           cos.part = model.params$a, sin.part = model.params$b, 
@@ -52,7 +60,7 @@ FitRhythmic <- function(dat, T = 24, get.residuals=FALSE){
   return(dat.out)
 }
 
-FitRhythmicDatLong <- function(dat.long){
+FitRhythmicDatLong <- function(dat.long, jget.residuals=FALSE){
   library(parallel)
   dat.long.by_genetiss <- group_by(dat.long, gene, tissue)
   dat.long.by_genetiss.split <- split(dat.long.by_genetiss, dat.long.by_genetiss$tissue)
@@ -61,7 +69,7 @@ FitRhythmicDatLong <- function(dat.long){
   dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
     rhyth <- jdf %>%
       group_by(gene) %>%
-      do(FitRhythmic(dat = .))
+      do(FitRhythmic(dat = ., get.residuals = jget.residuals))
   }, mc.cores = 12)
   dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
   print(Sys.time() - start)
