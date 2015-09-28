@@ -3,6 +3,17 @@
 # Jake Yeung
 
 library(dplyr)
+library(parallel)
+setwd("~/projects/tissue-specificity")
+
+
+# Source ------------------------------------------------------------------
+
+source("scripts/functions/GetClockGenes.R")
+
+# Functions ---------------------------------------------------------------
+
+
 
 GetRhythmicFormula <- function(exprs, time, intercepts, w = 2 * pi / 24, with.intercept = FALSE){
   # Get formula for full rhythmic model
@@ -84,7 +95,7 @@ BICWeight <- function(bic.vec){
   bic.vec.weight.frac <- bic.vec.weight / sum(bic.vec.weight)
 }
 
-FitCombinations <- function(dat.gene, tiss.combos, N=3){
+FitCombinations <- function(dat.gene, tiss.combos, N=3, n.cores=30){
   # Return dataframe of combinations, fit, BIC for each possible model (2^N)
   # tiss.combos: list of tissue combinations to run lienar model
   # N: return only a subset of BIC models (top 3 by default)
@@ -102,122 +113,69 @@ FitCombinations <- function(dat.gene, tiss.combos, N=3){
   # END: FULL DESIGN MATRIX
   
   # BEGIN: INIT FITTING WITH FULL MODEL
-  model.i <- 1  # keep track of model, our row index
   # init with fitting full model, then just update with new formula
   des.mat.sub <- des.mat.full  # rename to keep fit output names consistent
   fit.full <- lm(exprs ~ 0 + des.mat.sub, data = dat.gene)
-  #   fit.full.bic <- BIC(fit.full)
-  #   fits.lst[[model.i]] <- fit.full
-  #   bics.lst[model.i] <- fit.full.bic
-  #   model.i <- model.i + 1
   # END: INIT FITTING
   
   # BEGIN: FIT DIFFERENT COMBOS
-  out.lst <- lapply(tiss.combos, function(tiss.combo){
+  out.lst <- mclapply(tiss.combos, function(tiss.combo){
     des.mat.sub <- SubsetFullDesignMatrix(des.mat.full, tiss.combo)
     fit.long <- dat.gene %>% do(mod = lm(exprs ~ 0 + des.mat.sub, data = .)) %>%
       mutate(rhyth.tiss = paste0(tiss.combo, collapse = ","), 
              bic = BIC(mod[[1]]))
-  #                                 mutate(rhyth.tiss = paste0(tiss.combo, collapse = ","),
-  #                                        bic = BIC(mod))
-  #     fit.long <- do(mod = lm(exprs ~ 0 + des.mat.sub, data = dat.gene), .data = dat.gene) %>%
-  #       mutate(rhyth.tiss = paste0(tiss.combo, collapse = ","),
-  #              bic = BIC(mod))
-  #     fit.long <- do(mod = update(fit.full, formula. = exprs ~ 0 + des.mat.sub), .data = des.mat.sub)
-  #                      mutate(rhyth.tiss=paste0(tiss.combo, collapse = ","),
-  #                             bic=BIC(mod)))
     return(fit.long)
-      
-  #     fit.i <- update(fit.full, formula. = exprs ~ 0 + des.mat.sub)
-  #     print(summary(fit.i))
-  #     fit.i.bic <- BIC(fit.i)
-  #     fits.lst[[model.i]] <- fit.i
-  #     bics.lst[model.i] <- fit.i.bic
-  #     model.i <- model.i + 1
-  #     return(list(fits=fits.lst, bics=bics.lst))
-  })
-  #   for (tiss.combo in tiss.combos){
-  #   }
+  }, mc.cores = n.cores)
   # END: FIT DIFFERENT COMBOS
   out.df <- do.call(rbind, out.lst)
-  #   print(out.df)
   out.df$bicweight <- BICWeight(out.df$bic)
   
   # get top 3
   out.df <- out.df[order(out.df$bicweight, decreasing = TRUE), ][1:N, ]
   return(out.df)
-#   bics.top.i <- order(out.df$bicweight, decreasing = TRUE)[1:3]
-#   return(out.df[bics.top.i, ])
-
-#   bics.weight <- BICWeight(out.lst$bics)
-#   bics.top.i <- order(bics.weight, decreasing = TRUE)[1:3]
-#   fits.top <- [bics.top.i]
-#   # get coefficients only: saves memory
-#   fits.top <- lapply(fits.top, function(fit) coef(fit))
-#   bics.top <- bics.weight[bics.top.i]
-#   
-#   return(list(fits = fits.top, bics = bics.top))
 }
 
-# Source ------------------------------------------------------------------
 
-source("scripts/functions/GetClockGenes.R")
 
 # Load and plot on 12 conditions -------------------------------------------
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", verbose = T)
 
+
+# Create test set ---------------------------------------------------------
+
 dat.sub <- subset(dat.long, gene == "Nr1d1")
 clockgenes <- GetClockGenes()
 
-tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
-dat.test <- subset(dat.long, gene %in% clockgenes & tissue %in% c(tiss.test))
+tissues <- as.character(unique(dat.sub$tissue))
 
+# tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
+tiss.test <- tissues
+dat.test <- subset(dat.long, gene %in% clockgenes & tissue %in% tiss.test)
 
-# Get design matrices -----------------------------------------------------
+# Label colnames ----------------------------------------------------------
 
 experiment <- "experiment"
 time <- "time"
 exprs <- "exprs"
 tissue <- "tissue"
-tissues <- as.character(unique(dat.sub$tissue))
+
+
+# Get design matrices -----------------------------------------------------
 
 form <- GetRhythmicFormula("exprs", "time", c("tissue", "experiment"), with.intercept = FALSE)
 des.mat.full <- model.matrix(form, dat.sub)
 
-# tissue.combos.lst <- GetAllCombos(tissues)
-
-# # fit each tissue combo
-# fits.all <- lapply(tissue.combos.lst[1:100], function(tiss.sub){
-#   if (length(tiss.sub) == 0){
-#     rhyth.tiss.str <- NA
-#   } else {
-#     rhyth.tiss.str <- paste0(tiss.sub, collapse = ",")
-#   }
-#   des.mat <- SubsetFullDesignMatrix(des.mat.full, rhythmic.tissues = tiss.sub)
-#   dat.fits <- dat.test %>%
-#     group_by(gene) %>%
-#     do(model.fit = lm(exprs ~ 0 + des.mat, .)) %>%
-#     mutate(bic = BIC(model.fit), rhyth.tiss = rhyth.tiss.str)
-# })
-# fits.all
-
+start <- Sys.time()
 tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)
-fits.all <- dat.test %>%
+fits.all <- dat.long %>%
   group_by(gene) %>%
   do(fits = FitCombinations(., tiss.combos))
 
 # size of object
 fits.all %>% object.size %>% print(unit = "MB")
-
-
-# tiss.sub <- combn(tissues, 0)
-# des.mat.sub <- SubsetFullDesignMatrix(des.mat.full, tiss.sub[, 1])
-# 
-# fit <- lm(exprs ~ 0 + des.mats, dat.sub)
-# # update through all possibilities, compute BIC
-# fit.less <- update(fit, formula. = exprs ~ 0 + des.mat.sub)
-# 
+save("Robjs/nconds.rnaseq_microarray.independent.Robj")
+print(Sys.time() - start)
 
 
 
