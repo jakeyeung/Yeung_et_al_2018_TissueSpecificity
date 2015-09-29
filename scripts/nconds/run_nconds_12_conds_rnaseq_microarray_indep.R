@@ -116,7 +116,7 @@ FitCombinations <- function(dat.gene, tiss.combos, N=3, n.cores=30){
   # BEGIN: INIT FITTING WITH FULL MODEL
   # init with fitting full model, then just update with new formula
   des.mat.sub <- des.mat.full  # rename to keep fit output names consistent
-  fit.full <- lm(exprs ~ 0 + des.mat.sub, data = dat.gene)
+  # fit.full <- lm(exprs ~ 0 + des.mat.sub, data = dat.gene)
   # END: INIT FITTING
   
   # BEGIN: FIT DIFFERENT COMBOS
@@ -179,8 +179,8 @@ clockgenes <- GetClockGenes()
 
 tissues <- as.character(unique(dat.sub$tissue))
 
-tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
-# tiss.test <- tissues
+# tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
+tiss.test <- tissues
 dat.test <- subset(dat.long, gene %in% clockgenes & tissue %in% tiss.test)
 # dat.test <- subset(dat.long, tissue %in% tiss.test)
 
@@ -204,9 +204,10 @@ tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)
 # dat.split <- split(dat.test, dat.test$gene)
 dat.split <- split(dat.long, dat.long$gene)
 fits.all <- mclapply(dat.split, FitCombinations, tiss.combos = tiss.combos, mc.cores = 50)
+# start <- Sys.time()
 # fits.all <- lapply(dat.split, FitCombinations, tiss.combos = tiss.combos)
-
 fits.all <- do.call(rbind, fits.all)
+# print(Sys.time() - start)
 
 # fits.all <- dat.test %>%
 #   group_by(gene) %>%
