@@ -100,6 +100,7 @@ FitCombinations <- function(dat.gene, tiss.combos, N=3, n.cores=30){
   # tiss.combos: list of tissue combinations to run lienar model
   # N: return only a subset of BIC models (top 3 by default)
   tissues <- unique(dat.gene$tissue)
+  gene <- dat.gene$gene[[1]]
   n.models <- 2 ^ length(tissues)
   
   fits.lst <- list()
@@ -119,22 +120,51 @@ FitCombinations <- function(dat.gene, tiss.combos, N=3, n.cores=30){
   # END: INIT FITTING
   
   # BEGIN: FIT DIFFERENT COMBOS
-  out.lst <- mclapply(tiss.combos, function(tiss.combo){
+  
+  # PARALLEL
+  #   out.lst <- mclapply(tiss.combos, function(tiss.combo){
+  #     des.mat.sub <- SubsetFullDesignMatrix(des.mat.full, tiss.combo)
+  #     fit.long <- dat.gene %>% do(mod = lm(exprs ~ 0 + des.mat.sub, data = .)) %>%
+  #       mutate(rhyth.tiss = paste0(tiss.combo, collapse = ","), 
+  #              bic = BIC(mod[[1]]))
+  #     return(fit.long)
+  #   }, mc.cores = n.cores)
+  
+  # SERIAL
+  #   out.lst <- lapply(tiss.combos, function(tiss.combo){
+  #     des.mat.sub <- SubsetFullDesignMatrix(des.mat.full, tiss.combo)
+  #     fit.long <- dat.gene %>% do(mod = lm(exprs ~ 0 + des.mat.sub, data = .)) %>%
+  #       mutate(rhyth.tiss = paste0(tiss.combo, collapse = ","), 
+  #              bic = BIC(mod[[1]]))
+  #     return(fit.long)
+  #   })
+  
+  out.lst <- lapply(tiss.combos, function(tiss.combo){
     des.mat.sub <- SubsetFullDesignMatrix(des.mat.full, tiss.combo)
-    fit.long <- dat.gene %>% do(mod = lm(exprs ~ 0 + des.mat.sub, data = .)) %>%
-      mutate(rhyth.tiss = paste0(tiss.combo, collapse = ","), 
-             bic = BIC(mod[[1]]))
+    fit.long <- dat.gene %>% 
+      do(mod = FitRhythmicDesMat(., des.mat.sub)) %>%
+      mutate(rhyth.tiss = paste0(tiss.combo, collapse = ","))
     return(fit.long)
-  }, mc.cores = n.cores)
+  })
+  
   # END: FIT DIFFERENT COMBOS
   out.df <- do.call(rbind, out.lst)
-  out.df$bicweight <- BICWeight(out.df$bic)
+  # out.df$bicweight <- BICWeight(out.df$bic)
+  out.df$bicweight <- BICWeight(sapply(out.df$mod, function(x) x$bic))
   
   # get top 3
   out.df <- out.df[order(out.df$bicweight, decreasing = TRUE), ][1:N, ]
+  out.df$gene <- gene
+  gc()
   return(out.df)
 }
 
+FitRhythmicDesMat <- function(dat, des.mat){
+  # Fit rhythmic with design matix
+  mod <- lm(exprs ~ 0 + des.mat, data = dat)
+  bic <- BIC(mod)
+  return(list(fit = coef(mod), bic = bic))
+}
 
 
 # Load and plot on 12 conditions -------------------------------------------
@@ -149,9 +179,10 @@ clockgenes <- GetClockGenes()
 
 tissues <- as.character(unique(dat.sub$tissue))
 
-# tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
-tiss.test <- tissues
+tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
+# tiss.test <- tissues
 dat.test <- subset(dat.long, gene %in% clockgenes & tissue %in% tiss.test)
+# dat.test <- subset(dat.long, tissue %in% tiss.test)
 
 # Label colnames ----------------------------------------------------------
 
@@ -168,13 +199,23 @@ des.mat.full <- model.matrix(form, dat.sub)
 
 start <- Sys.time()
 tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)
-fits.all <- dat.long %>%
-  group_by(gene) %>%
-  do(fits = FitCombinations(., tiss.combos))
+
+# dat.test$gene <- factor(as.character(dat.test$gene), levels = unique(dat.test$gene))
+# dat.split <- split(dat.test, dat.test$gene)
+dat.split <- split(dat.long, dat.long$gene)
+fits.all <- mclapply(dat.split, FitCombinations, tiss.combos = tiss.combos, mc.cores = 50)
+# fits.all <- lapply(dat.split, FitCombinations, tiss.combos = tiss.combos)
+
+fits.all <- do.call(rbind, fits.all)
+
+# fits.all <- dat.test %>%
+#   group_by(gene) %>%
+#   do(fits = FitCombinations(., tiss.combos, n.cores = 15))
 
 # size of object
 fits.all %>% object.size %>% print(unit = "MB")
-save("Robjs/nconds.rnaseq_microarray.independent.Robj")
+
+save(fits.all, file = "Robjs/nconds.rnaseq_microarray.independent.Robj")
 print(Sys.time() - start)
 
 
