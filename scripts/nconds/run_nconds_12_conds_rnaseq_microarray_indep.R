@@ -155,7 +155,7 @@ FitCombinations <- function(dat.gene, tiss.combos, N=3, n.cores=30){
   # get top 3
   out.df <- out.df[order(out.df$bicweight, decreasing = TRUE), ][1:N, ]
   out.df$gene <- gene
-  gc()
+  # gc()  # too slow
   return(out.df)
 }
 
@@ -194,11 +194,12 @@ tissue <- "tissue"
 
 # Get design matrices -----------------------------------------------------
 
-form <- GetRhythmicFormula("exprs", "time", c("tissue", "experiment"), with.intercept = FALSE)
-des.mat.full <- model.matrix(form, dat.sub)
+# form <- GetRhythmicFormula("exprs", "time", c("tissue", "experiment"), with.intercept = FALSE)
+# des.mat.full <- model.matrix(form, dat.sub)
 
 start <- Sys.time()
 tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)
+print(paste("Tissue combos:", length(tiss.combos)))
 
 # dat.test$gene <- factor(as.character(dat.test$gene), levels = unique(dat.test$gene))
 # dat.split <- split(dat.test, dat.test$gene)
