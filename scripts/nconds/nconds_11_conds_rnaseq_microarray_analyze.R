@@ -38,7 +38,9 @@ SubsetByMaxBicWeight <- function(dat){
 PlotSvdFromGeneList <- function(dat.complex, gene.list, jcomp = 1, jlabel.n = 25, jvalue.var = "exprs.transformed"){
   # Plot SVD from gene list
   s.custom <- SvdOnComplex(subset(dat.complex, gene %in% gene.list), value.var = jvalue.var)
+  jcomp2 <- jcomp + 1
   eigens.custom <- GetEigens(s.custom, period = 24, comp = jcomp, label.n = jlabel.n, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+  eigens.custom2 <- GetEigens(s.custom, period = 24, comp = jcomp2, label.n = jlabel.n, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
   multiplot(eigens.custom$u.plot, eigens.custom$v.plot, eigens.custom2$u.plot, eigens.custom2$v.plot, layout = jlayout)
   return(eigens.custom)
 }
@@ -130,25 +132,6 @@ fits.combos.sum <- fits.combos.sum[order(fits.combos.sum$count, decreasing = TRU
 head(fits.combos.sum)
 
 
-# Look at Aorta BFAT ------------------------------------------------------
-
-# TODO: Aorta BFAT: PCA on mean to show muscle is always highly expressed: otherwise maybe there is a Aorta BFAT Mus group?
-
-# dat.avg <- subset(dat.long, experiment == "rnaseq" & tissue %in% c("Aorta", "Heart")) %>%
-#   group_by(tissue, gene) %>%
-#   summarise(exprs.avg = mean(exprs))
-# 
-# dat.avg.diff <- dat.avg %>%
-#   group_by(gene) %>%
-#   summarise(abs.diff = abs(diff(exprs.avg)))
-# dat.avg.diff <- dat.avg.diff[order(dat.avg.diff$abs.diff, decreasing = TRUE), ]
-
-# fits.sub <- subset(fits.all.max, rhyth.tiss == "Aorta,BFAT")
-# ggplot(fits.sub, aes(x = bicweight)) + geom_histogram(binwidth = 1/100)
-# # show low bicweights
-# fits.sub[order(fits.sub$bicweight), ]
-
-
 # Plot combos ------------------------------------------------
 
 # plot all combos and plot gene expression examples
@@ -205,14 +188,14 @@ rownames(bicmat.sub) <- bicmat.sub$gene; bicmat.sub$gene <- NULL
 
 # Get clusters ------------------------------------------------------------
 
-n.centers <- 12
-clusters <- kmeans(bicmat.sub, centers = n.centers)
+n.centers <- 50
+clusters <- kmeans(bicmat.sub, centers = n.centers, iter.max = 100)
 
 clusters.counts <- table(clusters$cluster)
 
 # order by number of genes
-clusters.counts <- clusters.counts[order(clusters.counts, decreasing = TRUE)]
-
+# clusters.counts <- clusters.counts[order(clusters.counts, decreasing = TRUE)]
+clusters.counts <- clusters.counts[order(clusters$withinss, decreasing = TRUE)]
 
 outname <- paste0("cluster_genes_", n.centers, ".pdf")
 pdf(file.path(outdir, outname))
