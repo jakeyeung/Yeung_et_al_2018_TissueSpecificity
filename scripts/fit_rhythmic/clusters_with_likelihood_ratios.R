@@ -4,7 +4,7 @@
 library(mclust)
 library(reshape2)
 library(cluster) 
-library(fpc)
+library(fpc)  # tediously long install
 
 # Functions ---------------------------------------------------------------
 
