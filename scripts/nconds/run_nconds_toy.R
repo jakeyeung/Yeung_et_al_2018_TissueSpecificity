@@ -2,8 +2,12 @@
 # Use BIC but on limited set of models
 # Jake Yeung
 
+w <- 2 * pi / 24
+
 library(dplyr)
 library(parallel)
+library(hash)
+
 setwd("~/projects/tissue-specificity")
 
 
@@ -11,6 +15,7 @@ setwd("~/projects/tissue-specificity")
 
 source("scripts/functions/GetClockGenes.R")
 source("scripts/functions/NcondsFunctions.R")
+source("scripts/functions/Queue.R")
 
 # Functions ---------------------------------------------------------------
 
@@ -34,27 +39,28 @@ ConcatenateRhythmicTissues <- function(des.mat, des.mat.rhyth.sin, des.mat.rhyth
   return(des.mat)
 }
 
-enqueue <- function(queue, new.element){
-  temp.queue <- new.env()
-  temp.queue$value <- new.element
-  temp.queue$next.element <- queue$next.element
-  queue$next.element <- temp.queue
-  queue$value <- NULL
+GetSinHash <- function(dat.gene, tissues, w = 2 * pi /24){
+  des.mat.sin <- GetRhythModel.sin(dat.gene, w)
+  des.mat.sin.hash <- MakeHash(des.mat.sin, tissues)
+  return(des.mat.sin.hash)
 }
 
-dequeue <- function(queue){
-  value <- queue$next.element$value
-  queue$next.element <- (queue$next.element)$next.element
-  queue$value <- NULL
-  return(value)
+GetCosHash <- function(dat.gene, tissues, w = 2 * pi /24){
+  des.mat.cos <- GetRhythModel.cos(dat.gene, w)
+  des.mat.cos.hash <- MakeHash(des.mat.cos, tissues)
+  return(des.mat.cos.hash)
 }
 
-system.time({
-  x <- new.env()
-  for(i in 1:N){
-    enqueue(x,i)
-  } 
-}) 
+NRhythmicFromString <- function(rhyth.tiss, jsep = ","){
+  # How many tissues are rhythmic given a comma separated stringS
+  # "" suggests 0
+  if (rhyth.tiss == ""){
+    return(0) 
+  } else {
+    return(length(strsplit(rhyth.tiss, jsep)[[1]]))
+  }
+}
+
 
 # Load and plot on 12 conditions -------------------------------------------
 
@@ -95,6 +101,37 @@ print(paste("Tissue combos:", length(tiss.combos)))
 
 
 # Iterate n rhythmic params ------------------------------------------------------
+
+
+
+tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)  # to know all combinations
+my_mat.queue <- new.queue()
+
+# init with flat model
+des.mat.flat <- GetFlatModel(dat.gene)
+# get rhythmic parameters which will be used for adding later: hash structure has fast lookup
+des.mat.sinhash <- GetSinHash(dat.gene, tiss.test, w)
+des.mat.coshash <- GetCosHash(dat.gene, tiss.test, w)
+
+rhyth.tiss <- ""
+n.rhyth <- NRhythmicFromString(rhyth.tiss)
+des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, n.rhyth=n.rhyth)
+enqueue(my_mat.queue, des.mat.list)
+
+# generate matrix by adding combinations of columns and adding
+# those matrices into the queue
+while (! is.empty(my_mat.queue)) {
+  des.mat.list <- dequeue(qq)
+  # determine tissue combinations that need to be added based on rhyth.tiss
+  # e.g., no need to add Liver twice, they can't have two rhythmic paramters
+  tiss.combos.sub <- tiss.combos[which(! tiss.combos %in% des.mat.list$rhyth.tiss)]
+  for (tiss.comb in tiss.combos.sub){
+    # add column for each tissue combination
+    
+  }
+  
+} 
+
 
 my_mat <- list()
 model <- 1

@@ -30,8 +30,34 @@ GetRhythModel <- function(dat.gene, w = 2 * pi / 24){
   des.mat.rhyth <- model.matrix(exprs ~ 0 + tissue:sin(w * time) + tissue:cos(w * time), dat.gene)
 }
 
+MakeHash <- function(des.mat.rhyth, tissues, combos){
+  # return as hash object requires hash library
+  tissues <- unique(as.character(dat.gene$tissue))
+  # init with single tissues
+  des.mat.hash <- hash()
+  for (tiss.i in seq(tissues)){
+    tiss <- tissues[tiss.i]
+    des.mat.hash[[tiss]] <- des.mat.rhyth[, colnames(des.mat.rhyth)[grepl(tiss, colnames(des.mat.rhyth))]]
+  }
+  # add combos
+  for (comb in combos){
+    if (length(comb) > 1){
+      # init
+      vec <- vector(NA, length = nrow(des.mat.rhyth))
+      for (tiss in comb){
+        des.mat.hash[[tiss]]
+      }
+    }
+  }
+  return(des.mat.hash)
+}
+
+AddCombosToHash <- function(des.mat.rhyth, tissue.combs){}
+}
+
 GetRhythModel.sin <- function(dat.gene, w = 2 * pi / 24){
   des.mat.rhyth <- model.matrix(exprs ~ 0 + tissue:sin(w * time), dat.gene)
+  return(des.mat.rhyth)
 }
 
 GetRhythModel.cos <- function(dat.gene, w = 2 * pi / 24){
