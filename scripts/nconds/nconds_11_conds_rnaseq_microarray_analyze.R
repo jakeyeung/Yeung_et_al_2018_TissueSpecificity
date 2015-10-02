@@ -3,7 +3,6 @@
 
 setwd("/home/yeung/projects/tissue-specificity")
 jvalue.var <- "exprs.transformed"
-jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 
 outdir <- "plots/nconds/nconds_microarray_array_independent_params_11_tiss"
 jtop.n <- 25
@@ -15,45 +14,14 @@ library(cluster)
 
 # Functions ---------------------------------------------------------------
 
-GetTissuesFromCoefFit <- function(fit.coef.names, tissue.colname = "tissue"){
-  # Get tissues involved by grepping everything after tissue.colname
-  match.names.i <- grepl(tissue.colname, fit.coef.names) & !grepl(":", fit.coef.names)
-  match.names <- fit.coef.names[match.names.i]
-  tissues <- sapply(match.names, function(jname) strsplit(jname, split = tissue.colname)[[1]][[2]], USE.NAMES = FALSE)
-  return(tissues)
-}
 
-ExtraParamsFromFit <- function(fit.coef, tissues){
-  # From coefficients of fit, extract parameters
-  # colnames should contain tissue, RNA-Seq intercept, phase, amplitude, and BIC
-  cnames <- tissues
-  # TODO
-}
-
-SubsetByMaxBicWeight <- function(dat){
-  max.i <- which.max(dat$bicweight)
-  return(dat[max.i, ])
-}
-
-PlotSvdFromGeneList <- function(dat.complex, gene.list, jcomp = 1, jlabel.n = 25, jvalue.var = "exprs.transformed"){
-  # Plot SVD from gene list
-  s.custom <- SvdOnComplex(subset(dat.complex, gene %in% gene.list), value.var = jvalue.var)
-  jcomp2 <- jcomp + 1
-  eigens.custom <- GetEigens(s.custom, period = 24, comp = jcomp, label.n = jlabel.n, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
-  eigens.custom2 <- GetEigens(s.custom, period = 24, comp = jcomp2, label.n = jlabel.n, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
-  multiplot(eigens.custom$u.plot, eigens.custom$v.plot, eigens.custom2$u.plot, eigens.custom2$v.plot, layout = jlayout)
-  return(eigens.custom)
-}
-
-GetTopGenesFromSvd <- function(eigens.obj, top.n = 25){
-  return(names(sort(eigens.obj$eigensamp, decreasing = TRUE)[1:top.n]))
-}
 
 # Source ------------------------------------------------------------------
 
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/SvdFunctions.R")
+source("scripts/functions/NcondsAnalysisFunctions.R")
 
 # Load --------------------------------------------------------------------
 
