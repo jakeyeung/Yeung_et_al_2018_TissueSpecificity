@@ -57,7 +57,7 @@ dat.long <- subset(dat.long, tissue != "WFAT")
 tissues <- as.character(unique(dat.long$tissue))
 tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
 # tiss.test <- tissues
-tiss.test <- c("Liver", "Kidney")
+# tiss.test <- c("Liver", "Kidney")
 dat.gene <- subset(dat.long, gene == "Nr1d1" & tissue %in% tiss.test)
 dat.gene$tissue <- factor(as.character(dat.gene$tissue), levels = tiss.test)
 
@@ -95,20 +95,27 @@ while (! is.empty(my_mat.queue)) {
   # determine tissue combinations that need to be added based on rhyth.tiss
   # e.g., no need to add Liver twice, they can't have two rhythmic paramters
   
-  #   tiss.combos.sub <- FilterCombos(tiss.combos, des.mat.list$rhyth.tiss)
-
   for (tiss.comb in des.mat.list$complement){
     # add column for each tissue combination
     tiss.key <- paste(tiss.comb, collapse = ",")
-    col.new <- AddRhythmicColumns(des.mat.sinhash, des.mat.coshash, tiss.key)
     
     # append tiss.key to rhyth.tiss
-    rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.comb)
-#     rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)
+    rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)  # form list("Adr,Kidney", "Mus")
     
-#     # track models we have done globally
-#     modelname <- MakeModelName(rhyth.tiss)
-#     models.done[[]]
+    # check if this tissue combination has been already submitted into queue (but in different permutation)
+    # track models we have done globally
+    modelname <- MakeModelName(rhyth.tiss)
+    if (! is.null(models.done[[modelname]])){
+      # this is a permutation of an already done combo, skip
+#       print(rhyth.tiss)
+#       print(paste('Skipping', modelname))
+      next
+    }
+    
+    col.new <- AddRhythmicColumns(des.mat.sinhash, des.mat.coshash, tiss.key)
+    
+    #     rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)
+    
 
     # further remove complement after having
     tiss.complement.new <- FilterCombos(des.mat.list$complement, tiss.comb)
@@ -120,6 +127,7 @@ while (! is.empty(my_mat.queue)) {
     mat.new <- cbind(des.mat.list$mat, col.new)
     des.mat.list.new <- list(mat=mat.new, rhyth.tiss = rhyth.tiss, n.rhyth=n.rhyth, complement = tiss.complement.new)
     enqueue(my_mat.queue, des.mat.list.new) 
+    models.done[[modelname]] <- TRUE  # we dont want to redo permutations of same models
     n.mat.submitted <- n.mat.submitted + 1
     des.mats$add(des.mat.list.new)
   }  

@@ -1,3 +1,10 @@
+MakeModelName <- function(rhyth.tiss.lst, delim = ";"){
+  # From a list of rhythmic tissues, generate a hash key to track models
+  # therefore: Adr,Kidney;Liver means Adr,Kidney same param, Liver independent param
+  lst <- sort(unlist(rhyth.tiss.lst))
+  return(paste(lst, collapse = delim))
+}
+
 AddRhythmicColumns <- function(des.mat.sinhash, des.mat.coshash, tiss.key){
   # cbind rhythnic columns, rename to track which tissues share this parameter
   col.new <- cbind(des.mat.sinhash[[tiss.key]], des.mat.coshash[[tiss.key]])
