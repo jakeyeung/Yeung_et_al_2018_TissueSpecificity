@@ -1,3 +1,42 @@
+GetSinCombos <- function(dat.gene, w, tissues, combos){
+  des.mat.sin <- GetRhythModel.sin(dat.gene, w)
+  des.mat.sin.hash <- MakeHash(des.mat.sin, tissues, combos)
+  return(des.mat.sin.hash)
+}
+
+GetCosCombos <- function(dat.gene, w, tissues, combos){
+  des.mat.cos <- GetRhythModel.cos(dat.gene, w)
+  des.mat.cos.hash <- MakeHash(des.mat.cos, tissues, combos)
+  return(des.mat.cos.hash)
+}
+
+NRhythmicFromString <- function(rhyth.tiss, jsep = ","){
+  # How many tissues are rhythmic given a comma separated stringS
+  # "" suggests 0
+  if (rhyth.tiss == ""){
+    return(0) 
+  } else {
+    return(length(strsplit(rhyth.tiss, jsep)[[1]]))
+  }
+}
+
+FilterCombos <- function(combos, combos.sub){
+  # Filter out combos given a combos.sub, filters
+  # any combo that contains even one of the elements in combo.sub
+  # always removes an empty set no matter what
+  combos.subl <- sapply(combos, function(comb){
+    if (length(comb) == 0) return(FALSE)  # empty set
+    inrhyth <- TRUE  # say it is true, loop through conditions to set to false if it is a duplicate
+    for (ci in comb){
+      if (ci %in% combos.sub){
+        inrhyth <- inrhyth * FALSE
+      } 
+    }
+    return(as.logical(inrhyth))
+  })
+  return(combos[combos.subl])
+}
+
 GetRhythmicFormula <- function(exprs, time, intercepts, w = 2 * pi / 24, with.intercept = FALSE){
   # Get formula for full rhythmic model
   # tissue: genotype, or tissues
@@ -39,21 +78,21 @@ MakeHash <- function(des.mat.rhyth, tissues, combos){
     tiss <- tissues[tiss.i]
     des.mat.hash[[tiss]] <- des.mat.rhyth[, colnames(des.mat.rhyth)[grepl(tiss, colnames(des.mat.rhyth))]]
   }
-  # add combos
+  # add combos only if they are composed of >1 tissues
   for (comb in combos){
-    if (length(comb) > 1){
-      # init
-      vec <- vector(NA, length = nrow(des.mat.rhyth))
-      for (tiss in comb){
-        des.mat.hash[[tiss]]
-      }
+    if (length(comb) <= 1) next
+    # init
+    vec <- numeric(length = nrow(des.mat.rhyth))
+    for (tiss in comb){
+      vec <- vec + des.mat.hash[[tiss]]
     }
+    # put combo into hash as comma separated string
+    comb.key <- paste(comb, collapse = ",")
+    des.mat.hash[[comb.key]] <- vec
   }
   return(des.mat.hash)
 }
 
-AddCombosToHash <- function(des.mat.rhyth, tissue.combs){}
-}
 
 GetRhythModel.sin <- function(dat.gene, w = 2 * pi / 24){
   des.mat.rhyth <- model.matrix(exprs ~ 0 + tissue:sin(w * time), dat.gene)
@@ -127,6 +166,11 @@ GetAllCombos <- function(tissues, ignore.full = TRUE){
   
   for(i in 0:max.rhyth){
     tissues.combo <- combn(tissues, i)
+    if (is.null(ncol(tissues.combo))){
+      # only one choice, put that choice into list
+      tissue.combos.lst[[model.i]] <- tissues.combo
+      model.i <- model.i + 1
+    }
     for(j in seq(ncol(tissues.combo))){
       tissue.combos.lst[[model.i]] <- tissues.combo[, j]
       model.i <- model.i + 1

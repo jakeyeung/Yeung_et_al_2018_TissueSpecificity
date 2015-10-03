@@ -39,27 +39,7 @@ ConcatenateRhythmicTissues <- function(des.mat, des.mat.rhyth.sin, des.mat.rhyth
   return(des.mat)
 }
 
-GetSinHash <- function(dat.gene, tissues, w = 2 * pi /24){
-  des.mat.sin <- GetRhythModel.sin(dat.gene, w)
-  des.mat.sin.hash <- MakeHash(des.mat.sin, tissues)
-  return(des.mat.sin.hash)
-}
 
-GetCosHash <- function(dat.gene, tissues, w = 2 * pi /24){
-  des.mat.cos <- GetRhythModel.cos(dat.gene, w)
-  des.mat.cos.hash <- MakeHash(des.mat.cos, tissues)
-  return(des.mat.cos.hash)
-}
-
-NRhythmicFromString <- function(rhyth.tiss, jsep = ","){
-  # How many tissues are rhythmic given a comma separated stringS
-  # "" suggests 0
-  if (rhyth.tiss == ""){
-    return(0) 
-  } else {
-    return(length(strsplit(rhyth.tiss, jsep)[[1]]))
-  }
-}
 
 
 # Load and plot on 12 conditions -------------------------------------------
@@ -95,7 +75,6 @@ tissue <- "tissue"
 # form <- GetRhythmicFormula("exprs", "time", c("tissue", "experiment"), with.intercept = FALSE)
 # des.mat.full <- model.matrix(form, dat.sub)
 
-start <- Sys.time()
 tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)
 print(paste("Tissue combos:", length(tiss.combos)))
 
@@ -110,28 +89,41 @@ my_mat.queue <- new.queue()
 # init with flat model
 des.mat.flat <- GetFlatModel(dat.gene)
 # get rhythmic parameters which will be used for adding later: hash structure has fast lookup
-des.mat.sinhash <- GetSinHash(dat.gene, tiss.test, w)
-des.mat.coshash <- GetCosHash(dat.gene, tiss.test, w)
+des.mat.sinhash <- GetSinCombos(dat.gene, w, tiss.test, tiss.combos)
+des.mat.coshash <- GetCosCombos(dat.gene, w, tiss.test, tiss.combos)
 
-rhyth.tiss <- ""
+rhyth.tiss <- character(0)
 n.rhyth <- NRhythmicFromString(rhyth.tiss)
 des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, n.rhyth=n.rhyth)
+
 enqueue(my_mat.queue, des.mat.list)
 
 # generate matrix by adding combinations of columns and adding
 # those matrices into the queue
 while (! is.empty(my_mat.queue)) {
-  des.mat.list <- dequeue(qq)
+  des.mat.list <- dequeue(my_mat.queue)
   # determine tissue combinations that need to be added based on rhyth.tiss
   # e.g., no need to add Liver twice, they can't have two rhythmic paramters
-  tiss.combos.sub <- tiss.combos[which(! tiss.combos %in% des.mat.list$rhyth.tiss)]
+  
+  tiss.combos.sub <- FilterCombos(tiss.combos, des.mat.list$rhyth.tiss)
+  tiss.combos.subl <- sapply(tiss.combos, function(tiss.comb){
+    if (length(tiss.comb) == 0) return(FALSE)  # empty set
+    inrhyth <- TRUE  # say it is true, loop through conditions to set to false if it is a duplicate
+    for (tiss in tiss.comb){
+      if (tiss %in% des.mat.list$rhyth.tiss){
+        inrhyth <- inrhyth * FALSE
+      } 
+    }
+    return(as.logical(inrhyth))
+  })
+  tiss.combos.sub <- tiss.combos[tiss.combos.subl]
+
   for (tiss.comb in tiss.combos.sub){
     # add column for each tissue combination
     
   }
   
 } 
-
 
 my_mat <- list()
 model <- 1
