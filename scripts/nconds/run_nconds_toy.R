@@ -92,11 +92,16 @@ des.mat.flat <- GetFlatModel(dat.gene)
 des.mat.sinhash <- GetSinCombos(dat.gene, w, tiss.test, tiss.combos)
 des.mat.coshash <- GetCosCombos(dat.gene, w, tiss.test, tiss.combos)
 
-rhyth.tiss <- character(0)
-n.rhyth <- NRhythmicFromString(rhyth.tiss)
-des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, n.rhyth=n.rhyth)
+rhyth.tiss <- list(character(0))  # needs to track shared and independent parameters, e.g.: c("Liver,Kidney", "Adr") no duplicates allowed
+# n.rhyth <- NRhythmicFromString(rhyth.tiss)  # number of independent rhythmic parameters perhaps? 
+n.rhyth <- NRhythmicFromVector(rhyth.tiss)  # do that later? naw faster if we do it now
+complement <- FilterCombos(tiss.combos, rhyth.tiss)  # large memory usage let's try not to optimize unless we need to 
+# n.param <- 1  # just flat
+des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, n.rhyth=n.rhyth, complement = complement)
 
 enqueue(my_mat.queue, des.mat.list)
+
+n.mat.submitted <- 1
 
 # generate matrix by adding combinations of columns and adding
 # those matrices into the queue
@@ -105,25 +110,31 @@ while (! is.empty(my_mat.queue)) {
   # determine tissue combinations that need to be added based on rhyth.tiss
   # e.g., no need to add Liver twice, they can't have two rhythmic paramters
   
-  tiss.combos.sub <- FilterCombos(tiss.combos, des.mat.list$rhyth.tiss)
-  tiss.combos.subl <- sapply(tiss.combos, function(tiss.comb){
-    if (length(tiss.comb) == 0) return(FALSE)  # empty set
-    inrhyth <- TRUE  # say it is true, loop through conditions to set to false if it is a duplicate
-    for (tiss in tiss.comb){
-      if (tiss %in% des.mat.list$rhyth.tiss){
-        inrhyth <- inrhyth * FALSE
-      } 
-    }
-    return(as.logical(inrhyth))
-  })
-  tiss.combos.sub <- tiss.combos[tiss.combos.subl]
+  #   tiss.combos.sub <- FilterCombos(tiss.combos, des.mat.list$rhyth.tiss)
 
-  for (tiss.comb in tiss.combos.sub){
+  for (tiss.comb in des.mat.list$complement){
     # add column for each tissue combination
+    tiss.key <- paste(tiss.comb, collapse = ",")
+    col.new <- AddRhythmicColumns(des.mat.sinhash, des.mat.coshash, tiss.key)
     
-  }
-  
+    # append tiss.key to rhyth.tiss
+    rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.comb)
+
+    # further remove complement after having
+    tiss.complement.new <- FilterCombos(des.mat.list$complement, tiss.comb)
+    
+    # add meta data: makes finding models easier
+    n.rhyth <- des.mat.list$n.rhyth + length(tiss.comb)
+    
+    # make new matrix, put it into queue
+    mat.new <- cbind(des.mat.list$mat, col.new)
+    des.mat.list.new <- list(mat=mat.new, rhyth.tiss = rhyth.tiss, n.rhyth=n.rhyth, complement = tiss.complement.new)
+    enqueue(my_mat.queue, des.mat.list.new) 
+    n.mat.submitted <- n.mat.submitted + 1
+  }  
 } 
+print(n.mat.submitted)
+
 
 my_mat <- list()
 model <- 1

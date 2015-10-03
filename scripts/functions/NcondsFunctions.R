@@ -1,3 +1,11 @@
+AddRhythmicColumns <- function(des.mat.sinhash, des.mat.coshash, tiss.key){
+  # cbind rhythnic columns, rename to track which tissues share this parameter
+  col.new <- cbind(des.mat.sinhash[[tiss.key]], des.mat.coshash[[tiss.key]])
+  col.new.namebase <- paste(tiss.key, sep = ",")
+  colnames(col.new) <- c(paste0(col.new.namebase, ":sin(w * time)"), paste0(col.new.namebase, ":cos(w * time)"))
+  return(col.new)
+}
+
 GetSinCombos <- function(dat.gene, w, tissues, combos){
   des.mat.sin <- GetRhythModel.sin(dat.gene, w)
   des.mat.sin.hash <- MakeHash(des.mat.sin, tissues, combos)
@@ -13,11 +21,21 @@ GetCosCombos <- function(dat.gene, w, tissues, combos){
 NRhythmicFromString <- function(rhyth.tiss, jsep = ","){
   # How many tissues are rhythmic given a comma separated stringS
   # "" suggests 0
+  if (length(rhyth.tiss) == 0) return(0)
   if (rhyth.tiss == ""){
     return(0) 
   } else {
     return(length(strsplit(rhyth.tiss, jsep)[[1]]))
   }
+}
+
+NRhythmicFromVector <- function(rhyth.tiss.vec, jsep = ","){
+  # if c("Adr,Liver", "Kidney") output 3 rhythmic tisues
+  n.rhyth <- 0
+  for (tiss in rhyth.tiss.vec){
+    n.rhyth <- n.rhyth + NRhythmicFromString(tiss)
+  }
+  return(n.rhyth)
 }
 
 FilterCombos <- function(combos, combos.sub){
