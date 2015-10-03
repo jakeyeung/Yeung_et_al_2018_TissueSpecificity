@@ -16,6 +16,7 @@ setwd("~/projects/tissue-specificity")
 source("scripts/functions/GetClockGenes.R")
 source("scripts/functions/NcondsFunctions.R")
 source("scripts/functions/Queue.R")
+source("scripts/functions/ListFunctions.R")
 
 # Functions ---------------------------------------------------------------
 
@@ -52,38 +53,16 @@ dat.long <- subset(dat.long, tissue != "WFAT")
 
 # Create test set ---------------------------------------------------------
 
-dat.sub <- subset(dat.long, gene == "Nr1d1")
-clockgenes <- GetClockGenes()
 
 tissues <- as.character(unique(dat.long$tissue))
-
 tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus")
 # tiss.test <- tissues
-dat.test <- subset(dat.long, gene %in% clockgenes & tissue %in% tiss.test)
-# dat.test <- subset(dat.long, tissue %in% tiss.test)
+tiss.test <- c("Liver", "Kidney")
+dat.gene <- subset(dat.long, gene == "Nr1d1" & tissue %in% tiss.test)
+dat.gene$tissue <- factor(as.character(dat.gene$tissue), levels = tiss.test)
 
-# Label colnames ----------------------------------------------------------
-
-experiment <- "experiment"
-time <- "time"
-exprs <- "exprs"
-tissue <- "tissue"
-
-
-# Get design matrices -----------------------------------------------------
-
-# form <- GetRhythmicFormula("exprs", "time", c("tissue", "experiment"), with.intercept = FALSE)
-# des.mat.full <- model.matrix(form, dat.sub)
 
 tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)
-print(paste("Tissue combos:", length(tiss.combos)))
-
-
-# Iterate n rhythmic params ------------------------------------------------------
-
-
-
-tiss.combos <- GetAllCombos(tiss.test, ignore.full = FALSE)  # to know all combinations
 my_mat.queue <- new.queue()
 
 # init with flat model
@@ -102,6 +81,8 @@ des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, n.rhyth=n.rhyth, c
 enqueue(my_mat.queue, des.mat.list)
 
 n.mat.submitted <- 1
+des.mats <- expandingList() 
+des.mats$add(des.mat.flat)
 
 # generate matrix by adding combinations of columns and adding
 # those matrices into the queue
@@ -131,10 +112,11 @@ while (! is.empty(my_mat.queue)) {
     des.mat.list.new <- list(mat=mat.new, rhyth.tiss = rhyth.tiss, n.rhyth=n.rhyth, complement = tiss.complement.new)
     enqueue(my_mat.queue, des.mat.list.new) 
     n.mat.submitted <- n.mat.submitted + 1
+    des.mats$add(mat.new)
   }  
 } 
 print(n.mat.submitted)
-
+des.mats.list <- des.mats$as.list()
 
 my_mat <- list()
 model <- 1
@@ -145,32 +127,6 @@ my_mat$rhyth.tiss <- ""
 
 n.rhyth.param <- 1  # test
 dat.gene <- subset(dat.long, gene == "Nr1d1")
-
-for (tiss.comb in tiss.combos){
-  # iterate each tiss combo to have n.rhyth.parameters
-  
-}
-
-
-
-# dat.test$gene <- factor(as.character(dat.test$gene), levels = unique(dat.test$gene))
-# dat.split <- split(dat.test, dat.test$gene)
-dat.split <- split(dat.long, dat.long$gene)
-fits.all <- mclapply(dat.split, FitCombinations, tiss.combos = tiss.combos, mc.cores = 50)
-# start <- Sys.time()
-# fits.all <- lapply(dat.split, FitCombinations, tiss.combos = tiss.combos)
-fits.all <- do.call(rbind, fits.all)
-# print(Sys.time() - start)
-
-# fits.all <- dat.test %>%
-#   group_by(gene) %>%
-#   do(fits = FitCombinations(., tiss.combos, n.cores = 15))
-
-# size of object
-fits.all %>% object.size %>% print(unit = "MB")
-
-save(fits.all, file = "Robjs/nconds.rnaseq_microarray.independent.Robj")
-print(Sys.time() - start)
 
 
 
