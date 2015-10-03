@@ -82,7 +82,11 @@ enqueue(my_mat.queue, des.mat.list)
 
 n.mat.submitted <- 1
 des.mats <- expandingList() 
-des.mats$add(des.mat.flat)
+des.mats$add(des.mat.list)
+
+# need to track models that we have done, so we eliminate "permutations" like c("Liver", "Kidney") and c("Kidney", "Liver) models
+# use hash for speed
+models.done <- hash()
 
 # generate matrix by adding combinations of columns and adding
 # those matrices into the queue
@@ -100,6 +104,11 @@ while (! is.empty(my_mat.queue)) {
     
     # append tiss.key to rhyth.tiss
     rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.comb)
+#     rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)
+    
+#     # track models we have done globally
+#     modelname <- MakeModelName(rhyth.tiss)
+#     models.done[[]]
 
     # further remove complement after having
     tiss.complement.new <- FilterCombos(des.mat.list$complement, tiss.comb)
@@ -112,22 +121,11 @@ while (! is.empty(my_mat.queue)) {
     des.mat.list.new <- list(mat=mat.new, rhyth.tiss = rhyth.tiss, n.rhyth=n.rhyth, complement = tiss.complement.new)
     enqueue(my_mat.queue, des.mat.list.new) 
     n.mat.submitted <- n.mat.submitted + 1
-    des.mats$add(mat.new)
+    des.mats$add(des.mat.list.new)
   }  
 } 
 print(n.mat.submitted)
 des.mats.list <- des.mats$as.list()
-
-my_mat <- list()
-model <- 1
-models.done <- c()
-des.mat.flat <- GetFlatModel(dat.gene)
-my_mat$model[[model]] <- des.mat.flat
-my_mat$rhyth.tiss <- ""
-
-n.rhyth.param <- 1  # test
-dat.gene <- subset(dat.long, gene == "Nr1d1")
-
 
 
 
