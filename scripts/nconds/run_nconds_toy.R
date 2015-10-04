@@ -62,6 +62,13 @@ dat.gene$tissue <- factor(as.character(dat.gene$tissue), levels = tiss.test)
 
 my_mat <- MakeRhythmicDesignMatrices(dat.gene, simplify = TRUE)
 
-my_fits <- FitModels(dat.gene, my_mat)
+my_fits <- FitModels(dat.gene, my_mat, get.criterion = "BIC", normalize.weights=TRUE)
 
+fit <- lapply(my_mat, function(mat) lm(exprs ~ 0 + mat, dat.gene))
+# normalize weights
+weight.sum <- lapply(fit, function(f){
+  f$weight
+})
+
+anova(fit[[5]], fit[[4]])
 

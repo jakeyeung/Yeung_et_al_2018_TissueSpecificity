@@ -1,20 +1,57 @@
-FitModels <- function(dat.gene, my_mat, model.selection="BIC"){
+BICFromLmFit <- function(coefficients, residuals){
+  # from vector of coefs and residuals, calculate BIC
+  n <- length(residuals)
+  RSS <- sum(residuals ^ 2)
+  k <- length(coefficients)
+  criterion <- -2 * log(RSS / n) + k * log(n)
+  return(criterion)
+}
+
+FitModels <- function(dat.gene, my_mat, get.criterion = "BIC", normalize.weights = TRUE){
   # Fit many models with lm.fit() which is faster than lm()
-  fits <- lapply(my_mat, function(mat, my_mat){
+  weight.sum <<- 0  # track
+  fits <- lapply(my_mat, function(mat, my_mat, model.selection = "BIC"){
     fit <- lm.fit(y = dat.gene$exprs, x = mat)
-    # get coefficients and residuals, get model selection by BIC or AIC
     if (model.selection == "BIC"){
-      # https://en.wikipedia.org/wiki/Bayesian_information_criterion#Definition
-      # BIC = -2 log(RSS/n) + k * log(n)
+      criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
+#       n <- length(fit$residuals)
+#       RSS <- sum(fit$residuals ^ 2)
+#       k <- length(fit$coefficients)
+#       criterion <- -2 * log(RSS / n) + k * log(n)
+      weight <- exp(-0.5 * criterion)
+    } else {
+      weight <- NA
+    }
+    weight.sum <<- weight.sum + weight
+    return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
+  }, my_mat)
+  if (normalize.weights){
+    fits <- lapply(fits, function(fit){
+      fit$weight.norm <- fit$weight / weight.sum
+      return(fit)
+    })
+  }
+  return(fits)
+}
+
+GetSelectionCriterion <- function(fits, model.selection = "BIC"){
+  # given list of fits, calculate BIC weights
+  # get coefficients and residuals, get model selection by BIC or AIC
+  if (model.selection == "BIC"){
+    # https://en.wikipedia.org/wiki/Bayesian_information_criterion#Definition
+    # BIC = -2 log(RSS/n) + k * log(n)
+    bics <- unlist(lapply(fits, function(fit){
       n <- length(fit$residuals)
       RSS <- sum(fit$residuals ^ 2)
       k <- length(fit$coefficients)
       criterion <- -2 * log(RSS / n) + k * log(n)
-    } else {
-      warning("Only BIC is currently implemented.")
-    }
-    return(list(coef = fit$coefficients, criterion = criterion))
-  }, my_mat)
+      bicweight <- exp(-0.5 * criterion)
+      }))
+    # normalize
+    bics.weight <- bics / sum(bics)
+  } else {
+    warning("Only BIC is currently implemented.")
+  }
 }
 
 MakeRhythmicDesignMatrices <- function(dat.gene, w = 2 * pi / 24, simplify=FALSE){
