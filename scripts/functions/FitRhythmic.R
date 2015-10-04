@@ -1,4 +1,4 @@
-AcosBsinToAmpPhase <- function(acos, bsin, per = 24){
+AcosBsinToAmpPhase <- function(acos, bsin, T.period = 24){
   # convert a and b from y = experimentarray + experimentrnaseq + a cos(wt) + b sin(wt)
   # to phase (modulo period) and amplitude. 
   amp <- sqrt(acos ^ 2 + bsin ^ 2)
