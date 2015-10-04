@@ -1,6 +1,20 @@
-FitModels <- function(dat.gene, my_mat){
+FitModels <- function(dat.gene, my_mat, model.selection="BIC"){
   # Fit many models with lm.fit() which is faster than lm()
-  fits <- lapply(my_mat, function(mat, my_mat) fit <- lm.fit(y = dat.gene$exprs, x = mat), my_mat)
+  fits <- lapply(my_mat, function(mat, my_mat){
+    fit <- lm.fit(y = dat.gene$exprs, x = mat)
+    # get coefficients and residuals, get model selection by BIC or AIC
+    if (model.selection == "BIC"){
+      # https://en.wikipedia.org/wiki/Bayesian_information_criterion#Definition
+      # BIC = -2 log(RSS/n) + k * log(n)
+      n <- length(fit$residuals)
+      RSS <- sum(fit$residuals ^ 2)
+      k <- length(fit$coefficients)
+      criterion <- -2 * log(RSS / n) + k * log(n)
+    } else {
+      warning("Only BIC is currently implemented.")
+    }
+    return(list(coef = fit$coefficients, criterion = criterion))
+  }, my_mat)
 }
 
 MakeRhythmicDesignMatrices <- function(dat.gene, w = 2 * pi / 24, simplify=FALSE){
