@@ -3,7 +3,7 @@ BICFromLmFit <- function(coefficients, residuals){
   n <- length(residuals)
   RSS <- sum(residuals ^ 2)
   k <- length(coefficients)
-  criterion <- -2 * log(RSS / n) + k * log(n)
+  criterion <- n * log(RSS / n) + k * log(n)
   return(criterion)
 }
 
