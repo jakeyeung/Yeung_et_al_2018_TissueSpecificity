@@ -1,3 +1,38 @@
+CoefToParams <- function(coef, period = 24){
+  w = 2 * pi / 24
+  flat.params <- coef[!grepl(":", names(coef))]
+  
+  # Convert linear coefficients sin cos to amplitude and phase.
+  rhyth.params.sin <- coef[grepl(":sin", names(coef))]
+  rhyth.params.cos <- coef[grepl(":cos", names(coef))]
+  rhyth.params.names <- names(coef)[grepl(":sin", names(coef))]
+  
+  has.rhyth <- TRUE
+  # TODO: check for case with no rhythmic param
+  
+  if (has.rhyth){
+    # Liver:sin(w * time) -> Liver (can be Adr,Liver)
+    rhyth.tiss <- sapply(rhyth.params.names, function(rhyth.param) strsplit(rhyth.param, ":")[[1]][[1]])
+    
+    # create amplitude and amp for each rhyth.tiss
+    amps <- mapply(function(a, b) return(sqrt(a^2 + b^2)), rhyth.params.sin, rhyth.params.cos)
+    phases <- mapply(function(a, b){
+      phase.rad <- atan2(a, b)
+      return((phase.rad / w) %% period)
+    }, rhyth.params.sin, rhyth.params.cos)
+    
+    # name my new params
+    names(amps) <- paste0(rhyth.tiss, ".amp")
+    names(phases) <- paste0(rhyth.tiss, ".phase")
+  } else {
+    warning("Case of no rhythmic tissues not yet implemented")
+  }
+  # return as numeric vector
+  rhyth.params.out <- c(amps, phases)
+  out.params <- c(flat.params, rhyth.params.out)
+  return(out.params)
+}
+
 BICFromLmFit <- function(coefficients, residuals){
   # from vector of coefs and residuals, calculate BIC
   n <- length(residuals)
@@ -14,17 +49,15 @@ FitModels <- function(dat.gene, my_mat, get.criterion = "BIC", normalize.weights
     fit <- lm.fit(y = dat.gene$exprs, x = mat)
     if (model.selection == "BIC"){
       criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
-#       n <- length(fit$residuals)
-#       RSS <- sum(fit$residuals ^ 2)
-#       k <- length(fit$coefficients)
-#       criterion <- -2 * log(RSS / n) + k * log(n)
       weight <- exp(-0.5 * criterion)
     } else {
+      warning("Model selection methods other than BIC not implemented")
       weight <- NA
     }
     weight.sum <<- weight.sum + weight
     return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
   }, my_mat)
+  # normalize weights so sum = 1
   if (normalize.weights){
     fits <- lapply(fits, function(fit){
       fit$weight.norm <- fit$weight / weight.sum
