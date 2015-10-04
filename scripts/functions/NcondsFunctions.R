@@ -1,3 +1,95 @@
+FitModels <- function(dat.gene, my_mat){
+  # Fit many models with lm.fit() which is faster than lm()
+  fits <- lapply(my_mat, function(mat, my_mat) fit <- lm.fit(y = dat.gene$exprs, x = mat), my_mat)
+}
+
+MakeRhythmicDesignMatrices <- function(dat.gene, w = 2 * pi / 24, simplify=FALSE){
+  # dat.gene: long format of gene expression, time and
+  # conditions. Can include additional factors such as 
+  # experiment.
+  # simplify: return only design matrix rather than full matrix containing meta data (FALSE is debug mode)
+  
+  tissues <- unique(as.character(dat.gene$tissue))
+  
+  tiss.combos <- GetAllCombos(tissues, ignore.full = FALSE)
+  my_mat.queue <- new.queue()
+  
+  # BEGIN: init with flat model
+  des.mat.flat <- GetFlatModel(dat.gene)
+  # get rhythmic parameters which will be used for adding later: hash structure has fast lookup
+  des.mat.sinhash <- GetSinCombos(dat.gene, w, tissues, tiss.combos)
+  des.mat.coshash <- GetCosCombos(dat.gene, w, tissues, tiss.combos)
+  
+  rhyth.tiss <- list(character(0))  # needs to track shared and independent parameters, e.g.: c("Liver,Kidney", "Adr") no duplicates allowed
+  # n.rhyth <- NRhythmicFromString(rhyth.tiss)  # number of independent rhythmic parameters perhaps? 
+  n.rhyth <- NRhythmicFromVector(rhyth.tiss)  # do that later? naw faster if we do it now
+  complement <- FilterCombos(tiss.combos, rhyth.tiss)
+  des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, n.rhyth=n.rhyth, complement = complement)
+  # END: init with flat model
+  
+  # load up my queue
+  enqueue(my_mat.queue, des.mat.list)
+  
+  n.mat.submitted <- 1
+  des.mats <- expandingList() 
+  des.mats$add(des.mat.list)
+  
+  # need to track models that we have done, so we eliminate "permutations" like c("Liver", "Kidney") and c("Kidney", "Liver) models
+  # use hash for speed
+  models.done <- hash()
+  
+  # generate matrix by adding combinations of columns and adding
+  # those matrices into the queue
+  while (! is.empty(my_mat.queue)) {
+    des.mat.list <- dequeue(my_mat.queue)
+    # determine tissue combinations that need to be added based on rhyth.tiss
+    # e.g., no need to add Liver twice, they can't have two rhythmic paramters
+    
+    for (tiss.comb in des.mat.list$complement){
+      # add column for each tissue combination
+      tiss.key <- paste(tiss.comb, collapse = ",")
+      
+      # append tiss.key to rhyth.tiss
+      rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)  # form list("Adr,Kidney", "Mus")
+      
+      # check if this tissue combination has been already submitted into queue (but in different permutation)
+      # track models we have done globally
+      modelname <- MakeModelName(rhyth.tiss)
+      if (! is.null(models.done[[modelname]])){
+        # this is a permutation of an already done combo, skip
+        #       print(rhyth.tiss)
+        #       print(paste('Skipping', modelname))
+        next
+      }
+      
+      col.new <- AddRhythmicColumns(des.mat.sinhash, des.mat.coshash, tiss.key)
+      
+      #     rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)
+      
+      
+      # further remove complement after having
+      tiss.complement.new <- FilterCombos(des.mat.list$complement, tiss.comb)
+      
+      # add meta data: makes finding models easier
+      n.rhyth <- des.mat.list$n.rhyth + length(tiss.comb)
+      
+      # make new matrix, put it into queue
+      mat.new <- cbind(des.mat.list$mat, col.new)
+      des.mat.list.new <- list(mat=mat.new, rhyth.tiss = rhyth.tiss, n.rhyth=n.rhyth, complement = tiss.complement.new)
+      enqueue(my_mat.queue, des.mat.list.new) 
+      models.done[[modelname]] <- TRUE  # we dont want to redo permutations of same models
+      n.mat.submitted <- n.mat.submitted + 1
+      des.mats$add(des.mat.list.new)
+    }  
+  } 
+  print(paste("Number of matrices generated:", n.mat.submitted))
+  des.mats.list <- des.mats$as.list()
+  if (simplify){
+    des.mats.list <- lapply(des.mats.list, function(x) return(x$mat))
+  }
+  return(des.mats.list)
+}
+
 MakeModelName <- function(rhyth.tiss.lst, delim = ";"){
   # From a list of rhythmic tissues, generate a hash key to track models
   # therefore: Adr,Kidney;Liver means Adr,Kidney same param, Liver independent param
