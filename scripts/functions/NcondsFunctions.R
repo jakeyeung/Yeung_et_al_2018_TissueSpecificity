@@ -2,6 +2,13 @@ library(Matrix)
 library(dplyr)
 library(hash)
 
+LoadChunkRunNconds <- function(chunk.path, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n){
+  # given path to a dat.gene chunk, run nconds2
+  dat.gene <- load(chunk.path, verbose = T)
+  genename <- strsplit(basename(chunk.path), ".Robj")[[1]][[1]]
+  return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n))
+}
+
 ChunkDatGenesToFile <- function(dat.long, write.dir){
   # Split dat.long by gene, save each as an genename.Robj
   dat.long %>%

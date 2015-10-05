@@ -69,6 +69,10 @@ dat.sub <- subset(dat.long, tissue %in% tiss.test & gene %in% genes.exprs.sub)
 dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = tiss.test)
 dat.sub$gene <- factor(as.character(dat.sub$gene), levels = genes.exprs.sub)
 
+
+# Using environments ------------------------------------------------------
+
+
 print("Chunking data to environment")
 dat.env <- DatLongToEnvironment(dat.sub)
 
@@ -90,11 +94,6 @@ for (i in seq(length(fits.all))){
 }
 
 
-# print("Running many cores and mclapply")
-# start <- Sys.time()
-# fits.all <- mclapply(ls(dat.env), function(gene){
-#   MakeDesMatRunFitEnv(dat.env, gene, tiss.test, n.rhyth.max = 4, w = 2 * pi / 24, criterion = "BIC", normalize.weights = TRUE, cutoff = 1e-5)
-# }, mc.cores = 50)
-# print(Sys.time() - start)
-# fits.all[[1]]
-# save(fits.all, file = "/home/yeung/projects/tissue-specificity/Robjs/nconds2/fits.Robj")
+# Saving to file, then loading each object and running it independ --------
+
+ChunkDatGenesToFile(dat.sub, write.dir = "/home/yeung/projects/tissue-specificity/data/datlong_chunks_by_gene")
