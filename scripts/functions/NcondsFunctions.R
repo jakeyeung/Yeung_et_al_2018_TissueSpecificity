@@ -1,4 +1,21 @@
 library(Matrix)
+library(dplyr)
+library(hash)
+
+ChunkDatGenesToFile <- function(dat.long, write.dir){
+  # Split dat.long by gene, save each as an genename.Robj
+  dat.long %>%
+    group_by(gene) %>%
+    do(SaveDatGenes(., write.dir))
+  return(NULL)
+}
+
+SaveDatGenes <- function(dat.gene, write.dir){
+  gene <- dat.gene$gene[[1]]
+  fname <- paste0(gene, ".Robj")
+  save(dat.gene, file = file.path(write.dir, fname))
+  return(data.frame(NULL))
+}
 
 GetBestModel <- function(fits){
   fit.bestweight <- 0
