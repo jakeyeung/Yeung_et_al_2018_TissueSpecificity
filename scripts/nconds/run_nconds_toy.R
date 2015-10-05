@@ -17,6 +17,8 @@ source("scripts/functions/GetClockGenes.R")
 source("scripts/functions/NcondsFunctions.R")
 source("scripts/functions/Queue.R")
 source("scripts/functions/ListFunctions.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/MemoryManagement.R")
 
 # Functions ---------------------------------------------------------------
 
@@ -51,13 +53,51 @@ dat.long <- subset(dat.long, tissue != "WFAT")
 # Create test set ---------------------------------------------------------
 
 tissues <- as.character(unique(dat.long$tissue))
-# tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus", "Aorta", "Heart", "Lung")
+# tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus", "Aorta", "Heart")
 # tiss.test <- tissues
 tiss.test <- c("Liver", "Lung")
-dat.gene <- subset(dat.long, gene == "Nr1d1" & tissue %in% tiss.test)
+jgene <- "1110025L11Rik"
+# jgene <- "Nr1d1"
+dat.gene <- subset(dat.long, gene == jgene & tissue %in% tiss.test)
 dat.gene$tissue <- factor(as.character(dat.gene$tissue), levels = tiss.test)
 
-my_fits <- MakeDesMatRunFit(dat.gene)
-# my_mat <- MakeRhythmicDesignMatrices(dat.gene, simplify = TRUE)
-# my_fits <- FitModels(dat.gene, my_mat, get.criterion = "BIC", normalize.weights=TRUE)
+start <- Sys.time()
+my_fits <- MakeDesMatRunFit(dat.gene, n.rhyth.max = 3, normalize.weights = FALSE, cutoff = 0.01)
+print(Sys.time() - start)
 
+
+# Run for ALL genes -------------------------------------------------------
+
+# for expressed genes only
+dat.exprs <- dat.long %>%
+  filter(experiment == "rnaseq") %>%
+  group_by(tissue, gene) %>%
+  summarise(exprs.mean = mean(exprs)) %>%
+  filter(exprs.mean > 5)
+
+set.seed(0)
+genes.exprs <- unique(dat.exprs$gene)
+genes.exprs.sub <- sample(genes.exprs, size = 0.1 * length(genes.exprs))
+# genes.exprs.sub <- genes.exprs
+
+dat.sub <- subset(dat.long, tissue %in% tiss.test & gene %in% genes.exprs.sub)
+dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = tiss.test)
+dat.sub$gene <- factor(as.character(dat.sub$gene), levels = genes.exprs.sub)
+
+dat.env <- DatLongToEnvironment(dat.sub)
+
+my_fits <- MakeDesMatRunFitEnv(dat.env, "Xrra1")
+
+fits.all <- lapply(ls(dat.env), function(gene){
+  MakeDesMatRunFitEnv(dat.env, gene, )
+}
+
+dat.split <- split(dat.sub, dat.sub$gene)
+fits.all <- lapply(dat.split, MakeDesMatRunFit, normalize.weights=TRUE, cutoff=1e-5)
+# fits.all <- mclapply(dat.split, MakeDesMatRunFit, cutoff = 1e-5, mc.cores = 50)
+
+# my_fits <- MakeDesMatRunFit(dat.split[[1]], normalize.weights = TRUE, cutoff = 1e-5)
+
+# fits.all <- dat.sub %>%
+#   group_by(gene) %>%
+#   do(MakeDesMatRunFit(., normalize.weights = TRUE, cutoff = 1e-5))

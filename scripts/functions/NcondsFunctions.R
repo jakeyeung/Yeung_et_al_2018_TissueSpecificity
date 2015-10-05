@@ -1,4 +1,11 @@
-MakeDesMatRunFit <- function(dat.gene, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC"){
+MakeDesMatRunFitEnv <- function(env, index, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
+  # wrapper function to grab dat.gene from environment
+  # index is gene name found from ls(env)
+  dat.gene <- get(index, envir = env)
+  return(MakeDesMatRunFit(dat.gene))
+}
+
+MakeDesMatRunFit <- function(dat.gene, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
   # dat.gene: long format of gene expression, time and
   # conditions. Can include additional factors such as 
   # experiment.
@@ -6,10 +13,11 @@ MakeDesMatRunFit <- function(dat.gene, n.rhyth.max, w = 2 * pi / 24, criterion =
   # optionally allow stopping after models reach a certain complexity
   
   tissues <- unique(as.character(dat.gene$tissue))
+  gene <- as.character(dat.gene$gene[[1]])
   
   if (missing(n.rhyth.max)){
     n.rhyth.max <- length(tissues)
-  } else if (n.rhyth.max < 2){
+  } else if (n.rhyth.max < 1){
     warning("N rhyth max cannot be less than 2")
   }
   
@@ -56,7 +64,10 @@ MakeDesMatRunFit <- function(dat.gene, n.rhyth.max, w = 2 * pi / 24, criterion =
     # check that this matrix is not already the maximum complexity (n.rhyth.max),
     # if it is already as complex as we want, then ignore it because 
     # we dont want to add another rhythmic column to this.
-    if (length(des.mat.list$rhyth.tiss) >= n.rhyth.max){
+    #
+    # strictly greater than should handle the case of "no rhytmic tissues"
+    if (length(des.mat.list$rhyth.tiss) > n.rhyth.max){
+      # print(paste("Skipping", des.mat.list$rhyth.tiss))
       next  # should work even in n.rhyth.max == length(tissues)
     }
     
@@ -93,13 +104,40 @@ MakeDesMatRunFit <- function(dat.gene, n.rhyth.max, w = 2 * pi / 24, criterion =
       models.done[[modelname]] <- TRUE  # we dont want to redo permutations of same models
       # des.mats$add(des.mat.list.new)
     }  
-  } 
-  
+  }   
   # unpack my fits 
   fits.list <- fits$as.list()
+  # print(paste("Models fitted:", fit.count))
+
+  if (normalize.weights){
+    # print("Normalizing weights...")
+    # print(dat.gene$gene[[1]])
+    fits.list <- NormalizeWeights(fits.list, cutoff)
+  }
+  fits.list$gene <- gene
   return(fits.list)
 }
 
+NormalizeWeights <- function(fit.list, cutoff = 1e-3){
+  # take list with $weight and 
+  # add $weight.norm
+  weight.sum <- sum(unlist(lapply(fit.list, function(fit){
+    fit$weight
+  })))
+#   fit.list.norm <- Filter(function(fit){
+#     fit$weight / weight.sum >= cutoff
+#   }, fit.list)
+
+  fit.list.norm <- lapply(fit.list, function(fit){
+    fit$weight.norm <- fit$weight / weight.sum
+    if (fit$weight.norm < cutoff){
+      return(NULL)
+    } else {
+      return(list(fit = fit$fit, weight.norm = fit$weight.norm))
+    }
+  })
+  return(fit.list.norm)
+}
 
 CoefToParams <- function(coef, period = 24){
   w = 2 * pi / 24
