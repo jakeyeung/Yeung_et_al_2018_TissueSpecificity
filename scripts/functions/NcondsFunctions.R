@@ -5,7 +5,7 @@ MakeDesMatRunFitEnv <- function(env, genename, tissues, n.rhyth.max, w = 2 * pi 
   return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff))
 }
 
-MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
+MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3, top.n = 3){
   # dat.gene: long format of gene expression, time and
   # conditions. Can include additional factors such as 
   # experiment.
@@ -49,8 +49,14 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
   # des.mats$add(des.mat.list)
   
   # store my fits
-  fits <- expandingList()
+  # to save memory, only store top n fits
+  # fits <- expandingList()
+  fits <- list()
   fit.count <- 0
+  
+  # track weights to normalize afterwards
+  fit.weights.sum <- 0
+  fit.weights <- vector(mode="numeric", length=top.n)
   
   # need to track models that we have done, so we eliminate "permutations" like c("Liver", "Kidney") and c("Kidney", "Liver) models
   # use hash for speed
@@ -63,7 +69,13 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
     
     # fit my model
     fit <- FitModel(dat.gene, des.mat.list$mat, get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
-    fits$add(fit)
+    fit.weights.sum <- fit.weights.sum + fit$weight  # track even if it is a bad model, helps normalization
+    fit.weights.lst <- UpdateFitWeights(fit$weight, fit.weights)
+    if (!is.na(fit.weights.lst$i)){
+      fits[[fit.weights.lst$i]] <- fit
+      fit.weights <- fit.weights.lst$weights
+    }
+    
     fit.count <- fit.count + 1
     
     # check that this matrix is not already the maximum complexity (n.rhyth.max),
@@ -111,16 +123,34 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
     }  
   }   
   # unpack my fits 
-  fits.list <- fits$as.list()
+  # fits.list <- fits$as.list()
   # print(paste("Models fitted:", fit.count))
-
+  fits.list <- fits
+  
   if (normalize.weights){
     # print("Normalizing weights...")
     # print(dat.gene$gene[[1]])
-    fits.list <- NormalizeWeights(fits.list, cutoff)
+    # fits.list <- NormalizeWeights(fits.list, cutoff)
+    for (i in seq(length(fits.list))){
+      fits.list[[i]]$weight.norm <- fits.list[[i]]$weight / fit.weights.sum
+    }
   }
   fits.list$gene <- gene
+  # print(fit.weights.sum)
   return(fits.list)
+}
+
+UpdateFitWeights <- function(weight, weights){
+  # check min weights, if weight is larger than min(weights), replace min(weights) with weight
+  min.weight <- weights[which.min(weights)]
+  if (weight <= min.weight){
+    return(list(weights = NA, i = NA))  # do nothing
+  }
+  else if (weight > min.weight){
+    # replace it
+    weights[which.min(weights)] <- weight
+    return(list(weights = weights, i = which.min(weights)))
+  }
 }
 
 NormalizeWeights <- function(fit.list, cutoff = 1e-3){
