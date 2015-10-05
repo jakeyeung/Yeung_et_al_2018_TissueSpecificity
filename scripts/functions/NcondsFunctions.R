@@ -45,18 +45,7 @@ BICFromLmFit <- function(coefficients, residuals){
 FitModels <- function(dat.gene, my_mat, get.criterion = "BIC", normalize.weights = TRUE){
   # Fit many models with lm.fit() which is faster than lm()
   weight.sum <<- 0  # track
-  fits <- lapply(my_mat, function(mat, my_mat, model.selection = "BIC"){
-    fit <- lm.fit(y = dat.gene$exprs, x = mat)
-    if (model.selection == "BIC"){
-      criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
-      weight <- exp(-0.5 * criterion)
-    } else {
-      warning("Model selection methods other than BIC not implemented")
-      weight <- NA
-    }
-    weight.sum <<- weight.sum + weight
-    return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
-  }, my_mat)
+  fits <- lapply(my_mat, function(mat) FitModel(dat.gene, mat, get.criterion))
   # normalize weights so sum = 1
   if (normalize.weights){
     fits <- lapply(fits, function(fit){
@@ -65,6 +54,21 @@ FitModels <- function(dat.gene, my_mat, get.criterion = "BIC", normalize.weights
     })
   }
   return(fits)
+}
+
+FitModel <- function(dat.gene, mat, get.criterion="BIC"){
+  # Subroutine for fitting many models because
+  # only one matrix, cannot normalize weights
+  fit <- lm.fit(y = dat.gene$exprs, x = mat)
+  if (get.criterion == "BIC"){
+    criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
+    weight <- exp(-0.5 * criterion)
+  } else {
+    warning("Model selection methods other than BIC not implemented")
+    weight <- NA
+  }
+  weight.sum <<- weight.sum + weight
+  return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
 }
 
 GetSelectionCriterion <- function(fits, model.selection = "BIC"){

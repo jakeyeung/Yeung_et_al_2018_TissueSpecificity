@@ -40,9 +40,6 @@ ConcatenateRhythmicTissues <- function(des.mat, des.mat.rhyth.sin, des.mat.rhyth
   return(des.mat)
 }
 
-
-
-
 # Load and plot on 12 conditions -------------------------------------------
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", verbose = T)
