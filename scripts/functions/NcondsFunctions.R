@@ -13,14 +13,14 @@ GetBestModel <- function(fits){
   return(fit.best)
 }
 
-MakeDesMatRunFitEnv <- function(env, genename, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3, top.n = 3){
+MakeDesMatRunFitEnv <- function(env, genename, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3, top.n = 3, sparse = TRUE){
   # wrapper function to grab dat.gene from environment
   # genename is gene name found from ls(env)
   dat.gene <- get(genename, envir = env)
   return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n))
 }
 
-MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3, top.n = 3){
+MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3, top.n = 3, sparse = TRUE){
   # dat.gene: long format of gene expression, time and
   # conditions. Can include additional factors such as 
   # experiment.
@@ -46,6 +46,12 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
   
   # BEGIN: init with flat model
   des.mat.flat <- GetFlatModel(dat.gene)
+  
+  if (sparse){
+    # make sparse using Matrix package
+    des.mat.flat <- Matrix(des.mat.flat)
+  }
+  
   # get rhythmic parameters which will be used for adding later: hash structure has fast lookup
   des.mat.sinhash <- GetSinCombos(dat.gene, w, tissues, tiss.combos)
   des.mat.coshash <- GetCosCombos(dat.gene, w, tissues, tiss.combos)
@@ -83,7 +89,11 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
     des.mat.list <- dequeue(my_mat.queue)
     
     # fit my model
-    fit <- FitModel(dat.gene, des.mat.list$mat, get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
+    if (sparse){
+      fit <- FitModel(dat.gene, as.matrix(des.mat.list$mat), get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
+    } else {
+      fit <- FitModel(dat.gene, des.mat.list$mat, get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
+    }
     fit.weights.sum <- fit.weights.sum + fit$weight  # track even if it is a bad model, helps normalization
     fit.weights.lst <- UpdateFitWeights(fit$weight, fit.weights)
     if (!is.na(fit.weights.lst$i)){
