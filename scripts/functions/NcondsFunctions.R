@@ -2,11 +2,13 @@ library(Matrix)
 library(dplyr)
 library(hash)
 
-LoadChunkRunNconds <- function(chunk.path, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n){
+LoadChunkRunNconds <- function(chunk.path, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n, sparse){
   # given path to a dat.gene chunk, run nconds2
-  dat.gene <- load(chunk.path, verbose = T)
-  genename <- strsplit(basename(chunk.path), ".Robj")[[1]][[1]]
-  return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n))
+  if (missing(genename)){
+    genename <- strsplit(basename(chunk.path), ".Robj")[[1]][[1]]
+  }
+  load(chunk.path)
+  return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n, sparse))
 }
 
 ChunkDatGenesToFile <- function(dat.long, write.dir){

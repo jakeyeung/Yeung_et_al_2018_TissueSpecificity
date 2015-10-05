@@ -23,7 +23,6 @@ source("scripts/functions/ListFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/MemoryManagement.R")
 source("scripts/functions/EnvironmentsFunctions.R")
-source("scripts/functions/GetClockGenes.R")
 
 
 # Load and plot on 12 conditions -------------------------------------------
@@ -96,4 +95,7 @@ for (i in seq(length(fits.all))){
 
 # Saving to file, then loading each object and running it independ --------
 
-ChunkDatGenesToFile(dat.sub, write.dir = "/home/yeung/projects/tissue-specificity/data/datlong_chunks_by_gene")
+chunk.path <- "/home/yeung/projects/tissue-specificity/data/datlong_chunks_by_gene"
+ChunkDatGenesToFile(dat.sub, write.dir = chunk.path)
+fname <- "Arntl.Robj"
+fits.gene <- LoadChunkRunNconds(file.path(chunk.path, fname), genename = "Arntl", tissues = tiss.test, n.rhyth.max = length(tiss.test), w = 2 * pi / 24, criterion = "BIC", normalize.weights = TRUE, cutoff = 1e-5, top.n = 10, sparse = TRUE)
