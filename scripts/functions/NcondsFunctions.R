@@ -1,3 +1,5 @@
+library(Matrix)
+
 GetBestModel <- function(fits){
   fit.bestweight <- 0
   for (i in seq(length(fits))){
