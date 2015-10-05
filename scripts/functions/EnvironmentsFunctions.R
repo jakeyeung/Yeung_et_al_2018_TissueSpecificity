@@ -3,7 +3,7 @@ DatLongToEnvironment <- function(dat.long){
   my.env <- new.env()
   dat.long %>%
     group_by(gene) %>%
-    do(AddToEnviron(., env = my.env, cname == "gene"))
+    do(AddToEnviron(., env = my.env, cname = "gene"))
   return(my.env)
 }
 

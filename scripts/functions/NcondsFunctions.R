@@ -1,23 +1,28 @@
-MakeDesMatRunFitEnv <- function(env, index, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
+MakeDesMatRunFitEnv <- function(env, genename, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
   # wrapper function to grab dat.gene from environment
-  # index is gene name found from ls(env)
-  dat.gene <- get(index, envir = env)
-  return(MakeDesMatRunFit(dat.gene))
+  # genename is gene name found from ls(env)
+  dat.gene <- get(genename, envir = env)
+  return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff))
 }
 
-MakeDesMatRunFit <- function(dat.gene, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
+MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
   # dat.gene: long format of gene expression, time and
   # conditions. Can include additional factors such as 
   # experiment.
   # To save memory, generate model and then run fit immediately afterwards.
   # optionally allow stopping after models reach a certain complexity
   
-  tissues <- unique(as.character(dat.gene$tissue))
-  gene <- as.character(dat.gene$gene[[1]])
+  if (missing(tissues)){
+    tissues <- unique(as.character(dat.gene$tissue))
+  }
+  if (missing(gene)){
+    gene <- as.character(dat.gene$gene[[1]])
+  }
   
   if (missing(n.rhyth.max)){
     n.rhyth.max <- length(tissues)
   } else if (n.rhyth.max < 1){
+    print(n.rhyth.max)
     warning("N rhyth max cannot be less than 2")
   }
   
@@ -345,13 +350,13 @@ AddRhythmicColumns <- function(des.mat.sinhash, des.mat.coshash, tiss.key){
 
 GetSinCombos <- function(dat.gene, w, tissues, combos){
   des.mat.sin <- GetRhythModel.sin(dat.gene, w)
-  des.mat.sin.hash <- MakeHash(des.mat.sin, tissues, combos)
+  des.mat.sin.hash <- MakeHash(des.mat.sin, dat.gene, tissues, combos)
   return(des.mat.sin.hash)
 }
 
 GetCosCombos <- function(dat.gene, w, tissues, combos){
   des.mat.cos <- GetRhythModel.cos(dat.gene, w)
-  des.mat.cos.hash <- MakeHash(des.mat.cos, tissues, combos)
+  des.mat.cos.hash <- MakeHash(des.mat.cos, dat.gene, tissues, combos)
   return(des.mat.cos.hash)
 }
 
@@ -424,9 +429,9 @@ GetRhythModel <- function(dat.gene, w = 2 * pi / 24){
   des.mat.rhyth <- model.matrix(exprs ~ 0 + tissue:sin(w * time) + tissue:cos(w * time), dat.gene)
 }
 
-MakeHash <- function(des.mat.rhyth, tissues, combos){
+MakeHash <- function(des.mat.rhyth, dat.gene, tissues, combos){
   # return as hash object requires hash library
-  tissues <- unique(as.character(dat.gene$tissue))
+  if (missing(tissues)) tissues <- unique(as.character(dat.gene$tissue))
   # init with single tissues
   des.mat.hash <- hash()
   for (tiss.i in seq(tissues)){
