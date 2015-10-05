@@ -1,3 +1,106 @@
+MakeDesMatRunFit <- function(dat.gene, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC"){
+  # dat.gene: long format of gene expression, time and
+  # conditions. Can include additional factors such as 
+  # experiment.
+  # To save memory, generate model and then run fit immediately afterwards.
+  # optionally allow stopping after models reach a certain complexity
+  
+  tissues <- unique(as.character(dat.gene$tissue))
+  
+  if (missing(n.rhyth.max)){
+    n.rhyth.max <- length(tissues)
+  } else if (n.rhyth.max < 2){
+    warning("N rhyth max cannot be less than 2")
+  }
+  
+  tiss.combos <- GetAllCombos(tissues, ignore.full = FALSE)
+  my_mat.queue <- new.queue()
+  
+  # BEGIN: init with flat model
+  des.mat.flat <- GetFlatModel(dat.gene)
+  # get rhythmic parameters which will be used for adding later: hash structure has fast lookup
+  des.mat.sinhash <- GetSinCombos(dat.gene, w, tissues, tiss.combos)
+  des.mat.coshash <- GetCosCombos(dat.gene, w, tissues, tiss.combos)
+  
+  rhyth.tiss <- list(character(0))  # needs to track shared and independent parameters, e.g.: c("Liver,Kidney", "Adr") no duplicates allowed
+  # n.rhyth <- NRhythmicFromString(rhyth.tiss)  # number of independent rhythmic parameters perhaps? Do this later for speed?
+  complement <- FilterCombos(tiss.combos, rhyth.tiss)  # given current matrix, you will know which tissues to iterate
+  des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, complement = complement)
+  # END: init with flat model
+  
+  # load up my queue
+  enqueue(my_mat.queue, des.mat.list)
+  
+  # uncomment if you want to store all the matrices were used
+  # des.mats <- expandingList() 
+  # des.mats$add(des.mat.list)
+  
+  # store my fits
+  fits <- expandingList()
+  fit.count <- 0
+  
+  # need to track models that we have done, so we eliminate "permutations" like c("Liver", "Kidney") and c("Kidney", "Liver) models
+  # use hash for speed
+  models.done <- hash()
+  
+  # generate matrix by adding combinations of columns and adding
+  # those matrices into the queue
+  while (! is.empty(my_mat.queue)) {
+    des.mat.list <- dequeue(my_mat.queue)
+    
+    # fit my model
+    fit <- FitModel(dat.gene, des.mat.list$mat, get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
+    fits$add(fit)
+    fit.count <- fit.count + 1
+    
+    # check that this matrix is not already the maximum complexity (n.rhyth.max),
+    # if it is already as complex as we want, then ignore it because 
+    # we dont want to add another rhythmic column to this.
+    if (length(des.mat.list$rhyth.tiss) >= n.rhyth.max){
+      next  # should work even in n.rhyth.max == length(tissues)
+    }
+    
+    # determine tissue combinations that need to be added based on rhyth.tiss
+    # e.g., no need to add Liver twice, they can't have two rhythmic paramters  
+    for (tiss.comb in des.mat.list$complement){
+      # add column for each tissue combination
+      tiss.key <- paste(tiss.comb, collapse = ",")
+      
+      # append tiss.key to rhyth.tiss
+      rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)  # form list("Adr,Kidney", "Mus")
+      
+      # check if this tissue combination has been already submitted into queue (but in different permutation)
+      # track models we have done globally
+      modelname <- MakeModelName(rhyth.tiss)
+      if (! is.null(models.done[[modelname]])){
+        # this is a permutation of an already done combo, skip
+        #       print(rhyth.tiss)
+        #       print(paste('Skipping', modelname))
+        next
+      }
+      
+      col.new <- AddRhythmicColumns(des.mat.sinhash, des.mat.coshash, tiss.key)
+      
+      #     rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)
+
+      # further remove complement after having
+      tiss.complement.new <- FilterCombos(des.mat.list$complement, tiss.comb)
+      
+      # make new matrix, put it into queue
+      mat.new <- cbind(des.mat.list$mat, col.new)
+      des.mat.list.new <- list(mat=mat.new, rhyth.tiss = rhyth.tiss, complement = tiss.complement.new)
+      enqueue(my_mat.queue, des.mat.list.new) 
+      models.done[[modelname]] <- TRUE  # we dont want to redo permutations of same models
+      # des.mats$add(des.mat.list.new)
+    }  
+  } 
+  
+  # unpack my fits 
+  fits.list <- fits$as.list()
+  return(fits.list)
+}
+
+
 CoefToParams <- function(coef, period = 24){
   w = 2 * pi / 24
   flat.params <- coef[!grepl(":", names(coef))]
@@ -44,8 +147,12 @@ BICFromLmFit <- function(coefficients, residuals){
 
 FitModels <- function(dat.gene, my_mat, get.criterion = "BIC", normalize.weights = TRUE){
   # Fit many models with lm.fit() which is faster than lm()
-  weight.sum <<- 0  # track
   fits <- lapply(my_mat, function(mat) FitModel(dat.gene, mat, get.criterion))
+  # calculate weights.sum
+  weights.sum <- sum(unlist(lapply(fits, function(fit){
+    return(fit$weight)
+  })))
+  
   # normalize weights so sum = 1
   if (normalize.weights){
     fits <- lapply(fits, function(fit){
@@ -56,9 +163,11 @@ FitModels <- function(dat.gene, my_mat, get.criterion = "BIC", normalize.weights
   return(fits)
 }
 
-FitModel <- function(dat.gene, mat, get.criterion="BIC"){
+FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=FALSE){
   # Subroutine for fitting many models because
   # only one matrix, cannot normalize weights
+  # 
+  # weight.sum: track weight.sum 
   fit <- lm.fit(y = dat.gene$exprs, x = mat)
   if (get.criterion == "BIC"){
     criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
@@ -67,8 +176,11 @@ FitModel <- function(dat.gene, mat, get.criterion="BIC"){
     warning("Model selection methods other than BIC not implemented")
     weight <- NA
   }
-  weight.sum <<- weight.sum + weight
-  return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
+  if (condensed){
+    return(list(fit = fit$coefficients, weight = weight))
+  } else {
+    return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
+  }
 }
 
 GetSelectionCriterion <- function(fits, model.selection = "BIC"){

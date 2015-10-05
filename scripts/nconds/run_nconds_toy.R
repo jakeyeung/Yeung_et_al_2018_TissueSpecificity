@@ -51,12 +51,13 @@ dat.long <- subset(dat.long, tissue != "WFAT")
 # Create test set ---------------------------------------------------------
 
 tissues <- as.character(unique(dat.long$tissue))
-# tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus", "Aorta", "WFAT")
+# tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus", "Aorta", "Heart", "Lung")
 # tiss.test <- tissues
 tiss.test <- c("Liver", "Lung")
 dat.gene <- subset(dat.long, gene == "Nr1d1" & tissue %in% tiss.test)
 dat.gene$tissue <- factor(as.character(dat.gene$tissue), levels = tiss.test)
 
-my_mat <- MakeRhythmicDesignMatrices(dat.gene, simplify = TRUE)
+my_fits <- MakeDesMatRunFit(dat.gene)
+# my_mat <- MakeRhythmicDesignMatrices(dat.gene, simplify = TRUE)
+# my_fits <- FitModels(dat.gene, my_mat, get.criterion = "BIC", normalize.weights=TRUE)
 
-my_fits <- FitModels(dat.gene, my_mat, get.criterion = "BIC", normalize.weights=TRUE)
