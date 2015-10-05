@@ -1,8 +1,23 @@
-MakeDesMatRunFitEnv <- function(env, genename, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3){
+GetBestModel <- function(fits){
+  fit.bestweight <- 0
+  for (i in seq(length(fits))){
+    if (length(fits[[i]]) == 1){
+      # skip because one of the parameters is just gene name
+      next
+    }
+    if (fits[[i]]$weight.norm > fit.bestweight){
+      fit.best <- fits[[i]]
+      fit.bestweight <- fits[[i]]$weight.norm
+    }
+  }
+  return(fit.best)
+}
+
+MakeDesMatRunFitEnv <- function(env, genename, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3, top.n = 3){
   # wrapper function to grab dat.gene from environment
   # genename is gene name found from ls(env)
   dat.gene <- get(genename, envir = env)
-  return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff))
+  return(MakeDesMatRunFit(dat.gene, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n))
 }
 
 MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 24, criterion = "BIC", normalize.weights = FALSE, cutoff = 1e-3, top.n = 3){
