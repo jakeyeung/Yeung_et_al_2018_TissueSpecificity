@@ -37,17 +37,8 @@ dat.long <- subset(dat.long, tissue != "WFAT")
 
 tissues <- as.character(unique(dat.long$tissue))
 # tiss.test <- c("Liver", "Kidney", "Adr", "BFAT", "Mus", "Aorta", "Heart")
-# tiss.test <- tissues
-tiss.test <- c("Liver", "Lung", "Kidney", "BFAT", "Mus")
-# tiss.test <- tissues
-# jgene <- "1110025L11Rik"
-# # jgene <- "Nr1d1"
-# dat.gene <- subset(dat.long, gene == jgene & tissue %in% tiss.test)
-# dat.gene$tissue <- factor(as.character(dat.gene$tissue), levels = tiss.test)
-# 
-# start <- Sys.time()
-# my_fits <- MakeDesMatRunFit(dat.gene, n.rhyth.max = 3, normalize.weights = FALSE, cutoff = 0.01)
-# print(Sys.time() - start)
+# tiss.test <- c("Liver", "Lung", "Kidney", "BFAT", "Mus")
+tiss.test <- tissues
 
 
 # Run for ALL genes -------------------------------------------------------
@@ -61,31 +52,21 @@ dat.exprs <- dat.long %>%
 
 genes.exprs <- unique(dat.exprs$gene)
 # genes.exprs.sub <- sample(genes.exprs, size = 0.1 * length(genes.exprs))
-# genes.exprs.sub <- genes.exprs
-genes.exprs.sub <- GetClockGenes()[1:5]
+genes.exprs.sub <- genes.exprs
+
+
+# Make matrices -----------------------------------------------------------
 
 dat.sub <- subset(dat.long, tissue %in% tiss.test & gene %in% genes.exprs.sub)
 dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = tiss.test)
 dat.sub$gene <- factor(as.character(dat.sub$gene), levels = genes.exprs.sub)
 
-print("Chunking data to environment")
+dat.gene <- subset(dat.sub, gene == "Nr1d1")  # for making matrices
+# outdir <- "/home/yeung/projects/tissue-specificity/Robjs/nconds2/mats_11_tiss_max4_chunks_of_100000"
+outdir <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_chunks_of_100000"
+dir.create(outdir)
 start <- Sys.time()
-dat.env <- DatLongToEnvironment(dat.sub)
+MakeDesMatChunks(dat.gene, out.dir = outdir, tiss.test, n.rhyth.max = 4, w = w, sparse = TRUE, chunks=100000)
 print(Sys.time() - start)
 
-# Rprof()
-fits.all <- lapply(ls(dat.env), function(gene){
-  MakeDesMatRunFitEnv(dat.env, gene, tiss.test, n.rhyth.max = 4, w = 2 * pi / 24, criterion = "BIC", normalize.weights = TRUE, cutoff = 1e-5, top.n = 10, sparse = TRUE)
-})
-# Rprof(NULL); RprofData <- readProfileData("Rprof.out")
-# flatProfile(RprofData, byTotal=TRUE)
-# flatProfile(RprofData, byTotal=FALSE)
 
-print("Running many cores and mclapply")
-start <- Sys.time()
-fits.all <- mclapply(ls(dat.env), function(gene){
-  MakeDesMatRunFitEnv(dat.env, gene, tiss.test, n.rhyth.max = 4, w = 2 * pi / 24, criterion = "BIC", normalize.weights = TRUE, cutoff = 1e-5, top.n = 10, sparse = TRUE)
-}, mc.cores = 6)
-print(Sys.time() - start)
-fits.all[[1]]
-save(fits.all, file = "/home/yeung/projects/tissue-specificity/Robjs/nconds2/fits.Robj")

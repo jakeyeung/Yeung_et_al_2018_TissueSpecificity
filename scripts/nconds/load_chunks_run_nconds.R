@@ -28,6 +28,5 @@ source("scripts/functions/EnvironmentsFunctions.R")
 
 chunks.path <- "/home/yeung/projects/tissue-specificity/data/datlong_chunks_by_gene/expressed_genes"
 
-
 dat.long.path <- "Robjs/dat.long.fixed_rik_genes.Robj"
 
