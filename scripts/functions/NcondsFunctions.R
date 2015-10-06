@@ -91,6 +91,7 @@ MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi
   des.mats <- expandingList() 
   des.mats$add(des.mat.list)
   total.count <- 1  # mats total, to track how many models
+  chunk.id <- 1  # increment every time we save a model
   
   # need to track models that we have done, so we eliminate "permutations" like c("Liver", "Kidney") and c("Kidney", "Liver) models
   # use hash for speed
@@ -146,17 +147,23 @@ MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi
       # add to list
       des.mats$add(des.mat.list.new)
       if (total.count %% chunks == 0){
-        chunk.id <- total.count / chunks
-        fname <- paste0("chunk.", chunk.id, ".Robj")
-        des.mats.list <- des.mats$as.list()
-        save(des.mats.list, file = file.path(out.dir, fname))
-        rm(des.mats.list)
+        SaveChunk(chunk.id, out.dir, des.mats)
         # start a new des.mats
         des.mats <- expandingList()
+        chunk.id <- chunk.id + 1
       }
     }  
   }
+  # save last batch
+  SaveChunk(chunk.id, out.dir, des.mats)
   print(paste("Total models:", total.count))
+  return(NULL)
+}
+
+SaveChunk <- function(chunk.id, out.dir, des.mats){
+  fname <- paste0("chunk.", chunk.id, ".Robj")
+  des.mats.list <- des.mats$as.list()
+  save(des.mats.list, file = file.path(out.dir, fname))
   return(NULL)
 }
 
