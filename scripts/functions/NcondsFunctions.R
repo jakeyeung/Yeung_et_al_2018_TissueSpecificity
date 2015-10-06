@@ -2,6 +2,164 @@ library(Matrix)
 library(dplyr)
 library(hash)
 
+LoadDesMatDatGeneRunFits <- function(dat.gene, mat.chunk, criterion = "BIC", normalize.weights = TRUE, top.n = 10, sparse = TRUE){
+  # Run fits given dat.gene and chunk of mat, can be loaded from file 
+  # track top.n
+  # each element in list of mat.chunk has $mat, $rhyth.tiss etc. So use $mat for fitting
+  
+  # store my fits
+  # to save memory, only store top n fits
+  # fits <- expandingList()
+  fits <- list()
+  fit.count <- 0
+  
+  # track weights to normalize afterwards
+  fit.weights.sum <- 0
+  fit.weights <- vector(mode="numeric", length=top.n)
+  
+  # fit my model
+  for (i in seq(length(mat.chunk))){
+    des.mat <- mat.chunk[[i]]
+    if (sparse){
+      fit <- FitModel(dat.gene, as.matrix(des.mat$mat), get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
+    } else {
+      fit <- FitModel(dat.gene, des.mat$mat, get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
+    }
+    fit.weights.sum <- fit.weights.sum + fit$weight  # track even if it is a bad model, helps normalization
+    fit.weights.lst <- UpdateFitWeights(fit$weight, fit.weights)
+    if (!is.na(fit.weights.lst$i)){
+      fits[[fit.weights.lst$i]] <- fit
+      fit.weights <- fit.weights.lst$weights
+    }
+    fit.count <- fit.count + 1
+  }
+  
+  if (normalize.weights){
+    # print("Normalizing weights...")
+    # print(dat.gene$gene[[1]])
+    # fits.list <- NormalizeWeights(fits.list, cutoff)
+    for (i in seq(length(fits))){
+      fits[[i]]$weight.norm <- fits[[i]]$weight / fit.weights.sum
+    }
+  }
+  return(fits)
+}
+
+MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi / 24, sparse = TRUE, chunks=10000){
+  # dat.gene: long format of gene expression, time and
+  # conditions. Can include additional factors such as 
+  # experiment.
+  # to reduce computation, savee matrices into chunks (user defined, let's say 10000 models a chunk) so
+  # if we run genome-wide, then we load the chunk and fit.
+  
+  if (missing(tissues)){
+    tissues <- unique(as.character(dat.gene$tissue))
+  }
+  
+  if (missing(n.rhyth.max)){
+    n.rhyth.max <- length(tissues)
+  } else if (n.rhyth.max < 1){
+    print(n.rhyth.max)
+    warning("N rhyth max cannot be less than 2")
+  }
+  
+  tiss.combos <- GetAllCombos(tissues, ignore.full = FALSE)
+  my_mat.queue <- new.queue()
+  
+  # BEGIN: init with flat model
+  des.mat.flat <- GetFlatModel(dat.gene)
+  
+  if (sparse){
+    # make sparse using Matrix package
+    des.mat.flat <- Matrix(des.mat.flat)
+  }
+  
+  # get rhythmic parameters which will be used for adding later: hash structure has fast lookup
+  des.mat.sinhash <- GetSinCombos(dat.gene, w, tissues, tiss.combos)
+  des.mat.coshash <- GetCosCombos(dat.gene, w, tissues, tiss.combos)
+  
+  rhyth.tiss <- list(character(0))  # needs to track shared and independent parameters, e.g.: c("Liver,Kidney", "Adr") no duplicates allowed
+  # n.rhyth <- NRhythmicFromString(rhyth.tiss)  # number of independent rhythmic parameters perhaps? Do this later for speed?
+  complement <- FilterCombos(tiss.combos, rhyth.tiss)  # given current matrix, you will know which tissues to iterate
+  des.mat.list <- list(mat=des.mat.flat, rhyth.tiss=rhyth.tiss, complement = complement)
+  # END: init with flat model
+  
+  # load up my queue
+  enqueue(my_mat.queue, des.mat.list)
+  
+  # uncomment if you want to store all the matrices were used
+  des.mats <- expandingList() 
+  des.mats$add(des.mat.list)
+  total.count <- 1  # mats total, to track how many models
+  
+  # need to track models that we have done, so we eliminate "permutations" like c("Liver", "Kidney") and c("Kidney", "Liver) models
+  # use hash for speed
+  models.done <- hash()
+  
+  # generate matrix by adding combinations of columns and adding
+  # those matrices into the queue
+  while (! is.empty(my_mat.queue)) {
+    des.mat.list <- dequeue(my_mat.queue)
+    
+    # check that this matrix is not already the maximum complexity (n.rhyth.max),
+    # if it is already as complex as we want, then ignore it because 
+    # we dont want to add another rhythmic column to this.
+    #
+    # strictly greater than should handle the case of "no rhytmic tissues"
+    if (length(des.mat.list$rhyth.tiss) > n.rhyth.max){
+      # print(paste("Skipping", des.mat.list$rhyth.tiss))
+      next  # should work even in n.rhyth.max == length(tissues)
+    }
+    
+    # determine tissue combinations that need to be added based on rhyth.tiss
+    # e.g., no need to add Liver twice, they can't have two rhythmic paramters  
+    for (tiss.comb in des.mat.list$complement){
+      # add column for each tissue combination
+      tiss.key <- paste(tiss.comb, collapse = ",")
+      
+      # append tiss.key to rhyth.tiss
+      rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)  # form list("Adr,Kidney", "Mus")
+      
+      # check if this tissue combination has been already submitted into queue (but in different permutation)
+      # track models we have done globally
+      modelname <- MakeModelName(rhyth.tiss)
+      if (! is.null(models.done[[modelname]])){
+        # this is a permutation of an already done combo, skip
+        #       print(rhyth.tiss)
+        #       print(paste('Skipping', modelname))
+        next
+      }
+      
+      col.new <- AddRhythmicColumns(des.mat.sinhash, des.mat.coshash, tiss.key)
+      
+      #     rhyth.tiss <- c(des.mat.list$rhyth.tiss, tiss.key)
+      
+      # further remove complement after having
+      tiss.complement.new <- FilterCombos(des.mat.list$complement, tiss.comb)
+      
+      # make new matrix, put it into queue
+      mat.new <- cbind(des.mat.list$mat, col.new)
+      des.mat.list.new <- list(mat=mat.new, rhyth.tiss = rhyth.tiss, complement = tiss.complement.new)
+      enqueue(my_mat.queue, des.mat.list.new)
+      models.done[[modelname]] <- TRUE  # we dont want to redo permutations of same models
+      total.count <- total.count + 1
+      # add to list
+      des.mats$add(des.mat.list.new)
+      if (total.count %% chunks == 0){
+        chunk.id <- total.count / chunks
+        fname <- paste0("chunk.", chunk.id, ".Robj")
+        des.mats.list <- des.mats$as.list()
+        save(des.mats.list, file = file.path(out.dir, fname))
+        rm(des.mats.list)
+        # start a new des.mats
+        des.mats <- expandingList()
+      }
+    }  
+  }
+  print(paste("Total models:", total.count))
+  return(NULL)
+}
+
 LoadChunkRunNconds <- function(chunk.path, genename, tissues, n.rhyth.max, w, criterion, normalize.weights, cutoff, top.n, sparse){
   # given path to a dat.gene chunk, run nconds2
   if (missing(genename)){
@@ -128,7 +286,6 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
       fits[[fit.weights.lst$i]] <- fit
       fit.weights <- fit.weights.lst$weights
     }
-    
     fit.count <- fit.count + 1
     
     # check that this matrix is not already the maximum complexity (n.rhyth.max),
@@ -294,6 +451,8 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
   # only one matrix, cannot normalize weights
   # 
   # weight.sum: track weight.sum 
+  #   print(head(mat))
+  #   print(dat.gene$exprs)
   fit <- lm.fit(y = dat.gene$exprs, x = mat)
   if (get.criterion == "BIC"){
     criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
