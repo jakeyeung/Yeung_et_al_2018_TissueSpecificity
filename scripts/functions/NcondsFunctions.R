@@ -46,12 +46,14 @@ LoadDesMatDatGeneRunFits <- function(dat.gene, mat.chunk, criterion = "BIC", nor
   fits$fit.weights.sum <- fit.weights.sum
 }
 
-MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi / 24, sparse = TRUE, chunks=10000){
+MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi / 24, sparse = TRUE, chunks=10000, only.n.params = FALSE){
   # dat.gene: long format of gene expression, time and
   # conditions. Can include additional factors such as 
   # experiment.
   # to reduce computation, savee matrices into chunks (user defined, let's say 10000 models a chunk) so
   # if we run genome-wide, then we load the chunk and fit.
+  #
+  # only.n: store models only with exactly n parameters
   
   if (missing(tissues)){
     tissues <- unique(as.character(dat.gene$tissue))
@@ -145,8 +147,16 @@ MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi
       enqueue(my_mat.queue, des.mat.list.new)
       models.done[[modelname]] <- TRUE  # we dont want to redo permutations of same models
       total.count <- total.count + 1
-      # add to list
-      des.mats$add(des.mat.list.new)
+      # add to list unless only.n is not FALSE
+      if (only.n.params == FALSE){
+        des.mats$add(des.mat.list.new)
+      } else {
+        # only add if only.n.params matches n.rhyth.params
+        n.rhyth.params <- length(rhyth.tiss) - 1  # rhyth.tiss contains a flat model, remove 1 to consider only n.rhyth.params
+        if (n.rhyth.params == only.n.params){
+          des.mats$add(des.mat.list.new)
+        }
+      }
       if (total.count %% chunks == 0){
         SaveChunk(chunk.id, out.dir, des.mats)
         # start a new des.mats
@@ -390,6 +400,15 @@ NormalizeWeights <- function(fit.list, cutoff = 1e-3){
     }
   })
   return(fit.list.norm)
+}
+
+CoefToModelName <- function(coef){
+  # Given set of coef, with sin and cos to designate rhythmic parameters, extract
+  # a rhythmic model name e.g., Adr;Liver,Kidney;Mus means 3 rhythmic parameters, liver and kidney share 
+  # rhythmic params
+  rhyth.names <- names(coef[grepl(":sin", names(coef))])
+  rhyth.names <- sapply(rhyth.names, function(jname) strsplit(jname, ":")[[1]][[1]])
+  return(paste(rhyth.names, collapse=";"))
 }
 
 CoefToParams <- function(coef, period = 24){
