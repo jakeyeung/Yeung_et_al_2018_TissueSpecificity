@@ -2,6 +2,21 @@ library(Matrix)
 library(dplyr)
 library(hash)
 
+MakeDesMatFromModelName <- function(dat.gene, model.name, tissues, w = 2 * pi / 24){
+  # Given model.name, return design matrix
+  # model.name: Aorta,BFAT,Liver;Adr,BS,Cere,Heart,Kidney
+  des.mat <- GetFlatModel(dat.gene)  # cbind to this to create matrix
+  tiss.combos <- GetAllCombos(tissues)
+  des.mat.sinhash <- GetSinCombos(dat.gene, w, tissues, tiss.combos)
+  des.mat.coshash <- GetCosCombos(dat.gene, w, tissues, tiss.combos)
+  
+  model.name.vec <- strsplit(model.name, ";")[[1]]
+  for (rhyth.tiss in model.name.vec){
+    des.mat <- cbind(des.mat, AddRhythmicColumns(des.mat.sinhash, des.mat.coshash, rhyth.tiss))
+  }
+  return(des.mat)
+}
+
 LoadDesMatDatGeneRunFits <- function(dat.gene, mat.chunk, criterion = "BIC", normalize.weights = TRUE, top.n = 10, sparse = TRUE){
   # Run fits given dat.gene and chunk of mat, can be loaded from file 
   # track top.n
@@ -375,14 +390,15 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
 
 UpdateFitWeights <- function(weight, weights){
   # check min weights, if weight is larger than min(weights), replace min(weights) with weight
-  min.weight <- weights[which.min(weights)]
+  which.min.i <- which.min(weights)
+  min.weight <- weights[which.min.i]
   if (weight <= min.weight){
     return(list(weights = NA, i = NA))  # do nothing
   }
   else if (weight > min.weight){
     # replace it
     weights[which.min(weights)] <- weight
-    return(list(weights = weights, i = which.min(weights)))
+    return(list(weights = weights, i = which.min.i))
   }
 }
 
@@ -440,6 +456,7 @@ CoefToParams <- function(coef, period = 24){
     }, rhyth.params.sin, rhyth.params.cos)
     
     # name my new params
+    if (length(amps) == 0 & length(phases) == 0) return(NA)
     names(amps) <- paste0(rhyth.tiss, ".amp")
     names(phases) <- paste0(rhyth.tiss, ".phase")
   } else {
