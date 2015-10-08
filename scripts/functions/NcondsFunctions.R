@@ -46,7 +46,7 @@ LoadDesMatDatGeneRunFits <- function(dat.gene, mat.chunk, criterion = "BIC", nor
   fits$fit.weights.sum <- fit.weights.sum
 }
 
-MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi / 24, sparse = TRUE, chunks=10000, only.n.params = FALSE){
+MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi / 24, sparse = TRUE, chunks=10000, only.n.params = FALSE, count.mode=FALSE){
   # dat.gene: long format of gene expression, time and
   # conditions. Can include additional factors such as 
   # experiment.
@@ -54,6 +54,7 @@ MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi
   # if we run genome-wide, then we load the chunk and fit.
   #
   # only.n: store models only with exactly n parameters
+  # count.mode: only care about counts, dont save anything
   
   if (missing(tissues)){
     tissues <- unique(as.character(dat.gene$tissue))
@@ -158,7 +159,9 @@ MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi
         }
       }
       if (total.count %% chunks == 0){
-        SaveChunk(chunk.id, out.dir, des.mats)
+        if (count.mode == FALSE){
+          SaveChunk(chunk.id, out.dir, des.mats)
+        }
         # start a new des.mats
         des.mats <- expandingList()
         chunk.id <- chunk.id + 1
@@ -166,7 +169,9 @@ MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi
     }  
   }
   # save last batch
-  SaveChunk(chunk.id, out.dir, des.mats)
+  if (count.mode == FALSE){
+    SaveChunk(chunk.id, out.dir, des.mats)
+  }
   print(paste("Total models:", total.count))
   return(NULL)
 }
