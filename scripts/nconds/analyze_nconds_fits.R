@@ -2,6 +2,10 @@
 # Jake Yeung
 # Analyze fits from vitalit
 
+library(dplyr)
+
+setwd("/home/yeung/projects/tissue-specificity")
+
 source("scripts/functions/AppendListFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/NcondsFunctions.R")
@@ -55,6 +59,7 @@ GetTopNModelsFromFits <- function(fits.list, top.n){
     for (j in seq(length(fits.list[[i]]))){  # should be list of n.top or more
       weight.j <- fits.list[[i]][[j]]$weight.norm
       min.indx <- which.min(top.n.weights)
+      if (length(weight.j) == 0) next
         if (top.n.weights[min.indx] < weight.j){
           # update weights and indcies
           top.n.weights[min.indx] <- weight.j
@@ -100,9 +105,18 @@ SumWeights <- function(fits.list){
   return(fit.weight.sum)
 }
 
+GetNrhythFromModel <- function(model){
+  # from model, return number of tissues that are rhythmic 
+  # e.g.: Mus;Adr,Kidney,Liver;Aorta,BFAT,Heart,Lung = 8 rhythmic tissues
+  # strategy: replace ";" with ',', then get length of ',' split string
+  n.rhyth <- gsub(pattern = ";", replacement = ",", x = model)
+  return(length(strsplit(n.rhyth, ",")[[1]]))
+}
+
 # Load --------------------------------------------------------------------
 
-genedir <- "/home/yeung/projects/tissue-specificity/data/nconds2/fits_11_tiss_chunks.vitalit"
+# genedir <- "/home/yeung/projects/tissue-specificity/data/nconds2/fits_11_tiss_chunks.vitalit"
+genedir <- "/home/yeung/projects/tissue-specificity/results/nconds/fits_11_tiss_3_max_cluster"
 
 fits.long.list <- expandingList()
 for (gene in list.files(genedir)){
@@ -116,16 +130,7 @@ fits.long.list <- fits.long.list$as.list()
 fits.long <- do.call(rbind, fits.long.list)
 head(fits.long)
 
+fits.long$n.rhyth <- sapply(fits.long$model, GetNrhythFromModel)
 
-
-# fits.list <- expandingList()
-# fit.files <- list.files(fitdir)
-# for (i in seq(length(fit.files))){
-#   load(file.path(fitdir, fit.files[[i]]))  # fits
-#   fits.list$add(fits)
-# }
-# fits <- fits.list$as.list()
-# 
-# fits.top <- GetTopNModelsFromFits(fits, 3)
-# fits.long <- ListToLong(fits.top, genename = "Dbp", top.n = 3, period = 24)
-
+outpath <- "/home/yeung/projects/tissue-specificity/results/nconds/fits_11_tiss_max_3.Robj"
+save(fits.long, file = outpath)
