@@ -45,12 +45,13 @@ source("scripts/functions/GetClockGenes.R")
 # dat.sub$gene <- factor(as.character(dat.sub$gene), levels = genes.exprs.sub)
 # 
 # ChunkDatGenesToFile(dat.sub, writedir)
-# END: MAKE DAT GENE CHUNKS
+# END: MAKE DAT GENE CHUNKS 
 
 # Load datgene and matrix chunk, run my fits ------------------------------
 
 chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_overnight/chunk.2039.Robj"
 chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_chunks_of_100000/chunk.1.Robj"
+chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max_3_chunks_2e+05/chunk.1.Robj"
 load(chunkpath, verbose=T)
 
 datgenepath <- "/home/yeung/projects/tissue-specificity/data/nconds2/datlong_11_tiss_by_gene/Arntl.Robj"
@@ -72,3 +73,12 @@ lapply(list.files(chunkdir), function(chunkpath){
   fits <- LoadDesMatDatGeneRunFits(dat.gene, des.mats.list, criterion = "BIC", normalize.weights = TRUE, top.n = 10, sparse = TRUE)
   save(fits, file = file.path(outdir, paste0("chunks.", chunk.id, ".fit.Robj")))
 })
+
+X <- as.matrix(des.mats.list[[202]]$mat)
+Y <- dat.gene$exprs
+start <- Sys.time()
+for (i in seq(10000)){
+  fit <- lm.fit(X, Y)
+}
+print(Sys.time() - start)
+

@@ -78,7 +78,7 @@ dat.env <- DatLongToEnvironment(dat.sub)
 start <- Sys.time()
 # Rprof()
 fits.all <- lapply(ls(dat.env), function(gene){
-  MakeDesMatRunFitEnv(dat.env, gene, tiss.test, n.rhyth.max = 4, w = 2 * pi / 24, criterion = "BIC", normalize.weights = TRUE, cutoff = 1e-5, top.n = 10, sparse = TRUE)
+  MakeDesMatRunFitEnv(dat.env, gene, tiss.test, n.rhyth.max = length(tiss.test), w = 2 * pi / 24, criterion = "BIC", normalize.weights = TRUE, cutoff = 1e-5, top.n = 10, sparse = TRUE)
 })
 # Rprof(NULL); RprofData <- readProfileData("Rprof.out")
 # flatProfile(RprofData, byTotal=TRUE)
