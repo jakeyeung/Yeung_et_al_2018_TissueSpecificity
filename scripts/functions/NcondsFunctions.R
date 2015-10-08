@@ -57,8 +57,8 @@ LoadDesMatDatGeneRunFits <- function(dat.gene, mat.chunk, criterion = "BIC", nor
       fits[[i]]$weight.norm <- fits[[i]]$weight / fit.weights.sum
     }
   }
-  return(fits)
   fits$fit.weights.sum <- fit.weights.sum
+  return(fits)
 }
 
 MakeDesMatChunks <- function(dat.gene, out.dir, tissues, n.rhyth.max, w = 2 * pi / 24, sparse = TRUE, chunks=10000, only.n.params = FALSE, count.mode=FALSE){
