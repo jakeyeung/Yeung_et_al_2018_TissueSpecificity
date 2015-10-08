@@ -506,12 +506,13 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
   if (get.criterion == "BIC"){
     criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
     weight <- exp(-0.5 * criterion)
+    weight.raw <- criterion
   } else {
     warning("Model selection methods other than BIC not implemented")
     weight <- NA
   }
   if (condensed){
-    return(list(fit = fit$coefficients, weight = weight))
+    return(list(fit = fit$coefficients, weight = weight, weight.raw = weight.raw))
   } else {
     return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
   }
