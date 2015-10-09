@@ -87,7 +87,6 @@ NormalizeWeightsFromFits <- function(fits.list){
   return(fits.list)
 }
 
-
 SumWeights <- function(fits.list){
   # Given list of fits, divide each weight by fit.weights.sum
   fit.weight.sum <- 0
@@ -540,14 +539,18 @@ CoefToModelName <- function(coef){
 
 CoefToParams <- function(coef, period = 24){
   w = 2 * pi / 24
-  flat.params <- coef[!grepl(":", names(coef))]
+  flat.params <- coef[grepl("tissue", names(coef))]
   
   # Convert linear coefficients sin cos to amplitude and phase.
   rhyth.params.sin <- coef[grepl(":sin", names(coef))]
   rhyth.params.cos <- coef[grepl(":cos", names(coef))]
   rhyth.params.names <- names(coef)[grepl(":sin", names(coef))]
   
-  has.rhyth <- TRUE
+  if (length(rhyth.params.names) > 0){
+    has.rhyth <- TRUE
+  } else {
+    has.rhyth <- FALSE
+  }
   # TODO: check for case with no rhythmic param
   
   if (has.rhyth){
@@ -566,7 +569,7 @@ CoefToParams <- function(coef, period = 24){
     names(amps) <- paste0(rhyth.tiss, ".amp")
     names(phases) <- paste0(rhyth.tiss, ".phase")
   } else {
-    warning("Case of no rhythmic tissues not yet implemented")
+    return(flat.params)
   }
   # return as numeric vector
   rhyth.params.out <- c(amps, phases)
@@ -820,7 +823,7 @@ GetRhythmicFormula <- function(exprs, time, intercepts, w = 2 * pi / 24, with.in
 }
 
 GetFlatModel <- function(dat.gene){
-  des.mat.flat <- model.matrix(exprs ~ 0 + tissue + experiment, dat.gene)
+  des.mat.flat <- model.matrix(exprs ~ 0 + tissue + tissue:experiment, dat.gene)
 }
 
 GetRhythModel <- function(dat.gene, w = 2 * pi / 24){
