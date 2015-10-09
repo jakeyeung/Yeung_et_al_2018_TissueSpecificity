@@ -73,9 +73,9 @@ outmain <- args[[3]]
 load(datgenepath)
 gene <- as.character(dat.gene$gene[1])
 
-dat.gene <- dat.gene %>%
-  group_by(gene) %>%
-  mutate(exprs = scale(exprs, center = TRUE, scale = TRUE))
+# dat.gene <- dat.gene %>%
+#   group_by(gene) %>%
+#   mutate(exprs = scale(exprs, center = TRUE, scale = TRUE))
 
 # chunkdir <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max_3_chunks_2e+05"
 # chunkdir <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max_3_chunks_20000"
