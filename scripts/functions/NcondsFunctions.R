@@ -2,6 +2,23 @@ library(Matrix)
 library(dplyr)
 library(hash)
 
+ConcatenateFits <- function(genedir){
+  source("scripts/functions/AppendListFunctions.R")
+  start <- Sys.time()
+  fits.long.list <- expandingList()
+  for (gene in list.files(genedir)){
+    fitdir <- file.path(genedir, gene)
+    fits <- LoadFitsFromModels(fitdir)
+    fits.top <- GetTopNModelsFromFits(fits, top.n)
+    fits.long.gene <- ListToLong(fits.top, genename = gene, top.n = top.n, period = 24)
+    fits.long.list$add(fits.long.gene)
+    #   break
+  }
+  fits.long.list <- fits.long.list$as.list()
+  fits.long <- do.call(rbind, fits.long.list)
+  return(fits.long)
+}
+
 LoadFitsFromModels <- function(fitdir){
   fits.list <- expandingList()
   fit.files <- list.files(fitdir)
