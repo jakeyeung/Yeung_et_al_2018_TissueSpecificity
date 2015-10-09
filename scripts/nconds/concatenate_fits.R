@@ -17,26 +17,29 @@ load("Robjs/dat.long.fixed_rik_genes.Robj")
 
 # Load --------------------------------------------------------------------
 
-top.n <- 99
+top.n <- 100
 # genedir <- "/home/yeung/projects/tissue-specificity/data/nconds2/fits_11_tiss_chunks.vitalit"
-genedir <- "/home/yeung/projects/tissue-specificity/results/nconds/fits_11_tiss_3_max_cluster"
-outdir <- "/home/yeung/projects/tissue-specificity/results/nconds"
+# genedir <- "/home/yeung/projects/tissue-specificity/results/nconds/fits_11_tiss_3_max_cluster"
+# genedir <- "/home/yeung/projects/tissue-specificity/data/nconds2/fits_11_tiss_chunks.max_3_test.complete"
+genedir <- "/home/yeung/projects/tissue-specificity/data/nconds2/fits_11_tiss_chunks.max_3_test.scaled"
+outdir <- "/home/yeung/projects/tissue-specificity/results/nconds/fits_11_tiss_clock_genes"
 outname <- paste0("fits_11_tiss_max_3.top_", top.n, ".Robj")
 outpath <- file.path(outdir, outname)
+dir.create(outname)
 
 start <- Sys.time()
 fits.long.list <- expandingList()
 for (gene in list.files(genedir)){
   # gene <- "9030624J02Rik"
   # gene <- "0610009L18Rik"
-  gene <- "Rgs16"
+#   gene <- "Rgs16"
   # print(gene)
   fitdir <- file.path(genedir, gene)
   fits <- LoadFitsFromModels(fitdir)
   fits.top <- GetTopNModelsFromFits(fits, top.n)
   fits.long.gene <- ListToLong(fits.top, genename = gene, top.n = top.n, period = 24)
   fits.long.list$add(fits.long.gene)
-  break
+#   break
 }
 fits.long.list <- fits.long.list$as.list()
 fits.long <- do.call(rbind, fits.long.list)
@@ -44,5 +47,5 @@ head(fits.long)
 
 fits.long$n.rhyth <- sapply(fits.long$model, GetNrhythFromModel)
 
-# save(fits.long, file = outpath)
+save(fits.long, file = outpath)
 print(Sys.time() - start)

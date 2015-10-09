@@ -52,14 +52,15 @@ ggplot(fits.long.top, aes(x = weight)) + geom_density() + facet_wrap(~n.rhyth)
 
 # Check my fits are proper ------------------------------------------------
 
+jgene <- "Rgs16"
+# jmodel <- "Liver;Adr,BFAT,Heart,Hypo"
+jmodel <- "Liver"
+
 tissues <- as.character(unique(dat.long$tissue))
 tissues <- tissues[which(tissues != "WFAT")]
 dat.gene <- subset(dat.long, gene == jgene & tissue %in% tissues)
 dat.gene$tissue <- factor(as.character(dat.gene$tissue), levels = tissues)
 
-jgene <- "Rgs16"
-# jmodel <- "Liver;Adr,BFAT,Heart,Hypo"
-jmodel <- "Liver"
 
 X <- MakeDesMatFromModelName(dat.gene, model.name = jmodel, tissues)
 

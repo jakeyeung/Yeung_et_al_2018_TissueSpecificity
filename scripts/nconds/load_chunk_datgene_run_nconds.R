@@ -10,7 +10,6 @@ library(hash)
 
 setwd("~/projects/tissue-specificity")
 
-writedir <- "/home/yeung/projects/tissue-specificity/data/nconds2/datlong_11_tiss_by_gene"
 # Source ------------------------------------------------------------------
 
 source("scripts/functions/GetClockGenes.R")
@@ -49,36 +48,54 @@ source("scripts/functions/GetClockGenes.R")
 
 # Load datgene and matrix chunk, run my fits ------------------------------
 
-chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_overnight/chunk.2039.Robj"
-chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_chunks_of_100000/chunk.1.Robj"
-chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max_3_chunks_2e+05/chunk.1.Robj"
-load(chunkpath, verbose=T)
-
-datgenepath <- "/home/yeung/projects/tissue-specificity/data/nconds2/datlong_11_tiss_by_gene/Arntl.Robj"
-load(datgenepath, verbose=T)
-
-start <- Sys.time()
-fits <- LoadDesMatDatGeneRunFits(dat.gene, des.mats.list, criterion = "BIC", normalize.weights = TRUE, top.n = 10, sparse = TRUE)
-print(Sys.time() - start)
-
+# chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_overnight/chunk.2039.Robj"
+# chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_chunks_of_100000/chunk.1.Robj"
+# chunkpath <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max_3_chunks_2e+05/chunk.1.Robj"
+# load(chunkpath, verbose=T)
+# 
+# datgenepath <- "/home/yeung/projects/tissue-specificity/data/nconds2/datlong_chunks_by_gene/Rgs16.Robj"
+# datgenepath <- "/home/yeung/projects/tissue-specificity/data/nconds2/datlong_chunks_by_gene/Slc34a2.Robj"
+# datgenepath <- "/home/yeung/projects/tissue-specificity/data/nconds2/datlong_11_tiss_by_gene/Arntl.Robj"
+# load(datgenepath, verbose=T)
+# 
+# start <- Sys.time()
+# fits <- LoadDesMatDatGeneRunFits(dat.gene, des.mats.list, criterion = "BIC", normalize.weights = TRUE, top.n = 100, sparse = TRUE)
+# print(Sys.time() - start)
+# 
+# fits.top <- GetTopNModelsFromFits(list(fits), top.n = 100)
 
 # Fit all -----------------------------------------------------------------
 
-chunkdir <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max4_overnight"
-outdir <- "/home/yeung/projects/tissue-specificity/data/nconds2/fits_11_tiss_chunks"
+args <- commandArgs(trailingOnly = TRUE)
+datgenepath <- args[[1]]
+chunkdir <- args[[2]]
+outmain <- args[[3]]
+load(datgenepath)
+gene <- as.character(dat.gene$gene[1])
+
+dat.gene <- dat.gene %>%
+  group_by(gene) %>%
+  mutate(exprs = scale(exprs, center = TRUE, scale = TRUE))
+
+# chunkdir <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max_3_chunks_2e+05"
+# chunkdir <- "/home/yeung/projects/tissue-specificity/data/nconds2/mats_11_tiss_max_3_chunks_20000"
+# outmain <- "/home/yeung/projects/tissue-specificity/data/nconds2/fits_11_tiss_chunks.max_3_test.20000"
+dir.create(outmain)
+outdir <- file.path(outmain, gene)
+dir.create(outdir)
 
 lapply(list.files(chunkdir), function(chunkpath){
-  load(datgenepath, verbose=F)
+  load(file.path(chunkdir, chunkpath), verbose=F)
   chunk.id <- strsplit(chunkpath, "\\.")[[1]][[2]]
-  fits <- LoadDesMatDatGeneRunFits(dat.gene, des.mats.list, criterion = "BIC", normalize.weights = TRUE, top.n = 10, sparse = TRUE)
+  fits <- LoadDesMatDatGeneRunFits(dat.gene, des.mats.list, criterion = "BIC", normalize.weights = TRUE, top.n = 100, sparse = TRUE)
   save(fits, file = file.path(outdir, paste0("chunks.", chunk.id, ".fit.Robj")))
 })
 
-X <- as.matrix(des.mats.list[[202]]$mat)
-Y <- dat.gene$exprs
-start <- Sys.time()
-for (i in seq(10000)){
-  fit <- lm.fit(X, Y)
-}
-print(Sys.time() - start)
+# X <- as.matrix(des.mats.list[[202]]$mat)
+# Y <- dat.gene$exprs
+# start <- Sys.time()
+# for (i in seq(10000)){
+#   fit <- lm.fit(X, Y)
+# }
+# print(Sys.time() - start)
 

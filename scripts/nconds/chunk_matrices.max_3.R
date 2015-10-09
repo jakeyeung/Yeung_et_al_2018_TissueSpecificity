@@ -62,7 +62,7 @@ dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = tiss.test)
 dat.sub$gene <- factor(as.character(dat.sub$gene), levels = genes.exprs.sub)
 
 dat.gene <- subset(dat.sub, gene == "Nr1d1")  # for making matrices
-chunks <- 200000
+chunks <- 20000
 max.n <- 3
 
 # outdir <- "/home/yeung/projects/tissue-specificity/Robjs/nconds2/mats_11_tiss_max4_chunks_of_100000"
