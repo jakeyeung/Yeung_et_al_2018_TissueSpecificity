@@ -2,6 +2,22 @@ library(Matrix)
 library(dplyr)
 library(hash)
 
+UnzipMatrices <- function(chunk.path, outdir){
+  # Unzip matrix and save with extension ".full.Robj"
+  load(chunk.path)  # des.mats.list
+  outname <- basename(chunk.path)
+  outname <- paste(strsplit(outname, ".Robj")[[1]], collapse = ".")
+  outname <- paste0(outname, ".unzipped.Robj")
+  out.path <- file.path(outdir, outname)
+  
+  des.mats.list <- lapply(des.mats.list, function(des.mats){
+    des.mats$mat <- as.matrix(des.mats$mat)
+    return(des.mats)
+  })
+  return(des.mats.list)
+  save(des.mats.list, file = out.path)
+}
+
 ConcatenateFits <- function(genedir){
   source("scripts/functions/AppendListFunctions.R")
   start <- Sys.time()
