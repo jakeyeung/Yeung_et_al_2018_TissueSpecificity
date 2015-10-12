@@ -50,14 +50,14 @@ AddDf <- function(obj){
   return(obj)
 }
 
-FitToMat <- function(fit, genename, weight, period = 24){
+FitToMat <- function(fit, genename, weight, weight.raw, period = 24){
   # Turn fit into a long data frame
   model.name <- CoefToModelName(fit)
   # vector to long
   params <- CoefToParams(fit)
-  dat.out <- data.frame(gene = genename, model = model.name, weight = weight)  # init
+  dat.out <- data.frame(gene = genename, model = model.name, weight = weight, weight.raw = weight.raw)  # init
   dat.params <- dat.out %>%
-    group_by(gene, model, weight) %>%
+    group_by(gene, model, weight, weight.raw) %>%
     do(param.list = AddDf(params))
   return(dat.params)
 }
@@ -67,7 +67,7 @@ ListToLong <- function(fits.list, genename, top.n, period = 24){
   # should be easily used to append or edit a data frame
   mats <- list()
   for (i in seq(top.n)){
-    mats[[i]] <- FitToMat(fits.list[[i]]$fit, genename, fits.list[[i]]$weight.norm, period)
+    mats[[i]] <- FitToMat(fits.list[[i]]$fit, genename, fits.list[[i]]$weight.norm, fits.list[[i]]$weight.raw, period)
   }
   return(do.call(rbind, mats))
 }
