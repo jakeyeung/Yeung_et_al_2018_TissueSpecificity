@@ -170,17 +170,24 @@ fits.best.count.filt <- subset(fits.best.count, gene.count > 1)
 # Heatmap of list ---------------------------------------------------------
 
 jmodel <- "Kidney,Liver"
-jmodel <- "Kidney;Liver"
+# jmodel <- "BFAT,Liver"
+jmodel <- "Liver"
+jmodel <- "Adr"
 ref <- strsplit(jmodel, ";")[[1]][[1]]  # could be just Liver if jmodel was Liver;Kidney
-fits.best.sub <- subset(fits.best, model == jmodel)
+
+ref <- "Liver"
+# fits.best.sub <- subset(fits.best, model == jmodel)
+fits.best.sub <- subset(fits.best, gene %in% genes.tw & weight > 0)
+
 genes <- as.character(fits.best.sub$gene)
+
 
 dat.sub <- subset(dat.long, gene %in% genes & experiment == "array" & !tissue %in% filt.tiss)
 
 # center and scale
 dat.sub <- dat.sub %>%
   group_by(gene, tissue) %>%
-  mutate(exprs.scaled = scale(exprs, center = TRUE, scale = TRUE))
+  mutate(exprs.scaled = scale(exprs, center = TRUE, scale = FALSE))
 
 
 mat <- dcast(dat.sub, gene ~ tissue + time, value.var = "exprs.scaled")
@@ -189,12 +196,34 @@ head(mat)
 
 # sort by phases
 phases.dic.keys <- as.character(fits.best.sub$gene)
-phases.dic.vals <- sapply(fits.best.sub$param.list, function(p) p[[paste0(ref, ".phase")]])
+phases.dic.vals <- sapply(fits.best.sub$param.list, function(p) p[grep("phase", names(p))][[1]])  # take first phase we see: useful if tissue-wide
+#   p[[paste0(ref, ".phase")]])  # specify by ref
 phases.dat <- data.frame(gene = phases.dic.keys, phase = phases.dic.vals)
 phases.dat <- phases.dat[order(phases.dat$phase), ]
 
+# add phases of individual tissues as a check
+
+# load("Robjs/dat.fit.Robj")
+# source("scripts/functions/GrepRikGenes.R")
+# dat.fit$gene <- FixRikGenes(dat.fit$gene)
+
+dat.fit.sub <- subset(dat.fit, gene %in% genes)
+
+t1.dic.keys <- paste(dat.fit.sub$gene, dat.fit.sub$tissue, sep = ",")
+t1.dic.vals <- dat.fit.sub$phase
+t1.dic <- hash(t1.dic.keys, t1.dic.vals)
+
+tiss <- strsplit(strsplit(jmodel, ";")[[1]], ",")[[1]]
+for (tis in tiss){
+  phases.dat[[tis]] <- sapply(as.character(phases.dat$gene), function(jgene) t1.dic[[paste(jgene, tis, sep = ",")]])
+}
+
+# sort by first tissue
+# phases.dat <- phases.dat[order(phases.dat[[tiss[[1]]]]), ]
+phases.dat <- phases.dat[order(phases.dat$phase), ]
+
 # sort by phases
-mat <- mat[as.character(phases.dat$gene), ]
+mat <- as.matrix(mat[as.character(phases.dat$gene), ])
 head(mat)
 
 # heatmap
@@ -208,19 +237,120 @@ TEXT_X_LOC <<- cond_begins + cond_mid  # a vector in middle of sample, can put t
 TEXT_Y_LOC <<- 0.99 * length(genes)  # number of genes
 C_NAME <<- unique(condi_name)
 
-heatmap(as.matrix(mat), 
-        Rowv = NA, 
-        Colv = NA, 
-        ylab = NA ,
-        labCol = paste('CT',time, sep = "_"),
-        labRow = NA,
-        scale = NULL,
-        add.expr = c(abline(v = VLINE_X_LOC, 
-                            col = 'white'),
-                     text(x=TEXT_X_LOC, 
-                          y=TEXT_Y_LOC, 
-                          labels = C_NAME,
-                          col = 'white')),
-        main = paste("model #Genes",sep =" "), 
-        col = colorRampPalette(c('blue','black','red'))(1000))
+# mat[1, grep(tiss[[1]], colnames(mat))] <- 1
+# mat <- matrix(1, nrow = length(genes), ncol = length(unique(dat.sub$tissue)) * length(unique(dat.sub$time)))
 
+library(gplots)
+min.n <- -3
+max.n <- 3
+my.palette <- colorRampPalette(c("blue", "black", "yellow"))(n = 300)
+# # (optional) defines the color breaks manually for a "skewed" color transition
+blueend <- -0.5; blackstart <- blueend + 0.01;
+blackend <- 0.5; redstart <- blackend + 0.01;
+col.breaks <- c(seq(min.n, blueend, length=100),
+                seq(blackstart, blackend, length=101),
+                seq(redstart, max.n, length = 100))
+# col.breaks = c(seq(0, blackend, length=150),  # black
+#                seq(yellowstart, maxval, length=151))  # yellow
+
+heatmap.2 (mat,
+           
+           # dendrogram control
+           Rowv = FALSE,
+           Colv=FALSE,
+           dendrogram = "none",
+           symm = FALSE,
+           
+           # data scaling
+           scale = "none",
+           na.rm=TRUE,
+           
+           # image plot
+           add.expr = c(abline(v = VLINE_X_LOC, 
+                               col = 'white'),
+                        text(x=TEXT_X_LOC, 
+                             y=TEXT_Y_LOC, 
+                             labels = C_NAME,
+                             col = 'white')),
+           
+           # mapping data to colors
+           # breaks,
+           # symbreaks=min(x < 0, na.rm=TRUE) || scale!="none",
+           
+           # colors
+           col = my.palette,
+           breaks = col.breaks,
+           
+           # level trace
+           trace="none",
+           
+           # Row/Column Labeling
+           margins = c(5, 5),
+           labRow = NULL,
+           labCol = NULL,
+           srtRow = NULL,
+           srtCol = NULL,
+           adjRow = c(0,NA),
+           adjCol = c(NA,0),
+           offsetRow = 0.5,
+           offsetCol = 0.5,
+           
+           # color key + density info
+           key = TRUE,
+           keysize = 1.5,
+           density.info="none",
+           
+           # plot labels
+           main = NULL,
+           xlab = NULL,
+           ylab = NULL,
+           
+           # plot layout
+           lmat = NULL,
+           lhei = NULL,
+           lwid = NULL,
+           
+)
+
+# heatmap(mat, 
+#         Rowv = NA, 
+#         Colv = NA, 
+#         ylab = NA ,
+#         labCol = paste('CT',time, sep = "_"),
+#         labRow = NA,
+#         scale = NULL,
+#         add.expr = c(abline(v = VLINE_X_LOC, 
+#                             col = 'white'),
+#                      text(x=TEXT_X_LOC, 
+#                           y=TEXT_Y_LOC, 
+#                           labels = C_NAME,
+#                           col = 'white')),
+#         main = paste("model #Genes",sep =" "), 
+#         col = colorRampPalette(c('blue','black','red'))(1000))
+
+
+# Cluster by BIC weights or raw BIC scores --------------------------------
+
+# fits.long$model <- factor(x = fits.long$model, levels = unique(fits.long$model))
+
+# fix fits.best to have less models
+# take top 10 models
+# jtop <- 5
+# fits.long.top10 <- fits.long %>%
+#   group_by(gene) %>%
+#   mutate(order.i = order(weight)) %>%
+#   filter(order.i <= jtop)
+# 
+# mats.all <- dcast(fits.long.top10, formula = gene ~ model, value.var = "weight", fill = 0)
+# 
+# n.centers <- 75
+# clusters <- kmeans(mats.all, centers = n.centers)
+
+
+# # a 2-dimensional example
+# x <- rbind(matrix(rnorm(100, sd = 0.3), ncol = 2),
+#            matrix(rnorm(100, mean = 1, sd = 0.3), ncol = 2))
+# colnames(x) <- c("x", "y")
+# (cl <- kmeans(x, 2))
+# plot(x, col = cl$cluster)
+# points(cl$centers, col = 1:2, pch = 8, cex = 2)
