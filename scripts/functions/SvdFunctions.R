@@ -399,6 +399,9 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   var.explained <- s.complex$d ^ 2 / sum(s.complex$d ^ 2)
   eigengene <- s.complex$v[, comp]
   eigensamp <- s.complex$u[, comp]
+  # 2015-10-15: Eigengene v is the complex conjugate, unconjugate it to get proper interpretation of the phase
+  # otherwise your tissue module will be flipped
+  eigengene <- Conj(eigengene)
   if (eigenval){
     eigensamp <- eigensamp * s.complex$d[comp]
   }
