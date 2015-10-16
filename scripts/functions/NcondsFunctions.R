@@ -139,6 +139,18 @@ GetNrhythFromModel <- function(model){
   return(length(strsplit(n.rhyth, ",")[[1]]))
 }
 
+GetAvgAmpFromParams <- function(params){
+  # look at param names to get average amplitudes
+  amps <- params[grepl("amp", names(params))]
+  if(length(amps) == 0) return(NA)  # non rhyth model
+  # get number of tissues rhythmic for each rhythmic paramter (because tissues can
+  # share paramters)
+  n.tiss <- sapply(names(amps), function(tiss.id) length(strsplit(tiss.id, ",")[[1]]))
+  amps.weighted <- sum(amps * n.tiss)
+  # return weighted mean
+  return(amps.weighted / sum(n.tiss))
+}
+
 
 MakeDesMatFromModelName <- function(dat.gene, model.name, tissues, w = 2 * pi / 24){
   # Given model.name, return design matrix
