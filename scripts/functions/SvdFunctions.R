@@ -411,7 +411,7 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   # rotate eigengene by -phase ref
   eigengene <- eigengene * Conj(rotate.factor)
   # rotate eigensamp by +phase ref
-  eigensamp <- eigensamp * Conj(rotate.factor)
+  eigensamp <- eigensamp * rotate.factor
   # END: rotate to phase of largest magnitude in sample of eigengene
   
   # BEGIN: adjust so largest magnitude in sample of eigengene = 1
