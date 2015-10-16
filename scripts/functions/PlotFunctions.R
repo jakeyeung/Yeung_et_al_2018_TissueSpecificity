@@ -688,3 +688,154 @@ PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellows
             margins=c(8,30),
             distfun = function(x) dist(x, method = dist.method))
 }
+
+PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", blueend = -0.5, blackend = 0.5, min.n = -3, max.n = 3){
+  
+  # fits.best.sub <- subset(fits.best, model == jmodel)
+  # fits.best.sub <- subset(fits.best, gene %in% genes.tw )
+  
+  genes <- as.character(fits.best.sub$gene)
+  
+  jmodel <- as.character(fits.best.sub$model[[1]])
+  
+  dat.sub <- subset(dat.long, gene %in% genes & experiment == jexperiment & !tissue %in% filt.tiss)
+  
+  # center and scale
+  dat.sub <- dat.sub %>%
+    group_by(gene, tissue) %>%
+    mutate(exprs.scaled = scale(exprs, center = TRUE, scale = FALSE))
+  
+  
+  mat <- dcast(dat.sub, gene ~ tissue + time, value.var = "exprs.scaled")
+  rownames(mat) <- mat$gene; mat$gene <- NULL
+  head(mat)
+  
+  # sort by phases
+  phases.dic.keys <- as.character(fits.best.sub$gene)
+  phases.dic.vals <- sapply(fits.best.sub$param.list, function(p) p[grep("phase", names(p))][[1]])  # take first phase we see: useful if tissue-wide
+  #   p[[paste0(ref, ".phase")]])  # specify by ref
+  phases.dat <- data.frame(gene = phases.dic.keys, phase = phases.dic.vals)
+  phases.dat <- phases.dat[order(phases.dat$phase), ]
+  
+  # add phases of individual tissues as a check
+  
+  # load("Robjs/dat.fit.Robj")
+  # source("scripts/functions/GrepRikGenes.R")
+  # dat.fit$gene <- FixRikGenes(dat.fit$gene)
+  
+#   dat.fit.sub <- subset(dat.fit, gene %in% genes)
+#   
+#   t1.dic.keys <- paste(dat.fit.sub$gene, dat.fit.sub$tissue, sep = ",")
+#   t1.dic.vals <- dat.fit.sub$phase
+#   t1.dic <- hash(t1.dic.keys, t1.dic.vals)
+  
+  tiss <- strsplit(gsub(pattern = ";", replacement = ",", x = jmodel), ",")[[1]]
+#   for (tis in tiss){
+#     phases.dat[[tis]] <- sapply(as.character(phases.dat$gene), function(jgene) t1.dic[[paste(jgene, tis, sep = ",")]])
+#   }
+  
+  # sort by first tissue
+  # phases.dat <- phases.dat[order(phases.dat[[tiss[[1]]]]), ]
+  phases.dat <- phases.dat[order(phases.dat$phase), ]
+  
+  # sort by phases
+  mat <- as.matrix(mat[as.character(phases.dat$gene), ])
+  head(mat)
+  
+  # heatmap
+  n.co <- length(unique(dat.sub$tissue))
+  time <- rep(unique(dat.sub$time), n.co)
+  condi_name <- as.character(unique(dat.sub$tissue))
+  cond_begins <- seq(1, length(time), length(time) / n.co)# represent index start of next condition. 
+  cond_mid <- mean(c(1, length(time) / n.co))  # mid distance between first sample in cond1 and last sample in cond1.
+  VLINE_X_LOC <<- cond_begins - 0.5  # Subtract 0.5 to get it between two samples.
+  TEXT_X_LOC <<- cond_begins + cond_mid  # a vector in middle of sample, can put text labels conveniently.
+  TEXT_Y_LOC <<- 0.99 * length(genes)  # number of genes
+  C_NAME <<- unique(condi_name)
+  HLINE_Y_LOC <- 
+    
+    # mat[1, grep(tiss[[1]], colnames(mat))] <- 1
+    # mat <- matrix(1, nrow = length(genes), ncol = length(unique(dat.sub$tissue)) * length(unique(dat.sub$time)))
+    
+    #   min.n <- -3
+    #   max.n <- 3
+    my.palette <- colorRampPalette(c("blue", "black", "yellow"))(n = 300)
+  # # (optional) defines the color breaks manually for a "skewed" color transition
+  blackstart <- blueend + 0.01;
+  redstart <- blackend + 0.01;
+  col.breaks <- c(seq(min.n, blueend, length=100),
+                  seq(blackstart, blackend, length=101),
+                  seq(redstart, max.n, length = 100))
+  # col.breaks = c(seq(0, blackend, length=150),  # black
+  #                seq(yellowstart, maxval, length=151))  # yellow
+  
+  # mat[1, grep(tiss[[1]], colnames(mat))] <- 100
+#   jgenes <- c("Nr1d1", "Npas2", "Dbp", "Arntl")
+#   for (jgene in jgenes){
+#     rowi <- which(rownames(mat) == jgene)
+#     rowi.end <- rowi + 10
+#     mat[rowi:rowi.end, grep(tiss[[1]], colnames(mat))] <- 10 
+#   }
+  heatmap.2 (mat,
+             # dendrogram control
+             Rowv = FALSE,
+             Colv=FALSE,
+             dendrogram = "none",
+             symm = FALSE,
+             
+             # data scaling
+             scale = "none",
+             na.rm=TRUE,
+             
+             # image plot
+             add.expr = c(abline(v = VLINE_X_LOC, 
+                                 col = 'white'),
+                          text(x=TEXT_X_LOC, 
+                               y=TEXT_Y_LOC, 
+                               labels = C_NAME,
+                               col = 'white')),
+             
+             # mapping data to colors
+             # breaks,
+             # symbreaks=min(x < 0, na.rm=TRUE) || scale!="none",
+             
+             # colors
+             col = my.palette,
+             breaks = col.breaks,
+             
+             # level trace
+             trace="none",
+             
+             # Row/Column Labeling
+             margins = c(5, 5),
+             labRow = NULL,
+             labCol = NULL,
+             srtRow = NULL,
+             srtCol = NULL,
+             adjRow = c(0,NA),
+             adjCol = c(NA,0),
+             offsetRow = 0.5,
+             offsetCol = 0.5,
+             
+             # color key + density info
+             key = TRUE,
+             keysize = 1.5,
+             density.info="none",
+             
+             # plot labels
+             main = NULL,
+             xlab = NULL,
+             ylab = NULL,
+             
+             # plot layout
+             lmat = NULL,
+             lhei = NULL,
+             lwid = NULL,
+  )
+  rownames(phases.dat) <- phases.dat$gene; phases.dat$gene <- NULL
+  #   phases.dat$range <- apply(phases.dat, 1, function(row){
+  #     # adjust so min = 0
+  #     diff(range(row))) 
+  #   }
+  return(list(mat=mat, phases.dat=phases.dat))
+}
