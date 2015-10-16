@@ -250,7 +250,7 @@ for (i in seq(1)){
 # Plot clusters -----------------------------------------------------------
 
 load("Robjs/bicmat.11_tiss_max_3.clusters.top5.bug_fixed.clusters.150.Robj", verbose=T)
-load("Robjs/bicmat.11_tiss_max_3.clusters")
+load("Robjs/bicmat.11_tiss_max_3.kmeans_clusters.Robj")
 sort(table(clusters$cluster), decreasing = T)
 
 clusteri <- 31
