@@ -274,3 +274,39 @@ for (i in seq(1){
 }
 
 
+# Check bug: BFAT only module showing at CT6 but genes are CT22 -----------
+
+fits.bfatonly <- subset(fits.best, model == "BFAT")
+# fits.bfatonly <- subset(fits.best, n.rhyth >= 8)
+
+clusteri <- 15
+modelsi <- names(clusters$cluster[which(clusters$cluster == clusteri)])
+fits.bfatonly <- subset(fits.best, model %in% modelsi)
+
+genes.bfatonly <- as.character(fits.bfatonly$gene)
+
+outobj <- PlotHeatmapNconds(fits.bfatonly, dat.long, filt.tiss, jexperiment="array", blueend = -0.75, blackend = 0.75, min.n = -2.5, max.n = 2.5)
+
+s.bfatonly <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfatonly & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+
+eigens.bfatonly <- GetEigens(s.bfatonly, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens.bfatonly$u.plot, eigens.bfatonly$v.plot, layout = jlayout)
+
+dat.complex.sub <- subset(dat.complex, gene %in% genes.bfatonly & ! tissue %in% filt.tiss)
+
+mat.complex.sub <- dcast(dat.complex.sub, gene ~ tissue, value.var = "exprs.transformed")
+rownames(mat.complex.sub) <- mat.complex.sub$gene; mat.complex.sub$gene <- NULL
+
+s.sub <- svd(mat.complex.sub)
+rownames(s.sub$u) <- rownames(mat.complex.sub)
+rownames(s.sub$v) <- colnames(mat.complex.sub)
+
+mat.complex.eigen1 <- OuterComplex(as.matrix(eigens.bfatonly$eigensamp), t(as.matrix(eigens.bfatonly$eigengene)))
+s.eigen1 <- OuterComplex(as.matrix(s.sub$u[, 1]), t(as.matrix(s.sub$v[, 1])))
+
+omega <- 2 * pi / 24
+tiss <- "BFAT"
+# PlotComplex2(vec.complex = dat.complex.eigen1[, tiss], labels = rownames(dat.complex.eigen1), omega = omega)
+PlotComplex2(vec.complex = mat.complex.sub[, tiss], labels = rownames(mat.complex.sub), omega = omega)
+PlotComplex2(vec.complex = s.eigen1[, tiss], labels = rownames(s.eigen1), omega = omega)
