@@ -3,8 +3,16 @@ setwd('/home/yeung/projects/tissue-specificity')
 
 # Run clustesr ------------------------------------------------------------
 
-load("Robjs/bicmat.11_tiss_max_3.Robj")
-n.centers <- 75
-clusters <- kmeans(bic.mat, centers = n.centers)
+n.centers <- 500
+inpath <- "Robjs/bicmat.11_tiss_max_3.clusters.top5.bug_fixed.Robj"
+outpath <- paste0("Robjs/bicmat.11_tiss_max_3.clusters.top5.bug_fixed.clusters.", n.centers, ".Robj")
+load(inpath)
 
-save(clusters, file = "Robjs/bicmat.11_tiss_max_3.clusters.Robj")
+# fix gene names
+rownames(mats.all) <- mats.all$gene; mats.all$gene <- NULL
+
+print(mats.all[1:5, 1:5])
+mats.all <- mats.all[complete.cases(mats.all), ]
+clusters <- kmeans(t(mats.all), centers = n.centers)
+
+save(clusters, file = outpath)

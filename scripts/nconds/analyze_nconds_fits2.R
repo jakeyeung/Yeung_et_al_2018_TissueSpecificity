@@ -5,6 +5,8 @@ library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(hash)
+library(gplots)
+
 # Source ------------------------------------------------------------------
 
 source("scripts/functions/PlotGeneAcrossTissues.R")
@@ -12,10 +14,32 @@ source("scripts/functions/NcondsFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/PlotFunctions.R")
 
+
+# Functions ---------------------------------------------------------------
+
+# RangePhase <- function(phases, period = 24){
+#   # get range of phase, taking modulo of period
+#   
+# }
+# 
+# AveragePhase <- function(phases, period = 24){
+#   # get average phase, taking modulo 
+#   
+# }
+
+
+
 # Load --------------------------------------------------------------------
 
 load("/home/yeung/projects/nconds_results/fits_long.11_tiss_3_max.weight_raw.Robj", verbose=T)
 load("Robjs/dat.long.fixed_rik_genes.Robj")
+
+fits.raw <- fits.long
+
+# fix weight = 0 by taking lowest weight.raw
+fits.long <- fits.long %>%
+  group_by(gene) %>%
+  filter(weight.raw == min(weight.raw))
 
 omega <- 2 * pi / 24
 
@@ -46,7 +70,7 @@ fits.best$amp.avg <- sapply(fits.best$param.list, GetAvgAmpFromParams)
 # high level  -------------------------------------------------------------
 
 ggplot(fits.best, aes(x = weight)) + geom_density() + facet_wrap(~n.rhyth)
-ggplot(fits.best, aes(x = weight, y = amp.avg)) + geom_point(alpha = 0.1) + facet_wrap(~n.rhyth)
+ggplot(fits.best, aes(x = weight, y = amp.avg, )) + geom_point(alpha = 0.1) + facet_wrap(~n.rhyth)
 
 # Tissue-specific genes ---------------------------------------------------
 
@@ -69,7 +93,7 @@ for (i in seq(11)){
 
 # Tissue-wide genes -------------------------------------------------------
 
-fits.tw <- subset(fits.best, n.params == 3 & n.rhyth >= 8)
+fits.tw <- subset(fits.best, n.rhyth >= 8)
 
 genes.tw <- as.character(fits.tw$gene)
 
@@ -83,7 +107,7 @@ for (i in seq(3)){
 
 # 3param genes ------------------------------------------------------------
 
-fits.3p <- subset(fits.best, n.params == 3 & weight > 0)
+fits.3p <- subset(fits.best, n.params == 3)
 
 genes.3p <- as.character(fits.3p$gene)
 
@@ -124,13 +148,15 @@ for (i in seq(3)){
 # Aorta BFAT --------------------------------------------------------------
 
 # Aorta and BFAT
-fits.bfataorta <- subset(fits.best, n.rhyth == 2 | n.rhyth == 3)
-fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT", fits.bfataorta$model), ]
+fits.bfataorta <- subset(fits.best, n.rhyth >= 2 & n.rhyth <= 4)
+fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
 
 genes.bfataorta <- as.character(fits.bfataorta$gene)
 
-s.bfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfataorta), value.var = "exprs.transformed")
-for (i in seq(3)){
+outobj <- PlotHeatmapNconds(fits.bfataorta, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
+
+s.bfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfataorta & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+for (i in seq(1)){
   eigens.bfataorta <- GetEigens(s.bfataorta, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   multiplot(eigens.bfataorta$u.plot, eigens.bfataorta$v.plot, layout = jlayout)  
@@ -164,8 +190,10 @@ fits.best.count <- fits.best %>%
   summarise(gene.count = length(gene)) %>%
   arrange(desc(gene.count))
 
-fits.best.count.filt <- subset(fits.best.count, gene.count > 1)
+fits.best.count.filt <- subset(fits.best.count)
 
+fits.best.count.filt$n.params <- sapply(fits.best.count.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
+fits.best.count.filt$n.rhyth <- sapply(fits.best.count.filt$model, GetNrhythFromModel)
 
 # Heatmap of list ---------------------------------------------------------
 
@@ -173,184 +201,76 @@ jmodel <- "Kidney,Liver"
 # jmodel <- "BFAT,Liver"
 jmodel <- "Liver"
 jmodel <- "Adr"
-ref <- strsplit(jmodel, ";")[[1]][[1]]  # could be just Liver if jmodel was Liver;Kidney
+# ref <- strsplit(jmodel, ";")[[1]][[1]]  # could be just Liver if jmodel was Liver;Kidney
+# ref <- "Liver"
 
-ref <- "Liver"
-# fits.best.sub <- subset(fits.best, model == jmodel)
-fits.best.sub <- subset(fits.best, gene %in% genes.tw & weight > 0)
+jmodel <- "Adr;Liver"
 
-genes <- as.character(fits.best.sub$gene)
+jmodel <- "BFAT,Liver"
 
+jmodel <- "Kidney,Liver"
+# fits.bfataorta <- subset(fits.best, n.rhyth == 2 | n.rhyth == 3)
+# fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT", fits.bfataorta$model), ]
+# 
+# fits.best.sub <- subset(fits.best, n.rhyth <= 5)
+# fits.best.sub <- fits.best.sub[grep("Liver.*Kidney|Kidney.*Liver", fits.best.sub$model), ]
+# fits.best.sub <- subset(fits.best, gene %in% genes.tw)
+# fits.best.sub <- subset(fits.best, n.rhyth >= 8 & n.params == 3)
 
-dat.sub <- subset(dat.long, gene %in% genes & experiment == "array" & !tissue %in% filt.tiss)
+jmodel <- "Aorta;BFAT"
+fits.best.sub <- subset(fits.best, model == jmodel)
 
-# center and scale
-dat.sub <- dat.sub %>%
-  group_by(gene, tissue) %>%
-  mutate(exprs.scaled = scale(exprs, center = TRUE, scale = FALSE))
-
-
-mat <- dcast(dat.sub, gene ~ tissue + time, value.var = "exprs.scaled")
-rownames(mat) <- mat$gene; mat$gene <- NULL
-head(mat)
-
-# sort by phases
-phases.dic.keys <- as.character(fits.best.sub$gene)
-phases.dic.vals <- sapply(fits.best.sub$param.list, function(p) p[grep("phase", names(p))][[1]])  # take first phase we see: useful if tissue-wide
-#   p[[paste0(ref, ".phase")]])  # specify by ref
-phases.dat <- data.frame(gene = phases.dic.keys, phase = phases.dic.vals)
-phases.dat <- phases.dat[order(phases.dat$phase), ]
-
-# add phases of individual tissues as a check
-
-# load("Robjs/dat.fit.Robj")
-# source("scripts/functions/GrepRikGenes.R")
-# dat.fit$gene <- FixRikGenes(dat.fit$gene)
-
-dat.fit.sub <- subset(dat.fit, gene %in% genes)
-
-t1.dic.keys <- paste(dat.fit.sub$gene, dat.fit.sub$tissue, sep = ",")
-t1.dic.vals <- dat.fit.sub$phase
-t1.dic <- hash(t1.dic.keys, t1.dic.vals)
-
-tiss <- strsplit(strsplit(jmodel, ";")[[1]], ",")[[1]]
-for (tis in tiss){
-  phases.dat[[tis]] <- sapply(as.character(phases.dat$gene), function(jgene) t1.dic[[paste(jgene, tis, sep = ",")]])
+outobj <- PlotHeatmapNconds(fits.best.sub, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
+genes.heat <- as.character(fits.best.sub$gene)
+s.heat <- SvdOnComplex(subset(dat.complex, gene %in% genes.heat & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+for (i in seq(1)){
+  eigens.heat <- GetEigens(s.heat, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  multiplot(eigens.heat$u.plot, eigens.heat$v.plot, layout = jlayout)  
 }
 
-# sort by first tissue
-# phases.dat <- phases.dat[order(phases.dat[[tiss[[1]]]]), ]
-phases.dat <- phases.dat[order(phases.dat$phase), ]
 
-# sort by phases
-mat <- as.matrix(mat[as.character(phases.dat$gene), ])
-head(mat)
-
-# heatmap
-n.co <- length(unique(dat.sub$tissue))
-time <- rep(unique(dat.sub$time), n.co)
-condi_name <- as.character(unique(dat.sub$tissue))
-cond_begins <- seq(1, length(time), length(time) / n.co)# represent index start of next condition. 
-cond_mid <- mean(c(1, length(time) / n.co))  # mid distance between first sample in cond1 and last sample in cond1.
-VLINE_X_LOC <<- cond_begins - 0.5  # Subtract 0.5 to get it between two samples.
-TEXT_X_LOC <<- cond_begins + cond_mid  # a vector in middle of sample, can put text labels conveniently.
-TEXT_Y_LOC <<- 0.99 * length(genes)  # number of genes
-C_NAME <<- unique(condi_name)
-
-# mat[1, grep(tiss[[1]], colnames(mat))] <- 1
-# mat <- matrix(1, nrow = length(genes), ncol = length(unique(dat.sub$tissue)) * length(unique(dat.sub$time)))
-
-library(gplots)
-min.n <- -3
-max.n <- 3
-my.palette <- colorRampPalette(c("blue", "black", "yellow"))(n = 300)
-# # (optional) defines the color breaks manually for a "skewed" color transition
-blueend <- -0.5; blackstart <- blueend + 0.01;
-blackend <- 0.5; redstart <- blackend + 0.01;
-col.breaks <- c(seq(min.n, blueend, length=100),
-                seq(blackstart, blackend, length=101),
-                seq(redstart, max.n, length = 100))
-# col.breaks = c(seq(0, blackend, length=150),  # black
-#                seq(yellowstart, maxval, length=151))  # yellow
-
-heatmap.2 (mat,
-           
-           # dendrogram control
-           Rowv = FALSE,
-           Colv=FALSE,
-           dendrogram = "none",
-           symm = FALSE,
-           
-           # data scaling
-           scale = "none",
-           na.rm=TRUE,
-           
-           # image plot
-           add.expr = c(abline(v = VLINE_X_LOC, 
-                               col = 'white'),
-                        text(x=TEXT_X_LOC, 
-                             y=TEXT_Y_LOC, 
-                             labels = C_NAME,
-                             col = 'white')),
-           
-           # mapping data to colors
-           # breaks,
-           # symbreaks=min(x < 0, na.rm=TRUE) || scale!="none",
-           
-           # colors
-           col = my.palette,
-           breaks = col.breaks,
-           
-           # level trace
-           trace="none",
-           
-           # Row/Column Labeling
-           margins = c(5, 5),
-           labRow = NULL,
-           labCol = NULL,
-           srtRow = NULL,
-           srtCol = NULL,
-           adjRow = c(0,NA),
-           adjCol = c(NA,0),
-           offsetRow = 0.5,
-           offsetCol = 0.5,
-           
-           # color key + density info
-           key = TRUE,
-           keysize = 1.5,
-           density.info="none",
-           
-           # plot labels
-           main = NULL,
-           xlab = NULL,
-           ylab = NULL,
-           
-           # plot layout
-           lmat = NULL,
-           lhei = NULL,
-           lwid = NULL,
-           
-)
-
-# heatmap(mat, 
-#         Rowv = NA, 
-#         Colv = NA, 
-#         ylab = NA ,
-#         labCol = paste('CT',time, sep = "_"),
-#         labRow = NA,
-#         scale = NULL,
-#         add.expr = c(abline(v = VLINE_X_LOC, 
-#                             col = 'white'),
-#                      text(x=TEXT_X_LOC, 
-#                           y=TEXT_Y_LOC, 
-#                           labels = C_NAME,
-#                           col = 'white')),
-#         main = paste("model #Genes",sep =" "), 
-#         col = colorRampPalette(c('blue','black','red'))(1000))
-
-
-# Cluster by BIC weights or raw BIC scores --------------------------------
-
-# fits.long$model <- factor(x = fits.long$model, levels = unique(fits.long$model))
-
-# fix fits.best to have less models
-# take top 10 models
-# jtop <- 5
-# fits.long.top10 <- fits.long %>%
-#   group_by(gene) %>%
-#   mutate(order.i = order(weight)) %>%
-#   filter(order.i <= jtop)
+# # also do some SVD to show which ones are brighter
 # 
-# mats.all <- dcast(fits.long.top10, formula = gene ~ model, value.var = "weight", fill = 0)
 # 
-# n.centers <- 75
-# clusters <- kmeans(mats.all, centers = n.centers)
+# tissuenames <- sapply(colnames(outobj$mat), function(c) strsplit(c, "_")[[1]][[1]], USE.NAMES = FALSE)
+# times <- sapply(colnames(outobj$mat), function(c) strsplit(c, "_")[[1]][[2]], USE.NAMES = FALSE)
+# 
+# mat.long <- melt(outobj$mat, value.name = "scaled.exprs", varnames = c("gene", "tissue_time"))
+# mat.long$tissue <- sapply(mat.long$tissue_time, function(x) strsplit(as.character(x), "_")[[1]][[1]])
+# mat.long$time <- sapply(mat.long$tissue_time, function(x) strsplit(as.character(x), "_")[[1]][[2]])
+# mat.long$tissue_time <- NULL
+# 
+# mat.sum <- mat.long %>%
+#   group_by(gene, tissue) %>%
+#   summarise(abs.range = diff(range(scaled.exprs)))
+# mat.sum <- mat.sum[order(mat.sum$abs.range, decreasing = TRUE), ]
 
 
-# # a 2-dimensional example
-# x <- rbind(matrix(rnorm(100, sd = 0.3), ncol = 2),
-#            matrix(rnorm(100, mean = 1, sd = 0.3), ncol = 2))
-# colnames(x) <- c("x", "y")
-# (cl <- kmeans(x, 2))
-# plot(x, col = cl$cluster)
-# points(cl$centers, col = 1:2, pch = 8, cex = 2)
+# Plot clusters -----------------------------------------------------------
+
+load("Robjs/bicmat.11_tiss_max_3.clusters.top5.bug_fixed.clusters.150.Robj", verbose=T)
+load("Robjs/bicmat.11_tiss_max_3.clusters")
+sort(table(clusters$cluster), decreasing = T)
+
+clusteri <- 31
+clusteri <- 16
+clusteri <- 23
+clusteri <- 71
+clusteri <- 11
+clusteri <- 15
+clusteri <- 34
+
+modelsi <- names(clusters$cluster[which(clusters$cluster == clusteri)])
+fits.best.sub <- subset(fits.best, model %in% modelsi)
+genes.clust <- as.character(fits.best.sub$gene)
+
+PlotHeatmapNconds(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", blueend = -0.75, blackend = 0.75, min.n = -2, max.n = 2)
+s.clust <- SvdOnComplex(subset(dat.complex, gene %in% genes.clust & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+for (i in seq(1){
+  eigens.clust <- GetEigens(s.clust, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  multiplot(eigens.clust$u.plot, eigens.clust$v.plot, layout = jlayout)  
+}
+
+
