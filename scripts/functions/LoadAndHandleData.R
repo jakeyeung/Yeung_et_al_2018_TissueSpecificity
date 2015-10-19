@@ -8,24 +8,25 @@ LoadNormalizedArray <- function(normalized.array.path, remove.negs=TRUE, fix.rik
   source(file.path(scripts.dir, funcs.dir, "GrepRikGenes.R"))
   
   normalized.array <- read.table(normalized.array.path)
-  
-  # How many have negative values? ------------------------------------------
-  negs <- apply(normalized.array, 1, function(x){
-    if (min(x) < 0){
-      return(1)
-    } else {
-      return(0)
-    }
-  })
-  
-  problem.genes <- names(negs[which(negs == 1)])
-  
-  # Remove problem genes from analysis --------------------------------------
   genes <- rownames(normalized.array)
-  filtered.genes <- genes[which(!genes %in% problem.genes)]
-  normalized.array <- normalized.array[filtered.genes, ]
-  
-  print(paste("Removed problem genes:", problem.genes))
+  if (remove.negs){
+    # How many have negative values? ------------------------------------------
+    negs <- apply(normalized.array, 1, function(x){
+      if (min(x) < 0){
+        return(1)
+      } else {
+        return(0)
+      }
+    })
+    
+    problem.genes <- names(negs[which(negs == 1)])
+    
+    # Remove problem genes from analysis -------------------------------------
+    filtered.genes <- genes[which(!genes %in% problem.genes)]
+    normalized.array <- normalized.array[filtered.genes, ]
+    
+    print(paste("Removed problem genes:", problem.genes)) 
+  }
   
   # optionally fix gene names
   if (fix.rik.xgene){

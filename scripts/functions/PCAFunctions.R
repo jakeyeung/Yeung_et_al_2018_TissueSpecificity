@@ -17,6 +17,25 @@ PlotComponents <- function(pca.p.med, start, end){
   print(m)
 }
 
+PlotComponents2 <- function(pca.p.sum.long, jstart, jend){
+  # cbPalette <- c("#CC79A7", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  # The palette with black:
+  cbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  break.i <- floor((jend - jstart ) / 4)
+  
+  pca.p.sum.long.sub <- subset(pca.p.sum.long, pc.num >= jstart & pc.num <= jend)
+  
+  m <- ggplot(pca.p.sum.long.sub, aes(x = pc.num, y = eigenvals.frac, fill = component)) + geom_bar(stat = "identity") +
+    scale_x_continuous(breaks=seq(jstart, jend, break.i)) +
+    xlab("Component") + ylab("Fraction of total sqr eigenvals") +
+    scale_fill_manual(name = "Number of tissues with max fourier component", drop=TRUE, limits = levels(pca.p.sum.long$component), values=cbPalette) +
+    theme_bw(24) + 
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+  return(m)
+}
+
+
 Mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
@@ -36,15 +55,29 @@ SummarisePeriodogram <- function(dat){
   return(outdat)
 }
 
-GetPeriodogramFreq <- function(dat, interval = 2){
+SummarisePeriodogram2 <- function(dat){
+  # Summarize periodogram from GetPeriodogramFreq to 
+  # get fraction of tissues with T.max = Inf, 12, 24, or "other".
+  N <- nrow(dat)
+  n.inf <- length(which(dat$T.max == Inf))
+  n.12 <- length(which(dat$T.max == 12))
+  n.24 <- length(which(dat$T.max == 24))
+  n.other <- N - n.inf - n.12 - n.24
+  
+  outdat <- data.frame(n.inf = n.inf/N, n.12 = n.12/N, n.24 = n.24/N, n.other = n.other/N)
+  return(outdat)
+}
+
+GetPeriodogramFreq <- function(dat, interval = 2, samp.freq = 2){
   # interval: hour between each sample. Used to get proper period from frequency
   # 2015-09-14
   x <- dat$loading
   p <- CalculatePeriodogram(x, is.matrix = FALSE)
   max.freq <- FindMaxFreqs(freq = p$freq, periodogram = p$p.scaled, n = 1)
   p.pmax <- p$p.scaled[which(p$freq == max.freq)]
-  p.24 <- p$p.scaled[which(p$freq == 2/24)]
+  p.24 <- p$p.scaled[which(p$freq == samp.freq/24)]  # samp.freq = 2 if array, 6 if rnaseq
   p.inf <- p$p.scaled[which(p$freq == 0)]
+  p.12 <- p$p.scaled[which(p$freq == samp.freq / 12)]
   p.time <- sum(p$p.scaled[which(p$freq > 0)])
   # return as dataframe so we can use dplyr
   #   outdat <- list(p.24, p.inf, p.pmax, max.freq)
