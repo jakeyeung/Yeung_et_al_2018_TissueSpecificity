@@ -25,10 +25,10 @@ PlotComponents2 <- function(pca.p.sum.long, jstart, jend){
   
   pca.p.sum.long.sub <- subset(pca.p.sum.long, pc.num >= jstart & pc.num <= jend)
   
-  m <- ggplot(pca.p.sum.long.sub, aes(x = pc.num, y = eigenvals.frac, fill = component)) + geom_bar(stat = "identity") +
+  m <- ggplot(pca.p.sum.long.sub, aes(x = pc.num, y = eigenvals.frac, fill = Component)) + geom_bar(stat = "identity") +
     scale_x_continuous(breaks=seq(jstart, jend, break.i)) +
     xlab("Component") + ylab("Fraction of total sqr eigenvals") +
-    scale_fill_manual(name = "Number of tissues with max fourier component", drop=TRUE, limits = levels(pca.p.sum.long$component), values=cbPalette) +
+    scale_fill_manual(name = "Fourier component", drop=TRUE, limits = levels(pca.p.sum.long$component), values=cbPalette) +
     theme_bw(24) + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
           panel.background = element_blank(), axis.line = element_line(colour = "black"))
@@ -55,16 +55,23 @@ SummarisePeriodogram <- function(dat){
   return(outdat)
 }
 
-SummarisePeriodogram2 <- function(dat){
+SummarisePeriodogram2 <- function(dat, weighted = TRUE){
   # Summarize periodogram from GetPeriodogramFreq to 
   # get fraction of tissues with T.max = Inf, 12, 24, or "other".
-  N <- nrow(dat)
-  n.inf <- length(which(dat$T.max == Inf))
-  n.12 <- length(which(dat$T.max == 12))
-  n.24 <- length(which(dat$T.max == 24))
-  n.other <- N - n.inf - n.12 - n.24
-  
-  outdat <- data.frame(n.inf = n.inf/N, n.12 = n.12/N, n.24 = n.24/N, n.other = n.other/N)
+  # should be weighted average
+  if (weighted){
+    frac.inf.avg <- sum(dat$p.inf) / sum(dat$p.total)
+    frac.12.avg <- sum(dat$p.12) / sum(dat$p.total)
+    frac.24.avg <- sum(dat$p.24) / sum(dat$p.total)
+    frac.other.avg <- (sum(dat$p.total) - sum(dat$p.24) - sum(dat$p.12) - sum(dat$p.inf)) / sum(dat$p.total)
+  } else {
+    frac.inf.avg <- mean(dat$p.inf / dat$p.total)
+    frac.12.avg <- mean(dat$p.12 / dat$p.total)
+    frac.24.avg <- mean(dat$p.24 / dat$p.total)
+    frac.other <- 1 - (dat$p.inf + dat$p.12 + dat$p.24) / dat$p.total 
+    frac.other.avg <- mean(frac.other)
+  }
+  outdat <- data.frame(T.inf = frac.inf.avg, T.12 = frac.12.avg, T.24 = frac.24.avg, T.other = frac.other.avg)
   return(outdat)
 }
 
@@ -79,9 +86,10 @@ GetPeriodogramFreq <- function(dat, interval = 2, samp.freq = 2){
   p.inf <- p$p.scaled[which(p$freq == 0)]
   p.12 <- p$p.scaled[which(p$freq == samp.freq / 12)]
   p.time <- sum(p$p.scaled[which(p$freq > 0)])
+  p.total <- sum(p$p.scaled)
   # return as dataframe so we can use dplyr
   #   outdat <- list(p.24, p.inf, p.pmax, max.freq)
-  outdat <- data.frame(p.24 = p.24, p.inf = p.inf, p.time = p.time, p.pmax = p.pmax, T.max = interval / max.freq)
+  outdat <- data.frame(p.24 = p.24, p.inf = p.inf, p.12 = p.12, p.time = p.time, p.total = p.total, p.pmax = p.pmax, T.max = interval / max.freq)
   return(outdat)
 }
 

@@ -181,7 +181,9 @@ pca.p <- pca.long %>%
 
 pca.p.sum <- pca.p %>%
   group_by(pc) %>%
-  do(SummarisePeriodogram2(.))
+  do(SummarisePeriodogram2(., weighted = TRUE))
+# subset(pca.p.sum, pc == "PC13")
+# sum(subset(pca.p.sum, pc == "PC13")[1, 2:5])
 
 pca.p.sum$pc.num <- sapply(pca.p.sum$pc, function(p) as.numeric(strsplit(as.character(p), split = "PC")[[1]][[2]]))
 pca.p.sum <- pca.p.sum[order(pca.p.sum$pc.num), ]
@@ -203,10 +205,10 @@ pca.p.sum$pc <- factor(as.character(pca.p.sum$pc), levels = pcs)
 
 # Make long and plot -----------------------------------------------------
 
-pca.p.sum.long <- melt(pca.p.sum, id.var = c("pc", "eigenvals", "pc.num"), value.name = "n.tiss", variable.name = "component")
+pca.p.sum.long <- melt(pca.p.sum, id.var = c("pc", "eigenvals", "pc.num"), value.name = "fracFourier", variable.name = "Component")
 
 pca.p.sum.long <- pca.p.sum.long %>%
-  mutate(eigenvals.frac = eigenvals * n.tiss)
+  mutate(eigenvals.frac = eigenvals * fracFourier)
 
 starts <- c(1, 13, 100)
 ends <- c(12, 99, 288)
@@ -214,6 +216,23 @@ ends <- c(12, 99, 288)
 for (i in seq(length(starts))){
   print(PlotComponents2(pca.p.sum.long, starts[[i]], ends[[i]]))
 }
+
+
+# Parseval's Theorem ------------------------------------------------------
+
+pca.p.parseval <- pca.p %>%
+  group_by(pc) %>%
+  summarise(eigen.est = sum(p.inf + p.time) / length(p.inf))
+pca.p.parseval$pc.num <- sapply(pca.p.parseval$pc, function(p) as.numeric(strsplit(as.character(p), "PC")[[1]][[2]]))
+pca.p.parseval <- pca.p.parseval[order(pca.p.parseval$pc.num), ]
+
+eigenvals <- dat_pca$sdev ^ 2
+
+diff.norm <- abs(eigenvals - pca.p.parseval$eigen.est) ^ 2 / eigenvals
+
+plot(density(diff.norm))
+
+plot(pca.p.parseval$eigen.est, eigenvals)
 
 # # Summarize each PCA by its median T.max? ---------------------------------
 # 
