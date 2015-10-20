@@ -52,20 +52,20 @@ dat <- LoadNormalizedArray(normalized.array.path = "data/array.adj.0.07.txt",
                            remove.negs = TRUE, fix.rik.xgene = TRUE)
 # dat <- LoadArray(form = "wide")
 # dat <- LoadRnaSeq(handle.duplicates = FALSE)
-load(file = "Robjs/dat.fit.Robj", verbose = T)
-dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
-dat.fit.relamp <- dat.fit.relamp %>%
-  group_by(gene) %>%
-  mutate(max.exprs = max(int.rnaseq), min.pval = min(pval), max.relamp = max(relamp), relamp.norm = relamp / sum(relamp), amp.norm = amp / sum(amp))
-genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
-genes.exprs <- FixRikGenes(genes.exprs)
-
-dat <- as.matrix(dat)
+# load(file = "Robjs/dat.fit.Robj", verbose = T)
+# dat.fit.relamp <- GetRelampByGene(dat.fit, by.gene = ref.gene)
+# dat.fit.relamp <- dat.fit.relamp %>%
+#   group_by(gene) %>%
+#   mutate(max.exprs = max(int.rnaseq), min.pval = min(pval), max.relamp = max(relamp), relamp.norm = relamp / sum(relamp), amp.norm = amp / sum(amp))
+# genes.exprs <- unique(subset(dat.fit.relamp, max.exprs >= 4)$gene)
+# genes.exprs <- FixRikGenes(genes.exprs)
+# 
+# dat <- as.matrix(dat)
 
 
 # Remove non-expressed genes ----------------------------------------------
 
-dat <- dat[which(rownames(dat) %in% genes.exprs), ]
+# dat <- dat[which(rownames(dat) %in% genes.exprs), ]
 
 # Optionally log2 transform -----------------------------------------------
 
@@ -199,9 +199,6 @@ eigenvals.dic <- hash(pcs, eigenvals)
 pca.p.sum$eigenvals <- sapply(as.character(pca.p.sum$pc), function(pc) eigenvals.dic[[pc]])
 pca.p.sum$pc.num <- sapply(as.character(pca.p.sum$pc), function(x) as.numeric(substr(x, 3, nchar(x))))
 pca.p.sum$pc <- factor(as.character(pca.p.sum$pc), levels = pcs)
-
-
-
 
 # Make long and plot -----------------------------------------------------
 

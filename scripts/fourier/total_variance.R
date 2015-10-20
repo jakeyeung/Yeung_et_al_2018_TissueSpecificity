@@ -18,10 +18,12 @@ source("scripts/functions/VarianceFunctions.R")
 
 # Load data ---------------------------------------------------------------
 
-dat.long <- LoadArrayRnaSeq(fix.rik.xgene = TRUE)
-dat.array.noadj <- LoadArray(form = "long")
-dat.array.noadj$exprs <- dat.array.noadj$signal; dat.array.noadj$signal <- NULL
-dat.array.noadj$experiment <- "array.not_adj"
+# dat.long <- LoadArrayRnaSeq(fix.rik.xgene = TRUE)
+# dat.array.noadj <- LoadArray(form = "long")
+# dat.array.noadj$exprs <- dat.array.noadj$signal; dat.array.noadj$signal <- NULL
+# dat.array.noadj$experiment <- "array.not_adj"
+load("Robjs/dat.long.fixed_rik_genes.Robj")
+load("Robjs/dat.array.noadj.Robj", verbose=T)
 
 load(file = "Robjs/dat.fit.Robj")
 

@@ -31,7 +31,7 @@ PlotComponents2 <- function(pca.p.sum.long, jstart, jend){
     scale_fill_manual(name = "Fourier component", drop=TRUE, limits = levels(pca.p.sum.long$component), values=cbPalette) +
     theme_bw(24) + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom")
   return(m)
 }
 
