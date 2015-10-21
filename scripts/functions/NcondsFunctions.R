@@ -151,6 +151,24 @@ GetAvgAmpFromParams <- function(params){
   return(amps.weighted / sum(n.tiss))
 }
 
+FilterModelByAmp <- function(model.name, params, amp.cutoff = 0.5){
+  # Get amplitude of each tissue in model name.
+  # model name: Kidney;Liver;Adr,Lung 
+  # params: fit from nconds2: amp and phase are called tissue1.amp tissue1.phase ... 
+  # return:
+  #   model.filt: Kidney:Liver if Adr,Lung amp parameter is less than amp.cutoff.
+  model.vec <- strsplit(as.character(model.name), split = ";")[[1]]
+  amps <- params[grepl("amp", names(params))]
+  # remove tissues from model with low amplitude
+  amps.filt <- amps[which(amps >= amp.cutoff)]
+  
+  # create new model name based on filtering
+  # from c("Mus.amp", "Adr,Kidney,Liver.amp" ... ) -> c("Mus", "Adr,Kidney,Liver" ... )
+  models.filt <- sapply(names(amps.filt), function(name) strsplit(name, ".amp")[[1]])
+  models.filt <- paste(models.filt, collapse = ";")
+  return(as.factor(models.filt))
+}
+
 
 MakeDesMatFromModelName <- function(dat.gene, model.name, tissues, w = 2 * pi / 24){
   # Given model.name, return design matrix
