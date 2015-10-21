@@ -18,6 +18,7 @@ setwd("/home/yeung/projects/tissue-specificity")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/GetClockGenes.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/FitRhythmicAcrossPeriods.R")
 
 # Load data ---------------------------------------------------------------
 
@@ -42,25 +43,33 @@ dat.fit
 p.min <- 20
 p.max <- 30
 periods <- seq(p.min, p.max, by = 0.1)
-# dat.fit.periods <- FitRhythmicScanPeriods(subset(dat.long, gene %in% clockgenes), periods, cores = 51)
-head(dat.fit.periods)
-# save(dat.fit.periods, file = "Robjs/dat.fit.scan_periods.Robj")
-load(file = "Robjs/dat.fit.scan_periods.Robj")
-dat.fit.periods <- subset(dat.fit.periods, gene %in% clockgenes)
+# # across all genes
+# start <- Sys.time()
+# dat.fit.periods.genome_wide <- FitRhythmicScanPeriods(dat.long, periods, cores = 20)
+# print(Sys.time() - start)
+# head(dat.fit.periods.genome_wide)
+# save(dat.fit.periods.genome_wide, file = "Robjs/dat.fit.scan_periods.genome_wide.Robj")
+# 2.5 hours later...
 
-dat.fit.periods$chi.sqr <- dat.fit.periods$ssq.residuals / dat.fit.periods$variance
-
-ggplot(dat.fit.periods, aes(x = period, y = ssq.residuals, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
-ggplot(subset(dat.fit.periods, ! gene %in% "Asb12"), aes(x = period, y = chi.sqr, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
-
-
-# Get minimum per gene ----------------------------------------------------
-
-dat.fit.periods.min <- dat.fit.periods %>%
-  group_by(gene, tissue) %>%
-  do(GetMinPeriodSsqResiduals(.))
-
-ggplot(dat.fit.periods.min, aes(x = period, y = ssq.residuals, colour = gene)) + geom_point() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+# load(file = "Robjs/dat.fit.scan_periods.Robj")
+# dat.fit.periods <- subset(dat.fit.periods, gene %in% clockgenes)
+# 
+# dat.fit.periods$chi.sqr <- dat.fit.periods$ssq.residuals / dat.fit.periods$variance
+# 
+# ggplot(dat.fit.periods, aes(x = period, y = ssq.residuals, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+# ggplot(subset(dat.fit.periods, ! gene %in% "Asb12"), aes(x = period, y = chi.sqr, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+# 
+# 
+# # Get minimum per gene ----------------------------------------------------
+# 
+# dat.fit.periods.min <- dat.fit.periods %>%
+#   group_by(gene, tissue) %>%
+#   do(GetMinPeriodSsqResiduals(.))
+# 
+# ggplot(dat.fit.periods.min, aes(x = period, y = chi.sqr, colour = gene)) + geom_point() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+# 
+# ggplot(dat.fit.periods.min, aes(x = period)) + geom_histogram() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+# ggplot(dat.fit.periods.min, aes(x = period)) + geom_histogram() + geom_vline(xintercept=24, linetype="dotted")
 
 # dat.fit.periods.mean <- dat.fit.periods %>%
 #   group_by(tissue, period) %>%

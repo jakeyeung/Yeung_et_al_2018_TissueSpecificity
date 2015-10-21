@@ -23,6 +23,9 @@ source(file.path(funcs.dir, "LoadAndHandleData.R"))
 source(file.path(funcs.dir, "FitRhythmic.R"))
 source(file.path(funcs.dir, "PlotGeneAcrossTissues.R"))
 source(file.path(funcs.dir, "LoadArray.R"))
+source(file.path(funcs.dir, "VarianceFunctions.R"))
+source(file.path(funcs.dir, "FitRhythmicAcrossPeriods.R"))
+source(file.path(funcs.dir, "GetClockGenes.R"))
 
 
 
@@ -202,10 +205,97 @@ dat.var.s1_adj$tissue <- factor(dat.var.s1_adj$tissue,
                                 levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$s1_normalized, decreasing = TRUE)])
 pdf(file.path(outdir, "normalized_fourier_variance.pdf"))
 ggplot(dat.var.s1_adj, aes(x = period.factor, y = s1_normalized)) +  geom_bar(stat = "identity") + facet_wrap(~tissue) + 
-  theme_bw(24) + theme(axis.text.x=element_text(size=11, angle=90,vjust = 0, hjust = 1)) + xlab("Period (hour)") + ylab("Normalized spectral power") +
-  facet_wrap(~tissue)
+  theme_bw(24) + theme(axis.text.x=element_text(size=11, angle=90,vjust = 0, hjust = 1), 
+                       panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank(), 
+                       panel.background = element_blank(), 
+                       axis.line = element_line(colour = "black"),
+                       legend.position="bottom") +
+  facet_wrap(~tissue) +
+  xlab("Fourier component (h)") + ylab("Normalized spectral power")
 dev.off()
 
 # Figure 1C ---------------------------------------------------------------
-# 
+# Core clock genes
 
+clockgenes <- GetClockGenes()
+
+load(file = "Robjs/dat.fit.scan_periods.Robj")
+load(file = "Robjs/dat.long.fixed_rik_genes.Robj")
+dat.fit.periods <- subset(dat.fit.periods, gene %in% clockgenes)
+if (remove.wfat){
+  dat.fit.periods <- subset(dat.fit.periods, tissue != "WFAT")
+}
+
+dat.fit.periods$chi.sqr <- dat.fit.periods$ssq.residuals / dat.fit.periods$variance
+
+dat.fit.periods <- subset(dat.fit.periods, gene != "Asb12")
+ggplot(subset(dat.fit.periods), aes(x = period, y = chi.sqr, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+# ggplot(subset(dat.fit.periods, ! gene %in% c("Asb12")), aes(x = period, y = ssq.residuals, colour = gene, group = gene)) + geom_line() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+
+
+# Get minimum per gene ----------------------------------------------------
+
+dat.fit.periods.min <- dat.fit.periods %>%
+  group_by(gene, tissue) %>%
+  do(GetMinPeriodSsqResiduals(.))
+
+pdf(file.path(outdir, "fourier_across_periods.pdf"))
+ggplot(subset(dat.fit.periods.min), aes(x = period)) + geom_histogram(binwidth = diff(range(dat.fit.periods.min$period))/55) + geom_vline(xintercept=24, linetype="dotted") + scale_x_continuous(breaks=seq(20, 30, 1)) + 
+  xlab("Period with minimum RSS") + ylab("Count") +
+  theme_bw(24) + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank(), 
+                       panel.background = element_blank(), 
+                       axis.line = element_line(colour = "black"),
+                       axis.text.x=element_text(size=11))
+ggplot(subset(dat.fit.periods.min), aes(x = period)) + geom_histogram(binwidth = diff(range(dat.fit.periods.min$period))/55) + geom_vline(xintercept=24, linetype="dotted") + scale_x_continuous(breaks=seq(20, 30, 3)) + 
+  facet_wrap(~tissue) +
+  xlab("Period with minimum RSS") + ylab("Count") +
+  theme_bw(24) + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank(), 
+                       panel.background = element_blank(), 
+                       axis.line = element_line(colour = "black"),
+                       axis.text.x=element_text(size=11))
+ggplot(dat.fit.periods.min, aes(x = period, y = chi.sqr, colour = gene)) + geom_point() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
+
+# Observe Cry1 Aorta why it is period of 22
+tiss <- "Aorta"; gen <- "Cry1"; exper="array"
+dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+period.min <- subset(dat.fit.periods.min, tissue == tiss & gene == gen)$period
+w <- 2 * pi / 24
+w.min <- 2 * pi / period.min
+fit24 <- lm(exprs ~ 0 + experiment + sin(w * time) + cos(w * time), dat.sub)
+fit.min <- lm(exprs ~ 0 + experiment + sin(w.min * time) + cos(w.min * time), dat.sub)
+dat.sub.array <- subset(dat.sub, experiment == exper)
+plot(dat.sub.array$time, predict(fit24, dat.sub.array), "o", col = "blue", ylim = range(dat.sub.array$exprs), 
+     main = paste0(tiss, " ", gen, " ", exper, " T=24h (blue) vs T=", period.min, "h (red)"))
+lines(dat.sub.array$time, predict(fit.min, dat.sub.array), "o", col = "red")
+points(dat.sub.array$time, dat.sub.array$exprs, pch="*", col = "black")
+
+# observe why Cry1 Mus has period 26.3
+tiss <- "Mus"; gen <- "Cry1"; exper="array"
+dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+period.min <- subset(dat.fit.periods.min, tissue == tiss & gene == gen)$period
+PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+
+tiss <- "Mus"; gen <- "Nr1d1"; exper="array"
+dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+period.min <- subset(dat.fit.periods.min, tissue == tiss & gene == gen)$period
+PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+
+tiss <- "Hypo"; gen <- "Nfil3"; exper="array"
+dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+period.min <- subset(dat.fit.periods.min, tissue == tiss & gene == gen)$period
+PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+
+tiss <- "Hypo"; gen <- "Wee1"; exper="array"
+dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+period.min <- subset(dat.fit.periods.min, tissue == tiss & gene == gen)$period
+PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+
+tiss <- "Adr"; gen <- "Arntl"; exper="array"
+dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+period.min <- subset(dat.fit.periods.min, tissue == tiss & gene == gen)$period
+PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+
+dev.off()

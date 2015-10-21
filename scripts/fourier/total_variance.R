@@ -15,6 +15,7 @@ source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/LoadArray.R")
 source("scripts/functions/VarianceFunctions.R")
+source("scripts/functions/FitRhythmicAcrossPeriods.R")
 
 # Load data ---------------------------------------------------------------
 
