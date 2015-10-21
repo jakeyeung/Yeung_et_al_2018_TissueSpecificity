@@ -16,20 +16,6 @@ source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/OuterComplex.R")
 
 
-# Functions ---------------------------------------------------------------
-
-# RangePhase <- function(phases, period = 24){
-#   # get range of phase, taking modulo of period
-#   
-# }
-# 
-# AveragePhase <- function(phases, period = 24){
-#   # get average phase, taking modulo 
-#   
-# }
-
-
-
 # Load --------------------------------------------------------------------
 
 load("/home/yeung/projects/nconds_results/fits_long.11_tiss_3_max.weight_raw.Robj", verbose=T)
@@ -53,8 +39,7 @@ filt.tiss <- c("WFAT")
 
 dat.complex <- subset(dat.complex, !tissue %in% filt.tiss)
 
-fits.long$n.params <- sapply(fits.long$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
-fits.long$n.rhyth <- sapply(fits.long$model, GetNrhythFromModel)
+
 
 # Summarize by top --------------------------------------------------------
 
@@ -64,9 +49,17 @@ fits.best <- fits.long %>%
 
 fits.best <- fits.best[order(fits.best$weight, decreasing = TRUE), ]
 
+# COLLAPSE MODEL
+fits.best$model <- mapply(FilterModelByAmp, fits.best$model, fits.best$param.list, MoreArgs = list(amp.cutoff = 0.15))
+fits.best$n.params <- sapply(fits.best$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
+fits.best$n.rhyth <- sapply(fits.best$model, GetNrhythFromModel)
+
 # Get average amp and variance --------------------------------------------
 
 fits.best$amp.avg <- sapply(fits.best$param.list, GetAvgAmpFromParams)
+
+# Collapse models by removing models with low amps ------------------------
+
 
 # high level  -------------------------------------------------------------
 

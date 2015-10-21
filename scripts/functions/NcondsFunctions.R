@@ -139,10 +139,18 @@ GetNrhythFromModel <- function(model){
   return(length(strsplit(n.rhyth, ",")[[1]]))
 }
 
-GetAvgAmpFromParams <- function(params){
+GetAvgAmpFromParams <- function(params, by.model=FALSE){
   # look at param names to get average amplitudes
+  # option: by.model: go strictly by model (used if model was filtered by some amp criteria beforehand)
+  # by.model is a model name e.g., "Kidney;Liver;Adr,Lung" or FALSE
   amps <- params[grepl("amp", names(params))]
+  if (by.model){
+    if (by.model == "") return(NA)  # non rhyth model
+    grepstr = gsub(pattern = ";", replacement = "|", as.character(by.model))
+    amps <- amps[grepl(grepstr, names(amps))]
+  }
   if(length(amps) == 0) return(NA)  # non rhyth model
+  
   # get number of tissues rhythmic for each rhythmic paramter (because tissues can
   # share paramters)
   n.tiss <- sapply(names(amps), function(tiss.id) length(strsplit(tiss.id, ",")[[1]]))
