@@ -41,7 +41,7 @@ PlotGeneAcrossTissuesRnaseq <- function(dat, jtitle, convert.linear = FALSE){
     ylab(label = jylab) +
     xlab("CT") +
     scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) +
-    theme(axis.text.x=element_text(angle=90,vjust = 0))
+    theme(axis.text.x=element_text(angle=90,vjust = 0)) + theme_bw(24)
 }
 
 PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE){

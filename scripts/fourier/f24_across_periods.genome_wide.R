@@ -11,7 +11,13 @@ library(dplyr)
 library(ggplot2)
 setwd("/home/yeung/projects/tissue-specificity")
 
-
+args <- commandArgs(trailingOnly=TRUE)
+p.min <- as.numeric(args[1])
+p.max <- as.numeric(args[2])
+fout <- paste0("dat.fit.scan_periods.genome_wide.", p.min, "_", p.max, ".Robj")
+fdir <- "Robjs"
+foutpath <- file.path(fdir, fout)
+print(paste("Saving to:", foutpath))
 
 # Source ------------------------------------------------------------------
 
@@ -28,25 +34,11 @@ load("Robjs/dat.long.fixed_rik_genes.Robj")
 
 # Perform f24 -------------------------------------------------------------
 
-# on a single gene
-jgene <- "Nr1d1"
-jtissue <- "Liver"
-clockgenes <- GetClockGenes()
-
-period <- 24
-dat.fit <- subset(dat.long, gene %in% clockgenes) %>%
-  group_by(gene, tissue) %>%
-  do(FitRhythmic(., T = period, get.residuals = TRUE))
-dat.fit
-# dat.fit <- FitRhythmic(dat.long)
-
-p.min <- 10
-p.max <- 30
 periods <- seq(p.min, p.max, by = 0.1)
 # across all genes
 start <- Sys.time()
 dat.fit.periods.genome_wide <- FitRhythmicScanPeriods(dat.long, periods, cores = 50)
 print(Sys.time() - start)
 head(dat.fit.periods.genome_wide)
-save(dat.fit.periods.genome_wide, file = "Robjs/dat.fit.scan_periods.genome_wide.10_to_30.Robj")
+save(dat.fit.periods.genome_wide, file = foutpath)
 # 2.5 hours later...

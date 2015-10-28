@@ -20,14 +20,14 @@ PlotComponents <- function(pca.p.med, start, end){
 PlotComponents2 <- function(pca.p.sum.long, jstart, jend){
   # cbPalette <- c("#CC79A7", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   # The palette with black:
-  cbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  cbPalette <- c("#000000", "#999999", "#E69F00", "#56B4E9", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   break.i <- floor((jend - jstart ) / 4)
   
   pca.p.sum.long.sub <- subset(pca.p.sum.long, pc.num >= jstart & pc.num <= jend)
   
   m <- ggplot(pca.p.sum.long.sub, aes(x = pc.num, y = eigenvals.frac, fill = Component)) + geom_bar(stat = "identity") +
     scale_x_continuous(breaks=seq(jstart, jend, break.i)) +
-    xlab("Component") + ylab("Fraction of total sqr eigenvals") +
+    xlab("Principal component") + ylab("Fraction of total sqr eigenvals") +
     scale_fill_manual(name = "Fourier component", drop=TRUE, limits = levels(pca.p.sum.long$component), values=cbPalette) +
     theme_bw(24) + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 

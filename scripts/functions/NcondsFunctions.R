@@ -159,7 +159,63 @@ GetAvgAmpFromParams <- function(params, by.model=FALSE){
   return(amps.weighted / sum(n.tiss))
 }
 
+GetSdPhaseFromParams <- function(params, by.model=FALSE){
+  # look at param names to get average amplitudes
+  # option: by.model: go strictly by model (used if model was filtered by some amp criteria beforehand)
+  # by.model is a model name e.g., "Kidney;Liver;Adr,Lung" or FALSE
+  phases <- params[grepl("phase", names(params))]
+  if (by.model){
+    if (by.model == "") return(NA)  # non rhyth model
+    grepstr = gsub(pattern = ";", replacement = "|", as.character(by.model))
+    phases <- phases[grepl(grepstr, names(phases))]
+  }
+  if(length(phases) == 0) return(NA)  # non rhyth model
+  
+  # get number of tissues rhythmic for each rhythmic paramter (because tissues can
+  # share paramters)
+  n.tiss <- sapply(names(phases), function(tiss.id) length(strsplit(tiss.id, ",")[[1]]))
+  weights = n.tiss / sum(n.tiss)
+  phases.avg = weighted.mean(phases, weights)
+  # phases.weighted = sum(phases * n.tiss); phases.avg = phases.weighted / sum(n.tiss)  # equivalent but less readable
+  
+  phases.var =  sum(weights * (DiffPhase(phases, phases.avg)) ^ 2)  # denominator is not N-1 it is N
+  return(sqrt(phases.var))
+}
+
+DiffPhase <- function(phase1, phase2, period=24){
+  # Get phase1 and phase2 difference, modulo period
+  jdiff <- abs(diff(c(phase1, phase2)))
+  return(min(period - jdiff, jdiff))
+}
+
+MaxDiffPhaseVector <- function(phases, period=24){
+  phasediff.max <- 0
+  for (phase.i in phases){
+    for (phase.j in phases){
+      jdiff <- DiffPhase(phase.j, phase.i, period)
+      if (jdiff > phasediff.max){
+        phasediff.max <- jdiff
+      }
+    }
+  }
+  return(phasediff.max)
+}
+
+GetMaxPhaseDiffFromParams <- function(params, by.model=FALSE, period=24){
+  # Get maximum phase difference between tissues
+  phases <- params[grepl("phase", names(params))]
+  if (by.model != FALSE){
+    if (by.model == "") return(NA)  # non rhyth model
+    grepstr = gsub(pattern = ";", replacement = "|", as.character(by.model))
+    phases <- phases[grepl(grepstr, names(phases))]
+  }
+  if(length(phases) == 0) return(NA)  # non rhyth model
+  phasediff.max <- MaxDiffPhaseVector(phases, period)
+  return(phasediff.max)
+}
+
 FilterModelByAmp <- function(model.name, params, amp.cutoff = 0.5){
+  # http://stackoverflow.com/questions/10049402/calculating-weighted-mean-and-standard-deviation
   # Get amplitude of each tissue in model name.
   # model name: Kidney;Liver;Adr,Lung 
   # params: fit from nconds2: amp and phase are called tissue1.amp tissue1.phase ... 

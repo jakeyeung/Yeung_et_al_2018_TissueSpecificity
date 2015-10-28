@@ -39,8 +39,6 @@ filt.tiss <- c("WFAT")
 
 dat.complex <- subset(dat.complex, !tissue %in% filt.tiss)
 
-
-
 # Summarize by top --------------------------------------------------------
 
 fits.best <- fits.long %>%
@@ -50,13 +48,16 @@ fits.best <- fits.long %>%
 fits.best <- fits.best[order(fits.best$weight, decreasing = TRUE), ]
 
 # COLLAPSE MODEL
-fits.best$model <- mapply(FilterModelByAmp, fits.best$model, fits.best$param.list, MoreArgs = list(amp.cutoff = 0.15))
+fits.best$model <- mapply(FilterModelByAmp, fits.best$model, fits.best$param.list, MoreArgs = list(amp.cutoff = 0.1))
 fits.best$n.params <- sapply(fits.best$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
 fits.best$n.rhyth <- sapply(fits.best$model, GetNrhythFromModel)
+fits.best$amp.avg <- mapply(GetAvgAmpFromParams, fits.best$param.list, fits.best$model)
+fits.best$phase.sd <- mapply(GetSdPhaseFromParams, fits.best$param.list, fits.best$model)
+fits.best$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.best$param.list, fits.best$model)
 
 # Get average amp and variance --------------------------------------------
 
-fits.best$amp.avg <- sapply(fits.best$param.list, GetAvgAmpFromParams)
+head(fits.best[order(fits.best$amp.avg), ])
 
 # Collapse models by removing models with low amps ------------------------
 
@@ -64,24 +65,39 @@ fits.best$amp.avg <- sapply(fits.best$param.list, GetAvgAmpFromParams)
 # high level  -------------------------------------------------------------
 
 ggplot(fits.best, aes(x = weight)) + geom_density() + facet_wrap(~n.rhyth)
-ggplot(fits.best, aes(x = weight, y = amp.avg, )) + geom_point(alpha = 0.1) + facet_wrap(~n.rhyth)
+ggplot(fits.best, aes(x = weight, y = amp.avg)) + geom_point(alpha = 0.5) + facet_wrap(~n.rhyth)
+ggplot(fits.best, aes(x = amp.avg)) + geom_density() + facet_wrap(~n.rhyth) + scale_x_log10()
+
+fits.rhyth <- subset(fits.best, n.params > 0)
+fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
+  cutoff <- 1
+  if (row[8] > cutoff & row[6] > 0){  # amp.avg > cutoff only for n.rhyth > 1
+    return(as.character(row[1]))  # return gene
+  } else {
+    return("")
+  }
+})
+ggplot(fits.rhyth, aes(x = weight, y = amp.avg, label = label)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth) + geom_text()
+ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.sd, y = amp.avg, label = label)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth) + geom_text()
+ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.sd, y = amp.avg, label = label)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth) + geom_text()
 
 # Tissue-specific genes ---------------------------------------------------
 
-fits.ts <- subset(fits.best, n.params == 1 & n.rhyth == 1)
+tissues <- unique(dat.long$tissue)
 
-fits.ts$param.list[[1]][["Adr.amp"]]
-
-
-# PCA on tissue-specific genes --------------------------------------------
-
-genes.ts <- as.character(fits.ts$gene)
-
-s.ts <- SvdOnComplex(subset(dat.complex, gene %in% genes.ts), value.var = "exprs.transformed")
-for (i in seq(11)){
-  eigens.ts <- GetEigens(s.ts, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+for (tiss in tissues){
+  fits.ts <- subset(fits.best, n.rhyth == 1 & model == tiss)
+  genes.ts <- as.character(fits.ts$gene)
+  print(paste("N genes for", tiss, ":", length(genes.ts)))
+  if (length(genes.ts) <= length(tissues)){
+    # problems with too few genes skip
+    next
+  }
+  
+  s.ts <- SvdOnComplex(subset(dat.complex, gene %in% genes.ts), value.var = "exprs.transformed")
+  eigens.ts <- GetEigens(s.ts, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  multiplot(eigens.ts$u.plot, eigens.ts$v.plot, layout = jlayout)  
+  multiplot(eigens.ts$u.plot, eigens.ts$v.plot, layout = jlayout)    
 }
 
 
@@ -142,15 +158,20 @@ for (i in seq(3)){
 # Aorta BFAT --------------------------------------------------------------
 
 # Aorta and BFAT
-fits.bfataorta <- subset(fits.best, n.rhyth >= 2 & n.rhyth <= 4)
-fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
+fits.bfataorta <- subset(fits.best, n.rhyth >= 2 & n.rhyth <= 3)
+# fits.bfataorta <- subset(fits.best, n.rhyth == 3)
+# fits.bfataorta <- subset(fits.best, n.rhyth == 2)
+# fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
+fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT", fits.bfataorta$model), ]
+# fits.bfataorta <- subset(fits.best, model == "Aorta;BFAT" | model == "Adr;Aorta;BFAT")
 
 genes.bfataorta <- as.character(fits.bfataorta$gene)
+print(paste("Genes in bfat-aorta:", length(genes.bfataorta)))
 
 outobj <- PlotHeatmapNconds(fits.bfataorta, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 
 s.bfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfataorta & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
-for (i in seq(1)){
+for (i in seq(3)){
   eigens.bfataorta <- GetEigens(s.bfataorta, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   multiplot(eigens.bfataorta$u.plot, eigens.bfataorta$v.plot, layout = jlayout)  
@@ -171,136 +192,3 @@ for (i in seq(3)){
   multiplot(eigens.liverpairs$u.plot, eigens.liverpairs$v.plot, layout = jlayout)  
 }
 
-# Heatmap yo --------------------------------------------------------------
-
-fits.best$model <- factor(x = fits.best$model, levels = unique(fits.best$model))
-n.models <- length(unique(fits.best$model))
-
-
-# Summarize by number models ----------------------------------------------
-
-fits.best.count <- fits.best %>%
-  group_by(model) %>%
-  summarise(gene.count = length(gene)) %>%
-  arrange(desc(gene.count))
-
-fits.best.count.filt <- subset(fits.best.count)
-
-fits.best.count.filt$n.params <- sapply(fits.best.count.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
-fits.best.count.filt$n.rhyth <- sapply(fits.best.count.filt$model, GetNrhythFromModel)
-
-# Heatmap of list ---------------------------------------------------------
-
-jmodel <- "Kidney,Liver"
-# jmodel <- "BFAT,Liver"
-jmodel <- "Liver"
-jmodel <- "Adr"
-# ref <- strsplit(jmodel, ";")[[1]][[1]]  # could be just Liver if jmodel was Liver;Kidney
-# ref <- "Liver"
-
-jmodel <- "Adr;Liver"
-
-jmodel <- "BFAT,Liver"
-
-jmodel <- "Kidney,Liver"
-# fits.bfataorta <- subset(fits.best, n.rhyth == 2 | n.rhyth == 3)
-# fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT", fits.bfataorta$model), ]
-# 
-# fits.best.sub <- subset(fits.best, n.rhyth <= 5)
-# fits.best.sub <- fits.best.sub[grep("Liver.*Kidney|Kidney.*Liver", fits.best.sub$model), ]
-# fits.best.sub <- subset(fits.best, gene %in% genes.tw)
-# fits.best.sub <- subset(fits.best, n.rhyth >= 8 & n.params == 3)
-
-jmodel <- "Aorta;BFAT"
-fits.best.sub <- subset(fits.best, model == jmodel)
-
-outobj <- PlotHeatmapNconds(fits.best.sub, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
-genes.heat <- as.character(fits.best.sub$gene)
-s.heat <- SvdOnComplex(subset(dat.complex, gene %in% genes.heat & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
-for (i in seq(1)){
-  eigens.heat <- GetEigens(s.heat, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
-  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  multiplot(eigens.heat$u.plot, eigens.heat$v.plot, layout = jlayout)  
-}
-
-
-# # also do some SVD to show which ones are brighter
-# 
-# 
-# tissuenames <- sapply(colnames(outobj$mat), function(c) strsplit(c, "_")[[1]][[1]], USE.NAMES = FALSE)
-# times <- sapply(colnames(outobj$mat), function(c) strsplit(c, "_")[[1]][[2]], USE.NAMES = FALSE)
-# 
-# mat.long <- melt(outobj$mat, value.name = "scaled.exprs", varnames = c("gene", "tissue_time"))
-# mat.long$tissue <- sapply(mat.long$tissue_time, function(x) strsplit(as.character(x), "_")[[1]][[1]])
-# mat.long$time <- sapply(mat.long$tissue_time, function(x) strsplit(as.character(x), "_")[[1]][[2]])
-# mat.long$tissue_time <- NULL
-# 
-# mat.sum <- mat.long %>%
-#   group_by(gene, tissue) %>%
-#   summarise(abs.range = diff(range(scaled.exprs)))
-# mat.sum <- mat.sum[order(mat.sum$abs.range, decreasing = TRUE), ]
-
-
-# Plot clusters -----------------------------------------------------------
-
-load("Robjs/bicmat.11_tiss_max_3.clusters.top5.bug_fixed.clusters.150.Robj", verbose=T)
-load("Robjs/bicmat.11_tiss_max_3.kmeans_clusters.Robj")
-sort(table(clusters$cluster), decreasing = T)
-
-clusteri <- 31
-clusteri <- 16
-clusteri <- 23
-clusteri <- 71
-clusteri <- 11
-clusteri <- 15
-clusteri <- 34
-
-modelsi <- names(clusters$cluster[which(clusters$cluster == clusteri)])
-fits.best.sub <- subset(fits.best, model %in% modelsi)
-genes.clust <- as.character(fits.best.sub$gene)
-
-PlotHeatmapNconds(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", blueend = -0.75, blackend = 0.75, min.n = -2, max.n = 2)
-s.clust <- SvdOnComplex(subset(dat.complex, gene %in% genes.clust & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
-for (i in seq(1)){
-  eigens.clust <- GetEigens(s.clust, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
-  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  multiplot(eigens.clust$u.plot, eigens.clust$v.plot, layout = jlayout)  
-}
-
-
-# Check bug: BFAT only module showing at CT6 but genes are CT22 -----------
-
-fits.bfatonly <- subset(fits.best, model == "BFAT")
-# fits.bfatonly <- subset(fits.best, n.rhyth >= 8)
-
-clusteri <- 15
-modelsi <- names(clusters$cluster[which(clusters$cluster == clusteri)])
-fits.bfatonly <- subset(fits.best, model %in% modelsi)
-
-genes.bfatonly <- as.character(fits.bfatonly$gene)
-
-outobj <- PlotHeatmapNconds(fits.bfatonly, dat.long, filt.tiss, jexperiment="array", blueend = -0.75, blackend = 0.75, min.n = -2.5, max.n = 2.5)
-
-s.bfatonly <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfatonly & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
-
-eigens.bfatonly <- GetEigens(s.bfatonly, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens.bfatonly$u.plot, eigens.bfatonly$v.plot, layout = jlayout)
-
-dat.complex.sub <- subset(dat.complex, gene %in% genes.bfatonly & ! tissue %in% filt.tiss)
-
-mat.complex.sub <- dcast(dat.complex.sub, gene ~ tissue, value.var = "exprs.transformed")
-rownames(mat.complex.sub) <- mat.complex.sub$gene; mat.complex.sub$gene <- NULL
-
-s.sub <- svd(mat.complex.sub)
-rownames(s.sub$u) <- rownames(mat.complex.sub)
-rownames(s.sub$v) <- colnames(mat.complex.sub)
-
-mat.complex.eigen1 <- OuterComplex(as.matrix(eigens.bfatonly$eigensamp), t(as.matrix(eigens.bfatonly$eigengene)))
-s.eigen1 <- OuterComplex(as.matrix(s.sub$u[, 1]), t(as.matrix(s.sub$v[, 1])))
-
-omega <- 2 * pi / 24
-tiss <- "BFAT"
-# PlotComplex2(vec.complex = dat.complex.eigen1[, tiss], labels = rownames(dat.complex.eigen1), omega = omega)
-PlotComplex2(vec.complex = mat.complex.sub[, tiss], labels = rownames(mat.complex.sub), omega = omega)
-PlotComplex2(vec.complex = s.eigen1[, tiss], labels = rownames(s.eigen1), omega = omega)

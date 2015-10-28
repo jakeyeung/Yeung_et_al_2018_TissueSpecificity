@@ -1,3 +1,13 @@
+PlotGenesInModel <- function(fits.sub, dat.complex, filt.tiss = c("WFAT")){
+  genes <- as.character(fits.sub$gene)
+  
+  #outobj <- PlotHeatmapNconds(fits, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
+  s <- SvdOnComplex(subset(dat.complex, gene %in% genes & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+  eigens <- GetEigens(s, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  return(multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout))
+}
+
 GetTissuesFromCoefFit <- function(fit.coef.names, tissue.colname = "tissue"){
   # Get tissues involved by grepping everything after tissue.colname
   match.names.i <- grepl(tissue.colname, fit.coef.names) & !grepl(":", fit.coef.names)
