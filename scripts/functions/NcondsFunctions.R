@@ -533,7 +533,9 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
   
   # track weights to normalize afterwards
   fit.weights.sum <- 0
-  fit.weights <- vector(mode="numeric", length=top.n)
+  if (!is.null(top.n)){
+    fit.weights <- vector(mode="numeric", length=top.n)
+  }
   
   # need to track models that we have done, so we eliminate "permutations" like c("Liver", "Kidney") and c("Kidney", "Liver) models
   # use hash for speed
@@ -550,13 +552,18 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
     } else {
       fit <- FitModel(dat.gene, des.mat.list$mat, get.criterion = criterion, condensed = TRUE)  # condensed will save some memory
     }
-    fit.weights.sum <- fit.weights.sum + fit$weight  # track even if it is a bad model, helps normalization
-    fit.weights.lst <- UpdateFitWeights(fit$weight, fit.weights)
-    if (!is.na(fit.weights.lst$i)){
-      fits[[fit.weights.lst$i]] <- fit
-      fit.weights <- fit.weights.lst$weights
-    }
     fit.count <- fit.count + 1
+    fit.weights.sum <- fit.weights.sum + fit$weight  # track even if it is a bad model, helps normalization
+    if (!is.null(top.n)){
+      fit.weights.lst <- UpdateFitWeights(fit$weight, fit.weights)
+      if (!is.na(fit.weights.lst$i)){
+        fits[[fit.weights.lst$i]] <- fit
+        fit.weights <- fit.weights.lst$weights
+      }
+    } else {
+      fits[[fit.count]] <- fit
+    }
+    
     
     # check that this matrix is not already the maximum complexity (n.rhyth.max),
     # if it is already as complex as we want, then ignore it because 
