@@ -182,6 +182,18 @@ GetSdPhaseFromParams <- function(params, by.model=FALSE){
   return(sqrt(phases.var))
 }
 
+GePhaseFromParams <- function(params, by.model=FALSE){
+  # works only for n.params == 1
+  phases <- params[grepl("phase", names(params))]
+  if (by.model){
+    if (by.model == "") return(NA)  # non rhyth model
+    grepstr = gsub(pattern = ";", replacement = "|", as.character(by.model))
+    phases <- phases[grepl(grepstr, names(phases))]
+  }
+  if(length(phases) == 0) return(NA)  # non rhyth model
+  return(mean(phases))
+}
+
 DiffPhase <- function(phase1, phase2, period=24){
   # Get phase1 and phase2 difference, modulo period
   jdiff <- abs(diff(c(phase1, phase2)))
