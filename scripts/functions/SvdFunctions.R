@@ -439,7 +439,8 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   gene.labels <- rownames(s.complex$u)
   v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, 
                          title = paste0("Tissue Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)"), 
-                         xlab = xlab, ylab = ylab, ampscale = 1, constant.amp = constant.amp) + scale_x_continuous(limits = c(0, 1))  # scaled from 0 to 1  
+                         xlab = xlab, ylab = ylab, ampscale = 1, constant.amp = constant.amp) + scale_x_continuous(limits = c(0, 1))
+    
   # u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)
   u.plot <- PlotComplex2(eigensamp.sorted, labels = names(eigensamp.sorted), omega = omega, 
                          title = paste0("Gene Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)"), 

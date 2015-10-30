@@ -608,7 +608,11 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
     xlab(xlab) +
     ylab(ylab) +
     ggtitle(title) +
-    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) + 
+    theme_bw() + 
+    theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
+    expand_limits(x = 0)  # we want center to be 0
   if (constant.amp != FALSE){
     m <- m + geom_text(aes(x = amp, y = phase), vjust = 0, size = constant.amp)
   } else {
