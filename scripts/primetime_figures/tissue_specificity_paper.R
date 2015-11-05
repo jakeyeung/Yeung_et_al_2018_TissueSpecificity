@@ -30,11 +30,12 @@ source(file.path(funcs.dir, "VarianceFunctions.R"))
 source(file.path(funcs.dir, "FitRhythmicAcrossPeriods.R"))
 source(file.path(funcs.dir, "GetClockGenes.R"))
 source("scripts/functions/NcondsFunctions.R")
+source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/OuterComplex.R")
 source("scripts/functions/GetTFs.R")
-
+source("scripts/functions/AlternativeFirstExonsFunctions.R")
 
 
 
@@ -66,6 +67,8 @@ if (remove.wfat){
 dat.centered <- dat - apply(dat, 1, mean)
 dat_pca <- prcomp(t(dat.centered), center=FALSE, scale.=FALSE)
 
+
+
 # Consolidate PCA into long
 jtissues <- GetTissues(rownames(dat_pca$x), get_unique = FALSE)
 jtimes <- as.numeric(GetTimes(rownames(dat_pca$x), get_unique = FALSE))
@@ -75,6 +78,44 @@ pca.long <- data.frame(tissue = rep(jtissues, times = ncol(dat_pca$x)),
                        loading = unlist(as.vector(dat_pca$x), use.names = FALSE))
 head(pca.long)
 n.samps <- length(jtissues)
+
+pdf(file.path(outdir, "component_vs_component.pdf"))
+# Plot PC1 vs PC2
+jpc1 <- "PC1"
+jpc2 <- "PC2"
+x <- subset(pca.long, pc == jpc1)$loading
+y <- subset(pca.long, pc == jpc2)$loading
+tisslab <- subset(pca.long, pc == jpc1)$tissue
+timelab <- subset(pca.long, pc == jpc1)$time
+cols.uniq <- rainbow(length(unique(tisslab)))
+jpch <- as.numeric(seq(length(unique(tisslab))))
+jpch[which(jpch == 11)] <- 20
+jpch.vec <- rep(jpch, each = length(unique(timelab)))
+
+cols <- rep(cols.uniq, each = length(unique(timelab)))
+tisstimelab <- paste(as.character(tisslab), as.character(timelab))
+# with labels
+# plot(x, y, cex = 0.01, xlab = jpc1, ylab = jpc2)
+# text(x, y, labels = tisstimelab, col = cols)  
+# no labels
+plot(x, y, cex = 1, main = paste0(jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2, pch = jpch.vec)
+# legend("bottomright", as.character(unique(tisslab)), pch = 19, title = "Tissue", col = cols.uniq, horiz = F)
+legend("bottomright", as.character(unique(tisslab)), title = "Tissue", pch = jpch, horiz = F)
+
+# Plot PC13 vs PC17
+library(PhaseHSV)
+jtiss <- "Liver"
+jpc1 <- "PC13"
+jpc2 <- "PC17"
+x <- subset(pca.long, pc == jpc1 & tissue == jtiss)$loading
+y <- subset(pca.long, pc == jpc2 & tissue == jtiss)$loading
+time <- as.numeric(subset(pca.long, pc == jpc1 & tissue == jtiss)$time)
+time.mod <- time %% 24
+time.cols <- hsv(PhaseToHsv(2 * pi * time.mod / 24, 0, 2 *pi), s=0.9, v=0.7)
+cols <- as.numeric(subset(pca.long, pc == jpc1)$tissue)
+plot(x, y, type = "n", xlab = jpc1, ylab = jpc2)
+text(x, y, labels = time, col = time.cols, cex = 2)  
+dev.off()
 
 # Analyze whether each PC is rhythmic or not
 pca.p <- pca.long %>%
@@ -341,78 +382,122 @@ print(m2)
 
 ggplot(dat.fit.periods.sub, aes(x = period, y = ssq.residuals, colour = gene)) + geom_point() + facet_wrap(~tissue) + geom_vline(xintercept=24, linetype="dotted")
 
-# Observe Cry1 Aorta why it is period of 22
-tiss <- "Aorta"; gen <- "Cry1"; exper="array"
-dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
-period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
-w <- 2 * pi / 24
-w.min <- 2 * pi / period.min
-fit24 <- lm(exprs ~ 0 + experiment + sin(w * time) + cos(w * time), dat.sub)
-fit.min <- lm(exprs ~ 0 + experiment + sin(w.min * time) + cos(w.min * time), dat.sub)
-dat.sub.array <- subset(dat.sub, experiment == exper)
-plot(dat.sub.array$time, predict(fit24, dat.sub.array), "o", col = "blue", ylim = range(dat.sub.array$exprs), 
-     main = paste0(tiss, " ", gen, " ", exper, " T=24h (blue) vs T=", period.min, "h (red)"))
-lines(dat.sub.array$time, predict(fit.min, dat.sub.array), "o", col = "red")
-points(dat.sub.array$time, dat.sub.array$exprs, pch="*", col = "black")
-
-# observe why Cry1 Mus has period 26.3
-tiss <- "Mus"; gen <- "Cry1"; exper="array"
-dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
-period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
-PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
-
-tiss <- "Mus"; gen <- "Nr1d1"; exper="array"
-dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
-period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
-PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
-
-tiss <- "Hypo"; gen <- "Nfil3"; exper="array"
-dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
-period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
-PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
-
-tiss <- "Hypo"; gen <- "Wee1"; exper="array"
-dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
-period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
-PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
-
-tiss <- "BFAT"; gen <- "Myh7"; exper="array"
-dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
-period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
-PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
-
-tiss <- "Adr"; gen <- "Arntl"; exper="array"
-dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
-period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
-PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
-
 dev.off()
 
 pdf(file.path(outdir, "fig1_bottom.pdf"))
-# Plot normalized spectral power and period with minimum RSS side by side
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 multiplot(m1, m2, layout = jlayout)  
 dev.off()
+
+# 
+# # Observe Cry1 Aorta why it is period of 22
+# tiss <- "Aorta"; gen <- "Cry1"; exper="array"
+# dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+# period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
+# w <- 2 * pi / 24
+# w.min <- 2 * pi / period.min
+# fit24 <- lm(exprs ~ 0 + experiment + sin(w * time) + cos(w * time), dat.sub)
+# fit.min <- lm(exprs ~ 0 + experiment + sin(w.min * time) + cos(w.min * time), dat.sub)
+# dat.sub.array <- subset(dat.sub, experiment == exper)
+# plot(dat.sub.array$time, predict(fit24, dat.sub.array), "o", col = "blue", ylim = range(dat.sub.array$exprs), 
+#      main = paste0(tiss, " ", gen, " ", exper, " T=24h (blue) vs T=", period.min, "h (red)"))
+# lines(dat.sub.array$time, predict(fit.min, dat.sub.array), "o", col = "red")
+# points(dat.sub.array$time, dat.sub.array$exprs, pch="*", col = "black")
+# 
+# # observe why Cry1 Mus has period 26.3
+# tiss <- "Mus"; gen <- "Cry1"; exper="array"
+# dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+# period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
+# PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+# 
+# tiss <- "Mus"; gen <- "Nr1d1"; exper="array"
+# dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+# period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
+# PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+# 
+# tiss <- "Hypo"; gen <- "Nfil3"; exper="array"
+# dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+# period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
+# PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+# 
+# tiss <- "Hypo"; gen <- "Wee1"; exper="array"
+# dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+# period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
+# PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+# 
+# tiss <- "BFAT"; gen <- "Myh7"; exper="array"
+# dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+# period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
+# PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
+# 
+# tiss <- "Adr"; gen <- "Arntl"; exper="array"
+# dat.sub <- subset(dat.long, gene == gen & tissue == tiss)
+# period.min <- subset(dat.fit.periods.genome_wide.min, tissue == tiss & gene == gen)$period
+# PlotFitTwoPeriods(dat.sub, period1 = 24, period2 = period.min, tiss, gen, exper)
 
 # Figure 2 Tissue-modules ----------------------------------------------------------
 
 filt.tiss <- c("WFAT")
-load("Robjs/fits.best.collapsed_models.Robj", verbose=T)
+# load("Robjs/fits.best.collapsed_models.Robj", verbose=T)
+# load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.15.phase_sd.Robj", verbose=T)
+# load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.1.phase_sd_diff_avg.Robj", verbose=T)
+# load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
 load("Robjs/dat.complex.fixed_rik_genes.Robj")
 
 if (remove.wfat){
   dat.complex <- subset(dat.complex, ! tissue %in% filt.tiss)
 }
 
-pdf(file.path(outdir, "tissue_modules.tissue_wide.pdf"))
+fits.rhyth <- subset(fits.best, n.params > 0)
+fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
+  cutoff <- 1
+  if (row[8] > cutoff & row[6] > 0){  # amp.avg > cutoff only for n.rhyth > 1
+    return(as.character(row[1]))  # return gene
+  } else {
+    return("")
+  }
+})
 
+pdf(file.path(outdir, "tissue_modules.global_stats.pdf"))
 # Plot global statistics
-ggplot(fits.best, aes(x = weight)) + geom_density() + facet_wrap(~n.rhyth)
-ggplot(fits.best, aes(x = weight, y = amp.avg)) + geom_point(alpha = 0.5) + facet_wrap(~n.rhyth)
+ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg, label = label)) + geom_point(alpha = 0.15) + 
+  facet_wrap(~n.rhyth, ncol = 5) + 
+  geom_text(size = 3.5) +
+  xlab("Maximum phase difference across rhythmic tissues") + ylab("Avg amp across rhythmic tissues") +
+  theme_bw(24) + 
+  theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+  scale_x_continuous(breaks=c(0, 6, 12))
 
-# Plot counts
+ggplot(subset(fits.rhyth, n.rhyth >= 1), aes(x = phase.maxdiff, y = amp.avg, label = label)) + geom_point(alpha = 0.15) + 
+  facet_wrap(~n.rhyth, ncol = 5) + 
+  geom_text(size = 3.5) +
+  xlab("Maximum phase difference across rhythmic tissues") + ylab("Avg amp across rhythmic tissues") +
+  theme_bw(24) + 
+  theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+  scale_x_continuous(breaks=c(0, 6, 12))
+  
+ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg)) + geom_point(alpha = 0.25) + 
+  facet_wrap(~n.rhyth, ncol = 5) + 
+  xlab("Maximum phase difference across rhythmic tissues") + ylab("Avg amp across rhythmic tissues") +
+  theme_bw(24) + 
+  theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+  scale_x_continuous(breaks=c(0, 6, 12))
 
+ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg)) + geom_point(alpha = 0.25) + 
+  facet_wrap(~n.rhyth, ncol = 5) + 
+  xlab("Maximum phase difference across rhythmic tissues") + ylab("Avg amp across rhythmic tissues") +
+  theme_bw(24) + 
+  theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+  scale_x_continuous(breaks=c(0, 6, 12))
 
+dev.off()
+
+pdf(file.path(outdir, "tissue_modules.tissue_wide.pdf"))
 # Plot tissue wide genes
 fits.tw <- subset(fits.best, n.rhyth >= 8)
 genes.tw <- as.character(fits.tw$gene)
@@ -427,46 +512,81 @@ dev.off()
 
 pdf(file.path(outdir, "tissue_modules.tissue_specific.pdf"))
 
-# Plot tissue specific genes
-tissues <- unique(dat.long$tissue)
-for (tiss in tissues){
-  fits.ts <- subset(fits.best, n.rhyth == 1 & model == tiss)
-  genes.ts <- as.character(fits.ts$gene)
-  print(paste("N genes for", tiss, ":", length(genes.ts)))
-  if (length(genes.ts) <= length(tissues)){
-    # problems with too few genes skip
-    next
-  }  
-  s.ts <- SvdOnComplex(subset(dat.complex, gene %in% genes.ts), value.var = "exprs.transformed")
-  eigens.ts <- GetEigens(s.ts, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
-  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  multiplot(eigens.ts$u.plot, eigens.ts$v.plot, layout = jlayout)    
-}
+fits.tspec <- subset(fits.best, n.rhyth == 1)
+# order by number of genes
+fits.tspec.sum <- fits.tspec %>%
+  group_by(model) %>%
+  summarise(count = length(model))
+fits.tspec.sum <- fits.tspec.sum[order(fits.tspec.sum$count, decreasing = TRUE), ]
+fits.tspec$model <- factor(as.character(fits.tspec$model), levels = fits.tspec.sum$model)
+
+ggplot(fits.tspec, aes(y = phase.avg, x = amp.avg)) + 
+  geom_point(size=1.75, alpha = 0.25) + 
+  coord_polar(theta = "y") + 
+  ylab("Phase (h)") + 
+  xlab("Amplitude") + 
+  facet_wrap(~model) +
+  scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) + 
+  theme_bw() + 
+  theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
+  scale_x_continuous(limits = c(0, 3))
+
+
+
+ggplot(fits.tspec, aes(x = phase.avg)) + 
+  geom_bar(width = 1) +
+  facet_wrap(~model) + 
+  scale_x_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) +
+  expand_limits(y = 0) +
+  expand_limits(x = c(0, 24)) +
+  xlab("Phase (h)") + 
+  ylab("Count") +
+  theme_bw() + 
+  theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
+  coord_polar(theta = "x")
+
+# # histogram
+# fits.tspec.hist <- fits.tspec %>%
+#   group_by(model) %>%
+#   do(GetHistCounts(.))
+# # histogram a la naef
+# for (jtiss in unique(fits.tspec$model)){
+#   circular_phase24H_histogram(subset(fits.tspec, model == jtiss)$phase.avg, jtitle = jtiss)
+# }
 
 dev.off()
 
 pdf(file.path(outdir, "tissue_modules.pairs_triplets.pdf"))
+
 # Plot striking modules
 # Aorta and BFAT
-# fits.bfataorta <- subset(fits.best, n.rhyth >= 2 & n.rhyth <= 3)
 fits.bfataorta <- subset(fits.best, n.rhyth == 2)
 fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
-# fits.bfataorta <- fits.bfataorta[grep("Aorta;BFAT|BFAT;Aorta", fits.bfataorta$model), ]
-# fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
-
 genes.bfataorta <- as.character(fits.bfataorta$gene)
 print(paste("Genes in bfat-aorta:", length(genes.bfataorta)))
-
-#outobj <- PlotHeatmapNconds(fits.bfataorta, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 s.bfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfataorta & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
 eigens.bfataorta <- GetEigens(s.bfataorta, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.bfataorta$u.plot, eigens.bfataorta$v.plot, layout = jlayout)  
 
-# BFAT, Aorta, Muscle
-fits.bfataortamus <- subset(fits.best, n.rhyth >= 2 & n.rhyth <= 3)
-fits.bfataortamus <- fits.bfataortamus[grep("Aorta.*BFAT.*Mus", fits.bfataortamus$model), ]
+# Adr,Aorta,BFAT
+fits.adrbfataorta <- subset(fits.best, n.rhyth == 3)
+fits.adrbfataorta <- fits.adrbfataorta[grep("Adr.*Aorta.*BFAT", fits.adrbfataorta$model), ]
 
+genes.adrbfataorta <- as.character(fits.adrbfataorta$gene)
+print(paste("Genes in bfat-aorta:", length(genes.adrbfataorta)))
+
+s.adrbfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.adrbfataorta & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+eigens.adrbfataorta <- GetEigens(s.adrbfataorta, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens.adrbfataorta$u.plot, eigens.adrbfataorta$v.plot, layout = jlayout)  
+
+
+# BFAT, Aorta, Muscle
+fits.bfataortamus <- subset(fits.best, n.rhyth == 3)
+fits.bfataortamus <- fits.bfataortamus[grep("Aorta.*BFAT.*Mus", fits.bfataortamus$model), ]
 genes.bfataortamus <- as.character(fits.bfataortamus$gene)
 print(paste("Genes in bfat-aorta-mus:", length(genes.bfataortamus)))
 
@@ -478,21 +598,32 @@ multiplot(eigens.bfataortamus$u.plot, eigens.bfataortamus$v.plot, layout = jlayo
 
 # Liver Kidney
 # fits.livkid <- subset(fits.best, n.rhyth >= 2 & n.rhyth <= 3)
-fits.livkid <- subset(fits.best, n.rhyth == 2 | n.rhyth == 3)
+fits.livkid <- subset(fits.best, n.rhyth == 2)
 fits.livkid <- fits.livkid[grep("Liver.*Kidney|Kidney.*Liver", fits.livkid$model), ]
 genes.livkid <- as.character(fits.livkid$gene)
 print(paste("Genes in liver-kidney:", length(genes.livkid)))
 
 #outobj <- PlotHeatmapNconds(fits.livkid, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 s.livkid <- SvdOnComplex(subset(dat.complex, gene %in% genes.livkid & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
-eigens.livkid <- GetEigens(s.livkid, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+eigens.livkid <- GetEigens(s.livkid, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.livkid$u.plot, eigens.livkid$v.plot, layout = jlayout)  
 
-eigens.livkid <- GetEigens(s.livkid, period = 24, comp = 2, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+eigens.livkid <- GetEigens(s.livkid, period = 24, comp = 2, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens.livkid$u.plot, eigens.livkid$v.plot, layout = jlayout)  
+multiplot(eigens.livkid$u.plot, eigens.livkid$v.plot, layout = jlayout)
 
+# Adr Kidney Liver
+fits.adrlivkid <- subset(fits.best, n.rhyth == 3)
+fits.adrlivkid <- fits.adrlivkid[grep("Adr*.Kidney.*Liver", fits.adrlivkid$model), ]
+genes.adrlivkid <- as.character(fits.adrlivkid$gene)
+print(paste("Genes in liver-kidney:", length(genes.adrlivkid)))
+
+#outobj <- PlotHeatmapNconds(fits.adrlivkid, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
+s.adrlivkid <- SvdOnComplex(subset(dat.complex, gene %in% genes.adrlivkid & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+eigens.adrlivkid <- GetEigens(s.adrlivkid, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens.adrlivkid$u.plot, eigens.adrlivkid$v.plot, layout = jlayout)  
 dev.off()
 
 
@@ -538,6 +669,62 @@ for (jmodel in fits.count$model[2:50]){
 }
 dev.off()
 
-# Alternative promoters ---------------------------------------------------
+
+
+
+# Alt proms ---------------------------------------------------------------
+
+
+load("Robjs/alt_promoter_usage.mean_peak_amp.no_wfat.Robj")   # tpm.afe, tpm.avg.filt, tpm.fit
+# plot examples
+# hits <- c("Upp2", "Insig2", "Ddc", "Slc45a3")
+hits <- c("Slc45a3", "Ddc", "Insig2")
+
+pdf(file.path(outdir, "alt_prom_examples.pdf"))
+jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
+for (jgene in hits){
+  tpm.sub <- subset(tpm.fit, gene_name == jgene)
+  jtranscript <- tpm.sub[order(abs(tpm.sub$relamp), decreasing = TRUE), ]$transcript_id[1]
+  tpm.avg.sub <- subset(tpm.avg.filt, transcript_id == jtranscript)
+  exprs.plot <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == jgene & experiment == "rnaseq")) + theme_bw()
+  lin.plot <- ggplot(tpm.avg.sub, aes(y = tpm_norm.avg, x = relamp, label = tissue)) + geom_point() + geom_text() + 
+    ggtitle(jgene) + geom_smooth(method = "lm") + ylab("Fractional promoter usage") + xlab("Amplitude") + theme_bw() +
+    theme(aspect.ratio=1,
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+  multiplot(exprs.plot, lin.plot,  layout = jlayout)
+}
+dev.off()
+
+
+pdf(file.path(outdir, "alt_prom_global.pdf"))
+# plot pval distribution
+tpm.summary <- tpm.fit %>%
+  group_by(gene_name) %>%
+  do(SubsetMinPval(jdf = .))
+
+print(ggplot(tpm.summary, aes(x = pval)) + geom_histogram(binwidth = 0.01) + ggtitle("Distribution of p-values") + xlab("P-value") + ylab("Frequency") +
+        theme_bw(24) + theme(axis.text.x=element_text(vjust = 0, hjust = 1)) + 
+        theme(aspect.ratio=1,
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank()))
+
+amp.range.cutoff <- 1
+tpm_norm.range.cutoff <- 0.5
+tpm.summary$label <- mapply(function(gene, amp.range, tpm_norm.range){
+  if (is.na(amp.range) | is.na(tpm_norm.range)) return("")
+  if (amp.range < amp.range.cutoff & tpm_norm.range < tpm_norm.range.cutoff){
+    return("")
+  } else{
+    return(as.character(gene))
+  }
+}, tpm.summary$gene_name, tpm.summary$relamp.range, tpm.summary$tpm_norm.range)
+
+ggplot(tpm.summary, aes(x = relamp.range, y = tpm_norm.range, label = label, alpha = -log10(pval))) + geom_text(size=2) + geom_point(size=0.5) +
+  xlab("Range of amplitude") +ylab("Range of fractional promoter usage") + theme_bw(24) + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+dev.off()
 
 
