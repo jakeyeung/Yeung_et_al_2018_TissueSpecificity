@@ -1,6 +1,36 @@
 library(ggplot2)
 library(grid)
 
+GetHistCounts <- function(dat, br = 0:24){
+  # get histogram counts to plot histogram circular ggplot2
+  h <- hist(dat$phase.avg, br=br,plot=FALSE)
+  br[which(br == 24)] <- 0  # loop it
+  co <- make_circ_coord(br[-1],h$counts)
+  return(data.frame(angles = br[-1], heights = h$counts))
+}
+
+make_circ_coord = function(t,x,ttot=24)
+{
+  dt=(t[2]-t[1])*.45
+  a=(rep(t,rep(4,length(t)))+rep(c(-dt,-dt,dt,dt),length(t)))*2*pi/ttot
+  h=rep(x,rep(4,length(x)))*rep(c(0,1,1,0),length(t))
+  list(angles=a,heights=h)
+}
+circular_phase24H_histogram = function(x,color_hist = rgb(0.6,0,0.2), cex.axis=0.5, cex.lab=0.5, lwd=0.5, jtitle = "")
+{
+  # from Jingkui
+  library(plotrix)
+  library(circular)
+  
+  #color_DHS = rgb(0.6,0,0.2)
+  par(lwd=lwd,cex.axis=cex.axis, cex.main=0.1,cex.lab=cex.lab)
+  #par(mfrow=c(1,1),mar=c(4.5,4.5,1,.5)+.1,las=1)
+  br=0:24
+  h=hist(x, br=br,plot=FALSE)
+  co=make_circ_coord(br[-1],h$counts)
+  radial.plot(co$heights,co$angles,br[-1]-br[2], clockwise=TRUE,start=pi/2, rp.type='p',poly.col=color_hist, main = jtitle)
+}
+
 OrderDecreasing <- function(dat, jfactor, jval){
   # Reorder factors by decreasing value of jval
   # used in conjunction with barplots makes life easier
