@@ -26,11 +26,12 @@ KeepUpToThres <- function(vec, thres, min.dim = 2){
   return(1:i)
 }
 
-GetPromoterUsage <- function(dat, do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE){
+GetPromoterUsage <- function(dat, do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE){
   # get promoter usage
   dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = "tpm_norm.avg")
   dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
   
+  dat.H <- apply(dat.mat.prom, 1, ShannonEntropy)
   if (do.svd){
     # reduce dim
     dat.mat.prom <- sweep(dat.mat.prom, MARGIN = 1, STATS = rowMeans(dat.mat.prom), FUN = "-")
@@ -47,12 +48,14 @@ GetPromoterUsage <- function(dat, do.svd = TRUE, thres = 0.9, append.tiss = TRUE
   if (append.tiss){
     dat.mat.trans$tissue <- dat.mat$tissue
   }
-  
+  out <- list(dat.mat.trans = dat.mat.trans)
   if (get.means){
-    return(list(dat.mat.trans = dat.mat.trans, weights = dat.mat$mean))
-  } else {
-    return(dat.mat.trans)
+    out$weights <- dat.mat$mean
   }
+  if (get.entropy){
+    out$entropy <- dat.H
+  }
+  return(out)
 }
 
 CorrelateAmpPromMulti <- function(dat, thres = 0.9, do.svd = TRUE, weighted = FALSE, eps = 1e-10){
@@ -69,12 +72,14 @@ CorrelateAmpPromMulti <- function(dat, thres = 0.9, do.svd = TRUE, weighted = FA
   #   dat.mat.prom.trans <- dat.mat.prom.s$u[, keep] * dat.mat.prom.s$d[keep]
   #   
   #   dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom.trans)
-  dat.mat.trans.lst <- GetPromoterUsage(dat, do.svd = do.svd, thres = thres, append.tiss = FALSE, get.means = TRUE)
+  dat.mat.trans.lst <- GetPromoterUsage(dat, do.svd = do.svd, thres = thres, append.tiss = FALSE, get.means = TRUE, get.entropy = TRUE)
   dat.mat.trans <- dat.mat.trans.lst$dat.mat.trans
   weights <- dat.mat.trans.lst$weights
-  
+  entropy <- dat.mat.trans.lst$entropy
   if (weighted){
-    weights <- weights + eps  # if zero? 
+    # by shannon entropy
+    weights <- 1 - entropy
+    weights <- weights + eps  # if zero?
     fit.altprom <- lm(formula = amp ~ ., data = dat.mat.trans, weights = weights)
   } else {
     fit.altprom <- lm(formula = amp ~ ., data = dat.mat.trans)
