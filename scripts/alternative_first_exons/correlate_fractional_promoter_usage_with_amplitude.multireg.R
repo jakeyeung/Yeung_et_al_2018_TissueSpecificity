@@ -7,7 +7,7 @@ library(dplyr)
 library(hash)
 library(ggplot2)
 library(reshape2)
-library(biglm)
+# library(biglm)
 
 source("scripts/functions/LoadArrayRnaSeq.R")
 source("scripts/functions/FitRhythmic.R")
@@ -66,8 +66,8 @@ counts.dic <- hash(as.character(tpm.counts$gene_name), tpm.counts$counts)
 tpm.afe.avg$nprom <- sapply(as.character(tpm.afe.avg$gene_name), function(jgene) counts.dic[[jgene]])
 
 start <- Sys.time()
-tpm.mr <- subset(tpm.afe.avg, nprom > 1) %>%
+tpm.mr <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss) %>%
   group_by(gene_name) %>%
-  do(CorrelateAmpPromMulti(.))
-save(tpm.mr, file = "Robjs/tpm.mr.weighted.Robj")
+  do(RunFuzzyDistance(., jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE))
+save(tpm.mr, file = "Robjs/tpm.mr.fuzzy.Robj")
 print(Sys.time() - start)
