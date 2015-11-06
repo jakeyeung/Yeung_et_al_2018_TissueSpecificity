@@ -189,7 +189,8 @@ pc1 <- ggplot(subset(pca.long, pc == jpc), aes(x = time, y = loading)) + geom_po
                  xlab("CT") +
                  ylab("PC loading") + 
                  theme_bw(24) + 
-                 theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                 theme(aspect.ratio=1,
+                       panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
                        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
                  scale_x_continuous(breaks=c(18, 42, 64))
 jpc <- "PC13"
@@ -197,7 +198,8 @@ pc2 <- ggplot(subset(pca.long, pc == jpc), aes(x = time, y = loading)) + geom_po
   xlab("CT") +
   ylab("PC loading") + 
   theme_bw(24) + 
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
         panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
   scale_x_continuous(breaks=c(18, 42, 64))
 
@@ -360,7 +362,8 @@ xscale_periods <- seq(6, 30, 2)
 ggplot(subset(dat.fit.periods.sub), aes(x = period)) + geom_histogram(binwidth = diff(range(dat.fit.periods.sub$period))/55) + geom_vline(xintercept=24, linetype="dotted") + 
   scale_x_continuous(breaks=xscale_periods) + 
   xlab("Period with minimum RSS (h)") + ylab("Number of genes") +
-  theme_bw(24) + theme(panel.grid.major = element_blank(), 
+  theme_bw(24) + theme(aspect.ratio=1,
+                       panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
                        panel.background = element_blank(), 
                        axis.line = element_line(colour = "black"),
@@ -373,7 +376,8 @@ m2 <- ggplot(subset(dat.fit.periods.sub), aes(x = period)) + geom_histogram(binw
   scale_x_continuous(breaks=xscale_periods_smaller) + 
   facet_wrap(~tissue) +
   xlab("Period with minimum RSS") + ylab("Count") +
-  theme_bw(24) + theme(panel.grid.major = element_blank(), 
+  theme_bw(24) + theme(aspect.ratio=1,
+                       panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
                        panel.background = element_blank(), 
                        axis.line = element_line(colour = "black"),
@@ -461,9 +465,19 @@ fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
 
 pdf(file.path(outdir, "tissue_modules.global_stats.pdf"))
 # Plot global statistics
+
+ggplot(subset(fits.rhyth, n.rhyth >= 1), aes(x = weight, y = amp.avg, label = label)) + geom_point(alpha = 0.15) + 
+  facet_wrap(~n.rhyth, ncol = 5) + 
+  geom_text(size = 2.5) +
+  xlab("BIC weight of best model") + ylab("Avg amp across rhythmic tissues") +
+  theme_bw(24) + 
+  theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+  scale_x_continuous(breaks=c(0, 6, 12))
+
 ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg, label = label)) + geom_point(alpha = 0.15) + 
   facet_wrap(~n.rhyth, ncol = 5) + 
-  geom_text(size = 3.5) +
+  geom_text(size = 2.5) +
   xlab("Maximum phase difference across rhythmic tissues") + ylab("Avg amp across rhythmic tissues") +
   theme_bw(24) + 
   theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
@@ -472,7 +486,7 @@ ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg, labe
 
 ggplot(subset(fits.rhyth, n.rhyth >= 1), aes(x = phase.maxdiff, y = amp.avg, label = label)) + geom_point(alpha = 0.15) + 
   facet_wrap(~n.rhyth, ncol = 5) + 
-  geom_text(size = 3.5) +
+  geom_text(size = 2.5) +
   xlab("Maximum phase difference across rhythmic tissues") + ylab("Avg amp across rhythmic tissues") +
   theme_bw(24) + 
   theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
@@ -617,7 +631,7 @@ multiplot(eigens.livkid$u.plot, eigens.livkid$v.plot, layout = jlayout)
 fits.adrlivkid <- subset(fits.best, n.rhyth == 3)
 fits.adrlivkid <- fits.adrlivkid[grep("Adr*.Kidney.*Liver", fits.adrlivkid$model), ]
 genes.adrlivkid <- as.character(fits.adrlivkid$gene)
-print(paste("Genes in liver-kidney:", length(genes.adrlivkid)))
+print(paste("Genes in adr-liver-kidney:", length(genes.adrlivkid)))
 
 #outobj <- PlotHeatmapNconds(fits.adrlivkid, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 s.adrlivkid <- SvdOnComplex(subset(dat.complex, gene %in% genes.adrlivkid & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
