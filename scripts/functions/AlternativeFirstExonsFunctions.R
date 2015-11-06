@@ -1,15 +1,7 @@
 RunFuzzyDistance <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE){
-  dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = jvar)
-  dat.proms <- subset(dat.mat, select = -c(tissue, amp, mean))
-  
-  proms.full <- GetPromoterUsage(tpm.test, jvar = jvar, do.svd = do.svd, append.tiss = TRUE, get.means = TRUE, get.entropy = FALSE)
-  
-  #   plot(test$dat.mat.trans[, 2], test$dat.mat.trans[, 3])
-  #   text(test$dat.mat.trans[, 2], test$dat.mat.trans[, 3], labels = test$dat.mat.trans$tissue)
-  # proms <- test.svd$dat.mat.trans[, c(2, 3)]
-  
-  proms <- subset(test.svd$dat.mat.trans, select = -c(amp, tissue))
-  amp <- test.svd$dat.mat.trans$amp
+  proms.full <- GetPromoterUsage(dat, jvar = jvar, do.svd = do.svd, append.tiss = TRUE, get.means = TRUE, get.entropy = FALSE)  
+  proms <- subset(proms.full$dat.mat.trans, select = -c(amp, tissue))
+  amp <- proms.full$dat.mat.trans$amp
   weights1 <- amp / max(amp)
   weights2 <- 1 - weights1
   
@@ -19,16 +11,10 @@ RunFuzzyDistance <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = T
   # center2
   mu2 <- colSums(sweep(proms, MARGIN = 1, STATS = weights2, FUN = "*")) / sum(weights2)
   
-  #   plot(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3])
-  #   text(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], labels = test.svd$dat.mat.trans$tissue)
-  #   points(c(mu1[1], mu2[1]), c(mu1[2], mu2[2]), pch = "*", col = "blue", cex = 5)
-  
   dist1 <- FuzzyDistance(proms, mu1, amp)
   dist2 <- FuzzyDistance(proms, mu2, amp)
   intra.score <- sum(dist1, dist2)
   inter.score <- sum((mu2 - mu1) ^ 2)
-  #   print(paste("Intracluster score", intra.score))
-  #   print(paste("Interscore", inter.score))
   return(data.frame(intra.score = intra.score, inter.score = inter.score))
 }
 

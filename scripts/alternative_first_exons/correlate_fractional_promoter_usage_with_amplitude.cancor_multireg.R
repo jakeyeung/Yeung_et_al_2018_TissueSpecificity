@@ -96,7 +96,7 @@ for (jgene in head(tpm.mr, n = 20)$gene_name){
 
 # Fit Gaussians calculate likelihood --------------------------------------
 
-jgene <- "E2f8"
+jgene <- "Ddc"
 
 RunFuzzyDistance(subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT"))
 
