@@ -1,3 +1,84 @@
+DoCanCor <- function(tpm.sub, xvar = "tpm_norm.avg", yvar = "amp"){
+  # do canonical correlation of two matrices to find interesting
+  # alternative promoter usage
+  if (nrow(tpm.sub) == 0){
+    return(data.frame(Cor = NA))
+  }
+  X <- dcast(data = tpm.sub, formula = transcript_id ~ tissue, value.var = xvar)
+  rownames(X) <- X$transcript_id; X$transcript_id <- NULL
+  jtrans <- tpm.sub$transcript_id[[1]]
+  Y <- data.frame(subset(tpm.sub, transcript_id == jtrans, select = c("amp", "tissue")))
+  rownames(Y) <- as.character(Y$tissue); Y$tissue <- NULL
+  jcor <- cancor(tpm.afe.mat, dat.fit.mat, xcenter = F, ycenter = F)
+  return(data.frame(Cor = jcor$cor))
+}
+
+KeepUpToThres <- function(vec, thres, min.dim = 2){
+  # keep vector up to threshold return by index
+  for (i in seq(length(vec))){
+    if (vec[i] > thres){
+      break
+    }
+  }
+  if (i < min.dim){
+    return(i:min.dim)
+  }
+  return(1:i)
+}
+
+GetPromoterUsage <- function(dat, do.svd = TRUE, thres = 0.9, append.tiss = TRUE){
+  # get promoter usage
+  dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = "tpm_norm.avg")
+  dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
+  
+  if (do.svd){
+    # reduce dim
+    dat.mat.prom <- sweep(dat.mat.prom, MARGIN = 1, STATS = rowMeans(dat.mat.prom), FUN = "-")
+    dat.mat.prom.s <- svd(dat.mat.prom)
+    eigvals <- dat.mat.prom.s$d ^ 2 / sum(dat.mat.prom.s$d ^ 2)
+    eigvals.cum <- cumsum(eigvals)
+    # threshold for number of eigvals to keep
+    keep <- KeepUpToThres(eigvals.cum, thres, min.dim = 2)
+    dat.mat.prom.trans <- dat.mat.prom.s$u[, keep] * dat.mat.prom.s$d[keep]
+    dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom.trans) 
+  } else {
+    dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom)
+  }
+  if (append.tiss){
+    dat.mat.trans$tissue <- dat.mat$tissue
+  } else{
+    dat.mat.trans$tissue <- dat.mat$tissue
+  }
+  return(dat.mat.trans)
+}
+
+CorrelateAmpPromMulti <- function(dat, thres = 0.9, weighted = FALSE){
+  dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = "tpm_norm.avg")
+  dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
+  
+  # reduce dim
+  dat.mat.prom <- sweep(dat.mat.prom, MARGIN = 1, STATS = rowMeans(dat.mat.prom), FUN = "-")
+  dat.mat.prom.s <- svd(dat.mat.prom)
+  eigvals <- dat.mat.prom.s$d ^ 2 / sum(dat.mat.prom.s$d ^ 2)
+  eigvals.cum <- cumsum(eigvals)
+  # threshold for number of eigvals to keep
+  keep <- KeepUpToThres(eigvals.cum, thres, min.dim = 2)
+  dat.mat.prom.trans <- dat.mat.prom.s$u[, keep] * dat.mat.prom.s$d[keep]
+  
+  dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom.trans)
+  
+  if (weighted){
+    fit.altprom <- lm(formula = amp ~ ., data = dat.mat.trans, weights = (dat.mat$mean))
+  } else {
+    fit.altprom <- lm(formula = amp ~ ., data = dat.mat.trans)
+  }
+  # return just R-squared and best p-value
+  rsqr <- summary(fit.altprom)$r.squared
+  coefs <- summary(fit.altprom)$coefficients
+  pval.best <- min(coefs[2:nrow(coefs), "Pr(>|t|)"])
+  return(data.frame(rsqr = rsqr, pval.best = pval.best))
+}
+
 # Functions: kallisto -----------------------------------------------------
 
 PlotDiagnostics <- function(dat.tpm, dat.arrayrnaseq, jgene, jtranscript){
