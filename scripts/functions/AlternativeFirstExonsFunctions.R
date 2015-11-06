@@ -1,3 +1,53 @@
+RunFuzzyDistance <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE){
+  dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = jvar)
+  dat.proms <- subset(dat.mat, select = -c(tissue, amp, mean))
+  
+  proms.full <- GetPromoterUsage(tpm.test, jvar = jvar, do.svd = do.svd, append.tiss = TRUE, get.means = TRUE, get.entropy = FALSE)
+  
+  #   plot(test$dat.mat.trans[, 2], test$dat.mat.trans[, 3])
+  #   text(test$dat.mat.trans[, 2], test$dat.mat.trans[, 3], labels = test$dat.mat.trans$tissue)
+  # proms <- test.svd$dat.mat.trans[, c(2, 3)]
+  
+  proms <- subset(test.svd$dat.mat.trans, select = -c(amp, tissue))
+  amp <- test.svd$dat.mat.trans$amp
+  weights1 <- amp / max(amp)
+  weights2 <- 1 - weights1
+  
+  # center1
+  mu1 <- colSums(sweep(proms, MARGIN = 1, STATS = weights1, FUN = "*")) / sum(weights1)
+  
+  # center2
+  mu2 <- colSums(sweep(proms, MARGIN = 1, STATS = weights2, FUN = "*")) / sum(weights2)
+  
+  #   plot(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3])
+  #   text(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], labels = test.svd$dat.mat.trans$tissue)
+  #   points(c(mu1[1], mu2[1]), c(mu1[2], mu2[2]), pch = "*", col = "blue", cex = 5)
+  
+  dist1 <- FuzzyDistance(proms, mu1, amp)
+  dist2 <- FuzzyDistance(proms, mu2, amp)
+  intra.score <- sum(dist1, dist2)
+  inter.score <- sum((mu2 - mu1) ^ 2)
+  #   print(paste("Intracluster score", intra.score))
+  #   print(paste("Interscore", inter.score))
+  return(data.frame(intra.score = intra.score, inter.score = inter.score))
+}
+
+PromAmpScore <- function(prom.vec1, prom.vec2, amp1, amp2){
+  euc.dist <- sqrt(sum((prom.vec1 - prom.vec2) ^ 2))
+  amp.dist <- abs(amp1 - amp2)
+  return((euc.dist * amp.dist))
+}
+
+# distance score
+FuzzyDistance <- function(jpoints, jcluster, weights){
+  # https://en.wikipedia.org/wiki/Fuzzy_clustering
+  dist <- sweep(jpoints, MARGIN = 2, STATS = jcluster, FUN = "-")
+  dist <- sweep(dist, MARGIN = 1, STATS = weights, FUN = "*")
+  dist <- sum(apply(dist, MARGIN = 1, function(x) sum(x^2)))
+  return(dist)
+}
+
+
 DoCanCor <- function(tpm.sub, xvar = "tpm_norm.avg", yvar = "amp"){
   # do canonical correlation of two matrices to find interesting
   # alternative promoter usage
@@ -6,10 +56,11 @@ DoCanCor <- function(tpm.sub, xvar = "tpm_norm.avg", yvar = "amp"){
   }
   X <- dcast(data = tpm.sub, formula = transcript_id ~ tissue, value.var = xvar)
   rownames(X) <- X$transcript_id; X$transcript_id <- NULL
+  X <- t(X)
   jtrans <- tpm.sub$transcript_id[[1]]
-  Y <- data.frame(subset(tpm.sub, transcript_id == jtrans, select = c("amp", "tissue")))
+  Y <- data.frame(subset(tpm.sub, transcript_id == jtrans, select = c(yvar, "tissue")))
   rownames(Y) <- as.character(Y$tissue); Y$tissue <- NULL
-  jcor <- cancor(tpm.afe.mat, dat.fit.mat, xcenter = F, ycenter = F)
+  jcor <- cancor(X, Y, xcenter = T, ycenter = T)
   return(data.frame(Cor = jcor$cor))
 }
 
@@ -26,12 +77,11 @@ KeepUpToThres <- function(vec, thres, min.dim = 2){
   return(1:i)
 }
 
-GetPromoterUsage <- function(dat, do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE){
+GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE){
   # get promoter usage
-  dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = "tpm_norm.avg")
+  dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = jvar)
   dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
-  
-  dat.H <- apply(dat.mat.prom, 1, ShannonEntropy)
+  dat.H <- apply(dat.mat.prom, 1, function(x) ShannonEntropy(x, normalize = FALSE))
   if (do.svd){
     # reduce dim
     dat.mat.prom <- sweep(dat.mat.prom, MARGIN = 1, STATS = rowMeans(dat.mat.prom), FUN = "-")
@@ -40,11 +90,12 @@ GetPromoterUsage <- function(dat, do.svd = TRUE, thres = 0.9, append.tiss = TRUE
     eigvals.cum <- cumsum(eigvals)
     # threshold for number of eigvals to keep
     keep <- KeepUpToThres(eigvals.cum, thres, min.dim = 2)
-    dat.mat.prom.trans <- sweep(dat.mat.prom.s$u[, keep], MARGIN = 2, STATS = dat.mat.prom.s$d[keep], FUN = "*")
-    dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom.trans) 
+    dat.mat.prom <- sweep(dat.mat.prom.s$u[, keep], MARGIN = 2, STATS = dat.mat.prom.s$d[keep], FUN = "*")
+    dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom) 
   } else {
     dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom)
   }
+  
   if (append.tiss){
     dat.mat.trans$tissue <- dat.mat$tissue
   }
@@ -58,21 +109,8 @@ GetPromoterUsage <- function(dat, do.svd = TRUE, thres = 0.9, append.tiss = TRUE
   return(out)
 }
 
-CorrelateAmpPromMulti <- function(dat, thres = 0.9, do.svd = TRUE, weighted = FALSE, eps = 1e-10){
-  #   dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = "tpm_norm.avg")
-  #   dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
-  #   
-  #   # reduce dim
-  #   dat.mat.prom <- sweep(dat.mat.prom, MARGIN = 1, STATS = rowMeans(dat.mat.prom), FUN = "-")
-  #   dat.mat.prom.s <- svd(dat.mat.prom)
-  #   eigvals <- dat.mat.prom.s$d ^ 2 / sum(dat.mat.prom.s$d ^ 2)
-  #   eigvals.cum <- cumsum(eigvals)
-  #   # threshold for number of eigvals to keep
-  #   keep <- KeepUpToThres(eigvals.cum, thres, min.dim = 2)
-  #   dat.mat.prom.trans <- dat.mat.prom.s$u[, keep] * dat.mat.prom.s$d[keep]
-  #   
-  #   dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom.trans)
-  dat.mat.trans.lst <- GetPromoterUsage(dat, do.svd = do.svd, thres = thres, append.tiss = FALSE, get.means = TRUE, get.entropy = TRUE)
+CorrelateAmpPromMulti <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE, weighted = FALSE, eps = 1e-10){
+  dat.mat.trans.lst <- GetPromoterUsage(dat, jvar = jvar, do.svd = do.svd, thres = thres, append.tiss = FALSE, get.means = TRUE, get.entropy = TRUE)
   dat.mat.trans <- dat.mat.trans.lst$dat.mat.trans
   weights <- dat.mat.trans.lst$weights
   entropy <- dat.mat.trans.lst$entropy
