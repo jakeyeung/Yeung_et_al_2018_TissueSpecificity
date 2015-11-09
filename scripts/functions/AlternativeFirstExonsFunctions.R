@@ -1,8 +1,52 @@
+CalculateGaussianCenters <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE){
+  proms.full <- GetPromoterUsage(dat, jvar = jvar, do.svd = do.svd, append.tiss = TRUE, get.means = TRUE, get.entropy = FALSE)  
+  proms <- subset(proms.full$dat.mat.trans, select = -c(amp, tissue))
+  amp <- proms.full$dat.mat.trans$amp
+  weights1 <- (amp - min(amp)) / (max(amp) - min(amp))
+  weights2 <- 1 - weights1
+  
+  # center1
+  sig1 <- cov.wt(proms, wt = weights1)
+  mu1 <- sig1$center
+  pi1 <- sum(weights1) / length(weights1)
+  
+  # center2
+  sig2 <- cov.wt(proms, wt = weights2)
+  mu2 <- sig2$center
+  pi2 <- sum(weights2) / length(weights2)
+  
+  return(list(sig1 = sig1, sig2 = sig2, proms = proms))
+}
+
+CalculateGaussianDists <- function(dat){
+  # sigs is output from CalculateGaussianCenters
+  # calculate inter and intra cluster scores
+  sigs <- dat$sigs[[1]]
+  proms <- sigs$proms
+  # center1
+  sig1 <- sigs$sig1
+  mu1 <- sig1$center
+  weights1 <- sig1$wt
+  #   pi1 <- sum(weights1) / length(weights1)
+  
+  # center2
+  sig2 <- sigs$sig2
+  mu2 <- sig2$center
+  weights2 <- sig2$wt
+  #   pi2 <- sum(weights2) / length(weights2)
+  
+  intrascore1 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mean = mu1, sigma = sig1$cov))) / sum(weights1)
+  intrascore2 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu2, sigma = sig2$cov))) / sum(weights2)
+  interscore1 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu1, sig1$cov))) / sum(weights2)
+  interscore2 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mu2, sig1$cov))) / sum(weights1)
+  return(data.frame(intrascore1=intrascore1, intrascore2=intrascore2, interscore1=interscore1, interscore2=interscore2))
+}
+
 RunFuzzyDistance <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE){
   proms.full <- GetPromoterUsage(dat, jvar = jvar, do.svd = do.svd, append.tiss = TRUE, get.means = TRUE, get.entropy = FALSE)  
   proms <- subset(proms.full$dat.mat.trans, select = -c(amp, tissue))
   amp <- proms.full$dat.mat.trans$amp
-  weights1 <- amp / max(amp)
+  weights1 <- (amp - min(amp)) / (max(amp) - min(amp))
   weights2 <- 1 - weights1
   
   # center1
