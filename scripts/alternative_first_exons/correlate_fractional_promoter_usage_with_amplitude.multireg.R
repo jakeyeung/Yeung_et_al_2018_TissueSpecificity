@@ -7,6 +7,7 @@ library(dplyr)
 library(hash)
 library(ggplot2)
 library(reshape2)
+library(mvtnorm)
 # library(biglm)
 
 source("scripts/functions/LoadArrayRnaSeq.R")
@@ -66,8 +67,17 @@ counts.dic <- hash(as.character(tpm.counts$gene_name), tpm.counts$counts)
 tpm.afe.avg$nprom <- sapply(as.character(tpm.afe.avg$gene_name), function(jgene) counts.dic[[jgene]])
 
 start <- Sys.time()
-tpm.mr <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss) %>%
+# tpm.mr <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss) %>%
+#   group_by(gene_name) %>%
+#   do(RunFuzzyDistance(., jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE))
+# save(tpm.mr, file = "Robjs/tpm.mr.fuzzy.Robj")
+
+tpm.gauss <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss) %>%
   group_by(gene_name) %>%
-  do(RunFuzzyDistance(., jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE))
-save(tpm.mr, file = "Robjs/tpm.mr.fuzzy.Robj")
+  do(sigs = CalculateGaussianCenters(.))
+tpm.gauss2 <- tpm.gauss %>% 
+  group_by(gene_name) %>%
+  do(CalculateGaussianDists(.))
+tpm.gauss <- cbind(tpm.gauss2, subset(tpm.gauss, select = -gene_name))
+save(tpm.gauss, file = "Robjs/tpm.gauss.Robj")
 print(Sys.time() - start)

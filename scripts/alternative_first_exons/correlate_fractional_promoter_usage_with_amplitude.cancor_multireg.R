@@ -2,12 +2,23 @@
 # 2015-10-29
 # Normalize amplitude by Nr1d1 DO NOT adjust for noisy genes
 
+library(ellipse)
+library(mvtnorm)
+
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/PlotUCSC.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
 
 # Functions ---------------------------------------------------------------
+
+add.alpha <- function(col, alpha=1){
+  if(missing(col))
+    stop("Please provide a vector of colours.")
+  apply(sapply(col, col2rgb)/255, 2, 
+        function(x) 
+          rgb(x[1], x[2], x[3], alpha=alpha))  
+}
 
 
 # Main --------------------------------------------------------------------
@@ -96,17 +107,40 @@ for (jgene in head(tpm.mr, n = 20)$gene_name){
 
 # Fit Gaussians calculate likelihood --------------------------------------
 
+source("scripts/functions/GetClockGenes.R")
+
+cgenes <- GetClockGenes()
+cgenes <- c(cgenes, "Ddc", "Slc45a3", "Upp2")
+out <- subset(tpm.afe.avg, gene_name %in% cgenes & tissue != "WFAT" & nprom > 1) %>%
+  group_by(gene_name) %>%
+  do(sigs = CalculateGaussianCenters(.))
+
+out2 <- out %>%
+  group_by(gene_name) %>%
+  do(CalculateGaussianDists(.))
+
+out3 <- cbind(out, subset(out2, select = -gene_name))
+
+jvar <- "tpm_norm.avg"
+jgene <- "Slc45a3"
+jgene <- "Pvalb"
+jgene <- "Cirbp"
 jgene <- "Ddc"
 
+
 RunFuzzyDistance(subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT"))
+RunGaussianDistance(subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT"))
 
 tpm.test <- subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT")
-dat.mat <- dcast(tpm.test, tissue + amp + mean~ transcript_id, value.var = "tpm_norm.avg")
+dat.mat <- dcast(tpm.test, tissue + amp + mean~ transcript_id, value.var = jvar)
 dat.proms <- subset(dat.mat, select = -c(tissue, amp, mean))
 dat.H <- apply(dat.proms, 1, ShannonEntropy)
 
-test <- GetPromoterUsage(tpm.test, jvar = "tpm_norm.avg", do.svd = F, append.tiss = TRUE, get.means = TRUE, get.entropy = TRUE)
-test.svd <- GetPromoterUsage(tpm.test, do.svd = T, append.tiss = TRUE, get.means = TRUE)
+# test <- GetPromoterUsage(tpm.test, jvar = jvar, do.svd = F, append.tiss = TRUE, get.means = TRUE, get.entropy = TRUE)
+test.svd <- GetPromoterUsage(tpm.test, jvar = jvar, do.svd = T, append.tiss = TRUE, get.means = TRUE)
+
+# test.svd$dat.mat.trans$amp[which(test.svd$dat.mat.trans$amp < 0.5)] <- 0
+# test.svd$dat.mat.trans$amp[which(test.svd$dat.mat.trans$amp >= 0.5)] <- 1
 
 plot(test$dat.mat.trans[, 2], test$dat.mat.trans[, 3])
 text(test$dat.mat.trans[, 2], test$dat.mat.trans[, 3], labels = test$dat.mat.trans$tissue)
@@ -114,24 +148,56 @@ text(test$dat.mat.trans[, 2], test$dat.mat.trans[, 3], labels = test$dat.mat.tra
 # proms <- test.svd$dat.mat.trans[, c(2, 3)]
 proms <- subset(test.svd$dat.mat.trans, select = -c(amp, tissue))
 amp <- test.svd$dat.mat.trans$amp
-weights1 <- amp / max(amp)
+weights1 <- (amp - min(amp)) / (max(amp) - min(amp))
 weights2 <- 1 - weights1
 
 # center1
 mu1 <- colSums(sweep(proms, MARGIN = 1, STATS = weights1, FUN = "*")) / sum(weights1)
+sig1 <- cov.wt(proms, wt = weights1)
+pi1 <- sum(weights1) / length(weights1)
 
 # center2
 mu2 <- colSums(sweep(proms, MARGIN = 1, STATS = weights2, FUN = "*")) / sum(weights2)
+sig2 <- cov.wt(proms, wt = weights2)
+pi2 <- sum(weights2) / length(weights2)
 
+myColoursAlpha <- sapply(weights1, function(a) add.alpha(1, alpha=a))
 plot(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3])
-text(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], labels = test.svd$dat.mat.trans$tissue)
-points(c(mu1[1], mu2[1]), c(mu1[2], mu2[2]), pch = "*", col = "blue", cex = 5)
+text(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], labels = test.svd$dat.mat.trans$tissue, col = myColoursAlpha)
+points(mu1[1], mu1[2], pch = "*", col = "blue", cex = 5)
+points(mu2[1], mu2[2], pch = "*", col = "red", cex = 5)
+# draw ellipse
+lines(ellipse(sig1$cov, level = 0.5, centre = sig1$center), type='l', col = "blue")
+lines(ellipse(sig2$cov, level = 0.5, centre = sig2$center), type='l', col = "red")
 
 dist1 <- FuzzyDistance(proms, mu1, amp)
 dist2 <- FuzzyDistance(proms, mu2, amp)
 print(paste("Intracluster score", sum(dist1, dist2)))
 print(paste("Interscore", sum((mu2 - mu1) ^ 2)))
 
+# Gaussian distribution
+intraprob1 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mean = mu1, sigma = sig1$cov))) / sum(weights1)
+intraprob2 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu2, sigma = sig2$cov))) / sum(weights2)
+interprob1 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu1, sig1$cov))) / sum(weights2)
+interprob2 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mu2, sig1$cov))) / sum(weights1)
+
+# # lets first simulate a bivariate normal sample
+# library(MASS)
+# bivn <- mvrnorm(1000, mu = mu1, Sigma = sig1$cov, 2)
+# 
+# # now we do a kernel density estimate
+# bivn.kde <- kde2d(bivn[,1], bivn[,2], n = 50)
+# 
+# # now plot your results
+# contour(bivn.kde)
+# image(bivn.kde)
+# persp(bivn.kde, phi = 45, theta = 30)
+# 
+# # fancy contour with image
+# image(bivn.kde); contour(bivn.kde, add = T)
+# 
+# # fancy perspective
+# persp(bivn.kde, phi = 45, theta = 30, shade = .1, border = NA)
 
 # # Multivariate linear regression  -----------------------------------------
 # 
