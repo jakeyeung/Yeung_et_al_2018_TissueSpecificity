@@ -1,4 +1,28 @@
-PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg"){
+add.alpha <- function(col, alpha=1){
+  if(missing(col))
+    stop("Please provide a vector of colours.")
+  apply(sapply(col, col2rgb)/255, 2, 
+        function(x) 
+          rgb(x[1], x[2], x[3], alpha=alpha))  
+}
+
+PromoterSpacePlots.nostics <- function(tpm.gauss.sigs, jgene, draw.ellipse = TRUE){
+  proms <- tpm.gauss.sigs$proms
+  n.proms <- ncol(proms)
+  plot(proms[, 1], proms[, 2], main = paste(jgene, "n.proms", n.proms))
+  
+  jcols <- vector(length = length(tpm.gauss.sigs$amp))
+  jcols[which(tpm.gauss.sigs$amp == 1)] <- "blue"
+  jcols[which(tpm.gauss.sigs$amp == 0)] <- "red"
+  text(proms[, 1], proms[, 2], labels = tpm.gauss.sigs$tissue, col = jcols)
+  # draw ellipse
+  if (draw.ellipse){
+    try(lines(ellipse(tpm.gauss.sigs$sig1$cov, level = 0.5, centre = tpm.gauss.sigs$sig1$center), type='l', col = "blue"), silent = T)
+    try(lines(ellipse(tpm.gauss.sigs$sig2$cov, level = 0.5, centre = tpm.gauss.sigs$sig2$center), type='l', col = "red"), silent = T)
+  }
+}
+
+PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg", draw.ellipse = TRUE, use.weights = TRUE){
   tpm.test <- subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT")
   
   test.svd <- GetPromoterUsage(tpm.test, jvar = jvar, do.svd = T, append.tiss = TRUE, get.means = TRUE)
@@ -18,14 +42,23 @@ PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg"){
   sig2 <- cov.wt(proms, wt = weights2)
   pi2 <- sum(weights2) / length(weights2)
   
-  myColoursAlpha <- sapply(weights1, function(a) add.alpha(1, alpha=a))
   plot(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], main = paste(jgene, "Amp range:", diff(range(amp))))
-  text(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], labels = test.svd$dat.mat.trans$tissue, col = myColoursAlpha)
+  if (use.weights){
+    myColoursAlpha <- sapply(weights1, function(a) add.alpha(1, alpha=a))
+    text(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], labels = test.svd$dat.mat.trans$tissue, col = myColoursAlpha)
+  } else {
+    jcols <- vector(length = length(amp))
+    jcols[which(amp == 1)] <- "blue"
+    jcols[which(amp == 0)] <- "red"
+    text(test.svd$dat.mat.trans[, 2], test.svd$dat.mat.trans[, 3], labels = test.svd$dat.mat.trans$tissue, col = jcols)
+  }
   points(mu1[1], mu1[2], pch = "*", col = "blue", cex = 5)
   points(mu2[1], mu2[2], pch = "*", col = "red", cex = 5)
   # draw ellipse
-  lines(ellipse(sig1$cov, level = 0.5, centre = sig1$center), type='l', col = "blue")
-  lines(ellipse(sig2$cov, level = 0.5, centre = sig2$center), type='l', col = "red")
+  if (draw.ellipse){
+    try(lines(ellipse(sig1$cov, level = 0.5, centre = sig1$center), type='l', col = "blue"), silent = T)
+    try(lines(ellipse(sig2$cov, level = 0.5, centre = sig2$center), type='l', col = "red"), silent = T)
+  }
   
   #   dist1 <- FuzzyDistance(proms, mu1, amp)
   #   dist2 <- FuzzyDistance(proms, mu2, amp)
@@ -63,7 +96,7 @@ CalculateGaussianCenters <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do
   mu2 <- sig2$center
   pi2 <- sum(weights2) / length(weights2)
   
-  return(list(sig1 = sig1, sig2 = sig2, proms = proms, amp = amp))
+  return(list(sig1 = sig1, sig2 = sig2, proms = proms, amp = amp, tissue = as.character(proms.full$dat.mat.trans$tissue)))
 }
 
 CalculateGaussianDists <- function(dat){

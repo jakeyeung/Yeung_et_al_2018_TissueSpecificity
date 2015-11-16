@@ -45,6 +45,7 @@ bedToUCSC <- function(toPlot, outpdf, leftwindow = 2000, rightwindow = 1999, jte
     jtempdir <- "/home/yeung/projects/tissue-specificity/plots/temp"
   }
   if(missing(theURL)){
+    # from View -> PDF URL from genome browser
     theURL <- "http://www.genome.ucsc.edu/cgi-bin/hgTracks?hgsid=451672941_fba5iOL1AK9ZwLVNqWeQrZj5fyTq&hgt.psOutput=on"
   }
   for(i in 1:nrow(toPlot)){
@@ -55,9 +56,12 @@ bedToUCSC <- function(toPlot, outpdf, leftwindow = 2000, rightwindow = 1999, jte
   
   # merge script
   tempfiles.name <- list.files(jtempdir, pattern="region_.*pdf")
+  # ordering
+  tempfiles.i <- as.numeric(sapply(tempfiles.name, function(s) strsplit(s, split = "_")[[1]][[2]]))
+  tempfiles.name <- tempfiles.name[order(tempfiles.i)]
   tempfiles.path <- file.path(jtempdir, tempfiles.name)
   mergePDF(outpdf, tempfiles.path)
-  rmstr <- paste0("rm ", jtempdir, "/region_.*pdf")
+  rmstr <- paste0("rm ", jtempdir, "/region*pdf")
   try(system(rmstr))
   
 }
