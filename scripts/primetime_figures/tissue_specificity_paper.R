@@ -689,7 +689,7 @@ dev.off()
 # Alt proms ---------------------------------------------------------------
 
 
-load("Robjs/alt_promoter_usage.mean_peak_amp.no_wfat.Robj")   # tpm.afe, tpm.avg.filt, tpm.fit
+load("Robjs/alt_promoter_usage.mean_peak_amp.no_wfat.Robj", verbose = T)   # tpm.afe, tpm.avg.filt, tpm.fit
 # plot examples
 # hits <- c("Upp2", "Insig2", "Ddc", "Slc45a3")
 hits <- c("Slc45a3", "Ddc", "Insig2")

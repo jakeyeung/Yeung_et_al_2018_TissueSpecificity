@@ -15,45 +15,50 @@ source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/OuterComplex.R")
 
+omega <- 2 * pi / 24
+filt.tiss <- c("WFAT")
 
 # Load --------------------------------------------------------------------
 
-load("/home/yeung/projects/nconds_results/fits_long.11_tiss_3_max.weight_raw.Robj", verbose=T)
 load("Robjs/dat.long.fixed_rik_genes.Robj")
+load("Robjs/dat.complex.fixed_rik_genes.Robj")
 
-fits.raw <- fits.long
+f1 <- "/home/yeung/projects/nconds_results/fits_long.11_tiss_3_max.weight_raw.Robj"
+# f2 <- "/home/yeung/projects/nconds_results/fits_long.11_tiss_11_max.weight_raw.Robj"
+# 
+# load(f1, verbose=T)
+# fits.long$n.rhyth <- NULL; fits.long$n.params <- NULL
+# fits.long1 <- fits.long
+# load(f2, verbose=T)
+# fits.long <- rbind(fits.long1, fits.long)
+# rm(fits.long1)
+
+load(f1)
 
 # fix weight = 0 by taking lowest weight.raw
-fits.long <- fits.long %>%
+fits.best <- fits.long %>%
   group_by(gene) %>%
   filter(weight.raw == min(weight.raw))
 
-omega <- 2 * pi / 24
-
-# dat.complex <- dat.long %>%
-#   group_by(gene, tissue) %>%
-#   do(ProjectToFrequency2(., omega, add.tissue=TRUE))
-load("Robjs/dat.complex.fixed_rik_genes.Robj")
-
-filt.tiss <- c("WFAT")
+# now to break ties of equal weight.raw, take highest weight
+fits.best <- fits.best %>% 
+  group_by(gene) %>%
+  filter(weight == max(weight))
 
 dat.complex <- subset(dat.complex, !tissue %in% filt.tiss)
 
 # Summarize by top --------------------------------------------------------
 
-fits.best <- fits.long %>%
-  group_by(gene) %>%
-  filter(weight == max(weight))
-
 fits.best <- fits.best[order(fits.best$weight, decreasing = TRUE), ]
 
 # COLLAPSE MODEL
-fits.best$model <- mapply(FilterModelByAmp, fits.best$model, fits.best$param.list, MoreArgs = list(amp.cutoff = 0.1))
+fits.best$model <- mapply(FilterModelByAmp, fits.best$model, fits.best$param.list, MoreArgs = list(amp.cutoff = 0.15))
 fits.best$n.params <- sapply(fits.best$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
 fits.best$n.rhyth <- sapply(fits.best$model, GetNrhythFromModel)
 fits.best$amp.avg <- mapply(GetAvgAmpFromParams, fits.best$param.list, fits.best$model)
 fits.best$phase.sd <- mapply(GetSdPhaseFromParams, fits.best$param.list, fits.best$model)
 fits.best$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.best$param.list, fits.best$model)
+fits.best$phase.avg <- mapply(GePhaseFromParams, fits.best$param.list, fits.best$model)
 
 # Get average amp and variance --------------------------------------------
 
@@ -68,6 +73,39 @@ ggplot(fits.best, aes(x = weight)) + geom_density() + facet_wrap(~n.rhyth)
 ggplot(fits.best, aes(x = weight, y = amp.avg)) + geom_point(alpha = 0.5) + facet_wrap(~n.rhyth)
 ggplot(fits.best, aes(x = amp.avg)) + geom_density() + facet_wrap(~n.rhyth) + scale_x_log10()
 
+ggplot(subset(fits.best, n.rhyth == 1), aes(x = phase.avg, y = amp.avg)) + geom_point(alpha = 0.7) + xlab("Phase (h)") + ylab("Amplitude") + facet_wrap(~model) +
+  scale_x_continuous(breaks=c(0, 6, 12, 18, 24)) + 
+  theme_bw(24) + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom")
+
+fits.tspec <- subset(fits.best, n.rhyth == 1)
+# order by number of genes
+fits.tspec.sum <- fits.tspec %>%
+  group_by(model) %>%
+  summarise(count = length(model))
+fits.tspec.sum <- fits.tspec.sum[order(fits.tspec.sum$count, decreasing = TRUE), ]
+fits.tspec$model <- factor(as.character(fits.tspec$model), levels = fits.tspec.sum$model)
+ggplot(fits.tspec, aes(y = phase.avg, x = amp.avg)) + 
+  geom_point(size=1.75) + 
+  coord_polar(theta = "y") + 
+  ylab("Phase (h)") + 
+  xlab("Amplitude") + 
+  facet_wrap(~model) +
+  scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) + 
+  theme_bw(24) + 
+  theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
+  expand_limits(x = 0)
+
+m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
+  geom_point(size = 0.5) +
+  coord_polar(theta = "y") + 
+  xlab(xlab) +
+  ylab(ylab) +
+  ggtitle(title) +
+  scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+
 fits.rhyth <- subset(fits.best, n.params > 0)
 fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
   cutoff <- 1
@@ -79,7 +117,9 @@ fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
 })
 ggplot(fits.rhyth, aes(x = weight, y = amp.avg, label = label)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth) + geom_text()
 ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.sd, y = amp.avg, label = label)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth) + geom_text()
-ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.sd, y = amp.avg, label = label)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth) + geom_text()
+ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg, label = label)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth) + geom_text()
+ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg)) + geom_point(alpha = 0.25) + facet_wrap(~n.rhyth)
+
 
 # Tissue-specific genes ---------------------------------------------------
 
@@ -149,7 +189,7 @@ genes.trip <- fits.trip$gene
 
 s.trip <- SvdOnComplex(subset(dat.complex, gene %in% genes.trip), value.var = "exprs.transformed")
 for (i in seq(3)){
-  eigens.trip <- GetEigens(s.trip, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+  eigens.trip <- GetEigens(s.trip, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   multiplot(eigens.trip$u.plot, eigens.trip$v.plot, layout = jlayout)  
 }
@@ -157,37 +197,47 @@ for (i in seq(3)){
 
 # Aorta BFAT --------------------------------------------------------------
 
-# Aorta and BFAT
-fits.bfataorta <- subset(fits.best, n.rhyth >= 2 & n.rhyth <= 3)
-# fits.bfataorta <- subset(fits.best, n.rhyth == 3)
-# fits.bfataorta <- subset(fits.best, n.rhyth == 2)
+# load("Robjs/fits.best.collapsed_models.Robj")
+# fits.best.bckup <- fits.best
+fits.bfataorta <- subset(fits.best, n.rhyth == 2)
+fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
+# fits.bfataorta <- fits.bfataorta[grep("Aorta;BFAT|BFAT;Aorta", fits.bfataorta$model), ]
 # fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
-fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT", fits.bfataorta$model), ]
-# fits.bfataorta <- subset(fits.best, model == "Aorta;BFAT" | model == "Adr;Aorta;BFAT")
 
 genes.bfataorta <- as.character(fits.bfataorta$gene)
 print(paste("Genes in bfat-aorta:", length(genes.bfataorta)))
 
-outobj <- PlotHeatmapNconds(fits.bfataorta, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
-
+#outobj <- PlotHeatmapNconds(fits.bfataorta, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 s.bfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfataorta & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
-for (i in seq(3)){
-  eigens.bfataorta <- GetEigens(s.bfataorta, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
-  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  multiplot(eigens.bfataorta$u.plot, eigens.bfataorta$v.plot, layout = jlayout)  
-}
+eigens.bfataorta <- GetEigens(s.bfataorta, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens.bfataorta$u.plot, eigens.bfataorta$v.plot, layout = jlayout)  
+
+
+# Adr,Aorta,BFAT
+fits.adrbfataorta <- subset(fits.best, n.rhyth == 3)
+fits.adrbfataorta <- fits.adrbfataorta[grep("Adr.*Aorta.*BFAT", fits.adrbfataorta$model), ]
+
+genes.adrbfataorta <- as.character(fits.adrbfataorta$gene)
+print(paste("Genes in bfat-aorta:", length(genes.adrbfataorta)))
+
+s.adrbfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.adrbfataorta & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+eigens.adrbfataorta <- GetEigens(s.adrbfataorta, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens.adrbfataorta$u.plot, eigens.adrbfataorta$v.plot, layout = jlayout)  
+
 
 
 # Pairs yo ----------------------------------------------------------------
 
-fits.liverpairs <- subset(fits.best, n.rhyth == 2 | n.rhyth == 3)
+fits.liverpairs <- subset(fits.best, n.rhyth == 3)
 fits.liverpairs <- fits.liverpairs[grep("Kidney.*Liver|Liver.*Kidney", fits.liverpairs$model), ]
 
 genes.liverpairs <- as.character(fits.liverpairs$gene)
 
 s.liverpairs <- SvdOnComplex(subset(dat.complex, gene %in% genes.liverpairs), value.var = "exprs.transformed")
 for (i in seq(3)){
-  eigens.liverpairs <- GetEigens(s.liverpairs, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4)
+  eigens.liverpairs <- GetEigens(s.liverpairs, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   multiplot(eigens.liverpairs$u.plot, eigens.liverpairs$v.plot, layout = jlayout)  
 }

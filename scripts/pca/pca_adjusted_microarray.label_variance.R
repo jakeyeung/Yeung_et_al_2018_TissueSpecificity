@@ -231,6 +231,77 @@ plot(density(diff.norm))
 
 plot(pca.p.parseval$eigen.est, eigenvals)
 
+
+# Global tissue differences and temporal differences ----------------------
+
+pca.global <- with(pca.p.sum, data.frame(T.inf.global = sum(T.inf * eigenvals), 
+                                         T.12.global = sum(T.12 * eigenvals), 
+                                         T.24.global = sum(T.24 *eigenvals), 
+                                         T.other = sum(T.other * eigenvals)))
+
+
+# Plot cos-part and sin-part ----------------------------------------------
+
+ggplot(subset(pca.long, pc == "PC14" & tissue != "WFAT"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
+ggplot(subset(pca.long, pc == "PC13" & tissue != "WFAT"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
+ggplot(subset(pca.long, pc == "PC15" & tissue != "WFAT"), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue)
+
+jtiss <- "Liver"
+jtisses <- c("Liver", "Kidney")
+minjpc <- 13
+maxjpc <- 19
+jpcs <- seq(minjpc, maxjpc)
+
+# library(devtools)
+# install_github("naef-lab/PhaseHSV")
+# start using PhaseHSV
+library(PhaseHSV)
+
+# explore and find PC13 vs PC17 to be interesting
+# for (i in jpcs){
+#   jpc1 <- paste0("PC", i)
+#   jjpcs <- seq(i + 1, maxjpc)
+#   if (i >= maxjpc) next
+#   for (j in jjpcs){
+#     jpc2 <- paste0("PC", j)
+#     print(paste(jpc1, jpc2))
+#     x <- subset(pca.long, pc == jpc1 & tissue == jtiss)$loading
+#     y <- subset(pca.long, pc == jpc2 & tissue == jtiss)$loading
+#     #     x <- subset(pca.long, pc == jpc1)$loading
+#     #     y <- subset(pca.long, pc == jpc2)$loading
+# #     x <- subset(pca.long, pc == jpc1 & tissue %in% jtisses)$loading
+# #     y <- subset(pca.long, pc == jpc2 & tissue %in% jtisses)$loading
+#     time <- as.numeric(subset(pca.long, pc == jpc1 & tissue == jtiss)$time)
+#     time <- time %% 24
+#     time.cols <- hsv(PhaseToHsv(2 * pi * time / 24, 0, 2 *pi), s=1, v=1)
+#     cols <- as.numeric(subset(pca.long, pc == jpc1)$tissue)
+#     plot(x, y, cex = 0.01, main = paste0(jtiss, " ", jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2)
+#     text(x, y, labels = time, col = time.cols)  
+#   }
+# }
+
+jpc1 <- "PC13"
+jpc2 <- "PC17"
+x <- subset(pca.long, pc == jpc1 & tissue == jtiss)$loading
+y <- subset(pca.long, pc == jpc2 & tissue == jtiss)$loading
+time <- as.numeric(subset(pca.long, pc == jpc1 & tissue == jtiss)$time)
+time <- time %% 24
+time.cols <- hsv(PhaseToHsv(2 * pi * time / 24, 0, 2 *pi), s=1, v=1)
+cols <- as.numeric(subset(pca.long, pc == jpc1)$tissue)
+plot(x, y, cex = 0.01, main = paste0(jtiss, " ", jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2)
+text(x, y, labels = time, col = time.cols)  
+
+jpc1 <- "PC1"
+jpc2 <- "PC2"
+x <- subset(pca.long, pc == jpc1)$loading
+y <- subset(pca.long, pc == jpc2)$loading
+tisslab <- subset(pca.long, pc == jpc1)$tissue
+timelab <- subset(pca.long, pc == jpc1)$time
+cols <- as.numeric(tisslab)
+tisstimelab <- paste(as.character(tisslab), as.character(timelab))
+plot(x, y, cex = 0.01, main = paste0(jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2)
+text(x, y, labels = tisstimelab, col = cols)  
+
 # # Summarize each PCA by its median T.max? ---------------------------------
 # 
 # pca.p.med <- pca.p %>%
