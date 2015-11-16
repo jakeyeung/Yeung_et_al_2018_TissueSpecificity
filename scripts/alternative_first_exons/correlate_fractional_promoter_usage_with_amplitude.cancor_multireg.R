@@ -12,13 +12,7 @@ source("scripts/functions/AlternativeFirstExonsFunctions.R")
 
 # Functions ---------------------------------------------------------------
 
-add.alpha <- function(col, alpha=1){
-  if(missing(col))
-    stop("Please provide a vector of colours.")
-  apply(sapply(col, col2rgb)/255, 2, 
-        function(x) 
-          rgb(x[1], x[2], x[3], alpha=alpha))  
-}
+
 
 
 # Main --------------------------------------------------------------------
@@ -126,9 +120,11 @@ jgene <- "Slc45a3"
 jgene <- "Pvalb"
 jgene <- "Cirbp"
 jgene <- "Ddc"
+jgene <- "Lipi"
+jgene <- "Fhl1"
+jgene <- "Rgs7"
 
-
-RunFuzzyDistance(subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT"))
+RunFuzzyDistance(subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT" & mean > 3.5))
 RunGaussianDistance(subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT"))
 
 tpm.test <- subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT")

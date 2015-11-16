@@ -66,18 +66,22 @@ tpm.counts <- tpm.counts[order(tpm.counts$counts, decreasing = T), ]
 counts.dic <- hash(as.character(tpm.counts$gene_name), tpm.counts$counts)
 tpm.afe.avg$nprom <- sapply(as.character(tpm.afe.avg$gene_name), function(jgene) counts.dic[[jgene]])
 
+cutoff <- 3
 start <- Sys.time()
-# tpm.mr <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss) %>%
+# tpm.mr <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss & mean > cutoff) %>%
 #   group_by(gene_name) %>%
 #   do(RunFuzzyDistance(., jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE))
-# save(tpm.mr, file = "Robjs/tpm.mr.fuzzy.Robj")
+# save(tpm.mr, file = "Robjs/tpm.mr.fuzzy.filt.Robj")
 
-tpm.gauss <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss) %>%
+tpm.gauss <- subset(tpm.afe.avg, nprom > 1 & ! tissue %in% filt.tiss & mean > cutoff) %>%
   group_by(gene_name) %>%
   do(sigs = CalculateGaussianCenters(.))
-tpm.gauss2 <- tpm.gauss %>% 
+tpm.gauss2 <- subset(tpm.gauss, !is.na(sigs)) %>%
   group_by(gene_name) %>%
   do(CalculateGaussianDists(.))
-tpm.gauss <- cbind(tpm.gauss2, subset(tpm.gauss, select = -gene_name))
-save(tpm.gauss, file = "Robjs/tpm.gauss.Robj")
+
+genelist <- tpm.gauss2$gene_name
+tpm.gauss <- cbind(tpm.gauss2, subset(tpm.gauss, gene_name %in% genelist, select = -gene_name))
+# tpm.gauss <- cbind(tpm.gauss2, subset(tpm.gauss, select = -gene_name))
+save(tpm.gauss, file = "Robjs/tpm.gauss2.filt.Robj")
 print(Sys.time() - start)
