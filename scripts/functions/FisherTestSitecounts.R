@@ -1,4 +1,5 @@
 FisherTestSitecounts <- function(dat, cutoff, show.table=FALSE){
+  # expects dat to have has.motif, sitecount
   dat$has.motif <- sapply(dat$sitecount, function(s){
     if (s > cutoff){
       return(TRUE)
