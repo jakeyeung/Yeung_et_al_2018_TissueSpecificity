@@ -684,7 +684,61 @@ for (jmodel in fits.count$model[2:50]){
 dev.off()
 
 
+# Figure 2: supplemental --------------------------------------------------
 
+dat.mean.rnaseq <- subset(dat.long, experiment == "rnaseq") %>%
+  group_by(gene, tissue, experiment) %>%
+  summarise(exprs.mean = mean(exprs))
+
+pdf(file.path(outdir, "supplemental.mean_exprs_modules.pdf"))
+jtiss <- "Liver"
+Liver.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+PlotMeanExprsOfModel(dat.mean.rnaseq, Liver.genes, jtiss)
+
+jtiss <- "Adr"
+Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+PlotMeanExprsOfModel(dat.mean.rnaseq, Adr.genes, jtiss)
+
+jtiss <- "BFAT"
+BFAT.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+PlotMeanExprsOfModel(dat.mean.rnaseq, BFAT.genes, jtiss)
+
+jtiss <- "Mus"
+Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+PlotMeanExprsOfModel(dat.mean.rnaseq, Mus.genes, jtiss)
+
+jtiss <- "Kidney;Liver"
+PlotMeanExprsOfModel(dat.mean.rnaseq, genes.livkid, jtiss)
+
+jtiss <- "Adr;Aorta;BFAT"
+PlotMeanExprsOfModel(dat.mean.rnaseq, genes.adrbfataorta, jtiss)
+
+jtiss <- "Aorta;BFAT;Mus"
+PlotMeanExprsOfModel(dat.mean.rnaseq, genes.bfataortamus, jtiss)
+dev.off()
+
+pdf(file.path(outdir, "supplemental.overlay_exprs.pdf"))
+jtiss <- "Adr"
+Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+m <- PlotOverlayTimeSeries(dat.long, Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m)
+
+jtiss <- "BFAT"
+BFAT.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+m <- PlotOverlayTimeSeries(dat.long, BFAT.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m)
+
+jtiss <- "Mus"
+Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m)
+
+jtiss <- "Liver"
+Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m)
+
+dev.off()
 
 # Alt proms ---------------------------------------------------------------
 
@@ -741,4 +795,32 @@ ggplot(tpm.summary, aes(x = relamp.range, y = tpm_norm.range, label = label, alp
         panel.grid.minor = element_blank())
 dev.off()
 
+load("Robjs/tpm.gauss.bic_models.Robj", verbose=T)
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.20.phase_sd_maxdiff_avg.Robj", verbose=T)
+key <- as.character(fits.best$gene)
+val <- fits.best$amp.avg
+dic <- hash(key, val)
+tpm.gauss$amp.avg <- sapply(tpm.gauss$gene_name, function(g) dic[[as.character(g)]])
 
+tpm.gauss$jlabel <- mapply(function(gene_name, center.dists){
+  if (center.dists > 0.2){
+    return(gene_name)
+  } else {
+    return("")
+  }
+}, as.character(tpm.gauss$gene_name), tpm.gauss$center.dists)
+
+pdf(file.path(outdir, "alt_prom_global_gauss.pdf"))
+ggplot(tpm.gauss, aes(x = center.dists, y = amp.avg, label = jlabel)) + geom_point(alpha = 0.1) + geom_text() + theme_bw(24) + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) + 
+  xlab("Promoter usage difference (rhyth vs flat)") + 
+  ylab("Average amplitude of rhythmic tissues")
+
+dev.off()
+
+pdf(file.path(outdir, "alt_prom_gauss_examples.pdf"))
+jgene <- "Ddc"
+PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == jgene)$sigs[[1]], jgene = jgene, jtitle = "Ddc promoter usage across tissues")
+dev.off()
