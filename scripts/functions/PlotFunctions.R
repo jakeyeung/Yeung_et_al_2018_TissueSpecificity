@@ -1,6 +1,38 @@
 library(ggplot2)
 library(grid)
 
+PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha = 0.05, jtitle = ""){
+  dat.sub <- subset(dat.long, gene %in% genes & tissue %in% tissues)
+  
+  # scale and center
+  dat.sub <- dat.sub %>%
+    group_by(gene, experiment) %>%
+    mutate(exprs.scaled = scale(exprs, center = T, scale = jscale))
+  
+  m <- ggplot(subset(dat.sub), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~experiment) + ggtitle(jtitle)
+  m <- m + theme_bw(24) + 
+    theme(aspect.ratio=1,
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+  if (jscale){
+    .ylab <- "Exprs (scaled)"
+  } else {
+    .ylab <- "Exprs (centered)"
+  }
+  m <- m + ylab(.ylab) + xlab("Time (CT)")
+}
+
+PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel){
+  dat.mean.sub <- subset(dat.mean, gene %in% genes)
+  m <- ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot() + theme_bw(18) + 
+    theme(aspect.ratio=1,
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank()) +
+    xlab("") + ylab("Mean expression of gene") +
+    ggtitle(paste0("Mean expression: ", length(genes), " in ", jmodel, " module"))
+  return(m)
+}
+
 GetHistCounts <- function(dat, br = 0:24){
   # get histogram counts to plot histogram circular ggplot2
   h <- hist(dat$phase.avg, br=br,plot=FALSE)

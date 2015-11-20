@@ -6,10 +6,14 @@ add.alpha <- function(col, alpha=1){
           rgb(x[1], x[2], x[3], alpha=alpha))  
 }
 
-PromoterSpacePlots.nostics <- function(tpm.gauss.sigs, jgene, draw.ellipse = TRUE){
+PromoterSpacePlots.nostics <- function(tpm.gauss.sigs, jgene, jtitle, draw.ellipse = TRUE){
+  if (missing(jtitle)){
+    jtitle <- paste(jgene, "n.proms", n.proms)
+  }
   proms <- tpm.gauss.sigs$proms
   n.proms <- ncol(proms)
-  plot(proms[, 1], proms[, 2], main = paste(jgene, "n.proms", n.proms))
+  plot(proms[, 1], proms[, 2], main = jtitle, xlab = "Promoter usage (1st component)", ylab = "Promoter usage (2nd component)")
+  par(cex.axis=1, cex.lab=2, cex.main=2, cex.sub=1)
   
   jcols <- vector(length = length(tpm.gauss.sigs$amp))
   jcols[which(tpm.gauss.sigs$amp == 1)] <- "blue"
