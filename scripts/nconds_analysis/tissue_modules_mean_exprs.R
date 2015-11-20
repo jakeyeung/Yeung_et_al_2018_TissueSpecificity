@@ -37,6 +37,17 @@ PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha =
   m <- m + ylab(.ylab) + xlab("Time (CT)")
 }
 
+PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel){
+  dat.mean.sub <- subset(dat.mean, gene %in% genes)
+  m <- ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot() + theme_bw(24) + 
+    theme(aspect.ratio=1,
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank()) +
+    xlab("") + ylab("Mean expression of gene") +
+    ggtitle(paste0("Mean expression level of genes in ", jmodel, " module"))
+  return(m)
+}
+
 # Load --------------------------------------------------------------------
 
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.20.phase_sd_maxdiff_avg.Robj")
@@ -82,6 +93,17 @@ m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jal
 print(m)
 
 
+
+# Liver -------------------------------------------------------------------
+
+
+jtiss <- "Liver"
+Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+
+m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m)
+
+
 # Is Liver-specific genes liver-specific by mean exprs? -------------------
 
 jtiss <- "Liver"
@@ -93,12 +115,30 @@ rownames(dat.mat) <- dat.mat$gene; dat.mat$gene <- NULL
 
 dat.pca <- prcomp(t(dat.mat), center = T, scale. = T)
 screeplot(dat.pca, type = "lines")
-
 barplot(dat.pca$x[, 1])
 
 # boxplot of genes
-ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot()
+ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot() + theme_bw(24) + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  xlab("") + ylab("Mean expression of gene") +
+  ggtitle(paste0("Mean expression level of genes in ", jtiss, " module"))
 
+
+# What about Adr BFAT Mus -------------------------------------------------
+
+jtiss <- "Adr"
+Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+PlotMeanExprsOfModel(dat.mean, Adr.genes, jtiss)
+
+jtiss <- "BFAT"
+BFAT.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+PlotMeanExprsOfModel(dat.mean, BFAT.genes, jtiss)
+
+jtiss <- "Mus"
+Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+PlotMeanExprsOfModel(dat.mean, Mus.genes, jtiss)
 
 # Fishers test to say it is not enriched for highly expressed genes -------
 
@@ -132,3 +172,41 @@ liver.exprs.tbl <- table(dat.mean.sub2$is.exprs, dat.mean.sub2$model)
 fisher.test(liver.exprs.tbl)
 
 
+# Is it contamination in Adr? ---------------------------------------------
+
+# lets find genes highly expressed in liver but not expressed in adr
+
+# most varying genes in adrenal gland
+dat.var <- subset(dat.long, experiment == "rnaseq" & tissue %in% c("Adr", "Liver")) %>%
+  group_by(gene, tissue, experiment) %>%
+  summarise(mean.exprs = mean(exprs), var.exprs = var(exprs))
+
+dat.var <- dat.var[order(dat.var$var.exprs, decreasing = TRUE), ]
+
+# plot hits
+hits <- dat.var$gene[1:50]
+dat.sub <- subset(dat.long, gene %in% hits)
+
+
+
+pdf("plots/is_adr_contaminted.pdf")
+for (jgene in dat.var$gene){
+  print(PlotGeneAcrossTissues(subset(dat.sub, gene == jgene)))
+}
+dev.off()
+
+
+# What do rhythmic genes in adrenal gland look like? ----------------------
+
+m <- PlotGeneAcrossTissues(subset(dat.long, gene == "Rgs16"))
+m2 <- PlotGeneAcrossTissues(subset(dat.long, gene == "Cps1"))
+jlayout <- jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
+multiplot(m, m2, layout = jlayout)
+
+dat.mean.adrliv <- subset(dat.mean, tissue %in% c("Liver", "Adr"))
+
+dat.mean.diff.adrliv <- dat.mean.adrliv %>%
+  group_by(gene) %>%
+  filter(exprs.mean[1] < 0.5 & exprs.mean[2] > 6)
+
+head(dat.mean.diff.adrliv[order(dat.mean.diff.adrliv$exprs.mean, decreasing = T), ])

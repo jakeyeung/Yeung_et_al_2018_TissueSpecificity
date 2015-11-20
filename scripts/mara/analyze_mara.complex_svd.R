@@ -25,8 +25,9 @@ indir <- "/home/yeung/projects/tissue-specificity/results/MARA/high.entropy.gene
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.50000"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.500"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.5000"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.50000/expressed_genes_deseq_int.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.50000/expressed_genes_deseq_int.centeredTRUE"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/Liver.centeredTRUE"
 
 act.long <- LoadActivitiesLong(indir)
 
@@ -44,7 +45,7 @@ act.long <- LoadActivitiesLong(indir)
 # # PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "REST.p3"))
 # PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2" & tissue %in% c("Mus", "BFAT")))
-# PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "RXRG_dimer.p3"))
 # PlotActivitiesWithSE(subset(act.long, gene == "RUNX1..3.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "SRF.p3"))
@@ -58,6 +59,7 @@ act.long <- LoadActivitiesLong(indir)
 # PlotActivitiesWithSE(subset(act.long, gene == "PAX2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "FOXA2.p3"))
 # PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "SNAI1..3.p2"))
 
 # To complex --------------------------------------------------------------
 

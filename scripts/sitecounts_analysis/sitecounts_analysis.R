@@ -175,8 +175,8 @@ N.sub.base.livertw$model <- sapply(N.sub.base.livertw$model, function(m){
 })
 
 start <- Sys.time()
-# cutoffs <- seq(from = 1, to = 5, by = 0.5)
-cutoffs <- seq(from = 1, to = 1.5, by = 0.1)
+cutoffs <- seq(from = 1, to = 5, by = 0.5)
+# cutoffs <- seq(from = 1, to = 1.5, by = 0.1)
 N.ftest.ltw.all <- data.frame()
 for (cutoff in cutoffs){
   print(cutoff)
@@ -194,7 +194,9 @@ N.ftest.ltw.sum <- N.ftest.ltw.all %>%
 
 ggplot(N.ftest.ltw.sum, aes(x = -log10(p.value), y = odds.ratio, label = motif)) + geom_point() + geom_text()
 
-jcutoff <- 0.5
+
+jcutoff <- 2.5
+FisherTestSitecounts(subset(N.sub.base.livertw, motif == "ATF5_CREB3.p2"), cutoff=jcutoff, show.table = TRUE)
 FisherTestSitecounts(subset(N.sub.base.livertw, motif == "NFKB1_REL_RELA.p2"), cutoff=jcutoff, show.table = TRUE)
 FisherTestSitecounts(subset(N.sub.base.livertw, motif == "bHLH_family.p2"), cutoff=jcutoff, show.table = TRUE)
 FisherTestSitecounts(subset(N.sub.base.livertw, motif == "RORA.p2"), cutoff=jcutoff, show.table = TRUE)
@@ -206,6 +208,7 @@ FisherTestSitecounts(subset(N.sub.base.livertw, motif == "ZBTB16.p2"), cutoff=jc
 FisherTestSitecounts(subset(N.sub.base.livertw, motif == "ONECUT1.2.p2"), cutoff=jcutoff, show.table = TRUE)
 FisherTestSitecounts(subset(N.sub.base.livertw, motif == "PITX1..3.p2"), cutoff=jcutoff, show.table = TRUE)
 
+PlotGeneAcrossTissues(subset(dat.long, gene == "Egr1"))
 
 # Compare with promoters --------------------------------------------------
 
@@ -255,7 +258,7 @@ dat.mean <- subset(dat.long, experiment == "rnaseq") %>%
   group_by(gene, tissue) %>%
   summarise(exprs = mean(exprs))
 
-exprs.cutoff <- 4
+exprs.cutoff <- 2
 dat.mean$in.liver <- mapply(function(e, tiss) if (e <= exprs.cutoff & tiss == "Liver") return(TRUE) else return(FALSE), dat.mean$exprs, dat.mean$tissue)
 
 genes.notinliver.all <- subset(dat.mean, in.liver == TRUE)$gene
@@ -292,10 +295,16 @@ print(Sys.time() - start)
 
 N.ftest.ltw.sum <- N.ftest.ltw.all %>%
   group_by(motif) %>%
-  summarise(odds.ratio = mean(odds.ratio), p.value = mean(p.value))
+  summarise(odds.ratio = mean(odds.ratio), p.value.minuslog = mean(-log10(p.value)))
 
-ggplot(N.ftest.ltw.sum, aes(x = -log10(p.value), y = odds.ratio, label = motif)) + geom_point() + geom_text()
+ggplot(N.ftest.ltw.sum, aes(x = p.value.minuslog, y = odds.ratio, label = motif)) + geom_point() + geom_text()
 
 
 jcutoff <- 5
 FisherTestSitecounts(subset(N.sub.base.livernotexprs, motif == "ONECUT1.2.p2"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livernotexprs, motif == "HNF1A.p2"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livernotexprs, motif == "HNF4A_NR2F1.2.p2"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livernotexprs, motif == "NR6A1.p2"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livernotexprs, motif == "PITX1..3.p2"), cutoff=jcutoff, show.table = TRUE)
+
+PlotGeneAcrossTissues(subset(dat.long, gene == "Pitx3"))
