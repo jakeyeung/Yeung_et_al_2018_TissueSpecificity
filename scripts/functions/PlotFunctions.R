@@ -22,8 +22,16 @@ PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha =
   m <- m + ylab(.ylab) + xlab("Time (CT)")
 }
 
-PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel){
+PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE){
   dat.mean.sub <- subset(dat.mean, gene %in% genes)
+  if (sorted){
+    # sort by highesst to lowest mean expression
+    dat.mean.sum <- dat.mean.sub %>%
+      group_by(tissue) %>%
+      summarise(mean.exprs = mean(exprs.mean))
+    dat.mean.sum <- dat.mean.sum[order(dat.mean.sum$mean.exprs, decreasing = T), ]
+    dat.mean.sub$tissue <- factor(as.character(dat.mean.sub$tissue), levels = as.character(dat.mean.sum$tissue))
+  }
   m <- ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot() + theme_bw(18) + 
     theme(aspect.ratio=1,
           panel.grid.major = element_blank(),
