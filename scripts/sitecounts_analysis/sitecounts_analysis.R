@@ -15,7 +15,6 @@ dist <- 50000  # needs rescaling
 # sitecounts.path <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/encode_1000_dist_sum_multigene/sitecounts.1000.multigene.mat"
 # dist <- 1000
 
-
 # Function ----------------------------------------------------------------
 
 
@@ -23,12 +22,15 @@ dist <- 50000  # needs rescaling
 # Load --------------------------------------------------------------------
 
 N <- read.table(sitecounts.path, header = TRUE)
-# load("Robjs/dat.long.fixed_rik_genes.Robj")
-# load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.20.phase_sd_maxdiff_avg.Robj")
-# load("Robjs/tpm.gauss.bic_models.Robj")
+load("Robjs/dat.long.fixed_rik_genes.Robj")
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.20.phase_sd_maxdiff_avg.Robj")
+load("Robjs/tpm.gauss.bic_models.Robj")
 
 # ggplot(tpm.gauss, aes(x = center.dists, y = intrascore2, label = gene_name)) + geom_point(alpha = 0.1) + scale_y_log10() + geom_text()
 # PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == "Insig2")$sigs[[1]], "Insig2", draw.ellipse = T)
+
+source("scripts/functions/FisherTestSitecounts.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
 
 # Make long ---------------------------------------------------------------
 
@@ -115,10 +117,11 @@ print(fisher.test(N.table))
 
 # Enrichment for all TFs --------------------------------------------------
 
-N.sub.base <- subset(N.long, (model == "Liver" | model == ""))
+N.sub.base <- subset(N.long, (model == "Adr" | model == ""))
 
 start <- Sys.time()
 cutoffs <- seq(from = 1, to = 5, by = 0.5)
+# cutoffs <- seq(from = 0.5, to = 2.5, by = 0.5)
 N.ftest.all <- data.frame()
 for (cutoff in cutoffs){
   print(cutoff)
@@ -134,8 +137,9 @@ N.ftest.sum <- N.ftest.all %>%
   group_by(motif) %>%
   summarise(odds.ratio = mean(odds.ratio), p.value = mean(p.value))
 
-ggplot(N.ftest.sum, aes(x = -log10(p.value), y = odds.ratio, label = motif)) + geom_point() + geom_text()
+ggplot(N.ftest.sum, aes(y = -log10(p.value), x = odds.ratio, label = motif)) + geom_point() + geom_text()
 
+FisherTestSitecounts(subset(N.sub.base, motif == "RORA.p2"), cutoff = 5)
 
 # Enrichment for all TFs: Liver versus [t]issue [w]ide ------------------------------
 
@@ -195,18 +199,59 @@ PlotGeneAcrossTissues(subset(dat.long, gene == "Egr1"))
 
 load("Robjs/N.long.promoters_500.Robj")
 
-models.tw <- sort(as.character(unique(subset(fits.best, n.rhyth >= 8)$model)))
-N.sub.base.livertw <- subset(N.long, model %in% c(models.tw, "Liver"))
+# models.tw <- sort(as.character(unique(subset(fits.best, n.rhyth >= 8)$model)))
+models.tw <- ""
+
+jmodel <- "Mus"
+jtiss <- c("Mus")
+
+fits.adrbfataorta <- subset(fits.best, n.rhyth == 3)
+fits.adrbfataorta <- fits.adrbfataorta[grep("Adr.*Aorta.*BFAT", fits.adrbfataorta$model), ]
+length(unique(fits.adrbfataorta$gene))
+jmodel <- unique(as.character(fits.adrbfataorta$model))
+jtiss <- jmodel
+
+fits.bfataortamus <- subset(fits.best, n.rhyth == 3)
+fits.bfataortamus <- fits.bfataortamus[grep("Aorta.*BFAT.*Mus", fits.bfataortamus$model), ]
+jmodel <- unique(as.character(fits.adrbfataorta$model))
+jtiss <- jmodel
+
+fits.bfataorta <- subset(fits.best, n.rhyth == 2)
+fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
+jmodel <- unique(as.character(fits.bfataorta$model))
+# jmodel <- c(jmodel, "BFAT")  # include tissue-specific module BFAT if you want
+jtiss <- jmodel
+
+fits.livkid <- subset(fits.best, n.rhyth == 2)
+fits.livkid <- fits.livkid[grep("Liver.*Kidney|Kidney.*Liver", fits.livkid$model), ]
+jmodel <- unique(as.character(fits.livkid$model))
+jtiss <- jmodel
+
+# the Aorta,BFAT antiphasic module
+fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 11)
+fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
+jmodel <- unique(as.character(fits.bfataorta$model))
+jtiss <- jmodel
+
+# Tissue-wide
+fits.tw <- subset(fits.best, n.rhyth >= 8)
+jmodel <- unique(as.character(fits.tw$model))
+jtiss <- jmodel
+
+N.sub.base.livertw <- subset(N.long, model %in% c(models.tw, jmodel))
 
 length(unique(subset(N.sub.base.livertw, model %in% models.tw)$gene))
+# length(fits.livkid <- fits.livkid[grep("Liver.*Kidney|Kidney.*Liver", fits.livkid$model), ]$gene)
 
 N.sub.base.livertw$model <- sapply(N.sub.base.livertw$model, function(m){
-  if (m != "Liver"){
-    return("TissueWide")
+  if (!m %in% jtiss){
+    return("Flat")
   } else {
-    return("Liver")
+    return("Rhyth")
   }
 })
+
+length(unique(subset(N.sub.base.livertw, model == "Rhyth")$gene))
 
 start <- Sys.time()
 cutoffs <- seq(from = 0.4, to = 0.8, by = 0.1)
@@ -225,10 +270,16 @@ N.ftest.ltw.sum <- N.ftest.ltw.all %>%
   group_by(motif) %>%
   summarise(odds.ratio = mean(odds.ratio), p.value = mean(p.value))
 
-ggplot(N.ftest.ltw.sum, aes(x = -log10(p.value), y = odds.ratio, label = motif)) + geom_point() + geom_text()
+ggplot(N.ftest.ltw.sum, aes(y = -log10(p.value), x = odds.ratio, label = motif)) + geom_point() + geom_text()
 
+jcutoff <- 0.6
+FisherTestSitecounts(subset(N.sub.base.livertw, motif == "HNF1A.p2"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livertw, motif == "MEF2.A.B.C.D..p2"), cutoff=jcutoff, show.table = TRUE)
 FisherTestSitecounts(subset(N.sub.base.livertw, motif == "NFIL3.p2"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livertw, motif == "RORA.p2"), cutoff=jcutoff, show.table = TRUE)
 FisherTestSitecounts(subset(N.sub.base.livertw, motif == "ELK1.4_GABP.A.B1..p3"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livertw, motif == "FOX.C1.C2..p2"), cutoff=jcutoff, show.table = TRUE)
+FisherTestSitecounts(subset(N.sub.base.livertw, motif == "bHLH_family.p2"), cutoff=jcutoff, show.table = TRUE)
 
 
 # Compare with non-expressed genes in Liver -------------------------------
