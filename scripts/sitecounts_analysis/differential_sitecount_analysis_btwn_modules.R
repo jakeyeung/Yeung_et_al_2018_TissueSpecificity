@@ -121,7 +121,7 @@ FisherTestSitecounts(subset(N.sub, motif == "AIRE.p2"), cutoff=1, show.table = T
 
 # Reduce clutter ----------------------------------------------------------
 
-oddsrat.cutoff <- 1.6
+oddsrat.cutoff <- 1.7
 test.sum$label <- mapply(function(jmotif, oddsrat){
   if (oddsrat > oddsrat.cutoff){
     return(as.character(jmotif))
