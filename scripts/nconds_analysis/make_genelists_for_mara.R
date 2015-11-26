@@ -7,7 +7,7 @@ dir.create(writedir)
 
 # load --------------------------------------------------------------------
 
-load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.20.phase_sd_maxdiff_avg.Robj", verbose=T)
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 
 
 
@@ -25,12 +25,35 @@ for (g in genes.liver){
 }
 sink()
 
-modelname <- "AdrBFATMus"
-fname <- paste0(modelname, ".txt")
-fits.bfataorta <- fits.best[grep("Aorta.*BFAT", fits.best$model), ]
+modelname <- "TissueWide"
 
+fname <- paste0(modelname, ".txt")
+genes.tw <- as.character(subset(fits.best, n.rhyth >= 8)$gene)
 sink(file = file.path(writedir, fname))
-for (g in genes.liver){
+for (g in genes.tw){
   cat(g)
   cat("\n")
 }
+sink()
+
+
+# modelname <- "AdrBFATMus"
+# fname <- paste0(modelname, ".txt")
+# fits.bfataorta <- fits.best[grep("Aorta.*BFAT", fits.best$model), ]
+# 
+# sink(file = file.path(writedir, fname))
+# for (g in genes.liver){
+#   cat(g)
+#   cat("\n")
+# }
+# 
+# modelname <- "AdrBFATGrep"
+# fname <- paste0(modelname, ".txt")
+# fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 11)
+# fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
+# 
+# sink(file = file.path(writedir, fname))
+# for (g in genes.liver){
+#   cat(g)
+#   cat("\n")
+# }
