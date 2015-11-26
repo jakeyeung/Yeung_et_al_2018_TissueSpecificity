@@ -16,41 +16,11 @@ source("scripts/functions/PlotGeneAcrossTissues.R")
 
 # Functions ---------------------------------------------------------------
 
-PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha = 0.05, jtitle = ""){
-  dat.sub <- subset(dat.long, gene %in% genes & tissue %in% tissues)
-  
-  # scale and center
-  dat.sub <- dat.sub %>%
-    group_by(gene, experiment) %>%
-    mutate(exprs.scaled = scale(exprs, center = T, scale = jscale))
-  
-  m <- ggplot(subset(dat.sub), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~experiment) + ggtitle(jtitle)
-  m <- m + theme_bw(24) + 
-    theme(aspect.ratio=1,
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())
-  if (jscale){
-    .ylab <- "Exprs (scaled)"
-  } else {
-    .ylab <- "Exprs (centered)"
-  }
-  m <- m + ylab(.ylab) + xlab("Time (CT)")
-}
-
-PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel){
-  dat.mean.sub <- subset(dat.mean, gene %in% genes)
-  m <- ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot() + theme_bw(24) + 
-    theme(aspect.ratio=1,
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank()) +
-    xlab("") + ylab("Mean expression of gene") +
-    ggtitle(paste0("Mean expression level of genes in ", jmodel, " module"))
-  return(m)
-}
 
 # Load --------------------------------------------------------------------
 
-load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.20.phase_sd_maxdiff_avg.Robj")
+# load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.20.phase_sd_maxdiff_avg.Robj")
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
 load("Robjs/dat.long.fixed_rik_genes.Robj")
 
 
@@ -104,6 +74,20 @@ m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jal
 print(m)
 
 
+
+# Aorta-BFAT module -------------------------------------------------------
+
+fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 11)
+fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
+genes.bfataorta <- as.character(fits.bfataorta$gene)
+
+jtiss <- "Aorta-BFAT"
+m <- PlotOverlayTimeSeries(dat.long, genes.bfataorta, tissues = c("Aorta", "BFAT"), jscale = T, jalpha = 0.1, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m)
+
+jgene <- "Myot"
+PlotRnaseqAcrossTissues(subset(dat.long, gene == jgene & experiment == "rnaseq" & tissue != "WFAT"), jtitle = "Myot expression in RNA-Seq")
+
 # Is Liver-specific genes liver-specific by mean exprs? -------------------
 
 jtiss <- "Liver"
@@ -130,7 +114,7 @@ ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot() + theme_b
 
 jtiss <- "Adr"
 Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
-PlotMeanExprsOfModel(dat.mean, Adr.genes, jtiss)
+PlotMeanExprsOfModel(dat.mean, Adr.genes, jtiss, sorted = TRUE)
 
 jtiss <- "BFAT"
 BFAT.genes <- as.character(subset(fits.best, model == jtiss)$gene)
@@ -139,6 +123,21 @@ PlotMeanExprsOfModel(dat.mean, BFAT.genes, jtiss)
 jtiss <- "Mus"
 Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 PlotMeanExprsOfModel(dat.mean, Mus.genes, jtiss)
+
+fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 11)
+# fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
+fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
+(jmodel <- unique(as.character(fits.bfataorta$model)))
+# jmodel <- "Aorta;BFAT"
+jtiss <- "Discordant Module"
+bfataorta.genes <- as.character(subset(fits.best, model %in% jmodel)$gene)
+PlotMeanExprsOfModel(dat.mean, bfataorta.genes, jtiss)
+
+fits.adrbfataorta <- subset(fits.best, n.rhyth == 3)
+fits.adrbfataorta <- fits.adrbfataorta[grep("Adr.*Aorta.*BFAT", fits.adrbfataorta$model), ]
+genes.adrbfataorta <- as.character(fits.adrbfataorta$gene)
+jtiss <- "Adr-Aorta-BFAT"
+PlotMeanExprsOfModel(dat.mean, genes.adrbfataorta, jtiss)
 
 # Fishers test to say it is not enriched for highly expressed genes -------
 
