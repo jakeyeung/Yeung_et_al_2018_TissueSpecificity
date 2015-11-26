@@ -76,6 +76,7 @@ PlotRnaseqAcrossTissues <- function(dat, jtitle){
     ylab(label = "log2 mRNA expression") +
     xlab("CT") +
     scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
+    theme_bw(24) + 
     theme(axis.text.x=element_text(angle=90,vjust = 0))
   return(p)
 }

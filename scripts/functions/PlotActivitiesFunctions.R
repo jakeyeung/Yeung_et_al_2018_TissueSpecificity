@@ -43,6 +43,31 @@ PlotActivitiesWithSE <- function(dat, jtitle, showSE = TRUE){
   }
 }
 
+PlotActivitiesWithSE.rnaseq <- function(dat, jtitle, showSE = TRUE){
+  jgene <- unique(dat$gene)
+  if (missing(jtitle)){
+    jtitle <- jgene
+  }
+  if (showSE){
+    ggplot(dat, 
+           aes(x = time, y = exprs)) +
+      geom_line() +
+      geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
+      facet_wrap(~tissue) + 
+      xlab("CT") +
+      ylab("Activity") + 
+      ggtitle(jtitle)
+  } else {
+    ggplot(dat, 
+           aes(x = time, y = exprs)) +
+      geom_line() +
+      facet_wrap(~tissue) + 
+      xlab("CT") +
+      ylab("Activity") + 
+      ggtitle(jtitle)
+  }
+}
+
 PlotMeanActivitiesWithSE <- function(dat){
   jgene <- unique(dat$gene)
   ggplot(dat,

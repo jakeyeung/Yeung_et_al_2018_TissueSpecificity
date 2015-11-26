@@ -9,11 +9,19 @@ PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha =
     group_by(gene, experiment) %>%
     mutate(exprs.scaled = scale(exprs, center = T, scale = jscale))
   
-  m <- ggplot(subset(dat.sub), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~experiment) + ggtitle(jtitle)
-  m <- m + theme_bw(24) + 
-    theme(aspect.ratio=1,
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())
+  if (length(tissues) == 1){
+    m <- ggplot(subset(dat.sub), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~experiment) + ggtitle(jtitle)
+    m <- m + theme_bw(24) + 
+      theme(aspect.ratio=1,
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank()) 
+  } else {
+    m <- ggplot(subset(dat.sub, experiment == "rnaseq"), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~tissue) + ggtitle(jtitle)
+    m <- m + theme_bw(24) + 
+      theme(aspect.ratio=1,
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank()) 
+  }
   if (jscale){
     .ylab <- "Exprs (scaled)"
   } else {
@@ -763,7 +771,7 @@ PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellows
             distfun = function(x) dist(x, method = dist.method))
 }
 
-PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", blueend = -0.5, blackend = 0.5, min.n = -3, max.n = 3){
+PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", blueend = -0.5, blackend = 0.5, min.n = -3, max.n = 3, remove.gene.labels=FALSE, jlabRow = NULL, jlabCol = NULL){
   
   # fits.best.sub <- subset(fits.best, model == jmodel)
   # fits.best.sub <- subset(fits.best, gene %in% genes.tw )
@@ -826,7 +834,7 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
   TEXT_X_LOC <<- cond_begins + cond_mid  # a vector in middle of sample, can put text labels conveniently.
   TEXT_Y_LOC <<- 0.99 * length(genes)  # number of genes
   C_NAME <<- unique(condi_name)
-  HLINE_Y_LOC <- 
+  # HLINE_Y_LOC <- 
     
     # mat[1, grep(tiss[[1]], colnames(mat))] <- 1
     # mat <- matrix(1, nrow = length(genes), ncol = length(unique(dat.sub$tissue)) * length(unique(dat.sub$time)))
@@ -850,6 +858,7 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
 #     rowi.end <- rowi + 10
 #     mat[rowi:rowi.end, grep(tiss[[1]], colnames(mat))] <- 10 
 #   }
+
   heatmap.2 (mat,
              # dendrogram control
              Rowv = FALSE,
@@ -882,8 +891,8 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
              
              # Row/Column Labeling
              margins = c(5, 5),
-             labRow = NULL,
-             labCol = NULL,
+             labRow = jlabRow,
+             labCol = jlabCol,
              srtRow = NULL,
              srtCol = NULL,
              adjRow = c(0,NA),
