@@ -36,7 +36,8 @@ source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/OuterComplex.R")
 source("scripts/functions/GetTFs.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
-
+source("scripts/functions/FisherTestSitecounts.R")
+source("scripts/functions/RemoveP2Name.R")
 
 
 # Figure 1A Present high level variation BETWEEN TISSUES and WITHIN TISSUES (time) ------------------
@@ -575,6 +576,17 @@ dev.off()
 pdf(file.path(outdir, "tissue_modules.pairs_triplets.pdf"))
 
 # Plot striking modules
+
+# Aorta BFAT grepped
+fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 11)
+fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
+genes.bfataorta <- as.character(fits.bfataorta$gene)
+print(paste("Genes in bfat-aorta:", length(genes.bfataorta)))
+s.bfataorta <- SvdOnComplex(subset(dat.complex, gene %in% genes.bfataorta & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+eigens.bfataorta <- GetEigens(s.bfataorta, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens.bfataorta$u.plot, eigens.bfataorta$v.plot, layout = jlayout)  
+
 # Aorta and BFAT
 fits.bfataorta <- subset(fits.best, n.rhyth == 2)
 fits.bfataorta <- fits.bfataorta[grep("Aorta.*BFAT|BFAT.*Aorta", fits.bfataorta$model), ]
@@ -722,21 +734,29 @@ jtiss <- "Adr"
 Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m2)
 
 jtiss <- "BFAT"
 BFAT.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, BFAT.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), BFAT.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m2)
 
 jtiss <- "Mus"
 Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), Mus.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m2)
 
 jtiss <- "Liver"
-Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
-m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+Liver.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+m <- PlotOverlayTimeSeries(dat.long, Liver.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), Liver.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+print(m2)
 
 dev.off()
 
@@ -823,4 +843,99 @@ dev.off()
 pdf(file.path(outdir, "alt_prom_gauss_examples.pdf"))
 jgene <- "Ddc"
 PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == jgene)$sigs[[1]], jgene = jgene, jtitle = "Ddc promoter usage across tissues")
+dev.off()
+
+
+# Figure 3: Regulation ----------------------------------------------------
+
+load("Robjs/N.sitecounts.dhs.6.tissues.norm.Robj", verbose=T)  # N
+
+jtiss <- "Liver"
+jmodel <- "Liver"
+genes.rhyth <- as.character(subset(fits.best, model == jmodel)$gene)
+
+N.sub <- subset(N, gene %in% genes.rhyth)
+
+N.sub$sitecount <- N.sub$motevo.value
+N.sub$model <- sapply(as.character(N.sub$tissue), function(x){
+  if (x == jtiss){
+    return(jtiss)
+  } else {
+    return("Flat")
+  }
+})
+
+cutoffs <- seq(from = 0.01, to = 0.15, by = 0.05)
+test.all <- data.frame()
+for (cutoff in cutoffs){
+  print(cutoff)
+  test.out <- N.sub %>%
+    group_by(motif) %>%
+    do(FisherTestSitecounts(., cutoff, sitecount.col = "sitecount.norm", show.table = FALSE))
+  test.out$cutoff <- cutoff
+  test.all <- rbind(test.all, test.out)
+}
+
+test.sum <- test.all %>%
+  group_by(motif) %>%
+  summarise(odds.ratio = mean(odds.ratio), p.value.minuslog = mean(-log10(p.value)))
+
+oddsrat.cutoff <- 1.6
+test.sum$label <- mapply(function(jmotif, oddsrat){
+  if (oddsrat > oddsrat.cutoff){
+    return(RemoveP2Name(as.character(jmotif)))
+  } else {
+    return("")
+  }
+}, test.sum$motif, test.sum$odds.ratio)
+
+library(wordcloud)
+pdf(file.path(outdir, "liver_specific_enrichment.pdf"))
+textplot(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, words = test.sum$label, xlab = "Odds ratio", ylab = "-log10(pvalue)")
+points(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, pch = ".", cex = 3)
+dev.off()
+
+# Promoter regulator analysis
+load("Robjs/N.long.promoters_500.Robj")
+
+cutoffs <- seq(from = 0.4, to = 0.8, by = 0.1)
+
+pdf(file.path(outdir, "promoter_enrichment.pdf"))
+models.tw <- ""
+jmodel <- "Adr"
+N.promsub <- subset(N.long, model %in% c(models.tw, jmodel))
+N.ftests <- SubsetAndFishers(N.promsub, jmodel = jmodel, cutoffs = cutoffs)
+
+# filter labels
+N.ftests$jlab <- mapply(function(pval, motifname){
+  if (is.na(pval)) return("")
+  
+  if (-log10(pval) > 15){
+    return(RemoveP2Name(as.character(motifname)))
+  } else {
+    return("")
+  }
+}, N.ftests$p.value, N.ftests$motif)
+
+ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_point() + geom_text(size = 6) + theme_bw(24) + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+  xlab("Odds ratio") + ylab("-log10(P-value)")
+
+jmodel <- "BFAT"
+N.promsub <- subset(N.long, model %in% c(models.tw, jmodel))
+N.ftests <- SubsetAndFishers(N.promsub, jmodel = jmodel, cutoffs = cutoffs)
+N.ftests$jlab <- mapply(function(pval, motifname){
+  if (is.na(pval)) return("")
+  
+  if (-log10(pval) > 5){
+    return(RemoveP2Name(as.character(motifname)))
+  } else {
+    return("")
+  }
+}, N.ftests$p.value, N.ftests$motif)
+ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_point() + geom_text() + theme_bw(24) + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+  xlab("Odds ratio") + ylab("-log10(P-value)")
 dev.off()
