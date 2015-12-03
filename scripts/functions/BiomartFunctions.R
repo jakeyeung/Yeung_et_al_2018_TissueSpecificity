@@ -1,6 +1,7 @@
 Transcript2Gene <- function(gene.list, return.original=TRUE) {
   library("biomaRt")
-  mart.obj <- useMart(biomart = 'ensembl', dataset = 'mmusculus_gene_ensembl')
+  # https://support.bioconductor.org/p/74322/  need to use host and biomart
+  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
   gos <- getBM(gene.list,attributes=c("ensembl_transcript_id", "external_gene_name"),
                filters=c("ensembl_transcript_id"),
                mart=mart.obj)
