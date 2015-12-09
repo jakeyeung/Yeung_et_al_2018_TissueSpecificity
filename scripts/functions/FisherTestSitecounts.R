@@ -1,7 +1,10 @@
-FisherTestSitecounts <- function(dat, cutoff, sitecount.col, show.table=FALSE){
+FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.table=FALSE){
   # expects dat to have has.motif, sitecount
   if (missing(sitecount.col)){
     sitecount.col <- "sitecount"
+  }
+  if (missing(model.col)){
+    model.col <- "model"
   }
   dat$has.motif <- sapply(dat[[sitecount.col]], function(s){
     if (s > cutoff){
@@ -10,7 +13,7 @@ FisherTestSitecounts <- function(dat, cutoff, sitecount.col, show.table=FALSE){
       return(FALSE)
     }
   })
-  N.table <- table(dat$has.motif, unlist(dat$model))
+  N.table <- table(dat$has.motif, unlist(dat[[model.col]]))
   if (nrow(N.table) != ncol(N.table)){
     return(data.frame(odds.ratio = NA, p.value = NA))
   }
