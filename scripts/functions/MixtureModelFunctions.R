@@ -12,16 +12,18 @@
 
 library(mixtools)
 
-FindCutoff <- function(x, lambdas, mus, k = 2, outdir = FALSE){
+FindCutoff <- function(x, lambdas, mus, k = 2, outdir = FALSE, show.fig = TRUE){
   if (outdir != FALSE){
     pdf(file.path(outdir, "mixturefit.pdf"))
   }
   mixmdl = normalmixEM(x, lambda=lambdas, mu=mus, k = k)
-  cutoff <- optimize(f = ShannonEntropyMixMdl, interval = range(x), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
+  cutoff <- optimize(f = ShannonEntropyMixMdl, interval = range(mixmdl$mu), mixmdl = mixmdl, tol = 0.0001, maximum = TRUE)
   jtitle <- paste0("Cutoff: ", 2^cutoff$maximum, "\n", "Cutoff (log2): ", cutoff$maximum)
-  plot(mixmdl, which=2)
-  lines(density(x), lty=2, lwd=2)
-  abline(v = cutoff$maximum)  # should intersect two gaussians
+  if (show.fig){
+    plot(mixmdl, which=2)
+    lines(density(x), lty=2, lwd=2)
+    abline(v = cutoff$maximum)  # should intersect two gaussians
+  }
   if (outdir != FALSE){
     dev.off()
     save(mixmdl, file = file.path(outdir, "mixmdl.Robj"))
