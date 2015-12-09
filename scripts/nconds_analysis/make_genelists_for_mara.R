@@ -36,6 +36,18 @@ for (g in genes.tw){
 }
 sink()
 
+modelname <- "Flat"
+
+fname <- paste0(modelname, ".txt")
+genes.flat <- as.character(subset(fits.best, model == "")$gene)
+sink(file = file.path(writedir, fname))
+for (g in genes.flat){
+  cat(g)
+  cat("\n")
+}
+sink()
+
+
 
 # modelname <- "AdrBFATMus"
 # fname <- paste0(modelname, ".txt")
