@@ -8,94 +8,9 @@ library(dplyr)
 library(hash)
 source("scripts/functions/MixtureModelFunctions.R")
 source("scripts/functions/FisherTestSitecounts.R")
+source("scripts/functions/SitecountsFunctions.R")
 
 # Functions ---------------------------------------------------------------
-
-ReadDHSData <- function(path, tissues, cnames, normalize = TRUE, outlong = TRUE){
-  if (missing(path)){
-    path <- "/home/yeung/data/tissue_specificity/motevo_dhs/dhs_signal/dhs_signal_windows500.chr.sorted.closest.mat"
-  }
-  if (missing(tissues)){
-    tissues <- c("Cere", "Heart", "Kidney", "Liver", "Lung", "Mus")
-  }
-  if (missing(cnames)){
-    cnames <- c("chromo", "start", "end", tissues, "chromo.gene", "start.gene", "end.gene", "gene", "blank", "strand", "dist")
-  }
-  S <- read.table("/home/yeung/data/tissue_specificity/motevo_dhs/dhs_signal/dhs_signal_windows500.chr.sorted.closest.mat")
-  
-  colnames(S) <- cnames
-  
-  if (normalize){
-    for (tiss in tissues){
-      S[[tiss]] <- 10^6 * S[[tiss]] / sum(S[[tiss]])
-    }
-  }
-  if (outlong){
-    signal.vec <- unlist(S[, colnames(S) %in% tissues])
-    S <- data.frame(chromo = S$chromo, start = S$start, end = S$end, 
-                         peak = paste(paste(S$chromo, S$start, sep = ":"), S$end, sep = "-"), # chr1:7800234-7800734
-                         tissue = rep(tissues, each = nrow(S)), 
-                         signal = signal.vec, 
-                         gene = S$gene, dist = S$dist)
-  }
-  return(S)
-}
-
-ReadSitecountsMotif <- function(path, cnames, show.time = FALSE){
-  start <- Sys.time()
-  N <- read.table(path)
-  if (missing(cnames)){
-    cnames <- c("chromo", "start", "end", "motif_peak", "sitecount", "chromo.gene", "start.gene", "end.gene", "gene", "blank", "strand", "dist")
-  }
-  colnames(N) <- cnames
-  
-  # split motif_peak into separate columns
-  # RORA.p2;mm10_chr1:3001753-3002253 -> RORA.p2
-  N$motif <- sapply(N$motif_peak, function(m) strsplit(as.character(m), ";")[[1]][[1]])
-  # RORA.p2;mm10_chr1:3001753-3002253 -> chr1:3001753-3002253
-  N$peak <- sapply(N$motif_peak, function(m) strsplit(strsplit(as.character(m), ";")[[1]][[2]], "_")[[1]][[2]])
-  
-  cnames.remove <- c("motif_peak", "chromo.gene", "start.gene", "end.gene", "blank", "strand")
-  for (cname in cnames.remove){
-    N[[cname]] <- NULL
-  }
-  if (show.time){
-    print(Sys.time() - start)
-  }
-  return(N)
-}
-
-GetCoord <- function(peak, jget = "start"){
-  # chr15:85950195-85950695 -> 85950195 or 85950695 depending on "start" or "end"
-  # if chromo, return chr15
-  if (jget == "start"){
-    jgeti <- 1
-  } else if(jget == "end"){
-    jgeti <- 2
-  } else if(jget == "chromo"){
-    return(strsplit(peak, ":")[[1]][[1]])
-  } else {
-    print(paste("jget must be start or end", jget))
-  }
-  return(as.numeric(strsplit(strsplit(peak, ":")[[1]][[2]], "-")[[1]][[jgeti]]))
-}
-
-GetPeakDistance <- function(peak1, peak2){
-  # Get distance between two peaks
-  # check they are in same chromosomes
-  if (GetCoord(peak1, jget = "chromo") != GetCoord(peak2, jget = "chromo")){
-    print("Not on same chromosomes")
-    return(NA)
-  }
-  start1 <- GetCoord(peak1, "start")
-  start2 <- GetCoord(peak2, "start")
-  end1 <- GetCoord(peak1, "end")
-  end2 <- GetCoord(peak2, "end")
-  
-  dist.min <- min((end1 - start2), (start1 - end2))
-  # handle negatives
-  return(max(dist.min, 0))
-}
 
 # Load --------------------------------------------------------------------
 
@@ -103,7 +18,7 @@ GetPeakDistance <- function(peak1, peak2){
 start <- Sys.time()
 # N <- read.table("data/sitecounts/motevo_by_peaks_dhs_gene_bodies/merged.closest.bed", nrows = 10)  # 30 GB
 S <- read.table("/home/yeung/data/tissue_specificity/motevo_dhs/dhs_signal/dhs_signal_windows500.chr.sorted.closest.mat")
-print(Sys.time() - start)
+
 
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
 
@@ -171,29 +86,10 @@ pseudo <- 1e-2
 cutoff <- -2
 ggplot(S.long[sample(x = 1:nrow(S.long), size = 0.01 * nrow(S.long)), ], aes(x = log2(signal + pseudo))) + geom_density() + facet_wrap(~tissue) + geom_vline(xintercept = cutoff)
 
-FindCutoffLong <- function(dat, signal.col = "signal", jlambdas = c(0.8, 0.2), jmus = c(-1.5, 0.8), 
-                           log2.trans = TRUE, pseudo = 1e-2, take.frac = 1, jshow.fig = FALSE){
-  # take.frac: sample to a fraction of the data
-  if (take.frac < 1){
-    dat <- dat[sample(length(dat[[signal.col]]), size = take.frac * nrow(dat), replace = F), ]
-  } else if (take.frac > 1){
-    print(paste("take.frac must be less than or equal to 1"))
-  }
-  if (log2.trans){
-    cutoff <- FindCutoff(x = log2(dat[[signal.col]] + pseudo), lambdas = jlambdas, mus = jmus, k = 2, show.fig = jshow.fig)
-  } else {
-    cutoff <- FindCutoff(x = dat[[signal.col]], lambdas = jlambdas, mus = jmus, k = 2, show.fig = jshow.fig)
-  }
-  if (log2.trans){
-    # return in normal scale
-    return(data.frame(cutoff = 2^cutoff$maximum))
-  } else {
-    return(data.frame(cutoff = cutoff$maximum))
-  }
-}
-
 test <- subset(S.long, tissue == "Heart")
 jcut <- FindCutoffLong(test, jlambdas = c(0.7, 0.3), jmus = c(-4, 0), take.frac = 0.001, jshow.fig = TRUE)
+
+print(Sys.time() - start)
 
 # needs to be tissue-specific probably, try mixtools
 S.tissuecutoff <- S.long %>%
@@ -215,38 +111,65 @@ S.sub$signal.cut <- mapply(function(s, tiss){
   }
 }, S.sub$signal, as.character(S.sub$tissue))
 
-CollapseDat <- function(dat, tissue, non.tissue = "Flat"){
-  # collapse dat into either "tissue" or "non-tissue"
-  indx <- which(dat$tissue == tissue)
-  tiss.sig <- dat$signal.cut[indx]
-  others.sig <- dat$signal.cut[-indx]  # vec
-  # check signal.cut has 1 in tissue and 0 in all others
-  if (tiss.sig == 1 & max(others.sig) == 0){
-    return(data.frame(peak.type = tissue))
-  } else if (tiss.sig == 0 & max(others.sig) == 1){
-    return(data.frame(peak.type = non.tissue))
-  } else {
-    return(data.frame())
-  }
-}
 
 # collapse into liver vs non-liver peaks
+start <- Sys.time()
 S.collapse <- S.sub %>%
-  group_by(peak) %>%
-  do(CollapseDat(., tissue = "Liver", non.tissue = "Flat"))
+  group_by(gene, peak) %>%
+  do(CollapseDat(., indx = 4, tissue = "Liver", non.tissue = "Flat", flat.style = "all"))
+print(Sys.time() - start)
 
-# add sitecount info 
-N.RORA.sub <- subset(N.RORA, gene %in% liver.genes)
+# # add sitecount info 
+# N.RORA.sub <- subset(N.RORA, gene %in% liver.genes)
+# N.ONECUT.sub <- subset(N.ONECUT, gene %in% liver.genes)
+
+# collapse readcounts for RORA ONECUT 
+N.RORA.sub <- subset(N.RORA, gene %in% liver.genes & dist < 1000) %>%
+  group_by(motif, peak) %>%
+  summarise(sitecount = sum(sitecount))
+
+N.ONECUT.sub <- subset(N.ONECUT, gene %in% liver.genes & dist  < 1000) %>%
+  group_by(motif, peak) %>%
+  summarise(sitecount = sum(sitecount))
+
 sitecounts.hash <- hash(as.character(N.RORA.sub$peak), N.RORA.sub$sitecount)
+sitecounts.onecut.hash <- hash(as.character(N.ONECUT.sub$peak), N.ONECUT.sub$sitecount)
 
-S.collapse$sitecount <- sapply(S.collapse$peak, function(p){
-  s <- sitecounts.hash[[p]]
-  if (is.null(s)){
-    return(0)
-  } else {
-    return(s)
-  }
-}
+S.collapse$sitecount.rora <- sapply(S.collapse$peak, AssignSitecount, sitecounts.hash)
+S.collapse$sitecount.onecut <- sapply(S.collapse$peak, AssignSitecount, sitecounts.onecut.hash)
 
-FisherTestSitecounts(dat = N.ROR)
+FisherTestSitecounts(dat = S.collapse, cutoff = 0.5, sitecount.col = "sitecount.rora", model.col = "peak.type", show.table=TRUE)
+FisherTestSitecounts(dat = S.collapse, cutoff = 0.5, sitecount.col = "sitecount.onecut", model.col = "peak.type", show.table=TRUE)
 
+
+# Do I get RORA if I collapse the peaks assigned to a gene? ---------------
+
+flat.peaks <- subset(S.collapse, peak.type == "Flat")$peak
+liver.peaks <- subset(S.collapse, peak.type == "Liver")$peak
+
+N.RORA.flat.gene <- subset(N.RORA, gene %in% liver.genes & dist < 1000 & peak %in% flat.peaks) %>%
+  group_by(motif, gene) %>%
+  summarise(sitecount = sum(sitecount))
+N.RORA.flat.gene$peak.type <- "Flat"
+
+N.RORA.liver.gene <- subset(N.RORA, gene %in% liver.genes & dist < 1000 & peak %in% liver.peaks) %>%
+  group_by(motif, gene) %>%
+  summarise(sitecount = sum(sitecount))
+N.RORA.liver.gene$peak.type <- "Liver"
+
+N.RORA.gene <- rbind(N.RORA.flat.gene, N.RORA.liver.gene)
+
+
+N.ONECUT.flat.gene <- subset(N.ONECUT, gene %in% liver.genes & dist < 1000 & peak %in% flat.peaks) %>%
+  group_by(motif, gene) %>%
+  summarise(sitecount = sum(sitecount))
+N.ONECUT.flat.gene$peak.type <- "Flat"
+
+N.ONECUT.liver.gene <- subset(N.ONECUT, gene %in% liver.genes & dist < 1000 & peak %in% liver.peaks) %>%
+  group_by(motif, gene) %>%
+  summarise(sitecount = sum(sitecount))
+N.ONECUT.liver.gene$peak.type <- "Liver"
+
+N.ONECUT.gene <- rbind(N.ONECUT.flat.gene, N.ONECUT.liver.gene)
+
+FisherTestSitecounts(dat = N.ONECUT.gene, cutoff = 1, sitecount.col = "sitecount", model.col = "peak.type", show.table=TRUE)

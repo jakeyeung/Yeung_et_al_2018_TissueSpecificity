@@ -1,0 +1,162 @@
+# from sitecount_analysis_dhs_peak_gene_body.R
+
+ReadDHSData <- function(path, tissues, cnames, normalize = TRUE, outlong = TRUE){
+  if (missing(path)){
+    path <- "/home/yeung/data/tissue_specificity/motevo_dhs/dhs_signal/dhs_signal_windows500.chr.sorted.closest.mat"
+  }
+  if (missing(tissues)){
+    tissues <- c("Cere", "Heart", "Kidney", "Liver", "Lung", "Mus")
+  }
+  if (missing(cnames)){
+    cnames <- c("chromo", "start", "end", tissues, "chromo.gene", "start.gene", "end.gene", "gene", "blank", "strand", "dist")
+  }
+  S <- read.table("/home/yeung/data/tissue_specificity/motevo_dhs/dhs_signal/dhs_signal_windows500.chr.sorted.closest.mat")
+  
+  colnames(S) <- cnames
+  
+  if (normalize){
+    for (tiss in tissues){
+      S[[tiss]] <- 10^6 * S[[tiss]] / sum(S[[tiss]])
+    }
+  }
+  if (outlong){
+    signal.vec <- unlist(S[, colnames(S) %in% tissues])
+    S <- data.frame(chromo = S$chromo, start = S$start, end = S$end, 
+                    peak = paste(paste(S$chromo, S$start, sep = ":"), S$end, sep = "-"), # chr1:7800234-7800734
+                    tissue = rep(tissues, each = nrow(S)), 
+                    signal = signal.vec, 
+                    gene = S$gene, dist = S$dist)
+  }
+  return(S)
+}
+
+ReadSitecountsMotif <- function(path, cnames, show.time = FALSE){
+  start <- Sys.time()
+  N <- read.table(path)
+  if (missing(cnames)){
+    cnames <- c("chromo", "start", "end", "motif_peak", "sitecount", "chromo.gene", "start.gene", "end.gene", "gene", "blank", "strand", "dist")
+  }
+  colnames(N) <- cnames
+  
+  # split motif_peak into separate columns
+  # RORA.p2;mm10_chr1:3001753-3002253 -> RORA.p2
+  N$motif <- sapply(N$motif_peak, function(m) strsplit(as.character(m), ";")[[1]][[1]])
+  # RORA.p2;mm10_chr1:3001753-3002253 -> chr1:3001753-3002253
+  N$peak <- sapply(N$motif_peak, function(m) strsplit(strsplit(as.character(m), ";")[[1]][[2]], "_")[[1]][[2]])
+  
+  cnames.remove <- c("motif_peak", "chromo.gene", "start.gene", "end.gene", "blank", "strand")
+  for (cname in cnames.remove){
+    N[[cname]] <- NULL
+  }
+  if (show.time){
+    print(Sys.time() - start)
+  }
+  return(N)
+}
+
+GetCoord <- function(peak, jget = "start"){
+  # chr15:85950195-85950695 -> 85950195 or 85950695 depending on "start" or "end"
+  # if chromo, return chr15
+  if (jget == "start"){
+    jgeti <- 1
+  } else if(jget == "end"){
+    jgeti <- 2
+  } else if(jget == "chromo"){
+    return(strsplit(peak, ":")[[1]][[1]])
+  } else {
+    print(paste("jget must be start or end", jget))
+  }
+  return(as.numeric(strsplit(strsplit(peak, ":")[[1]][[2]], "-")[[1]][[jgeti]]))
+}
+
+GetPeakDistance <- function(peak1, peak2){
+  # Get distance between two peaks
+  # check they are in same chromosomes
+  if (GetCoord(peak1, jget = "chromo") != GetCoord(peak2, jget = "chromo")){
+    print("Not on same chromosomes")
+    return(NA)
+  }
+  start1 <- GetCoord(peak1, "start")
+  start2 <- GetCoord(peak2, "start")
+  end1 <- GetCoord(peak1, "end")
+  end2 <- GetCoord(peak2, "end")
+  
+  dist.min <- min((end1 - start2), (start1 - end2))
+  # handle negatives
+  return(max(dist.min, 0))
+}
+
+AssignSitecount <- function(jkey, jhash){
+  s <- jhash[[as.character(jkey)]]
+  if (is.null(s)){
+    return(0)
+  } else {
+    return(s)
+  }
+}
+
+FindCutoffLong <- function(dat, signal.col = "signal", jlambdas = c(0.8, 0.2), jmus = c(-1.5, 0.8), 
+                           log2.trans = TRUE, pseudo = 1e-2, take.frac = 1, jshow.fig = FALSE){
+  # take.frac: sample to a fraction of the data
+  if (take.frac < 1){
+    dat <- dat[sample(length(dat[[signal.col]]), size = take.frac * nrow(dat), replace = F), ]
+  } else if (take.frac > 1){
+    print(paste("take.frac must be less than or equal to 1"))
+  }
+  if (log2.trans){
+    cutoff <- FindCutoff(x = log2(dat[[signal.col]] + pseudo), lambdas = jlambdas, mus = jmus, k = 2, show.fig = jshow.fig)
+  } else {
+    cutoff <- FindCutoff(x = dat[[signal.col]], lambdas = jlambdas, mus = jmus, k = 2, show.fig = jshow.fig)
+  }
+  if (log2.trans){
+    # return in normal scale
+    return(data.frame(cutoff = 2^cutoff$maximum))
+  } else {
+    return(data.frame(cutoff = cutoff$maximum))
+  }
+}
+
+CollapseDat <- function(dat, tissue, indx, non.tissue = "Flat", flat.style = "normal"){
+  # flat.style: normal (other peaks need only one tissue to be present)
+  # flat style: stringent (other peaks need all other tissues to have a peak, but liver no)
+  # flat style: all (all tissues must have peak)
+  # collapse dat into either "tissue" or "non-tissue"
+  # indx <- which(dat$tissue == tissue)
+  if (missing(indx)){
+    indx <- which(dat$tissue == tissue)
+  }
+  tiss.sig <- dat$signal.cut[indx]
+  others.sig <- dat$signal.cut[-indx]  # vec
+  # check signal.cut has 1 in tissue and 0 in all others
+  if (flat.style == "normal"){
+    if (tiss.sig == 1 & max(others.sig) == 0){
+      return(data.frame(peak.type = tissue))
+    } else if (tiss.sig == 0 & max(others.sig) == 1){
+      # only need one tissue to have a peak
+      return(data.frame(peak.type = non.tissue))
+    } else {
+      return(data.frame())
+    }
+  } else if (flat.style == "stringent"){
+    if (tiss.sig == 1 & max(others.sig) == 0){
+      return(data.frame(peak.type = tissue))
+    } else if (tiss.sig == 0 & min(others.sig) == 1){
+      # need all non-liver tissues to have a peak
+      return(data.frame(peak.type = non.tissue))
+    } else {
+      return(data.frame())
+    }
+  } else if (flat.style == "all"){
+    if (tiss.sig == 1 & max(others.sig) == 0){
+      return(data.frame(peak.type = tissue))
+    } else if (tiss.sig == 1 & min(others.sig) == 1){
+      # need all tissues to have a peak
+      return(data.frame(peak.type = non.tissue))
+    } else {
+      return(data.frame())
+    }
+  } else {
+    print(paste("flat.style either normal or stringent or all", flat.style))
+  }
+
+}
