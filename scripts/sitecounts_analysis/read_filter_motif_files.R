@@ -12,7 +12,12 @@ library(parallel)
 # Load --------------------------------------------------------------------
 
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
-liver.genes <- subset(fits.best, model == "Liver")$gene
+
+# to change
+jmodel <- ""
+outfile <- "Robjs/N.long.flat_genes.all_motifs.Robj"
+
+liver.genes <- subset(fits.best, model == jmodel)$gene
 
 print(liver.genes)
 
@@ -26,4 +31,5 @@ N.long <- mclapply(jfiles, function(f){
 }, mc.cores = 19)
 
 N.long <- do.call(rbind, N.long)
-save(N.long, file = "Robjs/N.long.liver_genes.all_motifs.Robj")
+# save(N.long, file = "Robjs/N.long.liver_genes.all_motifs.Robj")
+save(N.long, file = outfile)
