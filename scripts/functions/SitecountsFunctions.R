@@ -1,5 +1,14 @@
 # from sitecount_analysis_dhs_peak_gene_body.R
 
+TakeIfSame <- function(x){
+  if (length(unique(x)) > 1){
+    return(NA)
+  } else {
+    return(mean(x))
+  }
+}
+
+
 ReadDHSData <- function(path, tissues, cnames, normalize = TRUE, outlong = TRUE){
   if (missing(path)){
     path <- "/home/yeung/data/tissue_specificity/motevo_dhs/dhs_signal/dhs_signal_windows500.chr.sorted.closest.mat"
