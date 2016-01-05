@@ -1,3 +1,11 @@
+RunFisherDHS <- function(dat, S, jmodel.col = "peak.type", jshow.table = FALSE, jcutoff = 0.5){
+  sitecounts.hash <- hash(as.character(dat$peak), dat$sitecount)
+  S$sitecount <- sapply(S$peak, AssignSitecount, sitecounts.hash)
+  test <- FisherTestSitecounts(dat = S, cutoff = jcutoff, sitecount.col = "sitecount", 
+                               model.col = jmodel.col, show.table=jshow.table)
+  return(test)
+}
+
 FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.table=FALSE){
   # expects dat to have has.motif, sitecount
   if (missing(sitecount.col)){
@@ -52,4 +60,34 @@ SubsetAndFishers <- function(dat, jmodel, cutoffs){
     group_by(motif) %>%
     summarise(odds.ratio = mean(odds.ratio), p.value = mean(p.value))
   return(N.ftest.sum)
+}
+
+RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models, cutoffs){
+  jtiss <- foreground.models
+  N.sub <- subset(N.promoter, model %in% c(foreground.models, background.models))
+  N.sub$model <- sapply(N.sub$model, function(m){
+    if (!m %in% jtiss){
+      return("Flat")
+    } else {
+      return("Rhyth")
+    }
+  })
+  N.ftest.all <- data.frame()
+  for (cutoff in cutoffs){
+    N.ftest <- N.sub %>%
+      group_by(motif) %>%
+      do(FisherTestSitecounts(., cutoff))
+    N.ftest$cutoff <- cutoff
+    N.ftest.all <- rbind(N.ftest.all, N.ftest)
+  }
+  N.ftest.sum <- N.ftest.all %>%
+    group_by(motif) %>%
+    summarise(odds.ratio = mean(odds.ratio), p.value = mean(p.value))
+  N.ftest.sum <- N.ftest.all %>%
+    group_by(motif) %>%
+    summarise(odds.ratio = mean(odds.ratio), p.value = mean(p.value))
+  print(ggplot(N.ftest.sum, aes(y = -log10(p.value), x = odds.ratio, label = motif)) + geom_point() + geom_text() + theme_bw(24) + 
+          theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom"))
+  return(N.sub)
 }
