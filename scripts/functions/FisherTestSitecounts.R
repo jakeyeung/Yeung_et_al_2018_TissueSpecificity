@@ -22,7 +22,7 @@ FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.tab
     }
   })
   N.table <- table(dat$has.motif, unlist(dat[[model.col]]))
-  if (nrow(N.table) != ncol(N.table)){
+  if (nrow(N.table) != 2 | ncol(N.table) != 2){
     return(data.frame(odds.ratio = NA, p.value = NA))
   }
   test <- fisher.test(N.table)
@@ -62,16 +62,28 @@ SubsetAndFishers <- function(dat, jmodel, cutoffs){
   return(N.ftest.sum)
 }
 
-RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models, cutoffs){
+RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models, cutoffs, show.plot = TRUE){
   jtiss <- foreground.models
   N.sub <- subset(N.promoter, model %in% c(foreground.models, background.models))
-  N.sub$model <- sapply(N.sub$model, function(m){
-    if (!m %in% jtiss){
-      return("Flat")
-    } else {
-      return("Rhyth")
-    }
-  })
+  if (length(background.models) == 1){
+    N.sub$model <- sapply(N.sub$model, function(m){
+      if (!m %in% jtiss){
+        return("Flat")
+      } else {
+        return("Rhyth")
+      }
+    })
+  } else if (length(background.models) > 1){
+    N.sub$model <- sapply(N.sub$model, function(m){
+      if (m != jtiss){
+        return("Flat")
+      } else {
+        return("Rhyth")
+      }
+    })
+  } else {
+    warning("Length of models must be natural number")
+  }
   N.ftest.all <- data.frame()
   for (cutoff in cutoffs){
     N.ftest <- N.sub %>%
@@ -86,8 +98,10 @@ RunFisherOnPromoters <- function(N.promoter, foreground.models, background.model
   N.ftest.sum <- N.ftest.all %>%
     group_by(motif) %>%
     summarise(odds.ratio = mean(odds.ratio), p.value = mean(p.value))
-  print(ggplot(N.ftest.sum, aes(y = -log10(p.value), x = odds.ratio, label = motif)) + geom_point() + geom_text() + theme_bw(24) + 
-          theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom"))
-  return(N.sub)
+  if(show.plot){
+    print(ggplot(N.ftest.sum, aes(y = -log10(p.value), x = odds.ratio, label = motif)) + geom_point() + geom_text() + theme_bw(24) + 
+            theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                  panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom"))
+  }
+  return(N.ftest.sum)
 }

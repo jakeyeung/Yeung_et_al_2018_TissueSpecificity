@@ -1,4 +1,41 @@
+# from motif_pairs_distances.R
+CountDistFromMotif <- function(dat, jmotif){
+  # check if jmotif is in dat, if not then return NULL
+  if (length(which(dat$motif == jmotif)) == 0){
+    return(NULL)
+  }
+  ref.row <- dat[which(dat$motif == jmotif), ]
+  ref.poses <- mapply(function(start, end) mean(start, end), ref.row$start, ref.row$end)
+  dat.out <- lapply(ref.poses, function(ref.pos){
+    rel.pos <- apply(dat, MARGIN = 1, function(datrow){
+      row.pos <- mean(as.numeric(datrow[2]), as.numeric(datrow[3]))
+      return(ref.pos - row.pos)
+    })
+    return(data.frame(motif = dat$motif, rel.pos = rel.pos))
+  })
+  dat.out <- do.call(rbind, dat.out)
+  # dat.out <- rbindlist(dat.out)
+  return(dat.out)
+  # return(do.call(rbind, dat.out))
+}
+
 # from sitecount_analysis_dhs_peak_gene_body.R
+GetOrderedPeaks <- function(S, fits.best){
+  # order genes by most rhythmic
+  key <- as.character(fits.best$gene)
+  ampval <- as.numeric(fits.best$amp.avg)
+  ampdic <- hash(key, ampval)
+  
+  # rename Katnal1;Katnal1 to Katnal because it gives NULL otherwise
+  S$amp <- sapply(S$gene, function(g){
+    amp <- ampdic[[as.character(g)]]
+    if (is.null(amp)) return(0)
+    return(amp)
+  }, USE.NAMES = FALSE, simplify = TRUE)
+  S <- S[order(S$amp, decreasing = TRUE), ]
+  return(S)
+}
+
 
 TakeIfSame <- function(x){
   if (length(unique(x)) > 1){
@@ -41,7 +78,10 @@ ReadDHSData <- function(path, tissues, cnames, normalize = TRUE, outlong = TRUE)
 
 ReadSitecountsMotif <- function(path, cnames, show.time = FALSE){
   start <- Sys.time()
-  N <- read.table(path)
+  N <- try(read.table(path), silent = TRUE)
+  if(!is.data.frame(N)){
+    return(NULL)
+  }
   if (missing(cnames)){
     cnames <- c("chromo", "start", "end", "motif_peak", "sitecount", "chromo.gene", "start.gene", "end.gene", "gene", "blank", "strand", "dist")
   }
@@ -52,6 +92,8 @@ ReadSitecountsMotif <- function(path, cnames, show.time = FALSE){
   N$motif <- sapply(N$motif_peak, function(m) strsplit(as.character(m), ";")[[1]][[1]])
   # RORA.p2;mm10_chr1:3001753-3002253 -> chr1:3001753-3002253
   N$peak <- sapply(N$motif_peak, function(m) strsplit(strsplit(as.character(m), ";")[[1]][[2]], "_")[[1]][[2]])
+  # chromo:start-end
+  # N$peak <- mapply(function(chromo, start, end) )
   
   cnames.remove <- c("motif_peak", "chromo.gene", "start.gene", "end.gene", "blank", "strand")
   for (cname in cnames.remove){
