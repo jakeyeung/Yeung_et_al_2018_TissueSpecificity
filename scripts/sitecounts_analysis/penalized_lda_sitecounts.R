@@ -54,7 +54,7 @@ print(out)
 plot.penlda(out)
 colnames(N.adrflat)[order(out$discrim, decreasing = TRUE)]
 
-with CV
+# with CV
 frac.train <- 0.8
 frac.test <- 1 - frac.train
 

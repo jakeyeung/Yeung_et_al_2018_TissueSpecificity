@@ -35,7 +35,7 @@ flat.genes <- as.character(subset(fits.best, model == "")$gene)
 # cutoff for the DHS
 
 # shift by 1 log2 unit the fit looks better
-log.shift <- 1.5
+log.shift <- 3.5
 S.tissuecutoff$cutoff.adj <- 2^(log2(S.tissuecutoff$cutoff) + log.shift)
 
 # cool
@@ -72,7 +72,10 @@ S.sub <- S.sub %>%
 dist.filt <- 1000
 S.collapse <- subset(S.sub, dist <= dist.filt) %>%
   group_by(gene, peak) %>%
-  do(CollapseDat(., indx = 4, tissue = "Liver", non.tissue = "Flat", flat.style = "normal"))
+  # do(CollapseDat(., indx = 4, tissue = "Liver", non.tissue = "Flat", flat.style = "normal"))
+  do(CollapseDat(., indx = 4, tissue = "Liver", non.tissue = "Flat", flat.style = "all"))
+
+S.collapse$model <- "Liver"
 
 # Add flat genes ----------------------------------------------------------
 print("Adding flat genes")
@@ -99,13 +102,15 @@ S.sub.flat <- S.sub.flat %>%
 dist.filt <- 1000
 S.collapse.flat <- subset(S.sub.flat, dist <= dist.filt) %>%
   group_by(gene, peak) %>%
-  do(CollapseDat(., indx = 4, tissue = "Liver", non.tissue = "Flat", flat.style = "normal"))
+  # do(CollapseDat(., indx = 4, tissue = "Liver", non.tissue = "Flat", flat.style = "normal"))
+  do(CollapseDat(., indx = 4, tissue = "Liver", non.tissue = "Flat", flat.style = "all"))
 
-save(S.collapse.flat, file = "Robjs/S.collapse.flat.dist1000.Robj")
+# save(S.collapse.flat, file = "Robjs/S.collapse.flat.dist1000.Robj")
+S.collapse.flat$model <- "Flat"
+save(S.collapse.flat, file = "Robjs/S.collapse.flat.dist1000.logshift35.Robj")
 
 # label different models
-S.collapse.flat$model <- "Flat"
-S.collapse$model <- "Liver"
+# S.collapse$model <- "Liver"
 
 # merge together
 S.collapse <- rbind(S.collapse, S.collapse.flat)
