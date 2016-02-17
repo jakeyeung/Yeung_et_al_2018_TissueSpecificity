@@ -168,6 +168,8 @@ FindCutoffLong <- function(dat, signal.col = "signal", jlambdas = c(0.8, 0.2), j
 }
 
 CollapseDat <- function(dat, tissue, indx, non.tissue = "Flat", flat.style = "normal"){
+  # dat: signal.cut is either 0, 1, or NA (neither 0 or 1)
+  # 
   # flat.style: normal (other peaks need only one tissue to be present)
   # flat style: stringent (other peaks need all other tissues to have a peak, but liver no)
   # flat style: all (all tissues must have peak)
