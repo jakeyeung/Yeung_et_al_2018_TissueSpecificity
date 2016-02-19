@@ -23,3 +23,9 @@ Peek <- function(dat, N=5){
   }
   print(dat[1:N.row, 1:N.col])
 }
+
+GetRowIndx <- function(dat, cname){
+  indx <- which(colnames(dat) == cname)
+  if (length(indx) == 0) warning("Warning, cname not found in column names of dat")
+  return(indx)
+}
