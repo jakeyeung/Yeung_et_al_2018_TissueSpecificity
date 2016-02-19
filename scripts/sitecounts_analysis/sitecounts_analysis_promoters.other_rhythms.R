@@ -172,3 +172,9 @@ lda.out <- PenalizedLDA(N.antiphasicflat, labs.antiphasic, lambda = 0.11, K = 1)
 print(lda.out)
 plot(lda.out)
 text(x = seq(ncol(N.antiphasicflat)), y = lda.out$discrim,labels = colnames(N.antiphasicflat))
+
+
+# Do Kidney Liver ---------------------------------------------------------
+
+models <- unique(fits.best$model[grepl("(;|^)Kidney(;|,)Liver(;|$)", fits.best$model)])
+genes.kidliv <- subset(fits.best, model %in% models)$gene
