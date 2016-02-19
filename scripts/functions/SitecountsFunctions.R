@@ -1,3 +1,61 @@
+# from get_liver_peaks.R
+IsSignalLower <- function(tiss, signal, cutoffs.tiss.lower){
+  return(signal < cutoffs.tiss.lower[[as.character(tiss)]])
+}
+
+IsSignalUpper <- function(tiss, signal, cutoffs.tiss.upper){
+  return(signal > cutoffs.tiss.upper[[as.character(tiss)]])
+}
+
+IsTissueSpecificLong <- function(dat, tissue.indx = 4, non.tissue.indx=c(1, 2, 3, 5, 6)){
+  # check if tissue is true for upper and 
+  # non.tissue is true for lower
+  if (dat$is.upper[tissue.indx] == TRUE & all(dat$is.lower[non.tissue.indx]) == TRUE){
+    return(data.frame(is.tiss.spec = TRUE))
+  } else {
+    return(data.frame(NULL))
+    # return(data.frame(is.tiss.spec = FALSE))
+  }
+}
+
+FilterSignal <- function(dat, cutoffs.lower, cutoffs.upper, tissue.indx, non.tissue.indx){
+  if (missing(non.tissue.indx)){
+    non.tissue.indx <- which(seq(nrow(dat)) != tissue.indx)
+  }
+  tiss.indx <- 5
+  sig.indx <- 6
+  is.lower <- apply(dat, 1, function(row){
+    tiss <- row[[tiss.indx]]
+    sig <- row[[sig.indx]]
+    if (sig < cutoffs.lower[[tiss]]){
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  })
+  
+  is.upper <- apply(dat, 1, function(row){
+    tiss <- row[[tiss.indx]]
+    sig <- row[[sig.indx]]
+    if (sig > cutoffs.upper[[tiss]]){
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  })
+  
+  # Is peak tissue-specific?
+  if (is.upper[[tissue.indx]] == TRUE & all(is.lower[!tissue.indx] == FALSE)){
+    is.tiss.spec <- TRUE
+  } else {
+    is.tiss.spec <- FALSE
+  }
+  
+  # get difference
+  jdiff <- dat$signal[tissue.indx] - mean(dat$signal[non.tissue.indx])
+  return(data.frame(is.tiss.spec = is.tiss.spec, difference = jdiff))
+}
+
 # from motif_pairs_distances.R
 CountDistFromMotif <- function(dat, jmotif){
   # check if jmotif is in dat, if not then return NULL
