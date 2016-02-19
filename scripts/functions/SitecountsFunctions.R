@@ -1,10 +1,10 @@
 # from get_liver_peaks.R
 IsSignalLower <- function(tiss, signal, cutoffs.tiss.lower){
-  return(signal < cutoffs.tiss.lower[[as.character(tiss)]])
+  return(as.numeric(signal) < as.numeric(cutoffs.tiss.lower[[as.character(tiss)]]))
 }
 
 IsSignalUpper <- function(tiss, signal, cutoffs.tiss.upper){
-  return(signal > cutoffs.tiss.upper[[as.character(tiss)]])
+  return(as.numeric(signal) > as.numeric(cutoffs.tiss.upper[[as.character(tiss)]]))
 }
 
 IsTissueSpecificLong <- function(dat, tissue.indx = 4, non.tissue.indx=c(1, 2, 3, 5, 6)){
