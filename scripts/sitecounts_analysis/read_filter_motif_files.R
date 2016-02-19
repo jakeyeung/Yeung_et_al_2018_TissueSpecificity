@@ -15,7 +15,7 @@ load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_av
 
 # to change
 jmodel <- ""
-outfile <- "Robjs/N.long.flat_genes.all_motifs.Robj"
+outfile <- "Robjs/N.long.flat_genes.all_motifs.100000.Robj"
 
 liver.genes <- subset(fits.best, model == jmodel)$gene
 
