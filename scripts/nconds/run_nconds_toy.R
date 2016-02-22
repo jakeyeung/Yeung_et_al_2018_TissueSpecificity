@@ -104,7 +104,7 @@ fits.all.long$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.all.long$p
 
 # get best model from each n.params
 fits.best.nparam <- fits.all.long %>%
-  group_by(gene, n.params) %>%
+  group_by(gene) %>%
   filter(weight.raw == min(weight.raw))
 
 save(fits.best.nparam, file = "Robjs/fits.best.5_tiss.nparams.Robj")
@@ -112,3 +112,4 @@ save(fits.best.nparam, file = "Robjs/fits.best.5_tiss.nparams.Robj")
 # Plot BIC weight by n.params ---------------------------------------------
 
 # ggplot(fits.best.nparam, aes(x = n.params, y = weight.raw)) + geom_line() + facet_wrap(~gene)
+
