@@ -8,6 +8,8 @@ library(dplyr)
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/SitecountsFunctions.R")
+source("scripts/functions/DataHandlingFunctions.R")
+
 
 # Load --------------------------------------------------------------------
 
@@ -62,7 +64,7 @@ names(peaks.bytissue) <- tissues
 N.long.sum.bytiss <- lapply(tissues, function(tiss){
   dat.out <- subset(N.long.liver_dhs, peak %in% peaks.bytissue[[tiss]]) %>%
     group_by(gene, motif) %>%
-    summarise(sitecount.sum = sum(sitecount))
+    summarise(sitecount.sum = sum(sitecount), sitecount.max = max(sitecount))
   dat.out$tissue <- tiss
   return(dat.out)
 })
@@ -76,8 +78,12 @@ S.npeaks <- S.sub.collapse.peaks %>%
 n.peaks.hash <- hash(paste(S.npeaks$gene, S.npeaks$tissue, sep = ";"), S.npeaks$n.peaks)
 
 # normalize
+gene.i <- which(colnames(N.long.sum.bytiss) == "gene")
+tiss.i <- which(colnames(N.long.sum.bytiss) == "tissue")
+sitecount.i <- which(colnames(N.long.sum.bytiss) == "sitecount.sum")
+
 N.long.sum.bytiss$sitecount.norm.bypeak <- apply(N.long.sum.bytiss, 1, function(row){
-  jgene <- as.character(row[1]); tiss <- as.character(row[4]); sitecount <- as.numeric(row[3])
+  jgene <- as.character(row[gene.i]); tiss <- as.character(row[tiss.i]); sitecount <- as.numeric(row[sitecount.i])
   n.peaks <- n.peaks.hash[[paste(jgene, tiss, sep = ";")]]
   if (is.null(n.peaks)){
     return(NA)
@@ -89,3 +95,46 @@ N.long.sum.bytiss$sitecount.norm.bypeak <- apply(N.long.sum.bytiss, 1, function(
 # remove NAs
 N.long.sum.bytiss <- N.long.sum.bytiss[which(!is.na(N.long.sum.bytiss$sitecount.norm.bypeak)), ]
 
+
+# Check distributions of motifs -------------------------------------------
+
+library(ggplot2)
+
+jmotif <- "HNF1A.p2"
+jmotif <- "ONECUT1,2.p2"
+jmotif <- "CUX2.p2"
+jmotif <- "RXRG_dimer.p3"
+
+# The palette with grey:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+ggplot(subset(N.long.sum.bytiss, motif == jmotif), aes(x = sitecount.norm.bypeak, fill = tissue)) + geom_density(alpha = 0.5) + ggtitle(jmotif) + scale_fill_manual(values=cbPalette)
+ggplot(subset(N.long.sum.bytiss, motif == jmotif), aes(x = sitecount.max, fill = tissue)) + geom_density(alpha = 0.5) + ggtitle(jmotif) + scale_fill_manual(values=cbPalette)
+ggplot(subset(N.long.sum.bytiss, motif == jmotif & tissue == "Liver"), aes(x = sitecount.max, fill = tissue)) + geom_density(alpha = 0.5) + ggtitle(jmotif) + scale_fill_manual(values=cbPalette)
+
+
+# Do cross product --------------------------------------------------------
+
+# jmotif <- "RXRG_dimer.p3"
+# 
+# sitecount.motif <- hash(as.character(subset(N.long.liver_dhs, motif == jmotif)$peak), subset(N.long.liver_dhs, motif == jmotif)$sitecount)
+# 
+# peak.i <- GetRowIndx(N.long.liver_dhs, "peak")
+# sc.i <- GetRowIndx(N.long.liver_dhs, "sitecount")
+# 
+# # 3 minutes?
+# N.long.liver_dhs$sitecount.cross <- apply(N.long.liver_dhs, 1, function(row){
+#   sc <- as.numeric(row[sc.i])
+#   peak <- row[peak.i]
+#   motif.sc <- sitecount.motif[[peak]]
+#   if (is.null(motif.sc)) motif.sc <- 0
+#   return(motif.sc * sc)
+# })
+# 
+# N.long.sum.bytiss <- lapply(tissues, function(tiss){
+#   dat.out <- subset(N.long.liver_dhs, peak %in% peaks.bytissue[[tiss]]) %>%
+#     group_by(gene, motif) %>%
+#     summarise(sitecount.sum = sum(sitecount), sitecount.max = max(sitecount), sitecount.cross.max = max(sitecount.cross))
+#   dat.out$tissue <- tiss
+#   return(dat.out)
+# })
+# N.long.sum.bytiss <- do.call(rbind, N.long.sum.bytiss)
