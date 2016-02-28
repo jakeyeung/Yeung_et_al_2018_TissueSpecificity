@@ -18,7 +18,7 @@ liv.genes <- subset(fits.best, model == "Liver" & amp.avg > minamp)$gene
 bkgrd.genes <- liv.genes  # same but take DHS from different tissues
 
 N.liv <- subset(N.long.sum.bytiss, gene %in% liv.genes & tissue == "Liver")
-N.bkgrd.all <- subset(N.long.sum.bytiss, gene %in% liv.genes & tissue != "Liver")
+N.bkgrd.all <- subset(N.long.sum.bytiss, gene %in% liv.genes & tissue != "Liver" )
 
 # sample to have same number as N.liv
 (n.frgrd <- nrow(N.liv))
@@ -30,8 +30,8 @@ liv.genes.N <- unique(N.liv$gene)
 N.liv$genetiss <- paste(N.liv$gene, N.liv$tissue, sep = ";")
 N.bkgrd.all$genetiss <- paste(N.bkgrd.all$gene, N.bkgrd.all$tissue, sep = ";")
 
-# sitecount.name <- "sitecount.max"
-sitecount.name <- "sitecount.cross.max"
+sitecount.name <- "sitecount.max"
+# sitecount.name <- "sitecount.cross.max"
 N.liv.mat <- dcast(data = N.liv, formula = genetiss ~ motif, fill = 0, value.var = sitecount.name)
 N.bkgrd.all.mat <- dcast(N.bkgrd.all, genetiss ~ motif, fill = 0, value.var = sitecount.name)
 
@@ -62,3 +62,8 @@ jmotif <- "MAFB.p2"
 out.df.motif <- data.frame(sitecount = N.mat.merged[, jmotif], lab = labs)
 boxplot(sitecount ~ lab, data = out.df.motif, main = jmotif)
 # plot(labs, N.mat.merged[, jmotif])
+
+
+# Where are the RXRG_dimer motifs located? --------------------------------
+
+
