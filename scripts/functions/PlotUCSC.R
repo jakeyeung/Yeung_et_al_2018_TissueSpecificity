@@ -1,4 +1,14 @@
 
+CoordToBed <- function(coord){
+  chromo <- strsplit(coord, ":")[[1]][[1]]
+  startend <- strsplit(coord, ":")[[1]][[2]]
+  start <- strsplit(startend, "-")[[1]][[1]]
+  end <- strsplit(startend, "-")[[1]][[2]]
+  return(data.frame(chromo = chromo, start = as.numeric(start), end = as.numeric(end)))
+  # return(matrix(c(chromo, as.numeric(start), as.numeric(end)), ncol = 3, nrow = 1))
+}
+
+
 # Functions ---------------------------------------------------------------
 
 ####### lib ############
