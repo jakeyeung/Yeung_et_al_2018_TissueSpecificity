@@ -5,6 +5,7 @@
 
 library(hash)
 library(dplyr)
+library(ggplot2)
 
 setwd("/home/yeung/projects/tissue-specificity")
 
@@ -85,9 +86,14 @@ jmotifs <- c('RXRG_dimer.p3', 'HNF1A.p2', 'FOXA2.p3', 'ONECUT1,2.p2', 'HNF4A_NR2
 # jmotif <- "FOXA2.p3"
 
 start <- Sys.time()
-for (jmotif in jtmoifs){
+for (jmotif in jmotifs){
   outf <- paste0("/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/motif_views.", jmotif, ".pdf")
-  
+  print(jmotif)
+  if (file.exists(outf)){
+    print(paste("Skipping motif", jmotif))
+    next 
+  } 
+
   N.long.liver_dhs.liv.motif <- subset(N.long.liver_dhs.liv, motif == jmotif)
   N.long.liver_dhs.liv.motif <- N.long.liver_dhs.liv.motif[order(N.long.liver_dhs.liv.motif$sitecount, decreasing = TRUE), ]
   
@@ -105,8 +111,8 @@ for (jmotif in jtmoifs){
       CoordToBed(as.character(peak))
     })
     peaks.bed <- do.call(rbind, peaks.bed)
-    head(peaks.bed)
     
+    print(head(peaks.bed))
     bedToUCSC(toPlot = peaks.bed, 
               # outpdf = "/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/motif_views_rxrg_dimer_peaks.pdf", 
               outpdf = outf, 
@@ -114,7 +120,7 @@ for (jmotif in jtmoifs){
               theURL = "http://genome.ucsc.edu/cgi-bin/hgTracks?hgsid=477175389_DSFdGfM7dyhhHORzyaaej8ICXXQQ&hgt.psOutput=on", 
               chromo.name="chromo", start.name="start", end.name="end")
   } else {
-    warning("Empty dataframe")
+    print(paste("Skipping", jmotif, "empty data frame"))
   }
   
 }

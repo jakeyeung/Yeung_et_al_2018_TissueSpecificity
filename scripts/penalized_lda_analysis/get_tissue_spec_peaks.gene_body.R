@@ -7,12 +7,14 @@ library(dplyr)
 
 # Functions ---------------------------------------------------------------
 
+source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/SitecountsFunctions.R")
 source("scripts/functions/DataHandlingFunctions.R")
 
 
 # Load --------------------------------------------------------------------
 
+load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/S.long.Robj", verbose=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 load("Robjs/S.tissuecutoff.Robj", verbose=T)
@@ -106,7 +108,7 @@ jmotif <- "CUX2.p2"
 jmotif <- "RXRG_dimer.p3"
 
 # The palette with grey:
-cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+cbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 ggplot(subset(N.long.sum.bytiss, motif == jmotif), aes(x = sitecount.norm.bypeak, fill = tissue)) + geom_density(alpha = 0.5) + ggtitle(jmotif) + scale_fill_manual(values=cbPalette)
 ggplot(subset(N.long.sum.bytiss, motif == jmotif), aes(x = sitecount.max, fill = tissue)) + geom_density(alpha = 0.5) + ggtitle(jmotif) + scale_fill_manual(values=cbPalette)
 ggplot(subset(N.long.sum.bytiss, motif == jmotif & tissue == "Liver"), aes(x = sitecount.max, fill = tissue)) + geom_density(alpha = 0.5) + ggtitle(jmotif) + scale_fill_manual(values=cbPalette)
@@ -114,27 +116,27 @@ ggplot(subset(N.long.sum.bytiss, motif == jmotif & tissue == "Liver"), aes(x = s
 
 # Do cross product --------------------------------------------------------
 
-# jmotif <- "RXRG_dimer.p3"
-# 
-# sitecount.motif <- hash(as.character(subset(N.long.liver_dhs, motif == jmotif)$peak), subset(N.long.liver_dhs, motif == jmotif)$sitecount)
-# 
-# peak.i <- GetRowIndx(N.long.liver_dhs, "peak")
-# sc.i <- GetRowIndx(N.long.liver_dhs, "sitecount")
-# 
-# # 3 minutes?
-# N.long.liver_dhs$sitecount.cross <- apply(N.long.liver_dhs, 1, function(row){
-#   sc <- as.numeric(row[sc.i])
-#   peak <- row[peak.i]
-#   motif.sc <- sitecount.motif[[peak]]
-#   if (is.null(motif.sc)) motif.sc <- 0
-#   return(motif.sc * sc)
-# })
-# 
-# N.long.sum.bytiss <- lapply(tissues, function(tiss){
-#   dat.out <- subset(N.long.liver_dhs, peak %in% peaks.bytissue[[tiss]]) %>%
-#     group_by(gene, motif) %>%
-#     summarise(sitecount.sum = sum(sitecount), sitecount.max = max(sitecount), sitecount.cross.max = max(sitecount.cross))
-#   dat.out$tissue <- tiss
-#   return(dat.out)
-# })
-# N.long.sum.bytiss <- do.call(rbind, N.long.sum.bytiss)
+jmotif <- "RXRG_dimer.p3"
+
+sitecount.motif <- hash(as.character(subset(N.long.liver_dhs, motif == jmotif)$peak), subset(N.long.liver_dhs, motif == jmotif)$sitecount)
+
+peak.i <- GetRowIndx(N.long.liver_dhs, "peak")
+sc.i <- GetRowIndx(N.long.liver_dhs, "sitecount")
+
+# 3 minutes?
+N.long.liver_dhs$sitecount.cross <- apply(N.long.liver_dhs, 1, function(row){
+  sc <- as.numeric(row[sc.i])
+  peak <- row[peak.i]
+  motif.sc <- sitecount.motif[[peak]]
+  if (is.null(motif.sc)) motif.sc <- 0
+  return(motif.sc * sc)
+})
+
+N.long.sum.bytiss <- lapply(tissues, function(tiss){
+  dat.out <- subset(N.long.liver_dhs, peak %in% peaks.bytissue[[tiss]]) %>%
+    group_by(gene, motif) %>%
+    summarise(sitecount.sum = sum(sitecount), sitecount.max = max(sitecount), sitecount.cross.max = max(sitecount.cross))
+  dat.out$tissue <- tiss
+  return(dat.out)
+})
+N.long.sum.bytiss <- do.call(rbind, N.long.sum.bytiss)
