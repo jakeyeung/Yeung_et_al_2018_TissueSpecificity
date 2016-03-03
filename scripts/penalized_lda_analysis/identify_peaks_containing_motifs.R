@@ -21,13 +21,16 @@ source("scripts/functions/PlotUCSC.R")
 load("Robjs/S.long.Robj", verbose=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 load("Robjs/S.tissuecutoff.Robj", verbose=T)
-load("Robjs/N.long.liver_genes.all_motifs.100000.Robj", verbose=T)  # huge file 
+# load("Robjs/N.long.liver_genes.all_motifs.100000.Robj", verbose=T)  # huge file 
+load("Robjs/N.long.all_genes.all_signif_motifs.Robj", v=T)
+N.long.liver_dhs <- N.long.filt; rm(N.long.filt)
 load("Robjs/dat.long.fixed_rik_genes.Robj", verbose=T)
 
 # Get liver genes ---------------------------------------------------------
 
 ampmin <- 0.25
-liv.genes <- unique(as.character(subset(fits.best, model == "Liver" & amp.avg > ampmin)$gene))
+# liv.genes <- unique(as.character(subset(fits.best, model == "Liver" & amp.avg > ampmin)$gene))
+liv.genes <- unique(as.character(subset(fits.best, model == "Adr" & amp.avg > ampmin)$gene))
 
 # shift by 1 log2 unit the fit looks better
 log.shift <- 2.5
@@ -77,9 +80,12 @@ N.long.liver_dhs.liv <- subset(N.long.liver_dhs, peak %in% peaks.bytissue[[jtiss
 
 # Sort peaks by presence of jmotif ----------------------------------------
 
-jmotifs <- c('RXRG_dimer.p3', 'HNF1A.p2', 'FOXA2.p3', 'ONECUT1,2.p2', 'HNF4A_NR2F1,2.p2', 
-             'ESRRA.p2', 'CUX2.p2', 'NR4A2.p2', 'FOX{F1,F2,J1}.p2', 'NR6A1.p2', 'FOXQ1.p2', 
-             'HLF.p2', 'NR5A1,2.p2', 'CDC5L.p2', 'NR1H4.p2', 'RORA.p2', 'SRY.p2', 'FOXO1,3,4.p2', 'ATF2.p2', 'bHLH_family.p2')
+# jmotifs <- c('RXRG_dimer.p3', 'HNF1A.p2', 'FOXA2.p3', 'ONECUT1,2.p2', 'HNF4A_NR2F1,2.p2', 
+#              'ESRRA.p2', 'CUX2.p2', 'NR4A2.p2', 'FOX{F1,F2,J1}.p2', 'NR6A1.p2', 'FOXQ1.p2', 
+#              'HLF.p2', 'NR5A1,2.p2', 'CDC5L.p2', 'NR1H4.p2', 'RORA.p2', 'SRY.p2', 'FOXO1,3,4.p2', 'ATF2.p2', 'bHLH_family.p2')
+jmotifs <- c('HNF1A.p2','HNF4A_NR2F1,2.p2','ADNP_IRX_SIX_ZHX.p2','EVI1.p2','ESRRA.p2','NR6A1.p2','ATF2.p2','FOX{I1,J2}.p2',
+             'NR5A1,2.p2','FOXD3.p2','FOX{F1,F2,J1}.p2','RUNX1..3.p2','FOXA2.p3','ONECUT1,2.p2','NR1H4.p2','CDX1,2,4.p2','LHX3,4.p2','CUX2.p2','FOXQ1.p2','LEF1_TCF7_TCF7L1,2.p2')
+
 # jmotif <- "RXRG_dimer.p3"
 # jmotif <- "ONECUT1,2.p2"
 # jmotif <- "HNF1A.p2"
@@ -87,7 +93,7 @@ jmotifs <- c('RXRG_dimer.p3', 'HNF1A.p2', 'FOXA2.p3', 'ONECUT1,2.p2', 'HNF4A_NR2
 
 start <- Sys.time()
 for (jmotif in jmotifs){
-  outf <- paste0("/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/motif_views.", jmotif, ".pdf")
+  outf <- paste0("/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/motif_views.adr.", jmotif, ".pdf")
   print(jmotif)
   if (file.exists(outf)){
     print(paste("Skipping motif", jmotif))

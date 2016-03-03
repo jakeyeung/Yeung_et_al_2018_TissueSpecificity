@@ -18,12 +18,23 @@ load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/S.long.Robj", verbose=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 load("Robjs/S.tissuecutoff.Robj", verbose=T)
-load("Robjs/N.long.liver_genes.all_motifs.100000.Robj", verbose=T)  # huge file 
+# load("Robjs/N.long.liver_genes.all_motifs.100000.Robj", verbose=T)  # huge file 
+# load("Robjs/N.long.filt", verbose=T)  # huge file 
+load("Robjs/N.long.all_genes.all_signif_motifs.Robj", v=T)
 
 # Get liver genes ---------------------------------------------------------
 
 ampmin <- 0.25
-liv.genes <- unique(as.character(subset(fits.best, model == "Liver" & amp.avg > ampmin)$gene))
+
+# liver models
+# gene.list <- unique(as.character(subset(fits.best, model == "Liver" & amp.avg > ampmin)$gene))
+# 
+# # liver and kidney models
+# # jgrep <- "(;|^)Kidney.*;Liver(;|$)|(;|^)Kidney,Liver(;|^)"
+# # jgrep <- "(;|^)Kidney.*;Liver(;|$)|Kidney,Liver"
+# jgrep <- "^Kidney;Liver$|^Kidney,Liver$"
+# jmodels <- unique(fits.best[grepl(jgrep, fits.best$model), ]$model)
+# gene.list <- unique(as.character(subset(fits.best, model %in% jmodels & amp.avg > ampmin)$gene))
 
 # shift by 1 log2 unit the fit looks better
 log.shift <- 2.5
@@ -42,7 +53,8 @@ ggplot(S.long[sample(x = 1:nrow(S.long), size = 0.01 * nrow(S.long)), ], aes(x =
 cutoffs.tiss.upper <- hash(as.character(S.tissuecutoff$tissue), as.numeric(S.tissuecutoff$cutoff.adj))
 
 jstart <- Sys.time()  # 4 min 
-S.sub.collapse <- subset(S.long, gene %in% liv.genes)
+# S.sub.collapse <- subset(S.long, gene %in% gene.list)
+S.sub.collapse <- subset(S.long)  # all the genes
 
 # apply is faster than mapply
 S.sub.collapse$is.upper <- apply(S.sub.collapse, 1, function(row) IsSignalUpper(as.character(row[5]), as.numeric(row[6]), cutoffs.tiss.upper))
@@ -64,7 +76,7 @@ peaks.bytissue <- lapply(tissues, function(tiss){
 names(peaks.bytissue) <- tissues
 
 N.long.sum.bytiss <- lapply(tissues, function(tiss){
-  dat.out <- subset(N.long.liver_dhs, peak %in% peaks.bytissue[[tiss]]) %>%
+  dat.out <- subset(N.long.filt, peak %in% peaks.bytissue[[tiss]]) %>%
     group_by(gene, motif) %>%
     summarise(sitecount.sum = sum(sitecount), sitecount.max = max(sitecount))
   dat.out$tissue <- tiss
@@ -114,29 +126,29 @@ ggplot(subset(N.long.sum.bytiss, motif == jmotif), aes(x = sitecount.max, fill =
 ggplot(subset(N.long.sum.bytiss, motif == jmotif & tissue == "Liver"), aes(x = sitecount.max, fill = tissue)) + geom_density(alpha = 0.5) + ggtitle(jmotif) + scale_fill_manual(values=cbPalette)
 
 
-# Do cross product --------------------------------------------------------
-
-jmotif <- "RXRG_dimer.p3"
-
-sitecount.motif <- hash(as.character(subset(N.long.liver_dhs, motif == jmotif)$peak), subset(N.long.liver_dhs, motif == jmotif)$sitecount)
-
-peak.i <- GetRowIndx(N.long.liver_dhs, "peak")
-sc.i <- GetRowIndx(N.long.liver_dhs, "sitecount")
-
-# 3 minutes?
-N.long.liver_dhs$sitecount.cross <- apply(N.long.liver_dhs, 1, function(row){
-  sc <- as.numeric(row[sc.i])
-  peak <- row[peak.i]
-  motif.sc <- sitecount.motif[[peak]]
-  if (is.null(motif.sc)) motif.sc <- 0
-  return(motif.sc * sc)
-})
-
-N.long.sum.bytiss <- lapply(tissues, function(tiss){
-  dat.out <- subset(N.long.liver_dhs, peak %in% peaks.bytissue[[tiss]]) %>%
-    group_by(gene, motif) %>%
-    summarise(sitecount.sum = sum(sitecount), sitecount.max = max(sitecount), sitecount.cross.max = max(sitecount.cross))
-  dat.out$tissue <- tiss
-  return(dat.out)
-})
-N.long.sum.bytiss <- do.call(rbind, N.long.sum.bytiss)
+# # Do cross product --------------------------------------------------------
+# 
+# jmotif <- "RXRG_dimer.p3"
+# 
+# sitecount.motif <- hash(as.character(subset(N.long.filt, motif == jmotif)$peak), subset(N.long.filt, motif == jmotif)$sitecount)
+# 
+# peak.i <- GetRowIndx(N.long.filt, "peak")
+# sc.i <- GetRowIndx(N.long.filt, "sitecount")
+# 
+# # 3 minutes?
+# N.long.filt$sitecount.cross <- apply(N.long.filt, 1, function(row){
+#   sc <- as.numeric(row[sc.i])
+#   peak <- row[peak.i]
+#   motif.sc <- sitecount.motif[[peak]]
+#   if (is.null(motif.sc)) motif.sc <- 0
+#   return(motif.sc * sc)
+# })
+# 
+# N.long.sum.bytiss <- lapply(tissues, function(tiss){
+#   dat.out <- subset(N.long.filt, peak %in% peaks.bytissue[[tiss]]) %>%
+#     group_by(gene, motif) %>%
+#     summarise(sitecount.sum = sum(sitecount), sitecount.max = max(sitecount), sitecount.cross.max = max(sitecount.cross))
+#   dat.out$tissue <- tiss
+#   return(dat.out)
+# })
+# N.long.sum.bytiss <- do.call(rbind, N.long.sum.bytiss)
