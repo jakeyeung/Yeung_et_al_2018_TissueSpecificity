@@ -130,4 +130,10 @@ jtiss <- "Aorta;BFAT;Mus"
 BFAT.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 PlotMeanExprsOfModel(dat.mean, BFAT.genes, jtiss)
 
+# antirhythmic module
+fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 7)
+fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
+bfataorta.models <- unique(as.character(fits.bfataorta$model))
 
+genes <- as.character(subset(fits.best, model %in% bfataorta.models)$gene)
+PlotMeanExprsOfModel(dat.mean, genes, bfataorta.models)

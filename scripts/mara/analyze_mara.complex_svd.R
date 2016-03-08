@@ -17,10 +17,10 @@ library(reshape2)
 
 # Load --------------------------------------------------------------------
 
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low_med_entropy_genes.centeredTRUE"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/low.entropy.genes.centeredTRUE/"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/high.entropy.genes.centeredTRUE/"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/high.entropy.genes.centeredTRUE/"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/lowmedhigh.entropy.genes.centeredTRUE/"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/med.entropy.genes.centeredTRUE/"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.50000"
@@ -28,10 +28,11 @@ indir <- "/home/yeung/projects/tissue-specificity/results/MARA/high.entropy.gene
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.5000"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.50000/expressed_genes_deseq_int.centeredTRUE"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/Liver.centeredTRUE"
-# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
 
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 act.long <- LoadActivitiesLong(indir)
 
 # PlotActivitiesWithSE(subset(act.long, gene == "NR5A1.2.p2"))
@@ -67,6 +68,13 @@ PlotActivitiesWithSE(subset(act.long, gene == "CUX2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "SNAI1..3.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "RXRG_dimer.p3"))
 PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "MYBL2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "SRF.p3"))
+PlotActivitiesWithSE(subset(act.long, gene == "HSF1.2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "NFIX.p2"))
+PlotActivitiesWithSE(subset(act.long, gene == "PAX5.p2"))
 
 # PlotActivitiesWithSE(subset(act.long, gene == "EWSR1.FLI1.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
@@ -114,3 +122,5 @@ for (comp in seq(1)){
   multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
 }
 
+# list hits
+hits <- names(eigens.act$eigensamp[order(abs(Mod(eigens.act$eigensamp)), decreasing=TRUE)])

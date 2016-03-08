@@ -80,7 +80,9 @@ pca.long <- data.frame(tissue = rep(jtissues, times = ncol(dat_pca$x)),
 head(pca.long)
 n.samps <- length(jtissues)
 
-pdf(file.path(outdir, "component_vs_component.pdf"))
+plot.i <- 1
+pdf(file.path(outdir, paste0(plot.i, ".component_vs_component.pdf")))
+plot.i <- plot.i + 1
 # Plot PC1 vs PC2
 jpc1 <- "PC1"
 jpc2 <- "PC2"
@@ -158,7 +160,9 @@ pca.p.sum.long <- pca.p.sum.long %>%
   arrange(Component)
 
 
-pdf(file.path(outdir, "PCA_scree.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".PCA_scree.pdf")))
+plot.i <- plot.i + 1
+
 for (i in seq(length(starts))){
   print(PlotComponents2(pca.p.sum.long, starts[[i]], ends[[i]]))  # PCA 1,2,13,14,15,16, .. .20 are interesting
 }
@@ -169,7 +173,9 @@ dev.off()
 # order pca.p.sum.long tissues to same as Fourier components: hardcode
 pca.long$tissue <- factor(pca.long$tissue, levels = tissue.order)
 
-pdf(file.path(outdir, "PCA_modules.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".PCA_modules.pdf")))
+plot.i <- plot.i + 1
+
 pcs <- seq(50); pcs <- paste("PC", pcs, sep = "")
 for (jpc in pcs){
   print(ggplot(subset(pca.long, pc == jpc), aes(x = time, y = loading)) + geom_point() + geom_line() + facet_wrap(~tissue) + ggtitle(jpc) + 
@@ -206,6 +212,33 @@ pc2 <- ggplot(subset(pca.long, pc == jpc), aes(x = time, y = loading)) + geom_po
 
 
 multiplot(scree1, scree2, pc1, pc2, cols = 2)  
+
+
+# Figure 1A var by tissue ---------------------------------------------------
+# from pca_by_tissue.R
+# Plot contribution of temporal variance for each gene across tissues
+load("Robjs/dat.var.filt.Robj")
+
+# order factors
+dat.var.filt.bytiss <- dat.var.filt %>%
+  group_by(tissue) %>%
+  summarise(var.temp = sum(var.temp), var.gene = sum(var.gene))
+dat.var.filt$tissue <- factor(dat.var.filt$tissue, levels = dat.var.filt.bytiss$tissue[order(dat.var.filt.bytiss$var.temp, decreasing = T)])
+
+pdf(file.path(outdir, paste0(plot.i, ".variance_by_tissue.pdf")))
+plot.i <- plot.i + 1
+dat.var.filt.sort <- dat.var.filt %>%
+  group_by(tissue) %>%
+  arrange(., desc(var.temp)) %>%
+  mutate(var.temp.i = seq(length(var.temp)),
+         var.temp.cum = cumsum(var.temp),
+         var.temp.cum.norm = cumsum(var.temp) / (sum(var.temp) + sum(var.gene)))
+
+ggplot(subset(dat.var.filt.sort, tissue != "WFAT"), aes(y = var.temp.cum.norm, x = var.temp.i)) + geom_line() + facet_wrap(~tissue) + 
+  theme_bw() + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ylab("Cumulant of temporal variance (normalized by total variance)") + xlab("Gene index") + ggtitle("Contribution of temporal variance for each gene")
+
+dev.off()
 
 
 # Figure 1B Temporal variation using Fourier analysis ------------------
@@ -258,7 +291,8 @@ dat.var.s1_adj.12 <- subset(dat.var.s1_adj, period.factor.cond == "12")
 dat.var.s1_adj.12$tissue <- factor(dat.var.s1_adj.12$tissue,
                                    levels = dat.var.s1_adj.12$tissue[order(dat.var.s1_adj.12$s1_normalized, decreasing = TRUE)])
 
-pdf(file.path(outdir, "fourier_variance.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".fourier_variance.pdf")))
+plot.i <- plot.i + 1
 # for ordering the facet_wrap plot across tissues by total variance
 dat.var.s$tissue <- factor(dat.var.s$tissue,
                            levels = dat.var.all$tissue[order(dat.var.all$sum_sqr_mod.total, decreasing = TRUE)])
@@ -289,7 +323,8 @@ ggplot(subset(dat.var.s, period.factor.cond != "Other"), aes(x = tissue, y = sum
   scale_fill_manual(name = "Fourier component", drop=TRUE, values=cbPalette)
 dev.off()
 
-pdf(file.path(outdir, "circadian_and_ultraidian_variance.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".circadian_and_ultraidian_variance.pdf")))
+plot.i <- plot.i + 1
 # plot normalized spectral power
 dat.var.s1_adj$tissue <- factor(dat.var.s1_adj$tissue,
                                 levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$s1_normalized, decreasing = TRUE)])
@@ -325,7 +360,8 @@ dev.off()
 
 dat.var.s1_adj$tissue <- factor(dat.var.s1_adj$tissue,
                                 levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$s1_normalized, decreasing = TRUE)])
-pdf(file.path(outdir, "normalized_fourier_variance.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".normalized_fourier_variance.pdf")))
+plot.i <- plot.i + 1
 
 m1 <- ggplot(dat.var.s1_adj, aes(x = period.factor, y = s1_normalized)) +  geom_bar(stat = "identity") + facet_wrap(~tissue) + 
   theme_bw(24) + theme(axis.text.x=element_text(size=11, angle=90,vjust = 0, hjust = 1), 
@@ -357,7 +393,8 @@ dat.fit.periods.sub <- subset(dat.fit.periods.genome_wide.min, amp > 0.1 & pval 
 # order dat.fits by tissue.order
 dat.fit.periods.sub$tissue <- factor(dat.fit.periods.sub$tissue, levels = tissue.order)
 
-pdf(file.path(outdir, "fourier_across_periods.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".fourier_across_periods.pdf")))
+plot.i <- plot.i + 1
 
 xscale_periods <- seq(6, 30, 2)
 ggplot(subset(dat.fit.periods.sub), aes(x = period)) + geom_histogram(binwidth = diff(range(dat.fit.periods.sub$period))/55) + geom_vline(xintercept=24, linetype="dotted") + 
@@ -389,7 +426,8 @@ ggplot(dat.fit.periods.sub, aes(x = period, y = ssq.residuals, colour = gene)) +
 
 dev.off()
 
-pdf(file.path(outdir, "fig1_bottom.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".fig1_bottom.pdf")))
+plot.i <- plot.i + 1
 jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 multiplot(m1, m2, layout = jlayout)  
 dev.off()
@@ -464,7 +502,8 @@ fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
   }
 })
 
-pdf(file.path(outdir, "tissue_modules.global_stats.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.global_stats.pdf")))
+plot.i <- plot.i + 1
 # Plot global statistics
 
 ggplot(subset(fits.rhyth, n.rhyth >= 1), aes(x = weight, y = amp.avg, label = label)) + geom_point(alpha = 0.15) + 
@@ -512,7 +551,8 @@ ggplot(subset(fits.rhyth, n.rhyth > 1), aes(x = phase.maxdiff, y = amp.avg)) + g
 
 dev.off()
 
-pdf(file.path(outdir, "tissue_modules.tissue_wide.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.tissue_wide.pdf")))
+plot.i <- plot.i + 1
 # Plot tissue wide genes
 fits.tw <- subset(fits.best, n.rhyth >= 8)
 genes.tw <- as.character(fits.tw$gene)
@@ -525,7 +565,8 @@ multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
 
 dev.off()
 
-pdf(file.path(outdir, "tissue_modules.tissue_specific.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.tissue_specific.pdf")))
+plot.i <- plot.i + 1
 
 fits.tspec <- subset(fits.best, n.rhyth == 1)
 # order by number of genes
@@ -547,10 +588,9 @@ ggplot(fits.tspec, aes(y = phase.avg, x = amp.avg)) +
         panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
   scale_x_continuous(limits = c(0, 3))
 
-
-
 ggplot(fits.tspec, aes(x = phase.avg)) + 
-  geom_bar(width = 1) +
+#   geom_bar(stat = "identity") +
+  geom_histogram() + 
   facet_wrap(~model) + 
   scale_x_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) +
   expand_limits(y = 0) +
@@ -573,9 +613,21 @@ ggplot(fits.tspec, aes(x = phase.avg)) +
 
 dev.off()
 
-pdf(file.path(outdir, "tissue_modules.pairs_triplets.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.pairs_triplets.pdf")))
+plot.i <- plot.i + 1
 
 # Plot striking modules
+
+# Kidney and Liver
+# Kidney Liver models
+jgrep <- "^Kidney;Liver$|^Kidney,Liver$"
+jmodels <- unique(fits.best[grepl(jgrep, fits.best$model), ]$model)
+genes.livkid <- as.character(subset(fits.best, model %in% jmodels)$gene)
+s.livkid <- SvdOnComplex(subset(dat.complex, gene %in% genes.livkid & ! tissue %in% filt.tiss), value.var = "exprs.transformed")
+eigens.livkid <- GetEigens(s.livkid, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens.livkid$u.plot, eigens.livkid$v.plot, layout = jlayout)  
+
 
 # Aorta BFAT grepped
 fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 11)
@@ -655,7 +707,8 @@ dev.off()
 
 # order by tissue.order
 dat.long$tissue <- factor(dat.long$tissue, levels = tissue.order)
-pdf(file.path(outdir, "tissue_modules.examples.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.examples.pdf")))
+plot.i <- plot.i + 1
 # BMAL1
 print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Arntl" & experiment == "rnaseq"))) 
 print(PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Nr1d1" & experiment == "rnaseq")))
@@ -668,7 +721,8 @@ dev.off()
 
 # Cluster tissues to overlay later
 
-pdf(file.path(outdir, "tissue_cluster.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".tissue_cluster.pdf")))
+plot.i <- plot.i + 1
 tfs <- GetTFs()
 dat.mean <- subset(dat.long, gene %in% tfs & experiment == "rnaseq" & !tissue %in% filt.tiss) %>%
   group_by(gene, tissue) %>%
@@ -687,7 +741,8 @@ fits.count$n.rhyth <- sapply(fits.count$model, GetNrhythFromModel)
 fits.count <- fits.count[order(fits.count$count, decreasing = TRUE), ]
 fits.count$model <- factor(fits.count$model, level = unique(fits.count$model))
 # plot top genes for n.rhyth >= 2
-pdf(file.path(outdir, "top_multi_models.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".top_multi_models.pdf")))
+plot.i <- plot.i + 1
 for (jmodel in fits.count$model[2:50]){
   if (jmodel != ""){
     PlotGenesInModel(subset(fits.best, model == jmodel), dat.complex, filt.tiss)
@@ -702,7 +757,8 @@ dat.mean.rnaseq <- subset(dat.long, experiment == "rnaseq") %>%
   group_by(gene, tissue, experiment) %>%
   summarise(exprs.mean = mean(exprs))
 
-pdf(file.path(outdir, "supplemental.mean_exprs_modules.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".supplemental.mean_exprs_modules.pdf")))
+plot.i <- plot.i + 1
 jtiss <- "Liver"
 Liver.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 PlotMeanExprsOfModel(dat.mean.rnaseq, Liver.genes, jtiss)
@@ -729,7 +785,8 @@ jtiss <- "Aorta;BFAT;Mus"
 PlotMeanExprsOfModel(dat.mean.rnaseq, genes.bfataortamus, jtiss)
 dev.off()
 
-pdf(file.path(outdir, "supplemental.overlay_exprs.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".supplemental.overlay_exprs.pdf")))
+plot.i <- plot.i + 1
 jtiss <- "Adr"
 Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
@@ -768,7 +825,8 @@ load("Robjs/alt_promoter_usage.mean_peak_amp.no_wfat.Robj", verbose = T)   # tpm
 # hits <- c("Upp2", "Insig2", "Ddc", "Slc45a3")
 hits <- c("Slc45a3", "Ddc", "Insig2")
 
-pdf(file.path(outdir, "alt_prom_examples.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".alt_prom_examples.pdf")))
+plot.i <- plot.i + 1
 jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
 for (jgene in hits){
   tpm.sub <- subset(tpm.fit, gene_name == jgene)
@@ -785,7 +843,8 @@ for (jgene in hits){
 dev.off()
 
 
-pdf(file.path(outdir, "alt_prom_global.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".alt_prom_global.pdf")))
+plot.i <- plot.i + 1
 # plot pval distribution
 tpm.summary <- tpm.fit %>%
   group_by(gene_name) %>%
@@ -830,7 +889,8 @@ tpm.gauss$jlabel <- mapply(function(gene_name, center.dists){
   }
 }, as.character(tpm.gauss$gene_name), tpm.gauss$center.dists)
 
-pdf(file.path(outdir, "alt_prom_global_gauss.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".alt_prom_global_gauss.pdf")))
+plot.i <- plot.i + 1
 ggplot(tpm.gauss, aes(x = center.dists, y = amp.avg, label = jlabel)) + geom_point(alpha = 0.1) + geom_text() + theme_bw(24) + 
   theme(aspect.ratio=1,
         panel.grid.major = element_blank(),
@@ -840,13 +900,18 @@ ggplot(tpm.gauss, aes(x = center.dists, y = amp.avg, label = jlabel)) + geom_poi
 
 dev.off()
 
-pdf(file.path(outdir, "alt_prom_gauss_examples.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".alt_prom_gauss_examples.pdf")))
+plot.i <- plot.i + 1
 jgene <- "Ddc"
 PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == jgene)$sigs[[1]], jgene = jgene, jtitle = "Ddc promoter usage across tissues")
 dev.off()
 
 
-# Figure 3: Regulation ----------------------------------------------------
+# Tissue-wide regulation --------------------------------------------------
+
+
+
+# Tissue-specific ----------------------------------------------------
 
 load("Robjs/N.sitecounts.dhs.6.tissues.norm.Robj", verbose=T)  # N
 
@@ -890,7 +955,8 @@ test.sum$label <- mapply(function(jmotif, oddsrat){
 }, test.sum$motif, test.sum$odds.ratio)
 
 library(wordcloud)
-pdf(file.path(outdir, "liver_specific_enrichment.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".liver_specific_enrichment.pdf")))
+plot.i <- plot.i + 1
 textplot(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, words = test.sum$label, xlab = "Odds ratio", ylab = "-log10(pvalue)")
 points(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, pch = ".", cex = 3)
 dev.off()
@@ -900,7 +966,8 @@ load("Robjs/N.long.promoters_500.Robj")
 
 cutoffs <- seq(from = 0.4, to = 0.8, by = 0.1)
 
-pdf(file.path(outdir, "promoter_enrichment.pdf"))
+pdf(file.path(outdir, paste0(plot.i, ".promoter_enrichment.pdf")))
+plot.i <- plot.i + 1
 models.tw <- ""
 jmodel <- "Adr"
 N.promsub <- subset(N.long, model %in% c(models.tw, jmodel))
@@ -919,7 +986,7 @@ N.ftests$jlab <- mapply(function(pval, motifname){
 
 ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_point() + geom_text(size = 6) + theme_bw(24) + 
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+        panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom") +
   xlab("Odds ratio") + ylab("-log10(P-value)")
 
 jmodel <- "BFAT"
@@ -938,4 +1005,109 @@ ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
         panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
   xlab("Odds ratio") + ylab("-log10(P-value)")
+dev.off()
+
+
+# Regulation with LDA -----------------------------------------------------
+# from LDA directory: sitecounts_analysis_promoter.R
+
+library(penalizedLDA)
+source("scripts/functions/LdaFunctions.R")
+load("Robjs/N.long.promoters_500.Robj", verbose=T)
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
+
+# antirhythmic model
+fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 7)
+fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
+bfataorta.models <- unique(as.character(fits.bfataorta$model))
+
+# ADR 
+fg.models.lst <- list(c("Adr"), c("BFAT"), bfataorta.models, c("Mus"))
+
+pdf(file.path(outdir, paste0(plot.i, ".promoter_lda.pdf")))
+plot.i <- plot.i + 1
+for (fg.models in fg.models.lst){  
+  flat.models <- ""
+  rhyth.models <- as.character(subset(fits.best, n.rhyth >= 8)$model)
+  
+  fg.genes <- subset(fits.best, model %in% fg.models)$gene
+  print(length(fg.genes))
+  
+  fg.mat <- LongToMat(subset(N.long, gene %in% fg.genes & model %in% fg.models))
+  flat.mat <- LongToMat(subset(N.long, model %in% flat.models))
+  rhyth.mat <- LongToMat(subset(N.long, model %in% rhyth.models))
+  
+  out.flat <- DoLdaPromoters(fg.mat, flat.mat)
+  out.rhyth <- DoLdaPromoters(fg.mat, rhyth.mat)
+  
+  out.df <- data.frame(motif = colnames(out.flat$x), discrim.flat = out.flat$discrim, discrim.rhyth = out.rhyth$discrim)
+  
+  m <- ggplot(out.df, aes(x = discrim.flat, y = discrim.rhyth, label = motif)) + geom_text() + ggtitle(paste("Rhyth model:", paste(fg.models, collapse='|'))) + 
+    geom_hline(aes(yintercept=0)) + geom_vline(aes(xintercept=0)) +
+    theme_bw(24)
+  print(m)
+  PlotLdaOut(out.flat, jtitle = paste("Rhyth model:", paste(fg.models, collapse='|')), jcex = 0.5)
+  PlotSeparation(out.flat, jtitle = paste("Rhyth model:", paste(fg.models, collapse='|')))
+}
+dev.off()
+
+
+# Regulation with LDA: with DHS -------------------------------------------
+
+load("Robjs/N.long.sum.bytiss.all_genes.Robj", verbose=T)
+source("scripts/functions/LdaFunctions.R")
+
+minamp <- 0.25
+
+# define parameters
+sitecount.name <- "sitecount.max"
+bg.genes.type <- "same"  # "Flat", "Rhythmic", "same" 
+
+# Kidney Liver models
+jgrep <- "^Kidney;Liver$|^Kidney,Liver$"
+jmodels <- unique(fits.best[grepl(jgrep, fits.best$model), ]$model)
+
+# define foreground and background tissues
+all.tiss <- c('Cere', 'Heart', 'Kidney', 'Liver', 'Lung', 'Mus')
+fg.tiss <- c("Liver", "Kidney")
+bg.tiss <- all.tiss[which(! all.tiss %in% fg.tiss)]
+
+# compare LiverKidney vs Non LiverKidney same genes
+out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.25, n.bg = "same")
+
+pdf(file.path(outdir, paste0(plot.i, ".rhythmic_lda.pdf")))
+
+plot.i <- plot.i + 1
+jtitle <- paste(length(out$fg.genes), "kidney and liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
+PlotLdaOut(out, jtitle, jcex = 0.5)
+PlotSeparation(out, jtitle)
+
+# compare LiverKidney rhythmic vs LiverKidney flat genes
+fg.tiss <- c("Liver", "Kidney")
+bg.tiss <- c("Liver", "Kidney")
+bg.genes.type <- "Flat"
+
+out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.25, n.bg = "same")
+jtitle <- paste(length(out$fg.genes), "kidney and liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
+PlotLdaOut(out, jtitle, jcex = 0.5)
+PlotSeparation(out, jtitle)
+
+# do with LIVER
+jmodels <- c("Liver")
+fg.tiss <- c("Liver")
+bg.tiss <- c("Liver")
+bg.genes.type <- "Flat"
+out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.4, n.bg = "same")
+jtitle <- paste(length(out$fg.genes), "Liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
+PlotLdaOut(out, jtitle, jcex = 0.5)
+PlotSeparation(out, jtitle)
+
+fg.tiss <- c("Liver")
+bg.tiss <- all.tiss[which(! all.tiss %in% fg.tiss)]
+bg.genes.type <- "same"
+out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.4, n.bg = "same")
+jtitle <- paste(length(out$fg.genes), "Liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
+PlotLdaOut(out, jtitle, jcex = 0.5)
+PlotSeparation(out, jtitle)
+
 dev.off()
