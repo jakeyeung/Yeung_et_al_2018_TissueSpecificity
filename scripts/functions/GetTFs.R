@@ -1,4 +1,4 @@
-GetTFs <- function(){
+GetTFs <- function(split.commas = TRUE, get.motifs = FALSE){
   # Vector containing gene names (may be comma separated), get gene list
   # 
   # Args:
@@ -12,12 +12,18 @@ GetTFs <- function(){
   
   tf.mat <- read.table(tf.path, header=FALSE, row.names = 1, sep='\t')
   
-  tf_vector <- as.vector(tf.mat[, 1])
-  
-  genes.list <- strsplit(tf_vector, split=",")
-  
-  # flatten list, return uniques
-  genes.list <- unique(unlist(genes.list))
-  
+  if (get.motifs == FALSE){
+    tf_vector <- as.vector(tf.mat[, 1])
+    if (split.commas){
+      genes.list <- strsplit(tf_vector, split=",")
+      # flatten list, return uniques
+      genes.list <- unique(unlist(genes.list))
+    } else {
+      genes.list <- tf_vector
+      return(genes.list)
+    }
+  } else {
+    return(rownames(tf.mat))
+  }
   return(genes.list)  
 }
