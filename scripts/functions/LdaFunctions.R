@@ -1,5 +1,71 @@
 library(penalizedLDA)
 library(wordcloud)
+library(dplyr)
+
+CrossProductCnames <- function(cnames, jsep = ";"){
+#   cnames.new <- c()
+#   for (cnamei in cnames){
+#     for (cnamej in cnames){
+#       if (cnamei == cnamej) next
+#       cname.cross <- sort(c(cnamei, cnamej))
+#       cname.cross <- paste(cname.cross, collapse = ";")
+#       if (! cname.cross %in% cnames.new){
+#         cnames.new <- c(cnames.new, cname.cross)
+#       }
+#     }
+#   }
+  cnames.new <- unlist(lapply(cnames, function(cname){
+    paste(cname, cnames, sep = jsep)
+  }))
+  return(cnames.new)
+}
+
+SortCname <- function(cname, jsep = ";"){
+  # make ZDF;ABC -> ABC;ZDF
+  paste(sort(strsplit(cname, jsep)[[1]]), collapse = jsep)
+}
+
+IsDouble <- function(cname, jsep = ";"){
+  # return TRUE if ABC;ABC
+  strsplit(cname, jsep)[[1]][[1]] == strsplit(cname, jsep)[[1]][[2]]
+}
+
+DuplicateCnames <- function(cnames){
+  # After running CrossProductCnames, check which ones are duplicates and remove them
+  dupes.i <- c()
+  sorted.cnames <- c()
+  for (i in seq(length(cnames))){
+    cname <- SortCname(cnames[i])
+    if (IsDouble(cname)){
+      dupes.i <- c(dupes.i, i)
+      next
+    }
+    if (cname %in% sorted.cnames){
+      dupes.i <- c(dupes.i, i)
+      next
+    }
+    sorted.cnames <- c(sorted.cnames, cname)
+  }
+  return(dupes.i)
+}
+
+CrossProduct <- function(mat, remove.duplicates = TRUE){
+  # Make cross product of each column with every other column
+  if (is.data.frame(mat)) convert.to.mat <- TRUE
+  jmat <- apply(mat, MARGIN = 2, function(jcol){
+    return(sweep(mat, 1, jcol, FUN = "*"))
+  })
+  if (convert.to.mat){
+    # add cross colnames
+    new.cnames <- CrossProductCnames(colnames(mat))
+    mat <- bind_cols(jmat)
+    colnames(mat) <- new.cnames
+    if (remove.duplicates){
+      mat[DuplicateCnames(colnames(mat))] <- list(NULL)  
+    }
+  }
+  return(mat)
+}
 
 DoLdaPromoters <- function(fg.mat, bg.mat){
   # remove columns with 0 within-class SD
@@ -147,10 +213,24 @@ BoxplotLdaOut <- function(out, jtitle = "Title"){
   boxplot(xproj ~ lab, data = out.df, main = jtitle)
 }
 
-PlotLdaOut <- function(out, jtitle = "Title", jcex = 1){
+PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA){
   discrim.filt <- sort(out$discrim[which(out$discrim != 0)], decreasing = FALSE)
   cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
-  textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
+  # optionally filter if there are too many to plot
+  if (is.na(take.n) & (is.na(from.bottom))){
+    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
+  } else {
+    if (from.bottom){
+      # take from bottom (head)
+      discrim.filt <- head(discrim.filt, take.n)
+      cnames <- head(cnames, take.n)
+    } else {
+      discrim.filt <- tail(discrim.filt, take.n)
+      cnames <- tail(cnames, take.n)
+    }
+    print("PLOTTING...")
+    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
+  }
 }
 
 SortLda <- function(out){
