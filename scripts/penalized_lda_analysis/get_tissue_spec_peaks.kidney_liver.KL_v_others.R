@@ -16,18 +16,6 @@ source("scripts/functions/DataHandlingFunctions.R")
 source("scripts/functions/LdaFunctions.R")
 source("scripts/functions/RemoveP2Name.R")
 
-IsTissSpec <- function(is.upper.vec, compare.vec, reverse=FALSE){
-  if (all(is.upper.vec == compare.vec)){
-    is.tiss <- TRUE
-  } else {
-    is.tiss <- FALSE
-  }
-  if (reverse){
-    return(!is.tiss)
-  } else {
-    return(is.tiss)
-  }
-}
 
 
 # Load --------------------------------------------------------------------
@@ -40,10 +28,10 @@ load("Robjs/N.long.all_genes.all_signif_motifs.Robj", v=T)
 # Get liver genes ---------------------------------------------------------
 
 ampmin <- 0.25
-# jmodels <-c("Kidney;Liver", "Kidney,Liver")
-# compare.vec.livkid <- c(F, F, T, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
-jmodels <-c("Liver")
-compare.vec <- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
+jmodels <-c("Kidney;Liver", "Kidney,Liver")
+compare.vec <- c(F, F, T, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
+# jmodels <-c("Liver")
+# compare.vec <- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
 jgenes <- unique(as.character(subset(fits.best, model %in% jmodels & amp.avg > ampmin)$gene))
 compare.vec.other <- !compare.vec
 
@@ -86,19 +74,18 @@ S.sub.collapse.livkid <- subset(S.sub.collapse, peak %in% livkid.peaks) %>%
   filter(is.tissspec == TRUE)
 S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
   group_by(peak, gene) %>%
-  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.other, reverse = FALSE)) %>%
+  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec, reverse = TRUE)) %>%
   filter(is.tissspec == TRUE)
 
 print(paste("N foreground peaks:", length(unique(as.character(S.sub.collapse.livkid$peak)))))
 print(paste("N background peaks:", length(unique(as.character(S.sub.collapse.bg$peak)))))
 
 # down sample to about the same size
-set.seed(0)
-bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
-fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
-bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
-
-S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
+# set.seed(0)
+# bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
+# fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
+# bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
+# S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
 
 # Make sitecounts ---------------------------------------------------------
 
@@ -120,7 +107,7 @@ out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)
 
 BoxplotLdaOut(out, jtitle = "Single factor separation")
 PlotLdaOut(out)
-
+m.singles <- SortLda(out)
 # do crosses
 colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
 mat.fgbg.cross <- CrossProduct(mat.fgbg, remove.duplicates = TRUE)

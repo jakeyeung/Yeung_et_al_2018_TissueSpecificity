@@ -1,4 +1,18 @@
 # from get_liver_peaks.R
+IsTissSpec <- function(is.upper.vec, compare.vec, reverse=FALSE){
+  if (all(is.upper.vec == compare.vec)){
+    is.tiss <- TRUE
+  } else {
+    is.tiss <- FALSE
+  }
+  if (reverse){
+    return(!is.tiss)
+  } else {
+    return(is.tiss)
+  }
+}
+
+
 IsSignalLower <- function(tiss, signal, cutoffs.tiss.lower){
   return(as.numeric(signal) < as.numeric(cutoffs.tiss.lower[[as.character(tiss)]]))
 }
