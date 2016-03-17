@@ -70,7 +70,6 @@ load("Robjs/N.long.all_genes.all_signif_motifs.Robj", v=T)
 
 # Get liver genes ---------------------------------------------------------
 
-ampmin <- 0.25
 # find models that are high in either kidney OR liver but not in "tissue-wide" models
 # kidliv.genes <- fits.best$gene[sapply(fits.best$param.list, FilterKidneyLiverGenes, amp.min = 0.25)]
 kidliv.genes <- fits.best$gene[sapply(fits.best$param.list, FilterLiverGenes, amp.min = 0.5)]
@@ -90,6 +89,7 @@ compare.vec.other <- !compare.vec
 
 # shift by 1 log2 unit the fit looks better
 log.shift <- 2.5
+# log.shift <- 4
 S.tissuecutoff$cutoff.adj <- 2^(log2(S.tissuecutoff$cutoff) + log.shift)
 
 cutoff.adj <- S.tissuecutoff$cutoff.adj
@@ -110,11 +110,11 @@ S.sub.collapse <- subset(S.long, gene %in% c(jgenes))
 
 # apply is faster than mapply
 S.sub.collapse$is.upper <- apply(S.sub.collapse, 1, function(row) IsSignalUpper(as.character(row[5]), as.numeric(row[6]), cutoffs.tiss.upper))
-# S.sub.collapse$is.lower <- apply(S.sub.collapse, 1, function(row) IsSignalLower(as.character(row[5]), as.numeric(row[6]), cutoffs.tiss.lower))
+S.sub.collapse$is.lower <- apply(S.sub.collapse, 1, function(row) IsSignalLower(as.character(row[5]), as.numeric(row[6]), cutoffs.tiss.lower))
 
 # all peaks with high signal
 S.sub.collapse.peaks <- subset(S.sub.collapse, is.upper == TRUE)
-# S.sub.collapse.peaks.lower <- subset(S.sub.collapse, is.lower == TRUE)
+S.sub.collapse.peaks.lower <- subset(S.sub.collapse, is.lower == TRUE)
 
 
 # get livkid peaks within foreground genes and other peaks from foreground genes
@@ -125,7 +125,12 @@ S.sub.collapse.livkid <- subset(S.sub.collapse, peak %in% livkid.peaks) %>%
   group_by(peak, gene) %>%
   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec)) %>%
   filter(is.tissspec == TRUE)
+#   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec),
+#             is.not.tissspec = IsTissSpec(is.lower, !compare.vec)) %>%
+#   filter(is.tissspec == TRUE & is.not.tissspec == TRUE)
+
 compare.vec.other <- c(T, T, T, T, T, T)
+# compare.vec.other <- c(F, F, F, F, T, F, F)
 S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
   group_by(peak, gene) %>%
   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.other, reverse = FALSE)) %>%
@@ -141,19 +146,22 @@ print(paste("N background peaks:", length(unique(as.character(S.sub.collapse.bg$
 jsub.liv <- subset(S.sub.collapse, peak %in% as.character(S.sub.collapse.livkid$peak) & tissue == "Liver")
 hist(jsub.liv$signal, breaks = 100)
 
+jsub.kid <- subset(S.sub.collapse, peak %in% as.character(S.sub.collapse.livkid$peak) & tissue == "Kidney")
+hist(jsub.kid$signal, breaks = 100)
+
 # cutoff here
-fg.peaks.filt <- as.character(subset(jsub.liv, signal > 2)$peak)
-# fg.peaks.filt <- as.character(subset(jsub, signal > 0)$peak)
+sig.cut <- 2
+fg.peaks.filt <- as.character(subset(jsub.liv, signal > sig.cut)$peak)
 print(length(fg.peaks.filt))
 S.sub.collapse.livkid <- subset(S.sub.collapse.livkid, peak %in% fg.peaks.filt)
 
 
 # down sample to about the same size
-# set.seed(0)
-# bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
-# fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
-# bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
-# S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
+set.seed(0)
+bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
+fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
+bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
+S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
 
 # Make sitecounts ---------------------------------------------------------
 
@@ -176,6 +184,7 @@ out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)
 BoxplotLdaOut(out, jtitle = "Single factor separation")
 PlotLdaOut(out)
 m.singles <- SortLda(out)
+
 # do crosses
 colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
 mat.fgbg.cross <- CrossProduct(mat.fgbg, remove.duplicates = TRUE)
@@ -186,7 +195,7 @@ mat.fgbg.cross <- cbind(mat.fgbg, mat.fgbg.cross)
 mat.fgbg.cross[which(colSums(mat.fgbg.cross) == 0)] <- list(NULL)
 
 # jlambda <- 0.029  # kidliv
-jlambda <- 0.015  # liv only
+jlambda <- 0.01  # liv only
 out.cross <- PenalizedLDA(mat.fgbg.cross, labels, lambda = jlambda, K = 1, standardized = FALSE)
 m <- SortLda(out.cross)
 print(length(m))
@@ -233,20 +242,20 @@ print(head(sort(n.hits, decreasing = TRUE), n = 20))
 
 # Write peaks to output  --------------------------------------------------
 
-source("scripts/functions/PlotUCSC.R")  # CoordToBed
-
-fg.peaks.final <- unique(as.character(S.sub.collapse.livkid$peak))
-fg.bed <- lapply(fg.peaks.final, CoordToBed)
-fg.bed <- do.call(rbind, fg.bed)
-fg.bed$blank <- "."
-fg.bed$id <- paste0("mm10_", fg.peaks.final)
-write.table(fg.bed, file = "bedfiles/lda_analysis/fg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
-
-bg.peaks.final <- unique(as.character(S.sub.collapse.bg$peak))
-bg.bed <- lapply(bg.peaks.final, CoordToBed)
-bg.bed <- do.call(rbind, bg.bed)
-bg.bed$blank <- "."
-bg.bed$id <- paste0("mm10_", bg.peaks.final)
-write.table(fg.bed, file = "bedfiles/lda_analysis/bg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
-
+# source("scripts/functions/PlotUCSC.R")  # CoordToBed
+# 
+# fg.peaks.final <- unique(as.character(S.sub.collapse.livkid$peak))
+# fg.bed <- lapply(fg.peaks.final, CoordToBed)
+# fg.bed <- do.call(rbind, fg.bed)
+# fg.bed$blank <- "."
+# fg.bed$id <- paste0("mm10_", fg.peaks.final)
+# write.table(fg.bed, file = "bedfiles/lda_analysis/fg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+# 
+# bg.peaks.final <- unique(as.character(S.sub.collapse.bg$peak))
+# bg.bed <- lapply(bg.peaks.final, CoordToBed)
+# bg.bed <- do.call(rbind, bg.bed)
+# bg.bed$blank <- "."
+# bg.bed$id <- paste0("mm10_", bg.peaks.final)
+# write.table(fg.bed, file = "bedfiles/lda_analysis/bg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+# 
 
