@@ -1,3 +1,43 @@
+FilterKidneyLiverGenes <- function(param.vec, amp.min){
+  # return TRUE if Kidney and Liver amplitudes are above amp.min
+  liv.amp <- 0
+  kid.amp <- 0  # inits
+  livkid.amp <- 0
+  
+  liv.indx <- which(names(param.vec) == "Liver.amp")
+  kid.indx <- which(names(param.vec) == "Kidney.amp")
+  livkid.indx <- which(names(param.vec) == "Kidney,Liver.amp")
+  if (length(liv.indx) == 1){
+    liv.amp <- param.vec[liv.indx]
+  }
+  if (length(kid.indx) == 1){
+    kid.amp <- param.vec[kid.indx]
+  } 
+  if (length(livkid.indx) == 1){
+    livkid.amp <- param.vec[livkid.indx]
+  }   
+  if ((liv.amp > amp.min & kid.amp > amp.min) | livkid.amp > amp.min) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+FilterLiverGenes <- function(param.vec, amp.min){
+  # return TRUE if Kidney and Liver amplitudes are above amp.min
+  liv.amp <- 0
+  
+  liv.indx <- which(names(param.vec) == "Liver.amp")
+  if (length(liv.indx) == 1){
+    liv.amp <- param.vec[liv.indx]
+  }
+  if (liv.amp > amp.min) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
 PlotGenesInModel <- function(fits.sub, dat.complex, filt.tiss = c("WFAT")){
   genes <- as.character(fits.sub$gene)
   
@@ -28,13 +68,16 @@ SubsetByMaxBicWeight <- function(dat){
   return(dat[max.i, ])
 }
 
-PlotSvdFromGeneList <- function(dat.complex, gene.list, jcomp = 1, jlabel.n = 25, jvalue.var = "exprs.transformed", constant.amp = 4){
+PlotSvdFromGeneList <- function(dat.complex, gene.list, jcomp = 1, jlabel.n = 25, jvalue.var = "exprs.transformed", constant.amp = 4, show.plot=TRUE){
   # Plot SVD from gene list
+  source("scripts/functions/SvdFunctions.R")
   jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
   s.custom <- SvdOnComplex(subset(dat.complex, gene %in% gene.list), value.var = jvalue.var)
   eigens.custom <- GetEigens(s.custom, period = 24, comp = jcomp, label.n = jlabel.n, eigenval = TRUE, adj.mag = TRUE, constant.amp = constant.amp)
   eigens.custom2 <- GetEigens(s.custom, period = 24, comp = (jcomp + 1), label.n = jlabel.n, eigenval = TRUE, adj.mag = TRUE, constant.amp = constant.amp)
-  multiplot(eigens.custom$u.plot, eigens.custom$v.plot, eigens.custom2$u.plot, eigens.custom2$v.plot, layout = jlayout)
+  if (show.plot){
+    multiplot(eigens.custom$u.plot, eigens.custom$v.plot, eigens.custom2$u.plot, eigens.custom2$v.plot, layout = jlayout)    
+  }
   return(eigens.custom)
 }
 

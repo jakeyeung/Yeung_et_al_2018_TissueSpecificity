@@ -1,15 +1,30 @@
 # from get_liver_peaks.R
-IsTissSpec <- function(is.upper.vec, compare.vec, reverse=FALSE){
-  if (all(is.upper.vec == compare.vec)){
-    is.tiss <- TRUE
+IsTissSpec <- function(is.upper.vec, compare.vec, compare.vec2=NA, reverse=FALSE){
+  # allow comparison for up to 2 vectors.
+  if(is.na(compare.vec2)){
+    if (all(is.upper.vec == compare.vec)){
+      is.tiss <- TRUE
+    } else {
+      is.tiss <- FALSE
+    }
+    if (reverse){
+      return(!is.tiss)
+    } else {
+      return(is.tiss)
+    }
   } else {
-    is.tiss <- FALSE
+    if (all(is.upper.vec == compare.vec | is.upper.vec == compare.vec2)){
+      is.tiss <- TRUE
+    } else {
+      is.tiss <- FALSE
+    }
+    if (reverse){
+      return(!is.tiss)
+    } else {
+      return(is.tiss)
+    }
   }
-  if (reverse){
-    return(!is.tiss)
-  } else {
-    return(is.tiss)
-  }
+  return(is.tiss)
 }
 
 
