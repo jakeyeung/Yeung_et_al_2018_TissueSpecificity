@@ -88,12 +88,13 @@ jgenes <- unique(as.character(subset(fits.best, model %in% jmodels)$gene))
 compare.vec.other <- !compare.vec
 
 # shift by 1 log2 unit the fit looks better
-log.shift <- 2.5
-# log.shift <- 4
+log.shift <- 4.5
+log.shift.lower <- 2.5
 S.tissuecutoff$cutoff.adj <- 2^(log2(S.tissuecutoff$cutoff) + log.shift)
+S.tissuecutoff$cutoff.lower <- 2^(log2(S.tissuecutoff$cutoff) + log.shift.lower)
 
 cutoff.adj <- S.tissuecutoff$cutoff.adj
-cutoff.lower <- S.tissuecutoff$cutoff
+cutoff.lower <- S.tissuecutoff$cutoff.lower
 
 # show upper and lower limit
 pseudo <- 1e-3
@@ -103,37 +104,50 @@ ggplot(S.long[sample(x = 1:nrow(S.long), size = 0.01 * nrow(S.long)), ], aes(x =
   geom_vline(aes(xintercept = log2(cutoff)), data = S.tissuecutoff, colour = "red")
 
 cutoffs.tiss.upper <- hash(as.character(S.tissuecutoff$tissue), as.numeric(S.tissuecutoff$cutoff.adj))
-cutoffs.tiss.lower <- hash(as.character(S.tissuecutoff$tissue), as.numeric(S.tissuecutoff$cutoff))
+cutoffs.tiss.lower <- hash(as.character(S.tissuecutoff$tissue), as.numeric(S.tissuecutoff$cutoff.lower))
 
 jstart <- Sys.time()  # 4 min 
 S.sub.collapse <- subset(S.long, gene %in% c(jgenes))
 
 # apply is faster than mapply
+# peaks that are above upper
 S.sub.collapse$is.upper <- apply(S.sub.collapse, 1, function(row) IsSignalUpper(as.character(row[5]), as.numeric(row[6]), cutoffs.tiss.upper))
+# also find ones that are above lower
+S.sub.collapse$is.upper.lower <- apply(S.sub.collapse, 1, function(row) IsSignalUpper(as.character(row[5]), as.numeric(row[6]), cutoffs.tiss.lower))
+# peaks below lower
 S.sub.collapse$is.lower <- apply(S.sub.collapse, 1, function(row) IsSignalLower(as.character(row[5]), as.numeric(row[6]), cutoffs.tiss.lower))
 
 # all peaks with high signal
 S.sub.collapse.peaks <- subset(S.sub.collapse, is.upper == TRUE)
+S.sub.collapse.peaks.abovelower <- subset(S.sub.collapse, is.upper.lower == TRUE)
 S.sub.collapse.peaks.lower <- subset(S.sub.collapse, is.lower == TRUE)
 
 
 # get livkid peaks within foreground genes and other peaks from foreground genes
 livkid.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & tissue %in% c("Liver") & is.upper == TRUE)$peak))
-bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & ! tissue %in% c("Liver") & is.upper == TRUE)$peak))
+# bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & ! tissue %in% c("Liver") & is.upper == TRUE)$peak))
+# if upper is really high, try taking things above lower(gives more bg)
+bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks.abovelower, gene %in% jgenes & ! tissue %in% c("Liver") & is.upper.lower == TRUE)$peak))
 
 S.sub.collapse.livkid <- subset(S.sub.collapse, peak %in% livkid.peaks) %>%
   group_by(peak, gene) %>%
-  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec)) %>%
-  filter(is.tissspec == TRUE)
-#   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec),
-#             is.not.tissspec = IsTissSpec(is.lower, !compare.vec)) %>%
-#   filter(is.tissspec == TRUE & is.not.tissspec == TRUE)
+#   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec)) %>%
+#   filter(is.tissspec == TRUE)
+  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec),
+            is.not.tissspec = IsTissSpec(is.lower, !compare.vec)) %>%
+  filter(is.tissspec == TRUE & is.not.tissspec == TRUE)
 
 compare.vec.other <- c(T, T, T, T, T, T)
 # compare.vec.other <- c(F, F, F, F, T, F, F)
+# S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
+#   group_by(peak, gene) %>%
+#   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.other, reverse = FALSE)) %>%
+#   filter(is.tissspec == TRUE)
+
+# compare with lower threshold
 S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
   group_by(peak, gene) %>%
-  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.other, reverse = FALSE)) %>%
+  summarise(is.tissspec = IsTissSpec(is.upper.lower, compare.vec.other, reverse = FALSE)) %>%
   filter(is.tissspec == TRUE)
 
 print(paste("N foreground peaks:", length(unique(as.character(S.sub.collapse.livkid$peak)))))
@@ -148,20 +162,20 @@ hist(jsub.liv$signal, breaks = 100)
 
 jsub.kid <- subset(S.sub.collapse, peak %in% as.character(S.sub.collapse.livkid$peak) & tissue == "Kidney")
 hist(jsub.kid$signal, breaks = 100)
-
-# cutoff here
-sig.cut <- 2
-fg.peaks.filt <- as.character(subset(jsub.liv, signal > sig.cut)$peak)
-print(length(fg.peaks.filt))
-S.sub.collapse.livkid <- subset(S.sub.collapse.livkid, peak %in% fg.peaks.filt)
-
-
-# down sample to about the same size
-set.seed(0)
-bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
-fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
-bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
-S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
+# 
+# # cutoff here
+# sig.cut <- 2
+# fg.peaks.filt <- as.character(subset(jsub.liv, signal > sig.cut)$peak)
+# print(length(fg.peaks.filt))
+# S.sub.collapse.livkid <- subset(S.sub.collapse.livkid, peak %in% fg.peaks.filt)
+# 
+# 
+# # down sample to about the same size
+# set.seed(0)
+# bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
+# fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
+# bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
+# S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
 
 # Make sitecounts ---------------------------------------------------------
 
@@ -230,6 +244,7 @@ jmotif <- "RORA;HNF4A_NR2F1,2"
 jmotif <- "HNF4A_NR2F1,2;RORA"
 jmotif <- "HNF4A_NR2F1,2;RXRG_dimer"
 jmotif <- "HNF4A_NR2F1,2"
+jmotif <- "DBP;FOXA2"
 fg.hits <- rownames(mat.fg.cross)[which(mat.fg.cross[, c(jmotif)] > 0)]
 bg.hits <- rownames(mat.bg.cross)[which(mat.bg.cross[, c(jmotif)] > 0)]
 print(paste("hits of", jmotif, "FG", length(fg.hits)))
