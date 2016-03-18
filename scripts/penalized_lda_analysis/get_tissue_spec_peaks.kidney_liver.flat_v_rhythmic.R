@@ -2,6 +2,8 @@
 # get_tissue_spec_peaks.R
 # Find tissue specific peaks within liver-specific rhythmic genes
 
+rm(list=ls())
+
 library(hash)
 library(dplyr)
 library(reshape2)

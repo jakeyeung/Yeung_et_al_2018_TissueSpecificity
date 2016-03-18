@@ -80,11 +80,13 @@ print(length(kidliv.genes))
 PlotGeneAcrossTissues(subset(dat.long, gene == as.character(sample(kidliv.genes, 1))))
 
 jmodels <- as.character(subset(fits.best, gene %in% kidliv.genes)$model)
+model.flat <- ""
 
 compare.vec <- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
 # jmodels <-c("Liver")
 # compare.vec <- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
 jgenes <- unique(as.character(subset(fits.best, model %in% jmodels)$gene))
+jgenes.bg <- unique(as.character(subset(fits.best, model == model.flat)$gene))
 compare.vec.other <- !compare.vec
 
 # shift by 1 log2 unit the fit looks better
@@ -107,7 +109,7 @@ cutoffs.tiss.upper <- hash(as.character(S.tissuecutoff$tissue), as.numeric(S.tis
 cutoffs.tiss.lower <- hash(as.character(S.tissuecutoff$tissue), as.numeric(S.tissuecutoff$cutoff.lower))
 
 jstart <- Sys.time()  # 4 min 
-S.sub.collapse <- subset(S.long, gene %in% c(jgenes))
+S.sub.collapse <- subset(S.long, gene %in% c(jgenes, jgenes.bg))
 
 # apply is faster than mapply
 # peaks that are above upper
@@ -128,6 +130,7 @@ livkid.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgene
 # bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & ! tissue %in% c("Liver") & is.upper == TRUE)$peak))
 # if upper is really high, try taking things above lower(gives more bg)
 bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks.abovelower, gene %in% jgenes & ! tissue %in% c("Liver") & is.upper.lower == TRUE)$peak))
+flat.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes.bg & tissue %in% c("Liver") & is.upper == TRUE)$peak))
 
 S.sub.collapse.livkid <- subset(S.sub.collapse, peak %in% livkid.peaks) %>%
   group_by(peak, gene) %>%
@@ -150,8 +153,16 @@ S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
   summarise(is.tissspec = IsTissSpec(is.upper.lower, compare.vec.other, reverse = FALSE)) %>%
   filter(is.tissspec == TRUE)
 
+S.sub.collapse.flat <- subset(S.sub.collapse, peak %in% flat.peaks) %>%
+  group_by(peak, gene) %>%
+  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec),
+            is.not.tissspec = IsTissSpec(is.lower, !compare.vec)) %>%
+  filter(is.tissspec == TRUE & is.not.tissspec == TRUE)
+
+
 print(paste("N foreground peaks:", length(unique(as.character(S.sub.collapse.livkid$peak)))))
 print(paste("N background peaks:", length(unique(as.character(S.sub.collapse.bg$peak)))))
+print(paste("N flat peaks:", length(unique(as.character(S.sub.collapse.flat$peak)))))
 
 
 # Sanity check my peeks ---------------------------------------------------
@@ -182,10 +193,12 @@ hist(jsub.kid$signal, breaks = 100)
 head(N.long.filt)
 N.sub.livkid <- subset(N.long.filt, peak %in% S.sub.collapse.livkid$peak)
 N.sub.other <- subset(N.long.filt, peak %in% S.sub.collapse.bg$peak)
+N.sub.flat <- subset(N.long.filt, peak %in% S.sub.collapse.flat$peak)
 
 # run LDA
 mat.fg <- dcast(subset(N.sub.livkid), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 mat.bg <- dcast(subset(N.sub.other), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
+mat.flat <- dcast(subset(N.sub.flat), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 
 # bind rows create labels
 mat.fgbg <- bind_rows(mat.fg, mat.bg)
@@ -198,6 +211,17 @@ out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)
 BoxplotLdaOut(out, jtitle = "Single factor separation")
 PlotLdaOut(out)
 m.singles <- SortLda(out)
+
+# compare with flat
+mat.fgflat <- bind_rows(mat.fg, mat.flat)
+mat.fgflat[is.na(mat.fgflat)] <- 0
+rownames(mat.fgflat) <- paste(mat.fgflat$peak, mat.fgflat$gene, sep = ";"); mat.fgflat$peak <- NULL; mat.fgflat$gene <- NULL
+labels.flat <- c(rep(1, nrow(mat.fg)), rep(2, nrow(mat.flat)))
+out.flat <- PenalizedLDA(mat.fgflat, labels.flat, lambda = 0.1, K = 1, standardized = FALSE)  
+BoxplotLdaOut(out.flat, jtitle = "Single factor separation")
+PlotLdaOut(out.flat)
+m.fgflat <- SortLda(out.flat)
+
 
 # do crosses
 colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)

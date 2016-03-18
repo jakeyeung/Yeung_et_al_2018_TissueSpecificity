@@ -5,12 +5,9 @@
 
 rm(list=ls())
 
-setwd("/home/yeung/projects/tissue-specificity")
-
 library(hash)
 library(dplyr)
 library(reshape2)
-library(ggplot2)
 
 # Functions ---------------------------------------------------------------
 
@@ -18,11 +15,11 @@ source("scripts/functions/SitecountsFunctions.R")
 source("scripts/functions/DataHandlingFunctions.R")
 source("scripts/functions/LdaFunctions.R")
 source("scripts/functions/RemoveP2Name.R")
-
-
+source("scripts/functions/PlotGeneAcrossTissues.R")
 
 # Load --------------------------------------------------------------------
 
+load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/S.long.Robj", verbose=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 load("Robjs/S.tissuecutoff.Robj", verbose=T)
@@ -31,15 +28,18 @@ load("Robjs/N.long.all_genes.all_signif_motifs.Robj", v=T)
 # Get liver genes ---------------------------------------------------------
 
 ampmin <- 0.25
-jmodels <-c("Kidney;Liver", "Kidney,Liver")
+# jmodels <-c("Kidney;Liver", "Kidney,Liver")
+# compare.vec <- c(F, F, T, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
+# compare.vec2<- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
+jmodels <-c("Liver")
 compare.vec <- c(F, F, T, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
-# jmodels <-c("Liver")
-# compare.vec <- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
+compare.vec.all <- c(T, T, T, T, T, T)
 jgenes <- unique(as.character(subset(fits.best, model %in% jmodels & amp.avg > ampmin)$gene))
 compare.vec.other <- !compare.vec
 
 # shift by 1 log2 unit the fit looks better
 log.shift <- 2.5
+# log.shift <- 1
 S.tissuecutoff$cutoff.adj <- 2^(log2(S.tissuecutoff$cutoff) + log.shift)
 
 cutoff.adj <- S.tissuecutoff$cutoff.adj
@@ -73,22 +73,53 @@ bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & 
 
 S.sub.collapse.livkid <- subset(S.sub.collapse, peak %in% livkid.peaks) %>%
   group_by(peak, gene) %>%
+#   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec, compare.vec2)) %>%
   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec)) %>%
   filter(is.tissspec == TRUE)
+
 S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
   group_by(peak, gene) %>%
-  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec, reverse = TRUE)) %>%
+  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.all, reverse = FALSE)) %>%  # take peaks present across all tissues
+#   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec, reverse = TRUE)) %>%
   filter(is.tissspec == TRUE)
 
 print(paste("N foreground peaks:", length(unique(as.character(S.sub.collapse.livkid$peak)))))
 print(paste("N background peaks:", length(unique(as.character(S.sub.collapse.bg$peak)))))
 
-# down sample to about the same size
-# set.seed(0)
-# bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
-# fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
-# bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
-# S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
+# coming from how many genes?
+print(paste("Number of genes considered:", length(unique(S.sub.collapse.livkid$gene))))
+print(unique(S.sub.collapse.livkid$gene))
+
+
+# Sanity check these peaks ------------------------------------------------
+
+jsub <- subset(S.sub.collapse, peak %in% as.character(S.sub.collapse.livkid$peak) & tissue == "Liver")
+# plot(density(jsub$signal))
+hist(jsub$signal, breaks = 100)
+
+
+# Do further cuts ---------------------------------------------------------
+
+# keep high signal only
+fg.peaks.filt <- as.character(subset(jsub, signal > 2)$peak)
+print(length(fg.peaks.filt))
+S.sub.collapse.livkid <- subset(S.sub.collapse.livkid, peak %in% fg.peaks.filt)
+
+# down sample bg.peaks
+set.seed(0)
+S.sub.collapse.bg <- S.sub.collapse.bg[sample(seq(length(fg.peaks.filt)), size = length(fg.peaks.filt)), ]
+
+print("After further cutoffs")
+print(paste("N foreground peaks:", length(unique(as.character(S.sub.collapse.livkid$peak)))))
+print(paste("N background peaks:", length(unique(as.character(S.sub.collapse.bg$peak)))))
+
+# Sanity check background genes -------------------------------------------
+
+# do they have high signal in kidney?
+jsub.bg <- subset(S.sub.collapse, peak %in% as.character(S.sub.collapse.bg$peak) & tissue == "Kidney")
+
+plot(density(jsub.bg$signal))
+hist(jsub.bg$signal, breaks = 100)
 
 # Make sitecounts ---------------------------------------------------------
 
@@ -111,6 +142,8 @@ out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)
 BoxplotLdaOut(out, jtitle = "Single factor separation")
 PlotLdaOut(out)
 m.singles <- SortLda(out)
+
+
 # do crosses
 colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
 mat.fgbg.cross <- CrossProduct(mat.fgbg, remove.duplicates = TRUE)
@@ -127,61 +160,3 @@ m <- SortLda(out.cross)
 print(length(m))
 BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
 PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE)
-
-# Are you sure this is real? ----------------------------------------------
-
-# how many DBP?
-mat.fg.sums <- apply(mat.fg[, 3:ncol(mat.fg)], 2, sum)
-mat.bg.sums <- apply(mat.bg[, 3:ncol(mat.bg)], 2, sum)
-length(mat.fg.sums)
-
-plot(mat.fg.sums, pch=".")
-text(mat.fg.sums, labels = names(mat.fg.sums))
-
-plot(mat.bg.sums, pch=".")
-text(mat.bg.sums, labels = names(mat.bg.sums))
-
-# and for crosses (take subset)
-mat.fg.cross <- mat.fgbg.cross[1:nrow(mat.fg), ]
-mat.bg.cross <- mat.fgbg.cross[(nrow(mat.fg)+1):(nrow(mat.fg)+nrow(mat.bg)), ]
-mat.fg.cross.sums <- apply(mat.fg.cross[, 3:ncol(mat.fg.cross)], 2, sum)
-mat.bg.cross.sums <- apply(mat.bg.cross[, 3:ncol(mat.bg.cross)], 2, sum)
-
-# take top 200
-mat.fg.cross.sums.filt <- head(sort(mat.fg.cross.sums, decreasing = TRUE), n = 200)
-
-# how many DBP-HNF4A hits?
-jmotif <- "DBP;HNF4A_NR2F1,2"
-jmotif <- "RORA;HNF4A_NR2F1,2"
-jmotif <- "HNF4A_NR2F1,2;RORA"
-jmotif <- "HNF4A_NR2F1,2;RXRG_dimer"
-jmotif <- "HNF4A_NR2F1,2"
-fg.hits <- rownames(mat.fg.cross)[which(mat.fg.cross[, c(jmotif)] > 0)]
-bg.hits <- rownames(mat.bg.cross)[which(mat.bg.cross[, c(jmotif)] > 0)]
-print(paste("hits of", jmotif, "FG", length(fg.hits)))
-print(paste("hits of", jmotif, "BG", length(bg.hits)))
-
-# which pair has most hits?
-n.hits <- apply(mat.fg.cross[, grepl(";", colnames(mat.fg.cross))], 2, function(jcol) length(which(jcol > 0)))
-print(head(sort(n.hits, decreasing = TRUE), n = 20))
-
-
-# Write peaks to output  --------------------------------------------------
-
-# source("scripts/functions/PlotUCSC.R")  # CoordToBed
-# 
-# fg.peaks.final <- unique(as.character(S.sub.collapse.livkid$peak))
-# fg.bed <- lapply(fg.peaks.final, CoordToBed)
-# fg.bed <- do.call(rbind, fg.bed)
-# fg.bed$blank <- "."
-# fg.bed$id <- paste0("mm10_", fg.peaks.final)
-# write.table(fg.bed, file = "bedfiles/lda_analysis/fg_livkidrhyth_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
-# 
-# bg.peaks.final <- unique(as.character(S.sub.collapse.bg$peak))
-# bg.bed <- lapply(bg.peaks.final, CoordToBed)
-# bg.bed <- do.call(rbind, bg.bed)
-# bg.bed$blank <- "."
-# bg.bed$id <- paste0("mm10_", bg.peaks.final)
-# write.table(fg.bed, file = "bedfiles/lda_analysis/bg_livkidrhyth_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
-# 
-

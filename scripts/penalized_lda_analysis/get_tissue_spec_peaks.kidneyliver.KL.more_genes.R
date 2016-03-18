@@ -74,7 +74,7 @@ load("Robjs/N.long.all_genes.all_signif_motifs.Robj", v=T)
 # kidliv.genes <- fits.best$gene[sapply(fits.best$param.list, FilterKidneyLiverGenes, amp.min = 0.25)]
 kidliv.genes <- fits.best$gene[sapply(fits.best$param.list, FilterKidneyLiverGenes, amp.min = 0.25)]
 # remove tissue-wide genes
-kidliv.genes <- subset(fits.best, gene %in% kidliv.genes & n.rhyth <= 7)$gene
+kidliv.genes <- subset(fits.best, gene %in% kidliv.genes & n.rhyth < 7)$gene
 # plot by random 
 print(length(kidliv.genes))
 PlotGeneAcrossTissues(subset(dat.long, gene == as.character(sample(kidliv.genes, 1))))
@@ -132,11 +132,12 @@ S.sub.collapse.livkid <- subset(S.sub.collapse, peak %in% livkid.peaks) %>%
 #             is.not.tissspec = IsTissSpec(is.lower, !compare.vec)) %>%
 #   filter(is.tissspec == TRUE & is.not.tissspec)
 
-compare.vec.other <- c(T, T, T, T, T, T)
-# compare.vec.other <- c(F, F, F, F, T, F, F)
+# compare.vec.other <- c(T, T, T, T, T, T)
+# compare.vec.other <- c(F, F, F, F, F, F)
+compare.vec.other <- c(F, F, F, F, F, F)
 S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
   group_by(peak, gene) %>%
-  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.other, reverse = FALSE)) %>%
+  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.other, reverse = TRUE)) %>%
   filter(is.tissspec == TRUE)
 
 S.sub.collapse.flat <- subset(S.sub.collapse, peak %in% flat.peaks) %>%
@@ -167,11 +168,11 @@ hist(jsub.kid$signal, breaks = 100)
 # 
 
 # down sample to about the same size
-# set.seed(0)
-# bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
-# fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
-# bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
-# S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
+set.seed(0)
+bg.tissspec.peaks <- unique(as.character(S.sub.collapse.bg$peak))
+fg.tissspec.peaks <- unique(as.character(S.sub.collapse.livkid$peak))
+bg.tissspec.peaks.samp <- sample(x = unique(as.character(S.sub.collapse.bg$peak)), size = length(fg.tissspec.peaks))
+S.sub.collapse.bg <- subset(S.sub.collapse.bg, peak %in% bg.tissspec.peaks.samp)
 
 # Make sitecounts ---------------------------------------------------------
 
@@ -224,6 +225,42 @@ print(length(m))
 BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
 PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE)
 
+# do crosses with flat
+colnames(mat.fgflat) <- sapply(colnames(mat.fgflat), RemoveP2Name)
+mat.fgflat.cross <- CrossProduct(mat.fgflat, remove.duplicates=TRUE)
+dim(mat.fgflat.cross)
+mat.fgflat.cross <- cbind(mat.fgflat, mat.fgflat.cross)
+# remove columns with 0 variance 
+mat.fgflat.cross[which(colSums(mat.fgflat.cross) == 0)] <- list(NULL)
+
+jlambda <- 0.015  # liv only
+out.flat.cross <- PenalizedLDA(mat.fgflat.cross, labels.flat, lambda = jlambda, K = 1, standardized = FALSE)
+m.flat.cross <- SortLda(out.flat.cross)
+print(length(m.flat.cross))
+BoxplotLdaOut(out.flat.cross, jtitle = "Cross product separation")
+PlotLdaOut(out.flat.cross, take.n = 50, from.bottom = TRUE)
+
+# do across 3 labels
+mat.fgbgflat <- bind_rows(mat.fg, mat.bg, mat.flat)
+mat.fgbgflat[is.na(mat.fgbgflat)] <- 0
+rownames(mat.fgbgflat) <- make.unique(paste(mat.fgbgflat$peak, mat.fgbgflat$gene, sep = ";")); mat.fgbgflat$peak <- NULL; mat.fgbgflat$gene <- NULL
+labels.bgflat <- c(rep(1, nrow(mat.fg)), rep(2, nrow(mat.bg)), rep(3, nrow(mat.flat)))
+out.bgflat <- PenalizedLDA(mat.fgbgflat, labels.bgflat, lambda = 0.1, K = 2, standardized = FALSE)  
+# BoxplotLdaOut(out.bgflat, jtitle = "Single factor separation: vs flat and same")
+PlotLdaOut2D(out.bgflat, jdim = 2)
+m.fgbgflat <- SortLda(out.bgflat)
+
+# do 2 labels but bg and flat are merged
+mat.fgbgflat.merged <- bind_rows(mat.fg, mat.bg, mat.flat)
+mat.fgbgflat.merged[is.na(mat.fgbgflat.merged)] <- 0
+rownames(mat.fgbgflat.merged) <- make.unique(paste(mat.fgbgflat.merged$peak, mat.fgbgflat.merged$gene, sep = ";")); mat.fgbgflat.merged$peak <- NULL; mat.fgbgflat.merged$gene <- NULL
+labels.bgflat.merged <- c(rep(1, nrow(mat.fg)), rep(2, (nrow(mat.bg) + nrow(mat.flat))))
+out.bgflat.merged <- PenalizedLDA(mat.fgbgflat.merged, labels.bgflat.merged, lambda = 0.1, K = 1, standardized = FALSE)  
+BoxplotLdaOut(out.bgflat.merged, jtitle = "Single factor separation: vs flat and same")
+PlotLdaOut(out.bgflat.merged)
+m.fgbgflat.merged <- SortLda(out.bgflat.merged)
+
+
 # Are you sure this is real? ----------------------------------------------
 
 # how many DBP?
@@ -240,8 +277,11 @@ text(mat.bg.sums, labels = names(mat.bg.sums))
 # and for crosses (take subset)
 mat.fg.cross <- mat.fgbg.cross[1:nrow(mat.fg), ]
 mat.bg.cross <- mat.fgbg.cross[(nrow(mat.fg)+1):(nrow(mat.fg)+nrow(mat.bg)), ]
+mat.flat.cross <- mat.fgflat.cross[(nrow(mat.fg)+1):(nrow(mat.fg)+nrow(mat.flat)), ]
 mat.fg.cross.sums <- apply(mat.fg.cross[, 3:ncol(mat.fg.cross)], 2, sum)
 mat.bg.cross.sums <- apply(mat.bg.cross[, 3:ncol(mat.bg.cross)], 2, sum)
+mat.flat.cross.sums <- apply(mat.flat.cross[, 3:ncol(mat.flat.cross)], 2, sum)
+
 
 # take top 200
 mat.fg.cross.sums.filt <- head(sort(mat.fg.cross.sums, decreasing = TRUE), n = 200)
@@ -252,15 +292,24 @@ jmotif <- "RORA;HNF4A_NR2F1,2"
 jmotif <- "HNF4A_NR2F1,2;RORA"
 jmotif <- "HNF4A_NR2F1,2;RXRG_dimer"
 jmotif <- "HNF4A_NR2F1,2"
+jmotif <- "ADNP_IRX_SIX_ZHX;DBP"
+jmotif <- "HNF4A_NR2F1,2"
+jmotif <- "DBP"
+jmotif <- "RORA"
+jmotif <- "IKZF1;RORA"
 fg.hits <- rownames(mat.fg.cross)[which(mat.fg.cross[, c(jmotif)] > 0)]
 bg.hits <- rownames(mat.bg.cross)[which(mat.bg.cross[, c(jmotif)] > 0)]
+flat.hits <- rownames(mat.flat.cross)[which(mat.flat.cross[, c(jmotif)] > 0)]
 print(paste("hits of", jmotif, "FG", length(fg.hits)))
 print(paste("hits of", jmotif, "BG", length(bg.hits)))
+print(paste("hits of", jmotif, "Flat", length(flat.hits)))
 
 # which pair has most hits?
 n.hits <- apply(mat.fg.cross[, grepl(";", colnames(mat.fg.cross))], 2, function(jcol) length(which(jcol > 0)))
 print(head(sort(n.hits, decreasing = TRUE), n = 20))
 
+# top hits with RORA
+head(sort(n.hits[grepl("RORA", names(n.hits))], decreasing=TRUE))
 
 # Write peaks to output  --------------------------------------------------
 
@@ -271,13 +320,16 @@ print(head(sort(n.hits, decreasing = TRUE), n = 20))
 # fg.bed <- do.call(rbind, fg.bed)
 # fg.bed$blank <- "."
 # fg.bed$id <- paste0("mm10_", fg.peaks.final)
-# write.table(fg.bed, file = "bedfiles/lda_analysis/fg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+# write.table(fg.bed, file = "bedfiles/lda_analysis/fg_kidliv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 # 
 # bg.peaks.final <- unique(as.character(S.sub.collapse.bg$peak))
 # bg.bed <- lapply(bg.peaks.final, CoordToBed)
 # bg.bed <- do.call(rbind, bg.bed)
 # bg.bed$blank <- "."
 # bg.bed$id <- paste0("mm10_", bg.peaks.final)
-# write.table(fg.bed, file = "bedfiles/lda_analysis/bg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+# write.table(fg.bed, file = "bedfiles/lda_analysis/bg_kidliv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 # 
+# # e.g.,
+# jcoord <- "chr7:99971744-99972244"  # Rnf169
+# PlotGeneAcrossTissues(subset(dat.long, gene=="Rnf169"))
 

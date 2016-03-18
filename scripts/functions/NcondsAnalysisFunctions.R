@@ -70,7 +70,7 @@ SubsetByMaxBicWeight <- function(dat){
 
 PlotSvdFromGeneList <- function(dat.complex, gene.list, jcomp = 1, jlabel.n = 25, jvalue.var = "exprs.transformed", constant.amp = 4, show.plot=TRUE){
   # Plot SVD from gene list
-  source("scripts/functions/SvdFunctions.R")
+  source("/home/yeung/projects/tissue-specificity/scripts/functions/SvdFunctions.R")
   jlayout <- matrix(c(1, 2, 3, 4), 2, 2, byrow = TRUE)
   s.custom <- SvdOnComplex(subset(dat.complex, gene %in% gene.list), value.var = jvalue.var)
   eigens.custom <- GetEigens(s.custom, period = 24, comp = jcomp, label.n = jlabel.n, eigenval = TRUE, adj.mag = TRUE, constant.amp = constant.amp)

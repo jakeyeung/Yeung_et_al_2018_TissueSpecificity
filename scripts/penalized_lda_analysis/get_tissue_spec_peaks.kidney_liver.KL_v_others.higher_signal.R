@@ -14,15 +14,55 @@ library(ggplot2)
 
 # Functions ---------------------------------------------------------------
 
+source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/SitecountsFunctions.R")
 source("scripts/functions/DataHandlingFunctions.R")
 source("scripts/functions/LdaFunctions.R")
 source("scripts/functions/RemoveP2Name.R")
 
+FilterKidneyLiverGenes <- function(param.vec, amp.min){
+  # return TRUE if Kidney and Liver amplitudes are above amp.min
+  liv.amp <- 0
+  kid.amp <- 0  # inits
+  livkid.amp <- 0
+  
+  liv.indx <- which(names(param.vec) == "Liver.amp")
+  kid.indx <- which(names(param.vec) == "Kidney.amp")
+  livkid.indx <- which(names(param.vec) == "Kidney,Liver.amp")
+  if (length(liv.indx) == 1){
+    liv.amp <- param.vec[liv.indx]
+  }
+  if (length(kid.indx) == 1){
+    kid.amp <- param.vec[kid.indx]
+  } 
+  if (length(livkid.indx) == 1){
+    livkid.amp <- param.vec[livkid.indx]
+  }   
+  if ((liv.amp > amp.min & kid.amp > amp.min) | livkid.amp > amp.min) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
 
+FilterLiverGenes <- function(param.vec, amp.min){
+  # return TRUE if Kidney and Liver amplitudes are above amp.min
+  liv.amp <- 0
+  
+  liv.indx <- which(names(param.vec) == "Liver.amp")
+  if (length(liv.indx) == 1){
+    liv.amp <- param.vec[liv.indx]
+  }
+  if (liv.amp > amp.min) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
 
 # Load --------------------------------------------------------------------
 
+load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/S.long.Robj", verbose=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 load("Robjs/S.tissuecutoff.Robj", verbose=T)
@@ -31,11 +71,21 @@ load("Robjs/N.long.all_genes.all_signif_motifs.Robj", v=T)
 # Get liver genes ---------------------------------------------------------
 
 ampmin <- 0.25
-jmodels <-c("Kidney;Liver", "Kidney,Liver")
-compare.vec <- c(F, F, T, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
+# find models that are high in either kidney OR liver but not in "tissue-wide" models
+# kidliv.genes <- fits.best$gene[sapply(fits.best$param.list, FilterKidneyLiverGenes, amp.min = 0.25)]
+kidliv.genes <- fits.best$gene[sapply(fits.best$param.list, FilterLiverGenes, amp.min = 0.5)]
+# remove tissue-wide genes
+kidliv.genes <- subset(fits.best, gene %in% kidliv.genes & n.rhyth <= 7)$gene
+# plot by random 
+print(length(kidliv.genes))
+PlotGeneAcrossTissues(subset(dat.long, gene == as.character(sample(kidliv.genes, 1))))
+
+jmodels <- as.character(subset(fits.best, gene %in% kidliv.genes)$model)
+
+compare.vec <- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
 # jmodels <-c("Liver")
 # compare.vec <- c(F, F, F, T, F, F)  # Cere, Heart, Kidney, Liver, Lung, Mus
-jgenes <- unique(as.character(subset(fits.best, model %in% jmodels & amp.avg > ampmin)$gene))
+jgenes <- unique(as.character(subset(fits.best, model %in% jmodels)$gene))
 compare.vec.other <- !compare.vec
 
 # shift by 1 log2 unit the fit looks better
@@ -68,20 +118,35 @@ S.sub.collapse.peaks <- subset(S.sub.collapse, is.upper == TRUE)
 
 
 # get livkid peaks within foreground genes and other peaks from foreground genes
-livkid.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & tissue %in% c("Liver", "Kidney") & is.upper == TRUE)$peak))
-bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & ! tissue %in% c("Liver", "Kidney") & is.upper == TRUE)$peak))
+livkid.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & tissue %in% c("Liver") & is.upper == TRUE)$peak))
+bg.peaks <- unique(as.character(subset(S.sub.collapse.peaks, gene %in% jgenes & ! tissue %in% c("Liver") & is.upper == TRUE)$peak))
 
 S.sub.collapse.livkid <- subset(S.sub.collapse, peak %in% livkid.peaks) %>%
   group_by(peak, gene) %>%
   summarise(is.tissspec = IsTissSpec(is.upper, compare.vec)) %>%
   filter(is.tissspec == TRUE)
+compare.vec.other <- c(T, T, T, T, T, T)
 S.sub.collapse.bg <- subset(S.sub.collapse, peak %in% bg.peaks) %>%
   group_by(peak, gene) %>%
-  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec, reverse = TRUE)) %>%
+  summarise(is.tissspec = IsTissSpec(is.upper, compare.vec.other, reverse = FALSE)) %>%
   filter(is.tissspec == TRUE)
 
 print(paste("N foreground peaks:", length(unique(as.character(S.sub.collapse.livkid$peak)))))
 print(paste("N background peaks:", length(unique(as.character(S.sub.collapse.bg$peak)))))
+
+
+# Sanity check my peeks ---------------------------------------------------
+
+# signal in liver
+jsub.liv <- subset(S.sub.collapse, peak %in% as.character(S.sub.collapse.livkid$peak) & tissue == "Liver")
+hist(jsub.liv$signal, breaks = 100)
+
+# cutoff here
+fg.peaks.filt <- as.character(subset(jsub.liv, signal > 2)$peak)
+# fg.peaks.filt <- as.character(subset(jsub, signal > 0)$peak)
+print(length(fg.peaks.filt))
+S.sub.collapse.livkid <- subset(S.sub.collapse.livkid, peak %in% fg.peaks.filt)
+
 
 # down sample to about the same size
 # set.seed(0)
@@ -168,20 +233,20 @@ print(head(sort(n.hits, decreasing = TRUE), n = 20))
 
 # Write peaks to output  --------------------------------------------------
 
-# source("scripts/functions/PlotUCSC.R")  # CoordToBed
-# 
-# fg.peaks.final <- unique(as.character(S.sub.collapse.livkid$peak))
-# fg.bed <- lapply(fg.peaks.final, CoordToBed)
-# fg.bed <- do.call(rbind, fg.bed)
-# fg.bed$blank <- "."
-# fg.bed$id <- paste0("mm10_", fg.peaks.final)
-# write.table(fg.bed, file = "bedfiles/lda_analysis/fg_livkidrhyth_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
-# 
-# bg.peaks.final <- unique(as.character(S.sub.collapse.bg$peak))
-# bg.bed <- lapply(bg.peaks.final, CoordToBed)
-# bg.bed <- do.call(rbind, bg.bed)
-# bg.bed$blank <- "."
-# bg.bed$id <- paste0("mm10_", bg.peaks.final)
-# write.table(fg.bed, file = "bedfiles/lda_analysis/bg_livkidrhyth_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
-# 
+source("scripts/functions/PlotUCSC.R")  # CoordToBed
+
+fg.peaks.final <- unique(as.character(S.sub.collapse.livkid$peak))
+fg.bed <- lapply(fg.peaks.final, CoordToBed)
+fg.bed <- do.call(rbind, fg.bed)
+fg.bed$blank <- "."
+fg.bed$id <- paste0("mm10_", fg.peaks.final)
+write.table(fg.bed, file = "bedfiles/lda_analysis/fg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+bg.peaks.final <- unique(as.character(S.sub.collapse.bg$peak))
+bg.bed <- lapply(bg.peaks.final, CoordToBed)
+bg.bed <- do.call(rbind, bg.bed)
+bg.bed$blank <- "."
+bg.bed$id <- paste0("mm10_", bg.peaks.final)
+write.table(fg.bed, file = "bedfiles/lda_analysis/bg_liv_more_genes_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
 

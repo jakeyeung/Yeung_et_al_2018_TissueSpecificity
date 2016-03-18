@@ -213,9 +213,35 @@ BoxplotLdaOut <- function(out, jtitle = "Title"){
   boxplot(xproj ~ lab, data = out.df, main = jtitle)
 }
 
+ScatterLdaOut2D <- function(out, jtitle = "Title"){
+  out.df <- data.frame(xproj1 = out$xproj[, 1], xproj2 = out$xproj[, 2], lab = as.factor(out$y))
+#   return(out.df)
+  ggplot(out.df, aes(x = xproj1, y = xproj2, colour = lab)) + geom_point(alpha = 0.3)
+}
+
 PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA){
   discrim.filt <- sort(out$discrim[which(out$discrim != 0)], decreasing = FALSE)
   cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
+  # optionally filter if there are too many to plot
+  if (is.na(take.n) & (is.na(from.bottom))){
+    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
+  } else {
+    if (from.bottom){
+      # take from bottom (head)
+      discrim.filt <- head(discrim.filt, take.n)
+      cnames <- head(cnames, take.n)
+    } else {
+      discrim.filt <- tail(discrim.filt, take.n)
+      cnames <- tail(cnames, take.n)
+    }
+    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
+  }
+}
+
+PlotLdaOut2D <- function(out, jdim = 1, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA){
+  discrim.vec <- out$discrim[, jdim]
+  discrim.filt <- sort(discrim.vec[which(discrim.vec != 0)], decreasing = FALSE)
+  cnames <- colnames(out$x)[which(discrim.vec != 0)][order(discrim.vec[which(discrim.vec != 0)], decreasing = FALSE)]
   # optionally filter if there are too many to plot
   if (is.na(take.n) & (is.na(from.bottom))){
     textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)

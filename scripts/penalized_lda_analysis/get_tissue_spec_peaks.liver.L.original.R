@@ -5,9 +5,12 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(hash)
 library(dplyr)
 library(reshape2)
+library(ggplot2)
 
 # Functions ---------------------------------------------------------------
 
@@ -159,3 +162,70 @@ print(length(m))
 BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
 PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE)
 
+
+# Are you sure this is real? ----------------------------------------------
+
+# how many DBP?
+mat.fg.sums <- apply(mat.fg[, 3:ncol(mat.fg)], 2, sum)
+mat.bg.sums <- apply(mat.bg[, 3:ncol(mat.bg)], 2, sum)
+length(mat.fg.sums)
+
+plot(mat.fg.sums, pch=".")
+text(mat.fg.sums, labels = names(mat.fg.sums))
+
+plot(mat.bg.sums, pch=".")
+text(mat.bg.sums, labels = names(mat.bg.sums))
+
+# and for crosses (take subset)
+mat.fg.cross <- mat.fgbg.cross[1:nrow(mat.fg), ]
+mat.bg.cross <- mat.fgbg.cross[(nrow(mat.fg)+1):(nrow(mat.fg)+nrow(mat.bg)), ]
+mat.fg.cross.sums <- apply(mat.fg.cross[, 3:ncol(mat.fg.cross)], 2, sum)
+mat.bg.cross.sums <- apply(mat.bg.cross[, 3:ncol(mat.bg.cross)], 2, sum)
+
+# take top 200
+mat.fg.cross.sums.filt <- head(sort(mat.fg.cross.sums, decreasing = TRUE), n = 200)
+
+# how many DBP-HNF4A hits?
+jmotif <- "DBP;HNF4A_NR2F1,2"
+jmotif <- "DBP;HNF4A_NR2F1,2"
+jmotif <- "DBP;ZBTB16"
+jmotif <- "DBP;ONECUT1,2"
+jmotif <- "DBP;KLF4"
+jmotif <- "FOX{F1,F2,J1};FOXD3"
+jmotif <- "DBP;FOXD3"
+jmotif <- "FOXD3"
+jmotif <- "FOXA2"
+fg.hits <- rownames(mat.fg.cross)[which(mat.fg.cross[, c(jmotif)] > 0)]
+bg.hits <- rownames(mat.bg.cross)[which(mat.bg.cross[, c(jmotif)] > 0)]
+print(paste("hits of", jmotif, "FG", length(fg.hits)))
+# rownames(mat.fgbg.cross)[which(mat.fgbg.cross[, c(jmotif)] > 0)]
+print(paste("hits of", jmotif, "BG", length(bg.hits)))
+
+# which pair has most hits?
+n.hits <- apply(mat.fg.cross[, grepl(";", colnames(mat.fg.cross))], 2, function(jcol) length(which(jcol > 0)))
+print(head(sort(n.hits, decreasing = TRUE), n = 20))
+
+# plot(mat.fg.cross.sums, pch=".")
+# text(mat.fg.cross.sums, labels = names(mat.fg.cross.sums))
+# 
+# plot(mat.bg.cross.sums, pch=".")
+
+# # Write peaks to output  --------------------------------------------------
+# 
+# source("scripts/functions/PlotUCSC.R")  # CoordToBed
+# 
+# fg.peaks.final <- unique(as.character(S.sub.collapse.livkid$peak))
+# fg.bed <- lapply(fg.peaks.final, CoordToBed)
+# fg.bed <- do.call(rbind, fg.bed)
+# fg.bed$blank <- "."
+# fg.bed$id <- paste0("mm10_", fg.peaks.final)
+# write.table(fg.bed, file = "bedfiles/lda_analysis/fg_livrhyth_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+# 
+# bg.peaks.final <- unique(as.character(S.sub.collapse.bg$peak))
+# bg.bed <- lapply(fg.peaks.final, CoordToBed)
+# bg.bed <- do.call(rbind, bg.bed)
+# bg.bed$blank <- "."
+# bg.bed$id <- paste0("mm10_", bg.peaks.final)
+# write.table(fg.bed, file = "bedfiles/lda_analysis/bg_livrhyth_peaks.tmp.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+# 
+# 
