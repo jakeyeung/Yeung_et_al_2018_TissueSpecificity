@@ -319,7 +319,6 @@ PlotComplexCircle <- function(complex.vector,
       coord_polar(theta = "y") +
       xlab(xlabel) +
       ylab(ylabel) +
-      expand_limits(x = 0) + 
       scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
 #   } else if (!no.label & filter > 0) {
 #     ggplot(data = dat, aes(x = Magnitude, y = Phase, label = Labels)) + 
@@ -335,7 +334,6 @@ PlotComplexCircle <- function(complex.vector,
       coord_polar(theta = "y") +
       xlab(xlabel) +
       ylab(ylabel) +
-      expand_limits(x = 0) + 
       scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
   }
 }

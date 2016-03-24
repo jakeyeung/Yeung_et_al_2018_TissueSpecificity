@@ -2,6 +2,9 @@
 # analyze_mara.complex_svd.R
 # 2015-07-17
 
+rm(list=ls())
+
+
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/GetTissueTimes.R")
