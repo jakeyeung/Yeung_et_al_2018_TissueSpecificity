@@ -4,7 +4,9 @@
 
 rm(list=ls())
 
-
+load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+source("scripts/functions/PlotGeneAcrossTissues.R")
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/GetTissueTimes.R")
@@ -30,10 +32,20 @@ library(reshape2)
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.500"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit/expressed_genes_deseq_int.centeredTRUE.5000"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.50000/expressed_genes_deseq_int.centeredTRUE"
+
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/expressed_genes_deseq_int"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
+
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/Liver.centeredTRUE"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit.stringent/expressed_genes_deseq_int.centeredTRUE.100000"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit.stringent/expressed_genes_deseq_int.centeredTRUE.25000"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit.stringent/expressed_genes_deseq_int.centeredTRUE.25000.fewermotifs"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit.stringent/expressed_genes_deseq_int.centeredTRUE.25000.crossprods"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.25000/Liver.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.allmotifssingle.25000/Liver.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/Liver.centeredTRUE"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.pairsonly.25000/Liver.centeredTRUE"
 
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 act.long <- LoadActivitiesLong(indir)
@@ -42,18 +54,21 @@ act.long <- LoadActivitiesLong(indir)
 # PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "EP300.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "NFIL3.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "bHLH_family.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2.RORA.p2"))
+
+# PlotActivitiesWithSE(subset(act.long, gene == "SPZ1.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "TLX1..3_NFIC.dimer..p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "FOSL2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "RFX1..5_RFXANK_RFXAP.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "MYOD1.p2"))
-# # PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
-# # PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "LEF1_TCF7_TCF7L1.2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "HNF1A.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "REST.p3"))
 # PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2" & tissue %in% c("Mus", "BFAT")))
-
 # PlotActivitiesWithSE(subset(act.long, gene == "RXRG_dimer.p3"))
 # PlotActivitiesWithSE(subset(act.long, gene == "RUNX1..3.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "SRF.p3"))
@@ -66,25 +81,24 @@ act.long <- LoadActivitiesLong(indir)
 # PlotActivitiesWithSE(subset(act.long, gene == "ELK1.4_GABP.A.B1..p3"))
 # PlotActivitiesWithSE(subset(act.long, gene == "PAX2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "FOXA2.p3"))
-PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "CUX2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "ONECUT1.2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "CUX2.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "SNAI1..3.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "RXRG_dimer.p3"))
-PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "MYBL2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "SRF.p3"))
-PlotActivitiesWithSE(subset(act.long, gene == "HSF1.2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "NFIX.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "PAX5.p2"))
-
+# PlotActivitiesWithSE(subset(act.long, gene == "RXRG_dimer.p3"))
+# PlotActivitiesWithSE(subset(act.long, gene == "RORA.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "HIC1.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "MYBL2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "SRF.p3"))
+# PlotActivitiesWithSE(subset(act.long, gene == "HSF1.2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "ATF2.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "NFIX.p2"))
+# PlotActivitiesWithSE(subset(act.long, gene == "PAX5.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "EWSR1.FLI1.p2"))
 # PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
 
-PlotActivitiesWithSE.rnaseq(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experiment == "rnaseq"), jtitle = "HNF4A_NR2F1/2 motif activity") + theme_bw(24)
-PlotActivitiesWithSE.rnaseq(subset(act.long, gene == "HNF1A.p2" & experiment == "rnaseq"), jtitle = "HNF1A motif activity") + theme_bw(24)
-PlotActivitiesWithSE.rnaseq(subset(act.long, gene == "MEF2.A.B.C.D..p2" & experiment == "rnaseq"), jtitle = "MEF2A|B|C|D motif activity") + theme_bw(24)
+# PlotActivitiesWithSE.rnaseq(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experiment == "rnaseq"), jtitle = "HNF4A_NR2F1/2 motif activity") + theme_bw(24)
+# PlotActivitiesWithSE.rnaseq(subset(act.long, gene == "HNF1A.p2" & experiment == "rnaseq"), jtitle = "HNF1A motif activity") + theme_bw(24)
+# PlotActivitiesWithSE.rnaseq(subset(act.long, gene == "MEF2.A.B.C.D..p2" & experiment == "rnaseq"), jtitle = "MEF2A|B|C|D motif activity") + theme_bw(24)
 
 
 # To complex --------------------------------------------------------------
@@ -95,7 +109,8 @@ act.complex$exprs.adj <- act.complex$exprs.transformed * act.complex$frac.weight
 act.complex$mod.exprs <- Mod(act.complex$exprs.transformed)
 act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
 
-act.complex$gene <- sapply(as.character(act.complex$gene), RemoveP2Name)
+# remove P2 
+# act.complex$gene <- sapply(as.character(act.complex$gene), RemoveP2Name)
 
 # act.complex <- subset(act.complex, !tissue %in% c("Liver"))
 
@@ -126,4 +141,43 @@ for (comp in seq(1)){
 }
 
 # list hits
-hits <- names(eigens.act$eigensamp[order(abs(Mod(eigens.act$eigensamp)), decreasing=TRUE)])
+hits.rhyth <- names(eigens.act$eigensamp[order(abs(Mod(eigens.act$eigensamp)), decreasing=TRUE)])
+
+
+# Take top tissue-specific factors ----------------------------------------
+
+act.mean <- subset(act.long, experiment == "rnaseq") %>%
+  group_by(tissue, gene) %>%
+  summarise(exprs.mean = mean(exprs))
+
+act.diff <- act.mean %>%
+  group_by(gene) %>%
+  summarise(abs.diff = abs(diff(range(exprs.mean))))
+
+act.diff <- act.diff[order(act.diff$abs.diff, decreasing = TRUE), ]
+
+hits.tiss <- as.character(act.diff$gene)
+
+
+# Take top hits -----------------------------------------------------------
+# 
+# top.rhyth <- hits.rhyth[1:20]
+# top.tiss <- hits.tiss[1:20]
+# 
+# sink(file = "/home/yeung/projects/tissue-specificity/data/gene_lists/motif_lists/top.rhyth.txt")
+# for (m in top.rhyth){
+#   cat(m); cat("\n")
+# }
+# sink()
+# 
+# sink(file = "/home/yeung/projects/tissue-specificity/data/gene_lists/motif_lists/top.tiss.txt")
+# for (m in top.tiss){
+#   cat(m); cat("\n")
+# }
+# sink()
+# 
+# sink(file = "/home/yeung/projects/tissue-specificity/data/gene_lists/motif_lists/all_motifs.txt")
+# for (m in unique(act.long$gene)){
+#   cat(m); cat("\n")
+# }
+# sink()

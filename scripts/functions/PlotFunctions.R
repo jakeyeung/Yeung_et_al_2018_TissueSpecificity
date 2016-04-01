@@ -95,12 +95,12 @@ PlotFirstNComponents <- function(svd.complex, comps = c(1), period = 24){
   }
 }
 
-PlotAmpPhase <- function(dat){
+PlotAmpPhase <- function(dat, amp_str = "amp", phase_str = "phase", lab_str = "gene"){
   # Expect amp and phase in data frame column names.
   # label as gene names
-  ggplot(data = dat, aes(x = amp, y = phase, label = gene)) + 
+  ggplot(data = dat, aes_string(x = amp_str, y = phase_str, label = lab_str)) + 
     geom_point() + 
-    geom_text(aes(x = amp, y = phase, size = amp)) + 
+    geom_text(aes_string(x = amp_str, y = phase_str, size = amp_str)) + 
     coord_polar(theta = "y") +
     ylab("Phase") +
     xlab("Amp") +

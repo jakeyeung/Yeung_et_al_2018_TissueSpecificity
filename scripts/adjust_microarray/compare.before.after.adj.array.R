@@ -27,6 +27,7 @@ source(file.path(functions.dir, 'FourierFunctions.R'))  # for Fourier stuff
 
 # Load files --------------------------------------------------------------
 
+data.dir <- "/home/yeung/projects/tissue-specificity/data"
 array.adj.path <- file.path(data.dir, "array.adj.0.07.txt")
 data.path <- file.path(data.dir, "array_exprs_colnames_fixed.best.probe.selected.txt")
 array.after <- read.table(array.adj.path)
