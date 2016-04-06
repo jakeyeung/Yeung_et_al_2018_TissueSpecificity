@@ -2,6 +2,14 @@ library(penalizedLDA)
 library(wordcloud)
 library(dplyr)
 
+SetUpMatForLda <- function(mat.fg, mat.bg){
+  mat.fgbg <- bind_rows(mat.fg, mat.bg)
+  mat.fgbg[is.na(mat.fgbg)] <- 0
+  rownames(mat.fgbg) <- paste(mat.fgbg$peak, mat.fgbg$gene, sep = ";"); mat.fgbg$peak <- NULL; mat.fgbg$gene <- NULL
+  labels <- c(rep(1, nrow(mat.fg)), rep(2, nrow(mat.bg)))
+  return(list(mat.fgbg = mat.fgbg, labels = labels))
+}
+
 CrossProductCnames <- function(cnames, jsep = ";"){
 #   cnames.new <- c()
 #   for (cnamei in cnames){
@@ -220,6 +228,10 @@ ScatterLdaOut2D <- function(out, jtitle = "Title"){
 }
 
 PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA){
+  library(wordcloud)
+  if ("package.gplots" %in% search()){
+    detach("package:gplots", unload=TRUE)
+  }
   discrim.filt <- sort(out$discrim[which(out$discrim != 0)], decreasing = FALSE)
   cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
   # optionally filter if there are too many to plot

@@ -13,6 +13,8 @@ library(hash)
 library(dplyr)
 library(reshape2)
 library(gplots)
+library(penalizedLDA)
+library(wordcloud)
 # First source my functions I wrote
 funcs.dir <- file.path('scripts', 'functions')
 source(file.path(funcs.dir, 'SampleNameHandler.R'))  # for shortening sample names
@@ -38,6 +40,7 @@ source("scripts/functions/GetTFs.R")
 source("scripts/functions/AlternativeFirstExonsFunctions.R")
 source("scripts/functions/FisherTestSitecounts.R")
 source("scripts/functions/RemoveP2Name.R")
+source("scripts/functions/LdaFunctions.R")
 
 
 # Figure 1A Present high level variation BETWEEN TISSUES and WITHIN TISSUES (time) ------------------
@@ -1011,8 +1014,7 @@ dev.off()
 # Regulation with LDA -----------------------------------------------------
 # from LDA directory: sitecounts_analysis_promoter.R
 
-library(penalizedLDA)
-source("scripts/functions/LdaFunctions.R")
+
 load("Robjs/N.long.promoters_500.Robj", verbose=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 
@@ -1020,9 +1022,10 @@ load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_av
 fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 7)
 fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
 bfataorta.models <- unique(as.character(fits.bfataorta$model))
+rhyth.models <- unique(as.character(subset(fits.best, n.rhyth > 7)$model))
 
 # ADR 
-fg.models.lst <- list(c("Adr"), c("BFAT"), bfataorta.models, c("Mus"))
+fg.models.lst <- list(c("Adr"), c("BFAT"), bfataorta.models, c("Mus"), rhyth.models)
 
 pdf(file.path(outdir, paste0(plot.i, ".promoter_lda.pdf")))
 plot.i <- plot.i + 1
@@ -1054,60 +1057,33 @@ dev.off()
 
 # Regulation with LDA: with DHS -------------------------------------------
 
-load("Robjs/N.long.sum.bytiss.all_genes.Robj", verbose=T)
-source("scripts/functions/LdaFunctions.R")
+load("Robjs/penalized_lda_liver_multigene_mats.Robj", v=T)
 
-minamp <- 0.25
+# bind rows create labels
+mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bgnonliver)
+# mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg)
 
-# define parameters
-sitecount.name <- "sitecount.max"
-bg.genes.type <- "same"  # "Flat", "Rhythmic", "same" 
+mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)  
 
-# Kidney Liver models
-jgrep <- "^Kidney;Liver$|^Kidney,Liver$"
-jmodels <- unique(fits.best[grepl(jgrep, fits.best$model), ]$model)
+BoxplotLdaOut(out, jtitle = "Single factor separation")
+PlotLdaOut(out, jtitle = "Single factor loadings")  # need to unload gplot2s
+m.singles <- SortLda(out)
 
-# define foreground and background tissues
-all.tiss <- c('Cere', 'Heart', 'Kidney', 'Liver', 'Lung', 'Mus')
-fg.tiss <- c("Liver", "Kidney")
-bg.tiss <- all.tiss[which(! all.tiss %in% fg.tiss)]
 
-# compare LiverKidney vs Non LiverKidney same genes
-out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.25, n.bg = "same")
+# Do cross prods ----------------------------------------------------------
+# do crosses
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
+mat.fgbg.cross <- CrossProduct(mat.fgbg, remove.duplicates = TRUE)
+dim(mat.fgbg.cross)
+# add single factors
+mat.fgbg.cross <- cbind(mat.fgbg, mat.fgbg.cross)
+# remove columns with 0 variance 
+mat.fgbg.cross[which(colSums(mat.fgbg.cross) == 0)] <- list(NULL)
 
-pdf(file.path(outdir, paste0(plot.i, ".rhythmic_lda.pdf")))
-
-plot.i <- plot.i + 1
-jtitle <- paste(length(out$fg.genes), "kidney and liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
-PlotLdaOut(out, jtitle, jcex = 0.5)
-PlotSeparation(out, jtitle)
-
-# compare LiverKidney rhythmic vs LiverKidney flat genes
-fg.tiss <- c("Liver", "Kidney")
-bg.tiss <- c("Liver", "Kidney")
-bg.genes.type <- "Flat"
-
-out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.25, n.bg = "same")
-jtitle <- paste(length(out$fg.genes), "kidney and liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
-PlotLdaOut(out, jtitle, jcex = 0.5)
-PlotSeparation(out, jtitle)
-
-# do with LIVER
-jmodels <- c("Liver")
-fg.tiss <- c("Liver")
-bg.tiss <- c("Liver")
-bg.genes.type <- "Flat"
-out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.4, n.bg = "same")
-jtitle <- paste(length(out$fg.genes), "Liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
-PlotLdaOut(out, jtitle, jcex = 0.5)
-PlotSeparation(out, jtitle)
-
-fg.tiss <- c("Liver")
-bg.tiss <- all.tiss[which(! all.tiss %in% fg.tiss)]
-bg.genes.type <- "same"
-out <- RunPenalizedLDA(N.long.sum.bytiss, fits.best, jmodels, fg.tiss, bg.tiss, bg.genes.type, sitecount.name, minamp = 0.4, n.bg = "same")
-jtitle <- paste(length(out$fg.genes), "Liver-rhythmic genes.\nBG genes:", bg.genes.type, "\nFG:", paste0(fg.tiss, collapse = ","), "BG:", paste0(bg.tiss, collapse=","))
-PlotLdaOut(out, jtitle, jcex = 0.5)
-PlotSeparation(out, jtitle)
-
-dev.off()
+# jlambda <- 0.029  # kidliv
+jlambda <- 0.015  # liv only
+out.cross <- PenalizedLDA(mat.fgbg.cross, labels, lambda = jlambda, K = 1, standardized = FALSE)
+m <- SortLda(out.cross)
+BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
+PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE)

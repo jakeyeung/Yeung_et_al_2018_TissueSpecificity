@@ -7,9 +7,9 @@ rm(list=ls())
 
 setwd("/home/yeung/projects/tissue-specificity")
 
-# args <- commandArgs(trailingOnly=TRUE)
-# distfilt <- as.numeric(args[1])
-distfilt <- 2500
+args <- commandArgs(trailingOnly=TRUE)
+distfilt <- as.numeric(args[1])
+# distfilt <- 2500
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
 outdir <- "/home/yeung/projects/tissue-specificity/bedfiles/lda_analysis/filtered_peaks_multigene"
