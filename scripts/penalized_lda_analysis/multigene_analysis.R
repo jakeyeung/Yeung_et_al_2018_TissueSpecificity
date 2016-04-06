@@ -46,7 +46,7 @@ load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
 
 # colnames(N.multigene) <- c("chromo", "start", "end", "motif", "sitecount", "chromo.peak", "start.peak", "end.peak", "gene", "dist")
 distfilt <- 2500
-amp.min <- 0.25
+amp.min <- 0
 rhyth.tiss <- c("Liver")
 
 jgenes <- as.character(subset(fits.best, model == "Liver" & amp.avg > amp.min)$gene)
@@ -82,7 +82,7 @@ S.sub.liverpeaks <- S.sub %>%
 
 S.sub.nonliverpeaks <- S.sub %>%
   group_by(peak) %>%
-  filter(zscore[tiss.i] < jcutoff & min(zscore[others.i]) > jcutoff)
+  filter(zscore[tiss.i] < jcutoff & max(zscore[others.i]) > jcutoff)
 
 jtiss.flat <- levels(S.sub.flat$tissue)
 if (identical(jtiss, jtiss.flat) == FALSE){
@@ -159,3 +159,7 @@ n.hits <- apply(mat.fgbg.cross[, grepl(";", colnames(mat.fgbg.cross))], 2, funct
 rora.pairs <- sort(n.hits[grepl("RORA", names(n.hits))], decreasing=TRUE)
 rora.pairs.filt <- rora.pairs[1:30]
 textplot(seq(length(rora.pairs.filt)), rora.pairs.filt, words = names(rora.pairs.filt), xlab = "Index", ylab = "Number of pairs in foreground", cex = 0.9)
+
+onecut.pairs <- sort(n.hits[grepl("ONECUT", names(n.hits))], decreasing=TRUE)
+onecut.pairs.filt <- onecut.pairs[1:30]
+textplot(seq(length(onecut.pairs.filt)), onecut.pairs.filt, words = names(onecut.pairs.filt), xlab = "Index", ylab = "Number of pairs in foreground", cex = 0.9)
