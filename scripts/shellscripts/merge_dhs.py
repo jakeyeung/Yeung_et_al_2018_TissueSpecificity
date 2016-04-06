@@ -6,6 +6,12 @@ DESCRIPTION
     Example indir:
      /home/yeung/projects/tissue-specificity/data/beds/merge/cutoffs_stringent
 
+     Example:
+         python merge_dhs.py
+/home/yeung/projects/tissue-specificity/data/beds/merge/cutoffs_stringent
+/home/yeung/projects/tissue-specificity/data/beds/merge/cutoffs_stringent/\
+    merged/merged.all.bed
+
 
 FOR HELP
 
@@ -41,15 +47,16 @@ def coord_to_list(coord):
     return(coord.split("-"))
 
 
-def update_peak_dic(bed, tissue, dic, tissues):
+def update_peak_dic(bed, tissue, dic, tissues, fill_tissues=False):
     with open(bed, 'rb') as bedfile:
         bedreader = csv.reader(bedfile, delimiter='\t')
         for row in bedreader:
             Row = BedRow(row)
             if Row.coord not in dic:
                 dic[Row.coord] = {}  # init for each tissue
-                for tiss in tissues:
-                    dic[Row.coord][tiss] = 0
+                if fill_tissues:
+                    for tiss in tissues:
+                        dic[Row.coord][tiss] = 0
             dic[Row.coord][tissue] = Row.val
     return(dic)
 

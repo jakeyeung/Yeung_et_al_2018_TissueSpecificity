@@ -2,6 +2,9 @@
 # Convert signal to Z-score (more homogeneous)
 
 rm(list=ls())
+
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(dplyr)
 library(ggplot2)
 
@@ -30,6 +33,9 @@ pseudo <- 0.01
 S.long <- S.long %>%
   group_by(tissue) %>%
   mutate(signal.std = scale(log2(signal + pseudo), center = TRUE, scale = TRUE))
+
+# save(S.long, file = "Robjs/S.long.std.Robj")
+# stop("STOPPING")
 
 
 # Plot to check ----------------------------------------------------------
