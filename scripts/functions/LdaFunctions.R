@@ -98,6 +98,13 @@ DoLdaPromoters <- function(fg.mat, bg.mat){
 }
 
 LongToMat <- function(N.long, jvar = "sitecount"){
+  warning("Should use LongToMat.lda")
+  mat <- dcast(N.long, formula = gene.uniq ~ motif, value.var = jvar)
+  rownames(mat) <- mat$gene.uniq; mat$gene.uniq <- NULL
+  return(mat)
+}
+
+LongToMat.lda <- function(N.long, jvar = "sitecount"){
   mat <- dcast(N.long, formula = gene.uniq ~ motif, value.var = jvar)
   rownames(mat) <- mat$gene.uniq; mat$gene.uniq <- NULL
   return(mat)
@@ -229,9 +236,7 @@ ScatterLdaOut2D <- function(out, jtitle = "Title"){
 
 PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA){
   library(wordcloud)
-  if ("package.gplots" %in% search()){
-    detach("package:gplots", unload=TRUE)
-  }
+  try(detach("package:gplots", unload=TRUE), silent=TRUE)
   discrim.filt <- sort(out$discrim[which(out$discrim != 0)], decreasing = FALSE)
   cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
   # optionally filter if there are too many to plot

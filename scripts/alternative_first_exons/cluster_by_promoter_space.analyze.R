@@ -38,6 +38,7 @@ load("Robjs/tpm.gauss.bic_models.Robj", verbose=T)
 # load("Robjs/tpm.gauss.filt.Robj", verbose=T)
 # load("Robjs/tpm.gauss2.filt.Robj", verbose=T)
 load("Robjs/tpm.merged.Robj", verbose=T)
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
 
 # order -------------------------------------------------------------------
 
@@ -52,11 +53,13 @@ top <- 500
 tpm.hits <- tpm.gauss[1:top, ]
 hits <- tpm.gauss$gene_name[1:top]
 
-outname <- paste0("diagnostics_", top, ".pdf")
+hits <- as.character(subset(fits.best, model == "BFAT")$gene)
+
+outname <- paste0("Adr_diagnostics_", top, ".pdf")
 pdf(file.path(outdir, outname))
 for (jgene in hits){
-  print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene)))
-  PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == jgene)$sigs[[1]], jgene, draw.ellipse = T)
+  jgene <- sample(hits, 1)
+  print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene))); PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == jgene)$sigs[[1]], jgene, draw.ellipse = T)
 }
 dev.off()
 

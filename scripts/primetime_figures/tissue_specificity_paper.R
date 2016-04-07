@@ -220,7 +220,9 @@ multiplot(scree1, scree2, pc1, pc2, cols = 2)
 # Figure 1A var by tissue ---------------------------------------------------
 # from pca_by_tissue.R
 # Plot contribution of temporal variance for each gene across tissues
-load("Robjs/dat.var.filt.Robj")
+# load("Robjs/dat.var.filt.Robj")
+load("Robjs/dat.var.filt.fixed.Robj", v=T)
+
 
 # order factors
 dat.var.filt.bytiss <- dat.var.filt %>%
@@ -255,7 +257,7 @@ if (remove.wfat){
 
 dat.var.s <- dat.complex.all_T %>%
   group_by(period, tissue) %>%
-  summarise(sum_sqr_mod = sum(Mod(exprs.transformed) ^ 2)) %>%
+  summarise(sum_sqr_mod = sum(Mod(exprs.transformed) ^ 2) * 2) %>%  # * 2 to consider symmetrical frequencies
   mutate(period.factor = signif(period, digits = 3))
 
 dat.var.s$period.factor <- factor(dat.var.s$period.factor, 
@@ -263,7 +265,7 @@ dat.var.s$period.factor <- factor(dat.var.s$period.factor,
 
 dat.var.all <- dat.var.s %>%
   group_by(tissue) %>%
-  summarise(sum_sqr_mod.total = sum(sum_sqr_mod))
+  summarise(sum_sqr_mod.total = sum(sum_sqr_mod) * 2)  # * 2 considers symmetrical frequencies
 dat.var.all$tissue <- factor(dat.var.all$tissue,
                              levels = dat.var.all$tissue[order(dat.var.all$sum_sqr_mod.total, decreasing = TRUE)])
 
@@ -312,8 +314,10 @@ ggplot(subset(dat.var.s), aes(x = tissue, y = sum_sqr_mod, fill = period.factor.
   scale_fill_manual(name = "Fourier component", drop=TRUE, values=cbPalette)
 
 # for ordering the facet_wrap plot across tissues by 24h variance
+# dat.var.s$tissue <- factor(dat.var.s$tissue,
+#                            levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$s1_normalized, decreasing = TRUE)])
 dat.var.s$tissue <- factor(dat.var.s$tissue,
-                           levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$s1_normalized, decreasing = TRUE)])
+                           levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$sum_sqr_mod, decreasing = TRUE)])
 cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
 ggplot(subset(dat.var.s, period.factor.cond != "Other"), aes(x = tissue, y = sum_sqr_mod, fill = period.factor.cond)) + 
   geom_bar(stat="identity", position=position_dodge(), colour="black") +
@@ -916,99 +920,102 @@ dev.off()
 
 # Tissue-specific ----------------------------------------------------
 
-load("Robjs/N.sitecounts.dhs.6.tissues.norm.Robj", verbose=T)  # N
-
-jtiss <- "Liver"
-jmodel <- "Liver"
-genes.rhyth <- as.character(subset(fits.best, model == jmodel)$gene)
-
-N.sub <- subset(N, gene %in% genes.rhyth)
-
-N.sub$sitecount <- N.sub$motevo.value
-N.sub$model <- sapply(as.character(N.sub$tissue), function(x){
-  if (x == jtiss){
-    return(jtiss)
-  } else {
-    return("Flat")
-  }
-})
-
-cutoffs <- seq(from = 0.01, to = 0.15, by = 0.05)
-test.all <- data.frame()
-for (cutoff in cutoffs){
-  print(cutoff)
-  test.out <- N.sub %>%
-    group_by(motif) %>%
-    do(FisherTestSitecounts(., cutoff, sitecount.col = "sitecount.norm", show.table = FALSE))
-  test.out$cutoff <- cutoff
-  test.all <- rbind(test.all, test.out)
-}
-
-test.sum <- test.all %>%
-  group_by(motif) %>%
-  summarise(odds.ratio = mean(odds.ratio), p.value.minuslog = mean(-log10(p.value)))
-
-oddsrat.cutoff <- 1.6
-test.sum$label <- mapply(function(jmotif, oddsrat){
-  if (oddsrat > oddsrat.cutoff){
-    return(RemoveP2Name(as.character(jmotif)))
-  } else {
-    return("")
-  }
-}, test.sum$motif, test.sum$odds.ratio)
-
-library(wordcloud)
-pdf(file.path(outdir, paste0(plot.i, ".liver_specific_enrichment.pdf")))
-plot.i <- plot.i + 1
-textplot(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, words = test.sum$label, xlab = "Odds ratio", ylab = "-log10(pvalue)")
-points(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, pch = ".", cex = 3)
-dev.off()
-
-# Promoter regulator analysis
-load("Robjs/N.long.promoters_500.Robj")
-
-cutoffs <- seq(from = 0.4, to = 0.8, by = 0.1)
-
-pdf(file.path(outdir, paste0(plot.i, ".promoter_enrichment.pdf")))
-plot.i <- plot.i + 1
-models.tw <- ""
-jmodel <- "Adr"
-N.promsub <- subset(N.long, model %in% c(models.tw, jmodel))
-N.ftests <- SubsetAndFishers(N.promsub, jmodel = jmodel, cutoffs = cutoffs)
-
-# filter labels
-N.ftests$jlab <- mapply(function(pval, motifname){
-  if (is.na(pval)) return("")
-  
-  if (-log10(pval) > 15){
-    return(RemoveP2Name(as.character(motifname)))
-  } else {
-    return("")
-  }
-}, N.ftests$p.value, N.ftests$motif)
-
-ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_point() + geom_text(size = 6) + theme_bw(24) + 
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-        panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom") +
-  xlab("Odds ratio") + ylab("-log10(P-value)")
-
-jmodel <- "BFAT"
-N.promsub <- subset(N.long, model %in% c(models.tw, jmodel))
-N.ftests <- SubsetAndFishers(N.promsub, jmodel = jmodel, cutoffs = cutoffs)
-N.ftests$jlab <- mapply(function(pval, motifname){
-  if (is.na(pval)) return("")
-  
-  if (-log10(pval) > 5){
-    return(RemoveP2Name(as.character(motifname)))
-  } else {
-    return("")
-  }
-}, N.ftests$p.value, N.ftests$motif)
-ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_point() + geom_text() + theme_bw(24) + 
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
-  xlab("Odds ratio") + ylab("-log10(P-value)")
-dev.off()
+# load("Robjs/N.sitecounts.dhs.6.tissues.norm.Robj", verbose=T)  # N
+# 
+# jtiss <- "Liver"
+# jmodel <- "Liver"
+# genes.rhyth <- as.character(subset(fits.best, model == jmodel)$gene)
+# 
+# N.sub <- subset(N, gene %in% genes.rhyth)
+# 
+# N.sub$sitecount <- N.sub$motevo.value
+# N.sub$model <- sapply(as.character(N.sub$tissue), function(x){
+#   if (x == jtiss){
+#     return(jtiss)
+#   } else {
+#     return("Flat")
+#   }
+# })
+# 
+# cutoffs <- seq(from = 0.01, to = 0.15, by = 0.05)
+# test.all <- data.frame()
+# for (cutoff in cutoffs){
+#   print(cutoff)
+#   test.out <- N.sub %>%
+#     group_by(motif) %>%
+#     do(FisherTestSitecounts(., cutoff, sitecount.col = "sitecount.norm", show.table = FALSE))
+#   test.out$cutoff <- cutoff
+#   test.all <- rbind(test.all, test.out)
+# }
+# 
+# test.sum <- test.all %>%
+#   group_by(motif) %>%
+#   summarise(odds.ratio = mean(odds.ratio), p.value.minuslog = mean(-log10(p.value)))
+# 
+# oddsrat.cutoff <- 1.6
+# test.sum$label <- mapply(function(jmotif, oddsrat){
+#   if (oddsrat > oddsrat.cutoff){
+#     return(RemoveP2Name(as.character(jmotif)))
+#   } else {
+#     return("")
+#   }
+# }, test.sum$motif, test.sum$odds.ratio)
+# 
+# library(wordcloud)
+# if ("package.gplots" %in% search()){
+#   detach("package:gplots", unload=TRUE)
+# }
+# pdf(file.path(outdir, paste0(plot.i, ".liver_specific_enrichment.pdf")))
+# plot.i <- plot.i + 1
+# textplot(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, words = test.sum$label, xlab = "Odds ratio", ylab = "-log10(pvalue)")
+# points(x = test.sum$odds.ratio, y = test.sum$p.value.minuslog, pch = ".", cex = 3)
+# dev.off()
+# 
+# # Promoter regulator analysis
+# load("Robjs/N.long.promoters_500.Robj")
+# 
+# cutoffs <- seq(from = 0.4, to = 0.8, by = 0.1)
+# 
+# pdf(file.path(outdir, paste0(plot.i, ".promoter_enrichment.pdf")))
+# plot.i <- plot.i + 1
+# models.tw <- ""
+# jmodel <- "Adr"
+# N.promsub <- subset(N.long, model %in% c(models.tw, jmodel))
+# N.ftests <- SubsetAndFishers(N.promsub, jmodel = jmodel, cutoffs = cutoffs)
+# 
+# # filter labels
+# N.ftests$jlab <- mapply(function(pval, motifname){
+#   if (is.na(pval)) return("")
+#   
+#   if (-log10(pval) > 15){
+#     return(RemoveP2Name(as.character(motifname)))
+#   } else {
+#     return("")
+#   }
+# }, N.ftests$p.value, N.ftests$motif)
+# 
+# ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_point() + geom_text(size = 6) + theme_bw(24) + 
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom") +
+#   xlab("Odds ratio") + ylab("-log10(P-value)")
+# 
+# jmodel <- "BFAT"
+# N.promsub <- subset(N.long, model %in% c(models.tw, jmodel))
+# N.ftests <- SubsetAndFishers(N.promsub, jmodel = jmodel, cutoffs = cutoffs)
+# N.ftests$jlab <- mapply(function(pval, motifname){
+#   if (is.na(pval)) return("")
+#   
+#   if (-log10(pval) > 5){
+#     return(RemoveP2Name(as.character(motifname)))
+#   } else {
+#     return("")
+#   }
+# }, N.ftests$p.value, N.ftests$motif)
+# ggplot(N.ftests, aes(y = -log10(p.value), x = odds.ratio, label = jlab)) + geom_point() + geom_text() + theme_bw(24) + 
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") +
+#   xlab("Odds ratio") + ylab("-log10(P-value)")
+# dev.off()
 
 
 # Regulation with LDA -----------------------------------------------------
@@ -1018,14 +1025,16 @@ dev.off()
 load("Robjs/N.long.promoters_500.Robj", verbose=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 
+
 # antirhythmic model
 fits.bfataorta <- subset(fits.best, n.rhyth > 1 & n.rhyth < 7)
 fits.bfataorta <- fits.bfataorta[grep("(;|^)Aorta.*;BFAT(;|$)", fits.bfataorta$model), ]
 bfataorta.models <- unique(as.character(fits.bfataorta$model))
-rhyth.models <- unique(as.character(subset(fits.best, n.rhyth > 7)$model))
-
+# rhyth.models <- unique(as.character(subset(fits.best, n.rhyth > 7)$model))
+bfataortaadr.models <- unique(as.character(subset(fits.best, gene %in% genes.adrbfataorta)$model))
+  
 # ADR 
-fg.models.lst <- list(c("Adr"), c("BFAT"), bfataorta.models, c("Mus"), rhyth.models)
+fg.models.lst <- list(c("Adr"), c("BFAT"), bfataorta.models, c("Mus"), bfataortaadr.models)
 
 pdf(file.path(outdir, paste0(plot.i, ".promoter_lda.pdf")))
 plot.i <- plot.i + 1
@@ -1036,9 +1045,9 @@ for (fg.models in fg.models.lst){
   fg.genes <- subset(fits.best, model %in% fg.models)$gene
   print(length(fg.genes))
   
-  fg.mat <- LongToMat(subset(N.long, gene %in% fg.genes & model %in% fg.models))
-  flat.mat <- LongToMat(subset(N.long, model %in% flat.models))
-  rhyth.mat <- LongToMat(subset(N.long, model %in% rhyth.models))
+  fg.mat <- LongToMat.lda(subset(N.long, gene %in% fg.genes & model %in% fg.models))
+  flat.mat <- LongToMat.lda(subset(N.long, model %in% flat.models))
+  rhyth.mat <- LongToMat.lda(subset(N.long, model %in% rhyth.models))
   
   out.flat <- DoLdaPromoters(fg.mat, flat.mat)
   out.rhyth <- DoLdaPromoters(fg.mat, rhyth.mat)
@@ -1057,7 +1066,11 @@ dev.off()
 
 # Regulation with LDA: with DHS -------------------------------------------
 
-load("Robjs/penalized_lda_liver_multigene_mats.Robj", v=T)
+# load("Robjs/penalized_lda_liver_multigene_mats.Robj", v=T)
+load("Robjs/penalized_lda_mats.5001.Liver.Robj", v=T)
+
+pdf(file.path(outdir, paste0(plot.i, ".penalized_lda_dhs_multigene.5000.pdf")))
+plot.i <- plot.i + 1
 
 # bind rows create labels
 mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bgnonliver)
@@ -1087,3 +1100,5 @@ out.cross <- PenalizedLDA(mat.fgbg.cross, labels, lambda = jlambda, K = 1, stand
 m <- SortLda(out.cross)
 BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
 PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE)
+
+dev.off()

@@ -37,7 +37,7 @@ library(reshape2)
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/Liver.centeredTRUE"
-# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit.stringent/expressed_genes_deseq_int.centeredTRUE.100000"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit.stringent/expressed_genes_deseq_int.centeredTRUE.25000"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.vitalit.stringent/expressed_genes_deseq_int.centeredTRUE.25000.fewermotifs"
@@ -45,7 +45,7 @@ library(reshape2)
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.25000/Liver.centeredTRUE"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.allmotifssingle.25000/Liver.centeredTRUE"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/Liver.centeredTRUE"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.pairsonly.25000/Liver.centeredTRUE"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.pairsonly.25000/Liver.centeredTRUE"
 
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 act.long <- LoadActivitiesLong(indir)

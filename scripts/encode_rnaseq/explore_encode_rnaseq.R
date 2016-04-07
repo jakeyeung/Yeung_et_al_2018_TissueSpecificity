@@ -113,6 +113,9 @@ jgene <- "Nkx2-1"
 jgene <- "Nr2f1"
 jgene <- "Foxa2"
 jgene <- "Rfxank"
+jgene <- "Hic1"
+jgene <- "Dbp"
+
 # RFX1..5_RFXANK_RFXAP.p2
 
 dat.sub <- SortByTissue(subset(exprs.bygene, gene == jgene & !tissue %in% c("Colon", "Duodenum", "Small Intestine", "Stomach", "Placenta")))

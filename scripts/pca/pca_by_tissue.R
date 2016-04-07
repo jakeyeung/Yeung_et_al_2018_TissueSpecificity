@@ -27,8 +27,12 @@ source("scripts/functions/PlotFunctions.R")
 GetTissueTemporalVar <- function(dat.gene, mean.global){
   # Given a gene over time, calculate its temporal variance (how the gene changes about its own mean) as well as
   # its gene mean variance (how the mean is different about its global mean)
+  # N.total: number of genes
+  mean.gene <- mean(dat.gene$exprs)
+  
   n.samp <- length(dat.genesub$exprs)
-  dat.var.temp <- var(dat.gene$exprs)
+  
+  dat.var.temp <- sum((dat.gene$exprs - mean.gene) ^ 2) / length(dat.gene$exprs)
   
   if (is.numeric(mean.global)){
     mean.all <- mean.global
@@ -37,8 +41,10 @@ GetTissueTemporalVar <- function(dat.gene, mean.global){
     tiss <- as.character(dat.gene$tissue[[1]])
     mean.all <- mean.global[[tiss]]
   }
-  dat.var.gene <- sum((rep(mean(dat.gene$exprs), n.samp) - mean.all) ^ 2) / (n.samp - 1)
-  return(data.frame(var.temp = dat.var.temp, var.gene = dat.var.gene))
+  #  dat.var.gene <- sum((rep(mean.gene, n.samp) - mean.all) ^ 2) / (n.samp)
+  dat.var.gene <- (mean.gene - mean.all) ^ 2
+  total.var = sum((dat.gene$exprs - mean.all) ^ 2) / length(dat.gene$exprs)  # tempvar + genevar = totalvar
+  return(data.frame(var.temp = dat.var.temp, var.gene = dat.var.gene, var.total = total.var))
 }
 
 
@@ -72,13 +78,18 @@ jgene <- "Dbp"
 
 dat.genesub <- subset(dat.liv, gene == jgene)
 
-dat.var.total <- sum((dat.genesub$exprs - dat.liv.globalmean) ^ 2) / (length(dat.genesub$exprs) - 1)
+# dat.var.total <- sum((dat.genesub$exprs - dat.liv.globalmean) ^ 2) / (length(dat.genesub$exprs) - 1)
+dat.var.total <- sum((dat.genesub$exprs - dat.liv.globalmean) ^ 2) / (length(dat.genesub$exprs))
 
 # break it down into temporal variance and tissue variance
-dat.var.temp <- sum((dat.genesub$exprs - mean(dat.genesub$exprs)) ^ 2) / (length(dat.genesub$exprs) - 1)
-dat.var.temp <- var(dat.genesub$exprs)
+dat.var.temp <- sum((dat.genesub$exprs - mean(dat.genesub$exprs)) ^ 2) / (length(dat.genesub$exprs))
+# dat.var.temp <- var(dat.genesub$exprs)
 n.samp <- nrow(dat.genesub)
-dat.var.gene <- sum((rep(mean(dat.genesub$exprs), n.samp) - dat.liv.globalmean) ^ 2) / (n.samp - 1)
+# (dat.var.gene <- sum((rep(mean(dat.genesub$exprs), n.samp) - dat.liv.globalmean) ^ 2) / (n.samp - 1))
+dat.var.gene <- (mean(dat.genesub$exprs) - dat.liv.globalmean) ^ 2
+
+print(dat.var.total)
+print(dat.var.gene + dat.var.temp)
 
 
 # Temporal versus mean variance genomewide --------------------------------
@@ -172,6 +183,8 @@ dat.var.filt <- subset(dat.sub, is.exprs == TRUE) %>%
   group_by(gene, tissue) %>%
   do(GetTissueTemporalVar(., mean.global = hash.means.filt))
 
+# save(dat.var.filt, file = "Robjs/dat.var.filt.fixed.Robj")
+
 # Plot summary ------------------------------------------------------------
 
 dat.var.filt.bytiss <- dat.var.filt %>%
@@ -208,7 +221,19 @@ dat.plot <- OrderDecreasing(dat.plot, jfactor = "tissue", jval = "variance")
 ggplot(dat.plot, aes(x = tissue, y = variance, fill = variance.type)) + 
   geom_bar(stat="identity") + facet_wrap(~variance.type)
 
-
+# By gene
+dat.var.filt.sort <- dat.var.filt %>%
+  group_by(tissue) %>%
+  arrange(., desc(var.temp)) %>%
+  mutate(var.temp.i = seq(length(var.temp)),
+         var.temp.cum = cumsum(var.temp),
+         var.temp.cum.norm = cumsum(var.temp) / (sum(var.temp) + sum(var.gene)))
+ggplot(subset(dat.var.filt.sort, tissue != "WFAT"), aes(y = var.temp.cum, x = var.temp.i)) + geom_line() + facet_wrap(~tissue) + 
+  theme_bw() + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ylab("Cumulant") + xlab("Gene index (highest to lowest variance") + ggtitle("Contribution of temporal variance for each gene")
+ggplot(subset(dat.var.filt.sort, tissue != "WFAT"), aes(y = var.temp.cum.norm, x = var.temp.i)) + geom_line() + facet_wrap(~tissue) + 
+  theme_bw() + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ylab("Cumulant (normalized by total variance)") + xlab("Gene index (highest to lowest variance") + ggtitle("Contribution of temporal variance for each gene")
 
 # order by total var.gene
 dat.var.filt$tissue <- factor(dat.var.filt$tissue, levels = dat.var.filt.bytiss$tissue[order(dat.var.filt.bytiss$var.gene, decreasing = T)])
