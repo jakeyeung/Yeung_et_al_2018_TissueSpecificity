@@ -33,6 +33,7 @@ GetGeneModelKeys <- function(dat, tiss){
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", verbose=T)
 load("Robjs/tpm.afe.avg.Robj", verbose=T)
+load("Robjs/tpm.merged.Robj", v=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 
 
@@ -61,6 +62,16 @@ tpm.afe.avg <- subset(tpm.afe.avg, gene_name %in% unique(fits.best$gene))
 tpm.afe.avg$amp <- mapply(function(jtiss, jgene) is.rhyth.dic[[paste(jtiss, jgene, sep = ",")]], 
                           as.character(tpm.afe.avg$tissue), as.character(tpm.afe.avg$gene_name))
 
+
+
+# Just sort genes by largest distance in promoter usage space -------------
+
+
+max.dists.all <- subset(tpm.afe.avg, nprom > 1 & tissue != "WFAT" & mean > cutoff) %>%
+  group_by(gene_name) %>%
+  filter(length(unique(tissue)) > 1) %>%
+  do(GetPromoterUsageMaxDist(.))
+max.dists.all <- max.dists.all[order(max.dists.all$max.dist, decreasing = TRUE), ]
 
 
 # Genome-wide k-means and Gaussian clustering -----------------------------

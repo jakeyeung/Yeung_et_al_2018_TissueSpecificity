@@ -38,6 +38,7 @@ load("Robjs/tpm.gauss.bic_models.Robj", verbose=T)
 # load("Robjs/tpm.gauss.filt.Robj", verbose=T)
 # load("Robjs/tpm.gauss2.filt.Robj", verbose=T)
 load("Robjs/tpm.merged.Robj", verbose=T)
+load("Robjs/tpm.max.dists.all.Robj", v=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
 
 # order -------------------------------------------------------------------
@@ -53,12 +54,24 @@ top <- 500
 tpm.hits <- tpm.gauss[1:top, ]
 hits <- tpm.gauss$gene_name[1:top]
 
-hits <- as.character(subset(fits.best, model == "BFAT")$gene)
+# sort by top distances
+outname <- paste0("diagnostics_alt_prom_usage_genomewide_", top, ".pdf")
+hits.genomewide <- as.character(max.dists.all$gene_name)
+pdf(file.path(outdir, outname))
+for (jgene in hits.genomewide){  
+  print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene)))
+  jsub <- subset(tpm.gauss, gene_name == jgene)
+  if (nrow(jsub) > 0){
+    PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == jgene)$sigs[[1]], jgene, draw.ellipse = T)
+  } else {
+    PlotPromoter(subset(tpm.afe.avg, gene_name == jgene), jtitle = jgene)
+  }
+}
+dev.off()
 
-outname <- paste0("Adr_diagnostics_", top, ".pdf")
+outname <- paste0("diagnostics_", top, ".pdf")
 pdf(file.path(outdir, outname))
 for (jgene in hits){
-  jgene <- sample(hits, 1)
   print(PlotGeneAcrossTissues(subset(dat.long, gene == jgene))); PromoterSpacePlots.nostics(subset(tpm.gauss, gene_name == jgene)$sigs[[1]], jgene, draw.ellipse = T)
 }
 dev.off()

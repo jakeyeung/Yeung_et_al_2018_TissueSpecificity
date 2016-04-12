@@ -1,3 +1,30 @@
+GetMaxDist <- function(proms, tiss.vec){
+  dist.tiss <- as.matrix(dist(proms))
+  max.dist.tiss <- max(dist.tiss)
+  rowcol.i <- which(dist.tiss == max.dist.tiss, arr.ind = TRUE)[1, ]  # take first max, there wil be two
+  tiss <- paste(tiss.vec[rowcol.i[1]], tiss.vec[rowcol.i[2]], sep = ";")
+  return(data.frame(max.dist = max.dist.tiss, tissue = tiss))
+}
+
+GetPromoterUsageMaxDist <- function(dat, jvar = "tpm_norm.avg"){
+  proms.full <- GetPromoterUsage(dat, jvar = jvar, do.svd = TRUE, append.tiss = TRUE, get.means = FALSE, get.entropy = FALSE)  
+  tiss.vec <- proms.full[[1]]$tissue
+  proms <- subset(proms.full$dat.mat.trans, select = -c(amp, tissue))
+  dist.tiss <- as.matrix(dist(proms))
+  max.dist.tiss <- max(dist.tiss)
+  rowcol.i <- which(dist.tiss == max.dist.tiss, arr.ind = TRUE)[1, ]  # take first max, there wil be two
+  tiss <- paste(tiss.vec[rowcol.i[1]], tiss.vec[rowcol.i[2]], sep = ";")
+  return(data.frame(max.dist = max.dist.tiss, tissue = tiss))
+}
+# plot top hits
+PlotPromoter <- function(tpm.afe.avg.sub, jtitle="Title"){
+  proms.full <- GetPromoterUsage(dat, jvar = "tpm_norm.avg", get.means = FALSE, get.entropy = FALSE)
+  proms <- subset(proms.full$dat.mat.trans, select = -c(amp, tissue))
+  plot(proms[, 1], proms[, 2], main = jtitle, xlab = "Promoter usage (1st component)", ylab = "Promoter usage (2nd component)")
+  par(cex.axis=1, cex.lab=2, cex.main=2, cex.sub=1)
+  text(proms[, 1], proms[, 2], proms.full$dat.mat.trans$tissue)
+}
+
 add.alpha <- function(col, alpha=1){
   if(missing(col))
     stop("Please provide a vector of colours.")
@@ -205,7 +232,6 @@ GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 
   # get promoter usage
   dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = jvar)
   dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
-  dat.H <- apply(dat.mat.prom, 1, function(x) ShannonEntropy(x, normalize = FALSE))
   if (do.svd){
     # reduce dim
     dat.mat.prom <- sweep(dat.mat.prom, MARGIN = 1, STATS = rowMeans(dat.mat.prom), FUN = "-")
@@ -214,6 +240,10 @@ GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 
     eigvals.cum <- cumsum(eigvals)
     # threshold for number of eigvals to keep
     keep <- KeepUpToThres(eigvals.cum, thres, min.dim = 2)
+    if (length(dat.mat.prom.s$d) == 1){
+      print("Unexpected here:")
+      print(dat)
+    }
     dat.mat.prom <- sweep(dat.mat.prom.s$u[, keep], MARGIN = 2, STATS = dat.mat.prom.s$d[keep], FUN = "*")
     dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom) 
   } else {
@@ -229,6 +259,7 @@ GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 
     out$mean <- dat.mat$mean
   }
   if (get.entropy){
+    dat.H <- apply(dat.mat.prom, 1, function(x) ShannonEntropy(x, normalize = FALSE))
     out$entropy <- dat.H
   }
   return(out)
