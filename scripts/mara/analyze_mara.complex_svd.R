@@ -48,6 +48,9 @@ indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/Tissu
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_dhs_multigene.dist_filt.cross.pairsonly.25000/Liver.centeredTRUE"
 
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
+
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules_crossprod/TissueWide.centeredTRUE"
+
 act.long <- LoadActivitiesLong(indir)
 
 # PlotActivitiesWithSE(subset(act.long, gene == "NR5A1.2.p2"))
