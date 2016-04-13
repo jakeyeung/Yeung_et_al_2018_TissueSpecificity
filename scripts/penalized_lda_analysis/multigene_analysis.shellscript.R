@@ -9,16 +9,20 @@ setwd("/home/yeung/projects/tissue-specificity")
 
 args <- commandArgs(trailingOnly=TRUE)
 distfilt <- as.numeric(args[1])
+jcutoff <- as.numeric(args[2]) # 1.5  # arbitrary
 # distfilt <- 2500
 if (is.na(distfilt)) stop("Distfilt must be numeric")
+if (is.na(jcutoff)) stop("jcutoff must be numeric")
 
 outdir <- "/home/yeung/projects/tissue-specificity/bedfiles/lda_analysis/filtered_peaks_multigene"
+outf <- paste0("plots/penalized_lda/", "multigene.distfilt.", distfilt, ".cutoff.", jcutoff, ".pdf")
 # colnames(N.multigene) <- c("chromo", "start", "end", "motif", "sitecount", "chromo.peak", "start.peak", "end.peak", "gene", "dist")
 amp.min <- 0
 rhyth.tiss <- c("Liver")
 cleanup <- TRUE
 # rhyth.tiss <- c("Liver", "Kidney")
-outfile.robj <- paste0("Robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".Robj")
+# outfile.robj <- paste0("Robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".Robj")
+outfile.robj <- paste0("Robjs/penalized_lda_robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".Robj")
 if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
 
 library(dplyr)
@@ -114,7 +118,7 @@ S.sub.flat <- subset(S.long, gene %in% jgenes.flat & dist < distfilt)
 jpeaks <- as.character(unique(S.sub)$peak)  # 192726 peaks for Liver genes within 50 kb away
 jpeaks.flat <- as.character(unique(S.sub.flat$peak))
 
-jcutoff <- 1.5  # arbitrary
+
 # ggplot(S.sub, aes(x = zscore)) + geom_histogram(bins = 100) + facet_wrap(~tissue) + theme_bw(24) + geom_vline(aes(xintercept = jcutoff))
 # ggplot(S.sub.flat, aes(x = zscore)) + geom_histogram(bins = 100) + facet_wrap(~tissue) + theme_bw(24) + geom_vline(aes(xintercept = jcutoff))
 
@@ -159,7 +163,7 @@ S.sub.flat.liverpeaks <- S.sub.flat %>%
 
 # Do penalized LDA --------------------------------------------------------
 
-pdf(paste0("plots/penalized_lda/", "multigene.distfilt.", distfilt, ".pdf"))
+pdf(outf)
 
   liver.peaks.fg <- as.character(unique(S.sub.liverpeaks$peak))
   nonliver.peaks.bg <- as.character(unique(S.sub.nonliverpeaks$peak))

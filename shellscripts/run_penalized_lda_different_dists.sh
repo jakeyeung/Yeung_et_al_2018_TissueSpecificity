@@ -8,7 +8,10 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysi
 
 [[ ! -e $runscript ]] && echo "$runscript not found, exiting" && exit 1
 
-for dist in 1501 2501 5001 10001 25001; do
-	echo $dist
-	Rscript $runscript $dist
+for dist in 2500 5000; do
+	for cutoff in 0.5 2.5 3.5; do
+		echo $dist
+		Rscript $runscript $dist $cutoff&
+	done
 done
+wait

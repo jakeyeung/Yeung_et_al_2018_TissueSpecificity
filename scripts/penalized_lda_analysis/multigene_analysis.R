@@ -10,15 +10,18 @@ setwd("/home/yeung/projects/tissue-specificity")
 # args <- commandArgs(trailingOnly=TRUE)
 # distfilt <- as.numeric(args[1])
 distfilt <- 5000
+jcutoff <- 2  # arbitrary
+cleanup <- FALSE
+writepeaks <- FALSE
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
 outdir <- "/home/yeung/projects/tissue-specificity/bedfiles/lda_analysis/filtered_peaks_multigene"
+outf <- paste0("plots/penalized_lda/", "multigene.distfilt.", distfilt, ".cutoff.", jcutoff, ".pdf")
 # colnames(N.multigene) <- c("chromo", "start", "end", "motif", "sitecount", "chromo.peak", "start.peak", "end.peak", "gene", "dist")
 amp.min <- 0
 rhyth.tiss <- c("Liver")
-cleanup <- TRUE
 # rhyth.tiss <- c("Liver", "Kidney")
-outfile.robj <- paste0("Robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".Robj")
+outfile.robj <- paste0("Robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".Robj")
 if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
 
 library(dplyr)
@@ -114,7 +117,6 @@ S.sub.flat <- subset(S.long, gene %in% jgenes.flat & dist < distfilt)
 jpeaks <- as.character(unique(S.sub)$peak)  # 192726 peaks for Liver genes within 50 kb away
 jpeaks.flat <- as.character(unique(S.sub.flat$peak))
 
-jcutoff <- 1.5  # arbitrary
 # ggplot(S.sub, aes(x = zscore)) + geom_histogram(bins = 100) + facet_wrap(~tissue) + theme_bw(24) + geom_vline(aes(xintercept = jcutoff))
 # ggplot(S.sub.flat, aes(x = zscore)) + geom_histogram(bins = 100) + facet_wrap(~tissue) + theme_bw(24) + geom_vline(aes(xintercept = jcutoff))
 
@@ -159,7 +161,9 @@ S.sub.flat.liverpeaks <- S.sub.flat %>%
 
 # Do penalized LDA --------------------------------------------------------
 
-pdf(paste0("plots/penalized_lda/", "multigene.distfilt.", distfilt, ".pdf"))
+
+print(paste("Saving to", outf))
+pdf(outf)
 
   liver.peaks.fg <- as.character(unique(S.sub.liverpeaks$peak))
   nonliver.peaks.bg <- as.character(unique(S.sub.nonliverpeaks$peak))
@@ -237,14 +241,15 @@ pdf(paste0("plots/penalized_lda/", "multigene.distfilt.", distfilt, ".pdf"))
 dev.off()
 
 # Write peaks to file -----------------------------------------------------
-
-outname <- paste0("liver.peaks.fg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
-PeaksToBedMotevo(liver.peaks.fg, file.path(outdir, outname))
-outname <- paste0("liver.peaks.bg.flat.", distfilt, ".bed")
-PeaksToBedMotevo(liver.peaks.bg, file.path(outdir, outname))
-outname <- paste0("nonliver.peaks.bg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
-
-
-# Save object -------------------------------------------------------------
-
-save(mat.fg, mat.bgnonliver, mat.bg, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
+if (writepeaks){
+  outname <- paste0("liver.peaks.fg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
+  PeaksToBedMotevo(liver.peaks.fg, file.path(outdir, outname))
+  outname <- paste0("liver.peaks.bg.flat.", distfilt, ".bed")
+  PeaksToBedMotevo(liver.peaks.bg, file.path(outdir, outname))
+  outname <- paste0("nonliver.peaks.bg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
+  
+  
+  # Save object -------------------------------------------------------------
+  
+  save(mat.fg, mat.bgnonliver, mat.bg, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
+}

@@ -138,3 +138,4 @@ write.table(N.crosses, file = "/home/yeung/projects/tissue-specificity/data/site
 # LoadActivitiesPlotSvd("/home/yeung/projects/tissue-specificity/results/MARA/bic_modules_crossprod_several/TissueWide.centeredTRUE", comp = 1)
 LoadActivitiesPlotSvd("/home/yeung/projects/tissue-specificity/results/MARA/bic_modules_crossprod_rora/TissueWide.centeredTRUE", comp = 1)
 LoadActivitiesPlotSvd("/home/yeung/projects/tissue-specificity/results/MARA/bic_modules_crossprod_clockfactors/TissueWide.centeredTRUE", comp=1)
+

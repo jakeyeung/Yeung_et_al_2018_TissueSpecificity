@@ -2,10 +2,14 @@ library(penalizedLDA)
 library(wordcloud)
 library(dplyr)
 
-SetUpMatForLda <- function(mat.fg, mat.bg){
+SetUpMatForLda <- function(mat.fg, mat.bg, has.peaks=TRUE){
   mat.fgbg <- bind_rows(mat.fg, mat.bg)
   mat.fgbg[is.na(mat.fgbg)] <- 0
-  rownames(mat.fgbg) <- paste(mat.fgbg$peak, mat.fgbg$gene, sep = ";"); mat.fgbg$peak <- NULL; mat.fgbg$gene <- NULL
+  if (has.peaks){
+    rownames(mat.fgbg) <- paste(mat.fgbg$peak, mat.fgbg$gene, sep = ";"); mat.fgbg$peak <- NULL; mat.fgbg$gene <- NULL
+  } else {
+    rownames(mat.fgbg) <- make.unique(as.character(mat.fgbg$gene)); mat.fgbg$gene <- NULL
+  }
   labels <- c(rep(1, nrow(mat.fg)), rep(2, nrow(mat.bg)))
   return(list(mat.fgbg = mat.fgbg, labels = labels))
 }
