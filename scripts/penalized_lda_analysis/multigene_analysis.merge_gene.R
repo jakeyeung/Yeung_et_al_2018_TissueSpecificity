@@ -7,8 +7,8 @@ rm(list=ls())
 
 setwd("/home/yeung/projects/tissue-specificity")
 
-distfilt <- 10000
-jcutoff <- 3  # arbitrary
+distfilt <- 5000
+jcutoff <- 1.5  # arbitrary
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
 amp.min <- 0
@@ -29,8 +29,9 @@ source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/ShannonEntropy.R")
 source("scripts/functions/SitecountsFunctions.R")
 source("scripts/functions/LdaFunctions.R")
-source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/PlotUCSC.R")  # CoordToBed
+source("scripts/functions/GetTopMotifs.R")
+source("scripts/functions/HandleMotifNames.R")
 
 
 # Function ----------------------------------------------------------------
@@ -133,15 +134,15 @@ print(paste("N.peaks bg", length(liver.peaks.bg)))
 
 N.sub.liver.peaks.fg <- subset(N.sub, gene %in% jgenes & peak %in% liver.peaks.fg) %>%
   group_by(gene, motif) %>%
-  summarise(sitecount = max(sitecount))
+  summarise(sitecount = sum(sitecount))
 
 N.sub.nonliver.peaks.bg <- subset(N.sub, gene %in% jgenes & peak %in% nonliver.peaks.bg) %>%
   group_by(gene, motif) %>%
-  summarise(sitecount = max(sitecount))
+  summarise(sitecount = sum(sitecount))
 
 N.sub.liver.peaks.bg <- subset(N.sub.flat, gene %in% jgenes.flat & peak %in% liver.peaks.bg) %>%
   group_by(gene, motif) %>%
-  summarise(sitecount = max(sitecount))
+  summarise(sitecount = sum(sitecount))
 
 # plot(density(subset(N.sub.liver.peaks.fg, motif=="RORA.p2")$sitecount))
 # plot(density(subset(N.sub.nonliver.peaks.bg, motif=="RORA.p2")$sitecount))
@@ -159,6 +160,7 @@ mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bgnonliver, has.peaks = FALSE)
 # mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg)
 
 mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
 
 out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)  
 
@@ -177,41 +179,41 @@ m.singles <- SortLda(out)
 
 # ggplot(out.df, aes(x=gene, y=phase)) + geom_point()
 
-genes.ordered.all <- rownames(mat.fgbg)[order(out$xproj)]
-# take fg only
-genes.ordered.all <- genes.ordered.all[which(genes.ordered.all %in% mat.fg$gene)]
-head(genes.ordered.all)
-# plot top motifs
-jgene <- "Cnot1"
-for (jgene in genes.ordered.all[1:20]){
-  PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
-  vec <- subset(mat.fg, gene==jgene, select=-gene)
-  vec <- vec[order(vec, decreasing=TRUE)]
-  vec <- vec[which(vec > 0)]
-  vec <- t(as.matrix(vec))
-  plot(vec, main=jgene)
-  text(vec, labels = rownames(vec))
-}
-
-# Compare with flat -------------------------------------------------------
-
-mat.fgbg.lab.lst.flat <- SetUpMatForLda(mat.fg, mat.bg, has.peaks = FALSE)
-# mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg)
-
-mat.fgbg.flat <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
-
-out.flat <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)  
-
-BoxplotLdaOut(out.flat, jtitle = paste0("Single factor separation vs flat. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
-PlotLdaOut(out.flat, jtitle = paste0("Single factor loadings vs flat. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
-
-m.singles <- SortLda(out.flat)
+# genes.ordered.all <- rownames(mat.fgbg)[order(out$xproj)]
+# # take fg only
+# genes.ordered.all <- genes.ordered.all[which(genes.ordered.all %in% mat.fg$gene)]
+# head(genes.ordered.all)
+# # plot top motifs
+# jgene <- "Cnot1"
+# for (jgene in genes.ordered.all[1:20]){
+#   PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
+#   vec <- subset(mat.fg, gene==jgene, select=-gene)
+#   vec <- vec[order(vec, decreasing=TRUE)]
+#   vec <- vec[which(vec > 0)]
+#   vec <- t(as.matrix(vec))
+#   plot(vec, main=jgene)
+#   text(vec, labels = rownames(vec))
+# }
+# 
+# # Compare with flat -------------------------------------------------------
+# 
+# mat.fgbg.lab.lst.flat <- SetUpMatForLda(mat.fg, mat.bg, has.peaks = FALSE)
+# # mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg)
+# 
+# mat.fgbg.flat <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+# 
+# out.flat <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)  
+# 
+# BoxplotLdaOut(out.flat, jtitle = paste0("Single factor separation vs flat. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
+# PlotLdaOut(out.flat, jtitle = paste0("Single factor loadings vs flat. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
+# 
+# m.singles <- SortLda(out.flat)
 
 
 # Do cross products -------------------------------------------------------
 
 # do crosses
-colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
+
 mat.fgbg.cross <- CrossProduct(mat.fgbg, remove.duplicates = TRUE)
 dim(mat.fgbg.cross)
 # add single factors
@@ -227,6 +229,37 @@ print(length(m))
 BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
 PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
 PlotLdaOut(out.cross, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
+
+
+# Do cross products on rhythmic and tissue regulators ---------------------
+
+rhyth.motifs <- sapply(GetTopMotifs("rhythmic"), RemoveP2Name, USE.NAMES = FALSE)
+tissue.motifs <- sapply(GetTopMotifs("tissue"), RemoveP2Name, USE.NAMES = FALSE)
+
+# remove tissue motifs in rhyth
+rhyth.motifs <- rhyth.motifs[which(!rhyth.motifs %in% intersect(rhyth.motifs, tissue.motifs))]
+
+cnames <- sapply(colnames(mat.fgbg), function(cname){
+  return(RemoveCommasBraces(cname))
+}, USE.NAMES = FALSE)
+colnames(mat.fgbg) <- cnames
+
+mat1 <- subset(mat.fgbg, select = intersect(rhyth.motifs, colnames(mat.fgbg)))
+mat2 <- subset(mat.fgbg, select = intersect(tissue.motifs, colnames(mat.fgbg)))
+mat12 <- CrossProductTwoSets(mat1, mat2)
+
+mat.fgbg.cross.rhythtiss <- cbind(mat.fgbg, mat12)
+# remove columns with 0 variance 
+mat.fgbg.cross.rhythtiss[which(colSums(mat.fgbg.cross.rhythtiss) == 0)] <- list(NULL)
+
+# jlambda <- 0.029  # kidliv
+jlambda <- 0.015  # liv only
+out.cross.rhythtiss <- PenalizedLDA(mat.fgbg.cross.rhythtiss, labels, lambda = jlambda, K = 1, standardized = FALSE)
+m <- SortLda(out.cross.rhythtiss)
+print(length(m))
+BoxplotLdaOut(out.cross.rhythtiss, jtitle = "Cross product separation. Tiss and rhyth.")
+PlotLdaOut(out.cross.rhythtiss, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings. Tiss and rhyth. (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
+PlotLdaOut(out.cross.rhythtiss, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings. Tiss and rhyth. (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
 
 
 # How many RORA-partners happen? ------------------------------------------

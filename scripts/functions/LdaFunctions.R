@@ -79,6 +79,22 @@ CrossProduct <- function(mat, remove.duplicates = TRUE){
   return(mat)
 }
 
+CrossProductTwoSets <- function(mat1, mat2){
+  # cross product mat1 with mat2 and you're done
+  if (all(is.data.frame(mat1), is.data.frame(mat2))) convert.to.mat <- TRUE
+  
+  jmat <- apply(mat1, MARGIN = 2, function(jcol){
+    return(sweep(mat2, 1, jcol, FUN = "*"))
+  })
+  # add cnames
+  new.cnames <- unlist(lapply(colnames(mat1), function(c1){
+    paste(c1, colnames(mat2), sep = ";")
+  }))
+  jmat <- bind_cols(jmat)
+  colnames(jmat) <- new.cnames
+  return(jmat)
+}
+
 DoLdaPromoters <- function(fg.mat, bg.mat){
   # remove columns with 0 within-class SD
   fg.mat <- fg.mat[, apply(fg.mat, 2, sd) > 0]

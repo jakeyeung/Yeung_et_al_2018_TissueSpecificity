@@ -8,10 +8,18 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysi
 
 [[ ! -e $runscript ]] && echo "$runscript not found, exiting" && exit 1
 
-for dist in 2500 5000; do
-	for cutoff in 0.5 2.5 3.5; do
+n=0
+maxjobs=3
+
+for dist in 2500 5000 10000; do
+	for cutoff in 1.5 2 2.5; do
 		echo $dist
 		Rscript $runscript $dist $cutoff&
+		# limit jobs
+		if (( $(($((++n)) % $maxjobs)) == 0 )) ; then
+		    wait # wait until all have finished (not optimal, but most times good enough)
+		    echo $n wait
+		fi
 	done
 done
 wait

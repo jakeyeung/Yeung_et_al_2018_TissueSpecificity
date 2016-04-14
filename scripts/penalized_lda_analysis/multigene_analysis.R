@@ -10,7 +10,7 @@ setwd("/home/yeung/projects/tissue-specificity")
 # args <- commandArgs(trailingOnly=TRUE)
 # distfilt <- as.numeric(args[1])
 distfilt <- 5000
-jcutoff <- 2  # arbitrary
+jcutoff <- 1.5  # arbitrary
 cleanup <- FALSE
 writepeaks <- FALSE
 if (is.na(distfilt)) stop("Distfilt must be numeric")
@@ -40,7 +40,8 @@ source("scripts/functions/SitecountsFunctions.R")
 source("scripts/functions/LdaFunctions.R")
 source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/PlotUCSC.R")  # CoordToBed
-
+source("scripts/functions/GetTopMotifs.R")
+source("scripts/functions/HandleMotifNames.R")
 
 # Function ----------------------------------------------------------------
 
@@ -123,9 +124,17 @@ jpeaks.flat <- as.character(unique(S.sub.flat$peak))
 
 # Subset sitecounts (distfilt from S) -------------------------------------
 
-N.sub <- subset(N.long.filt, peak %in% jpeaks)  # should not have any missing peaks
-N.sub.flat <- subset(N.long.filt, peak %in% jpeaks.flat)
+N.sub <- subset(N.long.filt, gene %in% jgenes & peak %in% jpeaks)  # should not have any missing peaks
+N.sub.flat <- subset(N.long.filt, gene %in% jgenes.flat & peak %in% jpeaks.flat)
+# N.sub <- subset(N.long.filt, peak %in% jpeaks)  # should not have any missing peaks
+# N.sub.flat <- subset(N.long.filt, peak %in% jpeaks.flat)
 
+# rename gene names
+# genes.hash <- hash(as.character(S.sub$peak), as.character(S.sub$gene))
+# genes.flat.hash <- hash(as.character(S.sub.flat$peak), as.character(S.sub.flat$gene))
+
+# N.sub$gene <- sapply(as.character(N.sub$peak), function(p) genes.hash[[p]])
+# N.sub.flat$gene <- sapply(as.character(N.sub.flat$peak), function(p) genes.flat.hash[[p]])
 
 # Clean up ram ------------------------------------------------------------
 if (cleanup){
@@ -189,6 +198,7 @@ pdf(outf)
   # mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg)
   
   mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+  colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
   
   out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)  
   
@@ -217,7 +227,36 @@ pdf(outf)
   BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
   PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
   PlotLdaOut(out.cross, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+
+  # Cross prod on tiss and rhyth --------------------------------------------
+  rhyth.motifs <- sapply(GetTopMotifs("rhythmic"), RemoveP2Name, USE.NAMES = FALSE)
+  tissue.motifs <- sapply(GetTopMotifs("tissue"), RemoveP2Name, USE.NAMES = FALSE)
   
+  # remove tissue motifs in rhyth
+  rhyth.motifs <- rhyth.motifs[which(!rhyth.motifs %in% intersect(rhyth.motifs, tissue.motifs))]
+
+  cnames <- sapply(colnames(mat.fgbg), function(cname){
+    return(RemoveCommasBraces(cname))
+  }, USE.NAMES = FALSE)
+  colnames(mat.fgbg) <- cnames
+  
+  mat1 <- subset(mat.fgbg, select = intersect(rhyth.motifs, colnames(mat.fgbg)))
+  mat2 <- subset(mat.fgbg, select = intersect(tissue.motifs, colnames(mat.fgbg)))
+  mat12 <- CrossProductTwoSets(mat1, mat2)
+  
+  mat.fgbg.cross.rhythtiss <- cbind(mat.fgbg, mat12)
+  # remove columns with 0 variance 
+  mat.fgbg.cross.rhythtiss[which(colSums(mat.fgbg.cross.rhythtiss) == 0)] <- list(NULL)
+  
+  # jlambda <- 0.029  # kidliv
+  jlambda <- 0.015  # liv only
+  out.cross.rhythtiss <- PenalizedLDA(mat.fgbg.cross.rhythtiss, labels, lambda = jlambda, K = 1, standardized = FALSE)
+  m <- SortLda(out.cross.rhythtiss)
+  print(length(m))
+  BoxplotLdaOut(out.cross.rhythtiss, jtitle = "Cross product tissue and rhyth only separation")
+  PlotLdaOut(out.cross.rhythtiss, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings. Tiss and rhyth. (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
+  PlotLdaOut(out.cross.rhythtiss, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings. Tiss and rhyth. (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
+
   
   # How many RORA-partners happen? ------------------------------------------
   
@@ -237,6 +276,11 @@ pdf(outf)
   # onecut.pairs <- sort(n.hits[grepl("ONECUT", names(n.hits))], decreasing=TRUE)
   # onecut.pairs.filt <- onecut.pairs[1:30]
   # textplot(seq(length(onecut.pairs.filt)), onecut.pairs.filt, words = names(onecut.pairs.filt), xlab = "Index", ylab = "Number of pairs in foreground", cex = 0.9)
+  
+  # where are my RORA hits?
+  #     mat.rora <- subset(mat.fg, select=c(peak, gene, RORA.p2)); mat.rora <- mat.rora[order(mat.rora$RORA.p2, decreasing=TRUE), ]
+  #   mat.rora[1:50, ]
+
 
 dev.off()
 
@@ -251,5 +295,5 @@ if (writepeaks){
   
   # Save object -------------------------------------------------------------
   
-  save(mat.fg, mat.bgnonliver, mat.bg, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
+  save(mat.fg, mat.bgnonliver, mat.bg, mat.fgbg.cross, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
 }

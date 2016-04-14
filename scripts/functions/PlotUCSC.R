@@ -25,18 +25,22 @@ mergePDF <- function(output="merged.pdf", sourcefiles=c("source1.pdf","source2.p
 
 
 #  Reference: http://www.biostars.org/post/show/6132/batch-viewing-of-ucsc-browser-graphic/
-screenshotUCSC <- function(url, trackfile, chr, start, end, filename) {
+screenshotUCSC <- function(url, trackfile, chr, start, end, filename, euro.mirror=FALSE) {
   oldpen <- options("scipen")
   options(scipen=100)
   temp <- readLines(paste(url, "&hgt.customText=", trackfile, "&position=",chr,":",start,"-",end, sep=""))
   # cat(temp,"\n")
-  pdfurl <- paste("http://www.genome.ucsc.edu/trash",gsub(".*trash","",gsub(".pdf.*","",temp[grep(".pdf", temp, fixed=TRUE)][1])), ".pdf", sep="")
+  if (!euro.mirror){
+    pdfurl <- paste("http://www.genome.ucsc.edu/trash",gsub(".*trash","",gsub(".pdf.*","",temp[grep(".pdf", temp, fixed=TRUE)][1])), ".pdf", sep="")
+  } else {
+    pdfurl <- paste("http://genome-euro.ucsc.edu/trash",gsub(".*trash","",gsub(".pdf.*","",temp[grep(".pdf", temp, fixed=TRUE)][1])), ".pdf", sep="")
+  }
   # cat(pdfurl,"\n");
   options(scipen=oldpen)
   download.file(pdfurl, filename, mode="wb", quiet=TRUE)
 }
 
-bedToUCSC <- function(toPlot, outpdf, leftwindow = 2000, rightwindow = 1999, jtempdir, theURL, chromo.name="chromo", start.name="start", end.name="end"){
+bedToUCSC <- function(toPlot, outpdf, leftwindow = 2000, rightwindow = 1999, jtempdir, theURL, chromo.name="chromo", start.name="start", end.name="end", euro.mirror=FALSE){
   # from http://onetipperday.blogspot.ch/2012/07/get-ucsc-images-for-list-of-regions-in.html
   
   # example of controling individual track
@@ -60,7 +64,7 @@ bedToUCSC <- function(toPlot, outpdf, leftwindow = 2000, rightwindow = 1999, jte
   }
   for(i in 1:nrow(toPlot)){
     tempname <- paste("region_", i, "_", toPlot$name[i],".pdf", sep="")
-    screenshotUCSC(theURL, "", as.character(toPlot[[chromo.name]][i]), toPlot[[start.name]][i]-leftwindow, toPlot[[end.name]][i]+rightwindow, file.path(jtempdir, tempname))
+    screenshotUCSC(theURL, "", as.character(toPlot[[chromo.name]][i]), toPlot[[start.name]][i]-leftwindow, toPlot[[end.name]][i]+rightwindow, file.path(jtempdir, tempname), euro.mirror = TRUE)
     Sys.sleep(5) 
   }
   

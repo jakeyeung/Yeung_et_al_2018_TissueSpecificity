@@ -20,10 +20,12 @@ outf <- paste0("plots/penalized_lda/", "multigene.distfilt.", distfilt, ".cutoff
 amp.min <- 0
 rhyth.tiss <- c("Liver")
 cleanup <- TRUE
+writepeaks <- TRUE
 # rhyth.tiss <- c("Liver", "Kidney")
 # outfile.robj <- paste0("Robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".Robj")
 outfile.robj <- paste0("Robjs/penalized_lda_robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".Robj")
-if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
+# if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
+
 
 library(dplyr)
 library(reshape2)
@@ -118,16 +120,23 @@ S.sub.flat <- subset(S.long, gene %in% jgenes.flat & dist < distfilt)
 jpeaks <- as.character(unique(S.sub)$peak)  # 192726 peaks for Liver genes within 50 kb away
 jpeaks.flat <- as.character(unique(S.sub.flat$peak))
 
-
 # ggplot(S.sub, aes(x = zscore)) + geom_histogram(bins = 100) + facet_wrap(~tissue) + theme_bw(24) + geom_vline(aes(xintercept = jcutoff))
 # ggplot(S.sub.flat, aes(x = zscore)) + geom_histogram(bins = 100) + facet_wrap(~tissue) + theme_bw(24) + geom_vline(aes(xintercept = jcutoff))
 
 
 # Subset sitecounts (distfilt from S) -------------------------------------
 
-N.sub <- subset(N.long.filt, peak %in% jpeaks)  # should not have any missing peaks
-N.sub.flat <- subset(N.long.filt, peak %in% jpeaks.flat)
+N.sub <- subset(N.long.filt, gene %in% jgenes & peak %in% jpeaks)  # should not have any missing peaks
+N.sub.flat <- subset(N.long.filt, gene %in% jgenes.flat & peak %in% jpeaks.flat)
+# N.sub <- subset(N.long.filt, peak %in% jpeaks)  # should not have any missing peaks
+# N.sub.flat <- subset(N.long.filt, peak %in% jpeaks.flat)
 
+# rename gene names
+# genes.hash <- hash(as.character(S.sub$peak), as.character(S.sub$gene))
+# genes.flat.hash <- hash(as.character(S.sub.flat$peak), as.character(S.sub.flat$gene))
+
+# N.sub$gene <- sapply(as.character(N.sub$peak), function(p) genes.hash[[p]])
+# N.sub.flat$gene <- sapply(as.character(N.sub.flat$peak), function(p) genes.flat.hash[[p]])
 
 # Clean up ram ------------------------------------------------------------
 if (cleanup){
@@ -159,96 +168,103 @@ if (identical(jtiss, jtiss.flat) == FALSE){
 S.sub.flat.liverpeaks <- S.sub.flat %>%
   group_by(peak) %>%
   filter(min(zscore[tiss.i]) > jcutoff & max(zscore[others.i]) < jcutoff)
-  
+
 
 # Do penalized LDA --------------------------------------------------------
 
+
+print(paste("Saving to", outf))
 pdf(outf)
 
-  liver.peaks.fg <- as.character(unique(S.sub.liverpeaks$peak))
-  nonliver.peaks.bg <- as.character(unique(S.sub.nonliverpeaks$peak))
-  liver.peaks.bg <- as.character(unique(S.sub.flat.liverpeaks$peak))
-  intersect.peaks <- intersect(liver.peaks.fg, liver.peaks.bg)
-  print(paste("N.peaks rhyth tiss fg", length(liver.peaks.fg)))
-  print(paste("N.peaks flat tiss bg", length(nonliver.peaks.bg)))
-  print(paste("N.peaks rhyth tiss bg", length(liver.peaks.bg)))
-  
-  liver.peaks.fg <- liver.peaks.fg[which(!liver.peaks.fg %in% intersect.peaks)]
-  liver.peaks.bg <- liver.peaks.bg[which(!liver.peaks.bg %in% intersect.peaks)]
-  print(paste("N.peaks fg", length(liver.peaks.fg)))
-  print(paste("N.peaks bg", length(liver.peaks.bg)))
-  
-  
-  mat.fg <- dcast(subset(N.sub, peak %in% liver.peaks.fg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
-  mat.bgnonliver <- dcast(subset(N.sub, peak %in% nonliver.peaks.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
-  mat.bg <- dcast(subset(N.sub.flat, peak %in% liver.peaks.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
-  
-  # bind rows create labels
-  
-  mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bgnonliver)
-  # mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg)
-  
-  mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
-  
-  out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)  
-  
-  BoxplotLdaOut(out, jtitle = paste0("Single factor separation. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver))))
-  PlotLdaOut(out, jtitle = paste0("Single factor loadings. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver))))
-  
-  m.singles <- SortLda(out)
-  
-  
-  # Do cross products -------------------------------------------------------
-  
-  # do crosses
-  colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
-  mat.fgbg.cross <- CrossProduct(mat.fgbg, remove.duplicates = TRUE)
-  dim(mat.fgbg.cross)
-  # add single factors
-  mat.fgbg.cross <- cbind(mat.fgbg, mat.fgbg.cross)
-  # remove columns with 0 variance 
-  mat.fgbg.cross[which(colSums(mat.fgbg.cross) == 0)] <- list(NULL)
-  
-  # jlambda <- 0.029  # kidliv
-  jlambda <- 0.015  # liv only
-  out.cross <- PenalizedLDA(mat.fgbg.cross, labels, lambda = jlambda, K = 1, standardized = FALSE)
-  m <- SortLda(out.cross)
-  print(length(m))
-  BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
-  PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver))))
-  PlotLdaOut(out.cross, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver))))
-  
-  
-  # How many RORA-partners happen? ------------------------------------------
-  
-  n.hits <- apply(mat.fgbg.cross[seq(nrow(mat.fg)), grepl(";", colnames(mat.fgbg.cross))], 2, function(jcol) length(which(jcol > 0)))
-  n.hits.single <- apply(mat.fgbg[seq(nrow(mat.fg)), ], 2, function(jcol) length(which(jcol > 0)))
-  n.hits.single.bg <- apply(mat.fgbg[seq(nrow(mat.bgnonliver)) + nrow(mat.fg), ], 2, function(jcol) length(which(jcol > 0)))
-  n.hits.single.all <- apply(mat.fgbg, 2, function(jcol) length(which(jcol > 0)))
-  # print(head(sort(n.hits, decreasing = TRUE), n = 20))
-  
-  # top hits with RORA
-  jmotif <- "RORA"
-  rora.pairs <- sort(n.hits[grepl(jmotif, names(n.hits))], decreasing=TRUE)
-  rora.pairs.filt <- rora.pairs[1:30]
-  textplot(seq(length(rora.pairs.filt)), rora.pairs.filt, words = names(rora.pairs.filt), xlab = "Index", ylab = "Number of pairs in foreground", cex = 0.9, 
-           main = paste0("Single RORA hits:", n.hits.single[[jmotif]], "/", nrow(mat.fg), "\nSingle RORA hits bg:", n.hits.single.bg[[jmotif]], "/", nrow(mat.bgnonliver), "\nTotal RORA hits:", n.hits.single.all[[jmotif]]))
-  # 
-  # onecut.pairs <- sort(n.hits[grepl("ONECUT", names(n.hits))], decreasing=TRUE)
-  # onecut.pairs.filt <- onecut.pairs[1:30]
-  # textplot(seq(length(onecut.pairs.filt)), onecut.pairs.filt, words = names(onecut.pairs.filt), xlab = "Index", ylab = "Number of pairs in foreground", cex = 0.9)
+liver.peaks.fg <- as.character(unique(S.sub.liverpeaks$peak))
+nonliver.peaks.bg <- as.character(unique(S.sub.nonliverpeaks$peak))
+liver.peaks.bg <- as.character(unique(S.sub.flat.liverpeaks$peak))
+intersect.peaks <- intersect(liver.peaks.fg, liver.peaks.bg)
+print(paste("N.peaks rhyth tiss fg", length(liver.peaks.fg)))
+print(paste("N.peaks flat tiss bg", length(nonliver.peaks.bg)))
+print(paste("N.peaks rhyth tiss bg", length(liver.peaks.bg)))
+
+liver.peaks.fg <- liver.peaks.fg[which(!liver.peaks.fg %in% intersect.peaks)]
+liver.peaks.bg <- liver.peaks.bg[which(!liver.peaks.bg %in% intersect.peaks)]
+print(paste("N.peaks fg", length(liver.peaks.fg)))
+print(paste("N.peaks bg", length(liver.peaks.bg)))
+
+
+mat.fg <- dcast(subset(N.sub, peak %in% liver.peaks.fg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
+mat.bgnonliver <- dcast(subset(N.sub, peak %in% nonliver.peaks.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
+mat.bg <- dcast(subset(N.sub.flat, peak %in% liver.peaks.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
+
+# bind rows create labels
+
+mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bgnonliver)
+# mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg)
+
+mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+
+out <- PenalizedLDA(mat.fgbg, labels, lambda = 0.1, K = 1, standardized = FALSE)  
+
+BoxplotLdaOut(out, jtitle = paste0("Single factor separation. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+PlotLdaOut(out, jtitle = paste0("Single factor loadings. Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+
+m.singles <- SortLda(out)
+
+
+# Do cross products -------------------------------------------------------
+
+# do crosses
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
+mat.fgbg.cross <- CrossProduct(mat.fgbg, remove.duplicates = TRUE)
+dim(mat.fgbg.cross)
+# add single factors
+mat.fgbg.cross <- cbind(mat.fgbg, mat.fgbg.cross)
+# remove columns with 0 variance 
+mat.fgbg.cross[which(colSums(mat.fgbg.cross) == 0)] <- list(NULL)
+
+# jlambda <- 0.029  # kidliv
+jlambda <- 0.015  # liv only
+out.cross <- PenalizedLDA(mat.fgbg.cross, labels, lambda = jlambda, K = 1, standardized = FALSE)
+m <- SortLda(out.cross)
+print(length(m))
+BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
+PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+PlotLdaOut(out.cross, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+
+
+# How many RORA-partners happen? ------------------------------------------
+
+n.hits <- apply(mat.fgbg.cross[seq(nrow(mat.fg)), grepl(";", colnames(mat.fgbg.cross))], 2, function(jcol) length(which(jcol > 0)))
+n.hits.single <- apply(mat.fgbg[seq(nrow(mat.fg)), ], 2, function(jcol) length(which(jcol > 0)))
+n.hits.single.bg <- apply(mat.fgbg[seq(nrow(mat.bgnonliver)) + nrow(mat.fg), ], 2, function(jcol) length(which(jcol > 0)))
+n.hits.single.all <- apply(mat.fgbg, 2, function(jcol) length(which(jcol > 0)))
+# print(head(sort(n.hits, decreasing = TRUE), n = 20))
+
+# top hits with RORA
+jmotif <- "RORA"
+rora.pairs <- sort(n.hits[grepl(jmotif, names(n.hits))], decreasing=TRUE)
+rora.pairs.filt <- rora.pairs[1:30]
+textplot(seq(length(rora.pairs.filt)), rora.pairs.filt, words = names(rora.pairs.filt), xlab = "Index", ylab = "Number of pairs in foreground", cex = 0.9, 
+         main = paste0("Single RORA hits:", n.hits.single[[jmotif]], "/", nrow(mat.fg), "\nSingle RORA hits bg:", n.hits.single.bg[[jmotif]], "/", nrow(mat.bgnonliver), "\nTotal RORA hits:", n.hits.single.all[[jmotif]]))
+# 
+# onecut.pairs <- sort(n.hits[grepl("ONECUT", names(n.hits))], decreasing=TRUE)
+# onecut.pairs.filt <- onecut.pairs[1:30]
+# textplot(seq(length(onecut.pairs.filt)), onecut.pairs.filt, words = names(onecut.pairs.filt), xlab = "Index", ylab = "Number of pairs in foreground", cex = 0.9)
+
+# where are my RORA hits?
+#     mat.rora <- subset(mat.fg, select=c(peak, gene, RORA.p2)); mat.rora <- mat.rora[order(mat.rora$RORA.p2, decreasing=TRUE), ]
+#   mat.rora[1:50, ]
 
 dev.off()
 
 # Write peaks to file -----------------------------------------------------
-
-outname <- paste0("liver.peaks.fg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
-PeaksToBedMotevo(liver.peaks.fg, file.path(outdir, outname))
-outname <- paste0("liver.peaks.bg.flat.", distfilt, ".bed")
-PeaksToBedMotevo(liver.peaks.bg, file.path(outdir, outname))
-outname <- paste0("nonliver.peaks.bg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
-
-
-# Save object -------------------------------------------------------------
-
-save(mat.fg, mat.bgnonliver, mat.bg, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
+if (writepeaks){
+  outname <- paste0("liver.peaks.fg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
+  PeaksToBedMotevo(liver.peaks.fg, file.path(outdir, outname))
+  outname <- paste0("liver.peaks.bg.flat.", distfilt, ".bed")
+  PeaksToBedMotevo(liver.peaks.bg, file.path(outdir, outname))
+  outname <- paste0("nonliver.peaks.bg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
+  
+  
+  # Save object -------------------------------------------------------------
+  
+  save(mat.fg, mat.bgnonliver, mat.bg, mat.fgbg.cross, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
+}
