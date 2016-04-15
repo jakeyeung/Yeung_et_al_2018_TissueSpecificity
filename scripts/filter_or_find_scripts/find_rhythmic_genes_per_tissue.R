@@ -5,6 +5,7 @@
 
 # Functions ---------------------------------------------------------------
 
+library(parallel)
 library(hash)
 library(dplyr)
 source("scripts/functions/LoadArrayRnaSeq.R")
@@ -33,7 +34,8 @@ WriteGeneListToFile <- function(genes, outfile, tissue, ampphasedic){
 # Load data ---------------------------------------------------------------
 
 
-dat.long <- LoadArrayRnaSeq()
+# dat.long <- LoadArrayRnaSeq()
+load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 
 # dat.test <- subset(dat.long, gene %in% GetClockGenes())
 
@@ -45,7 +47,7 @@ start <- Sys.time()
 dat.fit <- dat.long %>%
   group_by(tissue, gene) %>%
   split(.$tissue) %>%
-  mclapply(., function(jdf) do(.data = jdf, FitRhythmic(.)), mc.cores = 12) %>%
+  mclapply(., function(jdf) do(.data = jdf, FitRhythmic(., T.period = 24)), mc.cores = 12) %>%  # can change to 12 or 24
   do.call(rbind, .)
 print(Sys.time() - start)
 
