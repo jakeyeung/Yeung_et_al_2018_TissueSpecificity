@@ -5,13 +5,6 @@
 library(dplyr)
 library(parallel)
 library(ggplot2)
-
-inf <- "/home/yeung/data/tissue_specificity/atger_et_al/GSE73554_WT_AL_Intron_Exon_RFP.txt"
-dat <- read.delim2(inf, header = TRUE, sep = "\t")
-
-load("Robjs/dat.long.fixed_rik_genes.Robj")
-
-
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/NcondsFunctions.R")
@@ -19,6 +12,14 @@ source("scripts/functions/Queue.R")
 source("scripts/functions/ListFunctions.R")
 source("scripts/functions/MemoryManagement.R")
 source("scripts/functions/EnvironmentsFunctions.R")
+
+inf <- "/home/yeung/data/tissue_specificity/atger_et_al/GSE73554_WT_AL_Intron_Exon_RFP.txt"
+dat <- read.delim2(inf, header = TRUE, sep = "\t")
+
+load("Robjs/dat.long.fixed_rik_genes.Robj")
+
+
+
 
 # Keep columns with exons -------------------------------------------------
 
