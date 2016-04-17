@@ -1,7 +1,8 @@
-# 2016-04-04
+# 2016-04-16
 # Jake Yeung
-# multigene_analysis.R
+# multigene_analysis.clock_controlled_genes.R
 # Assign peaks to many genes: how does this change our analysis?
+# Clock controlled genes by liverWT_vs_liverKO.R analysis
 
 rm(list=ls())
 
@@ -16,12 +17,12 @@ writepeaks <- FALSE
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
 outdir <- "/home/yeung/projects/tissue-specificity/bedfiles/lda_analysis/filtered_peaks_multigene"
-outf <- paste0("plots/penalized_lda/", "multigene.distfilt.", distfilt, ".cutoff.", jcutoff, ".pdf")
+outf <- paste0("plots/penalized_lda/", "multigene.livWTKO.distfilt.", distfilt, ".cutoff.", jcutoff, ".pdf")
 # colnames(N.multigene) <- c("chromo", "start", "end", "motif", "sitecount", "chromo.peak", "start.peak", "end.peak", "gene", "dist")
 amp.min <- 0
 rhyth.tiss <- c("Liver")
 # rhyth.tiss <- c("Liver", "Kidney")
-outfile.robj <- paste0("Robjs/penalized_lda_mats.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".Robj")
+outfile.robj <- paste0("Robjs/penalized_lda_mats.livWTKO.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".Robj")
 if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
 
 library(dplyr)
@@ -91,26 +92,23 @@ load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/N.long.multigene.distfilt.50000.Robj", v=T)
 # subset(N.long.filt, 
 load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
+load("Robjs/wtko.fits.all.long.Robj", v=T)
+load("Robjs/wtko.dat.wtko.Robj", v=T)
 
 # Main --------------------------------------------------------------------
 
-
-
-if (identical(rhyth.tiss, c("Liver"))){
-  jmodels <- c("Liver")
-} else if (identical(rhyth.tiss, c("Liver", "Kidney"))){
-  jmodels <- c("Kidney;Liver", "Kidney,Liver")  
-  kidliv.genes <- fits.best$gene[sapply(fits.best$param.list, FilterKidneyLiverGenes, amp.min = 0.15)]
-  kidliv.genes <- subset(fits.best, gene %in% kidliv.genes & n.rhyth <= 7)$gene
-  jmodels <- as.character(subset(fits.best, gene %in% kidliv.genes)$model)
-} else {
-  print("Only liver or liver-kid so far")
-}
+jmodels <- c("Liver")
 jgenes <- as.character(subset(fits.best, model %in% jmodels & amp.avg > amp.min)$gene)
+fits.sub.liv <- subset(fits.all.long.wtkohog, gene %in% jgenes & model != "")
+genes.liv.wtliv <- as.character(subset(fits.sub.liv, model %in% c("WT,Liver", "WT;KO;Liver", "WT;Liv"))$gene)
+jgenes <- jgenes[which(jgenes %in% genes.liv.wtliv)]
 jgenes.flat <- as.character(subset(fits.best, model == "")$gene)
 
 print(paste("Rhythmic genes:", length(jgenes)))
 print(paste("Flat genes:", length(jgenes.flat)))
+
+# show an example that these are good genes
+PlotGeneAcrossTissues(subset(dat.wtko.hog, gene == sample(jgenes, 1)))
 
 # get peaks near gene
 S.sub <- subset(S.long, gene %in% jgenes & dist < distfilt)
@@ -126,20 +124,7 @@ jpeaks.flat <- as.character(unique(S.sub.flat$peak))
 
 N.sub <- subset(N.long.filt, gene %in% jgenes & peak %in% jpeaks)  # should not have any missing peaks
 N.sub.flat <- subset(N.long.filt, gene %in% jgenes.flat & peak %in% jpeaks.flat)
-# N.sub <- subset(N.long.filt, peak %in% jpeaks)  # should not have any missing peaks
-# N.sub.flat <- subset(N.long.filt, peak %in% jpeaks.flat)
 
-# rename gene names
-# genes.hash <- hash(as.character(S.sub$peak), as.character(S.sub$gene))
-# genes.flat.hash <- hash(as.character(S.sub.flat$peak), as.character(S.sub.flat$gene))
-
-# N.sub$gene <- sapply(as.character(N.sub$peak), function(p) genes.hash[[p]])
-# N.sub.flat$gene <- sapply(as.character(N.sub.flat$peak), function(p) genes.flat.hash[[p]])
-
-# Clean up ram ------------------------------------------------------------
-if (cleanup){
-  rm(S.long, N.long.filt)
-}
 
 # Take only peaks that are "tissue-specific?" -----------------------------
 
@@ -171,8 +156,8 @@ S.sub.flat.liverpeaks <- S.sub.flat %>%
 # Do penalized LDA --------------------------------------------------------
 
 
-# print(paste("Saving to", outf))
-# pdf(outf)
+print(paste("Saving to", outf))
+pdf(outf)
 
   liver.peaks.fg <- as.character(unique(S.sub.liverpeaks$peak))
   nonliver.peaks.bg <- as.character(unique(S.sub.nonliverpeaks$peak))
@@ -282,107 +267,18 @@ S.sub.flat.liverpeaks <- S.sub.flat %>%
   #   mat.rora[1:50, ]
 
 
-# dev.off()
+dev.off()
 
-
-# Downstream analysis -----------------------------------------------------
-
-df.sub <- melt(mat.fg, variable.name = "motif", id.vars = c("gene", "peak"), value.name = "sitecounts")
-df.sub <- df.sub %>%
-  group_by(gene) %>%
-  filter(sitecounts > 0) %>%
-  arrange(sitecounts) %>%
-  mutate(indx = order(sitecounts, decreasing = TRUE))
-df.sub$motif <- as.factor(sapply(as.character(df.sub$motif), function(m){
-  m <- RemoveP2Name(m)
-  m <- RemoveCommasBraces(m) 
-}))
-
-rora.hits <- subset(mat.fg, RORA.p2 > 0, select = c(peak, gene, RORA.p2))
-liv.motifs <- c("HNF1A", "FOXA2", "HNF4A_NR2F1.2", "CUX2", "CEBPA.B_DDIT3", "RXRG_dimer", "ONECUT1.2")
-
-jgene <- "1110012L19Rik"
-jpeak <- as.character(sample(x = rora.hits$peak, size = 1))
-jgene <- as.character(subset(rora.hits, peak == jpeak)$gene)
-ggplot(subset(df.sub, gene == jgene & peak == jpeak & motif %in% c(liv.motifs, "RORA")), aes(x = indx, y = sitecounts, label = motif)) + geom_text() + 
-  ggtitle(paste0(jgene, "\n", jpeak))
-ggplot(subset(df.sub, gene == jgene & motif %in% c(liv.motifs, "RORA")), aes(x = indx, y = sitecounts, label = motif)) + geom_text() + 
-  ggtitle(paste0(jgene, "\npeaks near gene"))
-PlotGeneAcrossTissues(subset(dat.long, gene == jgene))
-
-
-# How many ROR motifs have a Liver-motif adjacent? How many are alone --------
-
-df.sub.liv <- subset(df.sub, peak %in% rora.hits$peak & motif %in% liv.motifs) %>%
-  group_by(peak, gene) %>%
-  summarise(liv.sitecounts = sum(sitecounts))
-peaks.ror_with_liv <- df.sub.liv$peak
-n.peaks <- length(df.sub.liv$peak)
-total.peaks <- length(rora.hits$peak)
-
-
-# And the others peaks do they still contain a Liver motif? ---------------
-
-# other motifs
-peaks.ror_no_liv <- setdiff(rora.hits$peak, peaks.ror_with_liv)
-genes.ror_no_liv <- unique(as.character(subset(df.sub, peak %in% peaks.ror_no_liv)$gene))
-
-df.sub.liv.gene <- subset(df.sub, gene %in% genes.ror_no_liv & motif %in% liv.motifs) %>%
-  group_by(gene) %>%
-  summarise(liv.sitecounts = sum(sitecounts))
-
-# how many genes made it?
-genes.ror_no_liv.but_distal <- as.character(df.sub.liv.gene$gene)
-
-
-print(paste("Number of genes with ROR but no adjacent liv motif:", length(genes.ror_no_liv)))
-print(paste("Number of genes with ROR but no adjacent liv motif but have distal liv motif (dist:):", 
-            length(genes.ror_no_liv.but_distal)))
-
-
-# Finally these other 12 are due to my distance threshold being insufficient? --------
-
-genes.ror_no_liv.no_distal <- setdiff(genes.ror_no_liv, genes.ror_no_liv.but_distal)
-
-subset(df.sub, gene %in% genes.ror_no_liv.no_distal & motif == "RORA")
-
-# example: Aagab distal ROR may be further than what we thought
-motifs.with.P <- unique(as.character(N.sub.gene$motif))
-liv.motifs.with.P <- motifs.with.P[grepl(paste(liv.motifs, collapse = "|"), motifs.with.P)]
-jgene <- "Aagab"
-jgene <- "Ube2u"
-dist.filt.new <- 10000
-S.sub.gene <- subset(S.long, gene == jgene & dist < dist.filt.new)
-
-S.sub.liverpeaks.gene <- S.sub.gene %>%
-  group_by(peak) %>%  # tissue order as "Cere", "Heart", "Kidney", "Liver", "Lung", "Mus"
-  filter(min(zscore[tiss.i]) > jcutoff & mean(zscore[others.i]) < jcutoff)
-
-peaks.gene <- as.character(unique(S.sub.liverpeaks.gene$peak))
-N.sub.gene <- subset(N.long.filt, peak %in% peaks.gene & gene == jgene)
-df.sub.gene <- subset(N.sub.gene, motif %in% liv.motifs.with.P) %>%
-  group_by(gene) %>%
-  summarise(liv.sitecounts = sum(sitecount))
-
-# example: Ube2u has ROR motif, further away FOXA2 and HNF4A?
-jpeak <- "chr4:100479428-100479928"
-jgene <- "Ube2u"
-subset(df.sub, gene == "Ube2u" & motif %in% liv.motifs)  # signal may be obscured by Kidney...
-
-
-
-
-
-# # Write peaks to file -----------------------------------------------------
-# if (writepeaks){
-#   outname <- paste0("liver.peaks.fg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
-#   PeaksToBedMotevo(liver.peaks.fg, file.path(outdir, outname))
-#   outname <- paste0("liver.peaks.bg.flat.", distfilt, ".bed")
-#   PeaksToBedMotevo(liver.peaks.bg, file.path(outdir, outname))
-#   outname <- paste0("nonliver.peaks.bg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
-#   
-#   
-#   # Save object -------------------------------------------------------------
-#   
-#   save(mat.fg, mat.bgnonliver, mat.bg, mat.fgbg.cross, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
-# }
+# Write peaks to file -----------------------------------------------------
+if (writepeaks){
+  outname <- paste0("liver.peaks.fg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
+  PeaksToBedMotevo(liver.peaks.fg, file.path(outdir, outname))
+  outname <- paste0("liver.peaks.bg.flat.", distfilt, ".bed")
+  PeaksToBedMotevo(liver.peaks.bg, file.path(outdir, outname))
+  outname <- paste0("nonliver.peaks.bg.rhyth.tiss.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".bed")
+  
+  
+  # Save object -------------------------------------------------------------
+  
+  save(mat.fg, mat.bgnonliver, mat.bg, mat.fgbg.cross, liver.peaks.fg, nonliver.peaks.bg, liver.peaks.bg, file = outfile.robj)
+}

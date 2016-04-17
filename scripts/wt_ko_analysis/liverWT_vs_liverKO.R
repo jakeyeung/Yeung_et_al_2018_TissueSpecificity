@@ -12,6 +12,7 @@ library(parallel)
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+load("Robjs/dat.fit.Robj", v=T)
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/FitRhythmic.R")
@@ -66,19 +67,19 @@ PlotGeneAcrossTissues(subset(dat.wtko, gene == "Slc2a4"))
 # Compare WT and KO in Liver TISSUE WIDE ----------------------------------
 
 dat.test <- TemporalToFrequency2(subset(dat.wtko, gene == "Dbp" & genotype == "WT"), period = 24, n = 12, interval = 4, add.entropy.method = FALSE)
-dat.complex <- TemporalToFrequencyDatLong(dat.wtko, period = 24, n = 12, interval = 4, add.entropy.method = FALSE)
+dat.complex.wtko <- TemporalToFrequencyDatLong(dat.wtko, period = 24, n = 12, interval = 4, add.entropy.method = FALSE)
 
-s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
+s.tw <- SvdOnComplex(subset(dat.complex.wtko, gene %in% genes.tw), value.var = "exprs.transformed")
 eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
 
-s.liv <- SvdOnComplex(subset(dat.complex, gene %in% genes.liv), value.var = "exprs.transformed")
+s.liv <- SvdOnComplex(subset(dat.complex.wtko, gene %in% genes.liv), value.var = "exprs.transformed")
 eigens.liv <- GetEigens(s.liv, period = 24, comp = 2, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.liv$u.plot, eigens.liv$v.plot, layout = jlayout)
 
-ggplot(subset(dat.complex, gene %in% genes.liv), aes(x = Mod(exprs.transformed) * 2, fill = tissue)) + geom_density(alpha = 0.5)
+ggplot(subset(dat.complex.wtko, gene %in% genes.liv), aes(x = Mod(exprs.transformed) * 2, fill = tissue)) + geom_density(alpha = 0.5)
 
 
 # Merge with Hogenesch ----------------------------------------------------
@@ -174,11 +175,15 @@ ggplot(fits.sum, aes(x = model, y = n.genes)) + geom_bar(stat = "identity")
 fits.sub.liv <- subset(fits.all.long.wtkohog, gene %in% genes.liv & model != "")
 
 genes.liv.wtliv <- as.character(subset(fits.sub.liv, model %in% c("WT,Liver", "WT;KO;Liver", "WT;Liv"))$gene)
+genes.liv.wtliv <- as.character(subset(fits.sub.liv, model %in% c("WT,KO,Liver"))$gene)
 # genes.liv.wtliv <- as.character(subset(fits.sub.liv, model == "WT;KO;Liver")$gene)
 # genes.liv.wtliv <- as.character(subset(fits.sub.liv, model == "WT;Liv")$gene)
 
-s.liv.wtliv <- SvdOnComplex(subset(dat.complex, gene %in% genes.liv.wtliv), value.var = "exprs.transformed")
+s.liv.wtliv <- SvdOnComplex(subset(dat.complex.wtko, gene %in% genes.liv.wtliv), value.var = "exprs.transformed")
 eigens.tw <- GetEigens(s.liv.wtliv, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
+
+plot(density(subset(dat.fit, tissue == "Liver" & gene %in% genes.liv.wtliv)$phase))
+plot(density(subset(dat.fit, tissue == "Liver" & gene %in% genes.liv)$phase))
 
