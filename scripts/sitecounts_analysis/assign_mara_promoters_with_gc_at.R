@@ -7,7 +7,7 @@ library(hash)
 
 # Load --------------------------------------------------------------------
 
-
+load("Robjs/dat.long", v=T)
 N.path <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix"
 N.path.meta <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/mara_promoters_gene_name_association.bed"
 
@@ -66,8 +66,11 @@ gene <- sapply(as.character(N$Promoter), function(p) gene.hash[[p]])
 
 N.atgc <- as.data.frame(cbind(gene, N.atgc))
 
-write.table(N.atgc, file = "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids.atgc", 
-            row.names = FALSE, sep="\t", quote=FALSE)
+outf <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids.atgc"
+if (!file.exists(outf)){
+  write.table(N.atgc, file = outf, 
+              row.names = FALSE, sep="\t", quote=FALSE)
+}
 
 
 # Run mara ----------------------------------------------------------------
@@ -126,8 +129,14 @@ N.gc.genes <- gene[which(gc.at.vec=="gc")]
 N.at <- N[which(gc.at.vec=="at"), ]
 N.at.genes <- gene[which(gc.at.vec=="at")]
 
-write.table(cbind(Gene.ID=N.gc.genes, subset(N.gc, select=-Promoter)), file = "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids.gc_only", quote=FALSE, sep="\t", row.names=FALSE)
-write.table(cbind(Gene.ID=N.at.genes, subset(N.at, select=-Promoter)), file = "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids.at_only", quote=FALSE, sep="\t", row.names=FALSE)
+outf.gc <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids.gc_only"
+outf.ac <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids.at_only"
+if (!file.exists(outf.gc)){
+  write.table(cbind(Gene.ID=N.gc.genes, subset(N.gc, select=-Promoter)), file = outf.gc, quote=FALSE, sep="\t", row.names=FALSE)
+}
+if (!file.exists(outf.ac)){
+  write.table(cbind(Gene.ID=N.at.genes, subset(N.at, select=-Promoter)), file = outf.ac, quote=FALSE, sep="\t", row.names=FALSE)
+}
 
 
 # Analyze MARA output -----------------------------------------------------

@@ -4,7 +4,8 @@
 # Run penalized LDA for liver-rhythmic genes across distances 
 # 2016-04-06
 
-runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysis/multigene_analysis.shellscript.R"
+# runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysis/multigene_analysis.shellscript.R"
+runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysis/multigene_analysis.play_with_parameters.R"
 
 [[ ! -e $runscript ]] && echo "$runscript not found, exiting" && exit 1
 

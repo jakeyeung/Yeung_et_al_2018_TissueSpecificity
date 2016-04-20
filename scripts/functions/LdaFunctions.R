@@ -2,15 +2,23 @@ library(penalizedLDA)
 library(wordcloud)
 library(dplyr)
 
-SetUpMatForLda <- function(mat.fg, mat.bg, has.peaks=TRUE){
-  mat.fgbg <- bind_rows(mat.fg, mat.bg)
+SetUpMatForLda <- function(mat.fg, mat.bg, mat.bg2 = NULL, has.peaks=TRUE){
+  if (is.null(mat.bg2)){
+    mat.fgbg <- bind_rows(mat.fg, mat.bg)
+  } else {
+    mat.fgbg <- bind_rows(mat.fg, mat.bg, mat.bg2)
+  }
   mat.fgbg[is.na(mat.fgbg)] <- 0
   if (has.peaks){
     rownames(mat.fgbg) <- paste(mat.fgbg$peak, mat.fgbg$gene, sep = ";"); mat.fgbg$peak <- NULL; mat.fgbg$gene <- NULL
   } else {
     rownames(mat.fgbg) <- make.unique(as.character(mat.fgbg$gene)); mat.fgbg$gene <- NULL
   }
-  labels <- c(rep(1, nrow(mat.fg)), rep(2, nrow(mat.bg)))
+  if (is.null(mat.bg2)){
+    labels <- c(rep(1, nrow(mat.fg)), rep(2, nrow(mat.bg)))
+  } else {
+    labels <- c(rep(1, nrow(mat.fg)), rep(2, nrow(mat.bg)), rep(3, nrow(mat.bg2)))
+  }
   return(list(mat.fgbg = mat.fgbg, labels = labels))
 }
 
@@ -254,11 +262,16 @@ ScatterLdaOut2D <- function(out, jtitle = "Title"){
   ggplot(out.df, aes(x = xproj1, y = xproj2, colour = lab)) + geom_point(alpha = 0.3)
 }
 
-PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA){
+PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA, jdim = NULL){
   library(wordcloud)
   try(detach("package:gplots", unload=TRUE), silent=TRUE)
-  discrim.filt <- sort(out$discrim[which(out$discrim != 0)], decreasing = FALSE)
-  cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
+  if (is.null(jdim)){
+    discrim.filt <- sort(out$discrim[which(out$discrim != 0)], decreasing = FALSE)
+    cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
+  } else {
+    discrim.filt <- sort(out$discrim[, jdim][which(out$discrim[, jdim] != 0)], decreasing = FALSE)
+    cnames <- colnames(out$x)[which(out$discrim[, jdim] != 0)][order(out$discrim[, jdim][which(out$discrim[, jdim] != 0)], decreasing = FALSE)]
+  }
   # optionally filter if there are too many to plot
   if (is.na(take.n) & (is.na(from.bottom))){
     textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
@@ -275,29 +288,25 @@ PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom
   }
 }
 
-PlotLdaOut2D <- function(out, jdim = 1, jtitle = "Title", jcex = 1, take.n = NA, from.bottom = NA){
-  discrim.vec <- out$discrim[, jdim]
-  discrim.filt <- sort(discrim.vec[which(discrim.vec != 0)], decreasing = FALSE)
-  cnames <- colnames(out$x)[which(discrim.vec != 0)][order(discrim.vec[which(discrim.vec != 0)], decreasing = FALSE)]
+PlotLdaOut2D <- function(out, jdim = 1, jtitle = "Title", jcex = 1){
+  discrim.vec1 <- out$discrim[, 1]
+  discrim.vec2 <- out$discrim[, 2]
+  discrim.vec <- cbind(out$discrim[, 1], out$discrim[, 2])
+  # remove rows where BOTH are zero
+  rows.keep <- which(apply(abs(discrim.vec), 1, max) > 0)
+  discrim.filt <- discrim.vec[rows.keep, ]
+  cnames <- colnames(out$x)[rows.keep]
   # optionally filter if there are too many to plot
-  if (is.na(take.n) & (is.na(from.bottom))){
-    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
-  } else {
-    if (from.bottom){
-      # take from bottom (head)
-      discrim.filt <- head(discrim.filt, take.n)
-      cnames <- head(cnames, take.n)
-    } else {
-      discrim.filt <- tail(discrim.filt, take.n)
-      cnames <- tail(cnames, take.n)
-    }
-    print("PLOTTING...")
-    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
-  }
+  textplot(x = discrim.filt[, 1], y = discrim.filt[, 2], words = cnames, main = jtitle, xlab = "Discrim 1", ylab = "Discrim 2", cex = jcex)
+  #   plot(x = discrim.filt[, 1], y = discrim.filt[, 2],main = jtitle, xlab = "Discrim 1", ylab = "Discrim 2", cex = jcex)
 }
 
-SortLda <- function(out){
-  cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
+SortLda <- function(out, jdim = NULL){
+  if (is.null(jdim)){
+    cnames <- colnames(out$x)[which(out$discrim != 0)][order(out$discrim[which(out$discrim != 0)], decreasing = FALSE)]
+  } else {
+    cnames <- colnames(out$x)[which(out$discrim[, jdim] != 0)][order(out$discrim[, jdim][which(out$discrim[, jdim] != 0)], decreasing = FALSE)]
+  }
 }
 
 PlotSeparation <- function(out, jtitle){
