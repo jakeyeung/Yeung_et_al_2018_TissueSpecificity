@@ -2,12 +2,13 @@
 # 2016-04-13
 # assign_mara_promoters_with_gc_at
 
+rm(list=ls())
 library(hash)
 
 
 # Load --------------------------------------------------------------------
 
-load("Robjs/dat.long", v=T)
+load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 N.path <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix"
 N.path.meta <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/mara_promoters_gene_name_association.bed"
 
@@ -117,7 +118,7 @@ gc.hash.gene <- hash(as.character(N.meta.sum$gene), as.character(N.meta.sum$gc.a
 
 dat.mean$gc.at <- sapply(as.character(dat.mean$gene), function(g) gc.hash.gene[[g]])
 
-ggplot(dat.mean, aes(x = gc.at, y = exprs)) + geom_boxplot() + facet_wrap(~tissue)
+ggplot(subset(dat.mean), aes(x = gc.at, y = exprs)) + geom_boxplot() + facet_wrap(~tissue)
 
 ggplot(dat.mean, aes(x = exprs)) + geom_histogram(bins = 100) + facet_wrap(~gc.at)
 
