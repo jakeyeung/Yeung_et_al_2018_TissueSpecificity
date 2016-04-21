@@ -5,12 +5,12 @@
 # 2016-04-06
 
 # runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysis/multigene_analysis.shellscript.R"
-runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysis/multigene_analysis.play_with_parameters.R"
+runscript="/home/yeung/projects/tissue-specificity/scripts/penalized_lda_analysis/do_plda_on_posterior_cutoff_0.1.shellscript.R"
 
 [[ ! -e $runscript ]] && echo "$runscript not found, exiting" && exit 1
 
 n=0
-maxjobs=3
+maxjobs=6
 
 for dist in 2500 5000 10000; do
 	for cutoff in 1.5 2 2.5; do

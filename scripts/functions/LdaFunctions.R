@@ -71,7 +71,11 @@ DuplicateCnames <- function(cnames){
 
 CrossProduct <- function(mat, remove.duplicates = TRUE){
   # Make cross product of each column with every other column
-  if (is.data.frame(mat)) convert.to.mat <- TRUE
+  if (is.data.frame(mat)){
+    convert.to.mat <- TRUE
+  } else {
+    convert.to.mat <- FALSE
+  }
   jmat <- apply(mat, MARGIN = 2, function(jcol){
     return(sweep(mat, 1, jcol, FUN = "*"))
   })
@@ -288,7 +292,7 @@ PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom
   }
 }
 
-PlotLdaOut2D <- function(out, jdim = 1, jtitle = "Title", jcex = 1){
+PlotLdaOut2D <- function(out, jdim = 1, jtitle = "Title", jcex = 1, jxlab="Discrim 1", jylab="Discrim 2"){
   discrim.vec1 <- out$discrim[, 1]
   discrim.vec2 <- out$discrim[, 2]
   discrim.vec <- cbind(out$discrim[, 1], out$discrim[, 2])
@@ -297,7 +301,7 @@ PlotLdaOut2D <- function(out, jdim = 1, jtitle = "Title", jcex = 1){
   discrim.filt <- discrim.vec[rows.keep, ]
   cnames <- colnames(out$x)[rows.keep]
   # optionally filter if there are too many to plot
-  textplot(x = discrim.filt[, 1], y = discrim.filt[, 2], words = cnames, main = jtitle, xlab = "Discrim 1", ylab = "Discrim 2", cex = jcex)
+  textplot(x = discrim.filt[, 1], y = discrim.filt[, 2], words = cnames, main = jtitle, xlab = jxlab, ylab = jylab, cex = jcex)
   #   plot(x = discrim.filt[, 1], y = discrim.filt[, 2],main = jtitle, xlab = "Discrim 1", ylab = "Discrim 2", cex = jcex)
 }
 
