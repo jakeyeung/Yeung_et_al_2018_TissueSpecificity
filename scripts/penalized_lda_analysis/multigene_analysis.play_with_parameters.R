@@ -9,10 +9,10 @@ rm(list=ls())
 setwd("/home/yeung/projects/tissue-specificity")
 
 args <- commandArgs(trailingOnly=TRUE)
-distfilt <- as.numeric(args[1])
-jcutoff <- as.numeric(args[2])
-# distfilt <- 5000
-# jcutoff <- 1.5  # arbitrary
+# distfilt <- as.numeric(args[1])
+# jcutoff <- as.numeric(args[2])
+distfilt <- 5000
+jcutoff <- 1.5  # arbitrary
 cleanup <- TRUE
 writepeaks <- FALSE
 if (is.na(distfilt)) stop("Distfilt must be numeric")

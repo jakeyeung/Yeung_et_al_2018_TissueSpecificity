@@ -389,7 +389,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
   return(dat.complex)
 }
 
-GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE){
+GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, peak.to.trough = FALSE){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -422,6 +422,16 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
     eigensamp <- eigensamp * mag.reference
   }
   # END: adjust largest magnitude to 1
+  
+  # BEGIN: adjust mean to peak to peak to trough
+  if (peak.to.trough){
+    # only on GENE MODULE
+    eigengene <- 1 * eigengene
+    eigensamp <- 2 * eigensamp
+    xlab <- "Amp (peak to trough)"
+  } else {
+    xlab <- "Amp (mean to peak)"
+  }
 
   # BEGIN: optinally remove P2 from motif names
   if (pretty.names){

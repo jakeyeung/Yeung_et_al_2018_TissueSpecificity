@@ -255,8 +255,8 @@ PenalizedLdaLong <- function(fits.best, N.long, jmodel, jmodel.bg, jlambda, K, j
   return(lda.out)
 }
 
-BoxplotLdaOut <- function(out, jtitle = "Title"){
-  out.df <- data.frame(xproj = out$xproj, lab = out$y)
+BoxplotLdaOut <- function(out, jtitle = "Title", jdim = 1){
+  out.df <- data.frame(xproj = out$xproj[, jdim], lab = out$y)
   boxplot(xproj ~ lab, data = out.df, main = jtitle)
 }
 

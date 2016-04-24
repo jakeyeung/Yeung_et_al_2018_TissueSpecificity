@@ -84,8 +84,12 @@ ggplot(subset(dat.complex.wtko, gene %in% genes.liv), aes(x = Mod(exprs.transfor
 
 # Merge with Hogenesch ----------------------------------------------------
 
+wtko.genes <- as.character(unique(dat.wtko$gene))
+hog.genes <- as.character(unique(dat.long$gene))
+common.genes <- intersect(wtko.genes, hog.genes)
+
 # merge with hogenesch then add the new liver WT and KO
-dat.wtko.hog <- rbind(subset(dat.wtko, select=c(gene, tissue, time, experiment, exprs)), subset(dat.long, tissue == "Liver"))
+dat.wtko.hog <- rbind(subset(dat.wtko, gene %in% common.genes, select=c(gene, tissue, time, experiment, exprs)), subset(dat.long, tissue == "Liver" & gene %in% common.genes))
 dat.wtko.hog$tissue <- factor(as.character(dat.wtko.hog$tissue), levels = unique(dat.wtko.hog$tissue))
 
 print("Chunking data to environment")
@@ -94,7 +98,6 @@ dat.env <- DatLongToEnvironment(dat.wtko.hog)
 start <- Sys.time()
 # Rprof()
 fits.all <- mclapply(ls(dat.env), function(gene){
-  gene <- "Dbp"
   x <- MakeDesMatRunFitEnv(dat.env, gene, as.character(unique(dat.wtko.hog$tissue)), 
                       n.rhyth.max = 3, w = 2 * pi / 24, 
                       criterion = "BIC", 
@@ -117,12 +120,25 @@ fits.all.long.wtkohog <- fits.all.long.wtkohog %>%
 
 print(Sys.time() - start)
 
-outf <- "Robjs/wtko.fits.all.long.Robj"
-if (!file.exists(outf)){
-  save(fits.all.long.wtkohog, file=outf)
-} else {
-  print("Skipping saving")
-}
+# COLLAPSE MODEL
+fits.all.long.wtkohog$model <- mapply(FilterModelByAmp, fits.all.long.wtkohog$model, fits.all.long.wtkohog$param.list, MoreArgs = list(amp.cutoff = 0.15))
+fits.all.long.wtkohog$n.params <- sapply(fits.all.long.wtkohog$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
+fits.all.long.wtkohog$n.rhyth <- sapply(fits.all.long.wtkohog$model, GetNrhythFromModel)
+fits.all.long.wtkohog$amp.avg <- mapply(GetAvgAmpFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
+fits.all.long.wtkohog$phase.sd <- mapply(GetSdPhaseFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
+fits.all.long.wtkohog$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
+fits.all.long.wtkohog$phase.avg <- mapply(GePhaseFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
+
+outf <- "Robjs/wtko.fits.all.long.commongenes.Robj"
+save(fits.all.long.wtkohog, file=outf)
+# if (!file.exists(outf)){
+#   save(fits.all.long.wtkohog, file=outf)
+# } else {
+#   print("Skipping saving")
+# }
+
+outf2 <- "Robjs/wtko.dat.wtko.hog.commongenes.Robj"
+save(dat.wtko.hog, file=outf2)
 
 
 # Analyze downstream ------------------------------------------------------
@@ -145,15 +161,6 @@ ggplot(fits.sum, aes(x = model, y = n.genes)) + geom_bar(stat = "identity")
 
 
 # Collapse models ---------------------------------------------------------
-
-# COLLAPSE MODEL
-fits.all.long.wtkohog$model <- mapply(FilterModelByAmp, fits.all.long.wtkohog$model, fits.all.long.wtkohog$param.list, MoreArgs = list(amp.cutoff = 0.15))
-fits.all.long.wtkohog$n.params <- sapply(fits.all.long.wtkohog$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
-fits.all.long.wtkohog$n.rhyth <- sapply(fits.all.long.wtkohog$model, GetNrhythFromModel)
-fits.all.long.wtkohog$amp.avg <- mapply(GetAvgAmpFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
-fits.all.long.wtkohog$phase.sd <- mapply(GetSdPhaseFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
-fits.all.long.wtkohog$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
-fits.all.long.wtkohog$phase.avg <- mapply(GePhaseFromParams, fits.all.long.wtkohog$param.list, fits.all.long.wtkohog$model)
 
 
 # Sum again  --------------------------------------------------------------

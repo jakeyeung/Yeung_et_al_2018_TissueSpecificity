@@ -1,9 +1,35 @@
 # toy example for LDA
 # two motifs are important, the rest are noise
+
+
+# Source ------------------------------------------------------------------
+
+source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/PlotFunctions.R")
+source("scripts/functions/ShannonEntropy.R")
+source("scripts/functions/SitecountsFunctions.R")
+source("scripts/functions/LdaFunctions.R")
+source("scripts/functions/RemoveP2Name.R")
+source("scripts/functions/PlotUCSC.R")  # CoordToBed
+source("scripts/functions/GetTopMotifs.R")
+source("scripts/functions/HandleMotifNames.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/SvdFunctions.R")
+source("scripts/functions/FitRhythmic.R")
+source("scripts/functions/NcondsFunctions.R")
+source("scripts/functions/Queue.R")
+source("scripts/functions/ListFunctions.R")
+source("scripts/functions/MemoryManagement.R")
+source("scripts/functions/EnvironmentsFunctions.R")
+
+
+# Main --------------------------------------------------------------------
+
+
+
 set.seed(0)
 
 n.motifs <- 190
-
 nsamps <- 100
 mean1 <- 0
 mean2 <- 1
@@ -57,22 +83,38 @@ print(length(m.out3))
 
 # do crosses
 m.all.withnoise.crosses <- CrossProduct(as.data.frame(m.all.withnoise), remove.duplicates = TRUE)
-dim(m.all.withnoise.cross.all)
 # add single factors
 m.all.withnoise.cross.all <- cbind(m.all.withnoise, m.all.withnoise.crosses)
 # remove columns with 0 variance 
 m.all.withnoise.cross.all[which(colSums(m.all.withnoise.cross.all) == 0)] <- list(NULL)
+dim(m.all.withnoise.cross.all)
 
-labs.3to2 <- labs; labs.3to2[which(labs.3to2 == 3)] <- 2
+convert3to2 <- FALSE
+distfilt <- 5000
 
 # jlambda <- 0.029  # kidliv
 jlambda <- 0.015  # liv only
-out.cross <- PenalizedLDA(m.all.withnoise.cross.all, labs.3to2, lambda = jlambda, K = 1, standardized = FALSE)
-m <- SortLda(out.cross)
-print(length(m))
-BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
-PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
-PlotLdaOut(out.cross, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+if (convert3to2){
+  labs.3to2 <- labs; labs.3to2[which(labs.3to2 == 3)] <- 2
+  out.cross <- PenalizedLDA(m.all.withnoise.cross.all, labs.3to2, lambda = jlambda, K = 1, standardized = FALSE)
+  m <- SortLda(out.cross)
+  print(length(m))
+  BoxplotLdaOut(out.cross, jtitle = "Cross product separation")
+  PlotLdaOut(out.cross, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+  PlotLdaOut(out.cross, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+} else {
+  out.cross <- PenalizedLDA(m.all.withnoise.cross.all, labs, lambda = jlambda, K = 2, standardized = FALSE)
+  print(qplot(out.cross$xproj[, 1], out.cross$xproj[, 2], colour = as.factor(labs), geom = "point", alpha = I(1)) + ggtitle("2D plot single factors"))
+  plot(out.cross$xproj[, 1], out.cross$xproj[, 2], pch = ".")
+  text(out.cross$xproj[, 1], out.cross$xproj[, 2], labels = labs)
+  
+  indx <- grepl("^TissueFactor$|^ClockFactor$|TissueFactor;ClockFactor", names(out.cross$x))
+  factornames <- names(out.cross$x)[indx]
+  discrim1 <- out.cross$discrim[indx, 1]; discrim2 <- out.cross$discrim[indx, 2]
+  plot(discrim1, discrim2, pch = ".")
+  text(discrim1, discrim2, labels = factornames)
+  abline(h = 0); abline(v = 0)
+}
 
 
 # Show that a single dimension can separate -------------------------------

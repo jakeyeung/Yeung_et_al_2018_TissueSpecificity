@@ -69,7 +69,8 @@ if (!exists("N.long.filt")){
 
 # Get genes and peaks -----------------------------------------------------
 
-jmodels <- c("Liver")
+# jmodels <- c("Liver")
+jmodels <- c("Liver", "Adr;Liver")
 
 jgenes <- as.character(subset(fits.best, model %in% jmodels & amp.avg > amp.min)$gene)
 jgenes.flat <- as.character(subset(fits.best, model == "")$gene)
@@ -247,6 +248,22 @@ PlotLdaOut(out.cross, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross p
 
 # Do cross product with all 3 ---------------------------------------------
 
+mat.fgbg.cross.3 <- CrossProduct(mat.fgbg.3, remove.duplicates = TRUE)
+dim(mat.fgbg.cross.3)
+# add single factors
+mat.fgbg.cross.3 <- cbind(mat.fgbg.3, mat.fgbg.cross.3)
+# remove columns with 0 variance 
+mat.fgbg.cross.3[which(colSums(mat.fgbg.cross.3) == 0)] <- list(NULL)
+labels3.to2 <- labels3; labels3.to2[which(labels3.to2 == 3)] <- 2
+
+# jlambda <- 0.029  # kidliv
+jlambda <- 0.01  # liv only
+out.cross.3 <- PenalizedLDA(mat.fgbg.cross.3, labels3.to2, lambda = jlambda, K = 1, standardized = FALSE)
+m <- SortLda(out.cross.3)
+print(length(m))
+BoxplotLdaOut(out.cross.3, jtitle = "Cross product separation")
+PlotLdaOut(out.cross.3, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
+PlotLdaOut(out.cross.3, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$peak)), "\nN BG peaks:", length(unique(mat.bgnonliver$peak))))
 
 
 # Cross prod on tiss and rhyth --------------------------------------------
@@ -293,6 +310,25 @@ BoxplotLdaOut(out.cross.rhythtiss3, jtitle = "Cross product tissue and rhyth onl
 PlotLdaOut(out.cross.rhythtiss3, take.n = 50, from.bottom = TRUE, jtitle = paste0("Cross product loadings. Tiss and rhyth. (from bottom). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
 PlotLdaOut(out.cross.rhythtiss3, take.n = 50, from.bottom = FALSE, jtitle = paste0("Cross product loadings. Tiss and rhyth. (from top). Dist:", distfilt, "\nN FG peaks:", length(unique(mat.fg$gene)), "\nN BG peaks:", length(unique(mat.bgnonliver$gene))))
 
+
+# Cross prod on tiss and rhyth: do 2D -------------------------------------
+
+jlambda <- 0.02  # liv only
+out.cross.rhythtiss3 <- PenalizedLDA(mat.fgbg.cross.rhythtiss3, labels3, lambda = jlambda, K = 2, standardized = FALSE)
+
+print(qplot(out.cross.rhythtiss3$xproj[, 1], out.cross.rhythtiss3$xproj[, 2], colour = as.factor(labels3), geom = "point", alpha = I(0.2)) + ggtitle("2D plot single factors + tissuerhyth cross"))
+
+PlotLdaOut(out.cross.rhythtiss3, jdim = 1, jtitle = "Discrim 1: single factors + tissrhyth cross")
+PlotLdaOut(out.cross.rhythtiss3, jdim = 2, jtitle = "Discrim 2: single factors + tissrhyth cross")
+
+m3.dim1 <- SortLda(out.3, jdim = 1)
+m3.dim2 <- SortLda(out.3, jdim = 2)
+
+PlotLdaOut2D(out.3, jcex = 0.5)
+
+# boxplots on dim1
+BoxplotLdaOut(out.cross.rhythtiss3, jdim = 1)
+BoxplotLdaOut(out.cross.rhythtiss3, jdim = 2)
 
 
 # Cross product clock OR Liver --------------------------------------------
