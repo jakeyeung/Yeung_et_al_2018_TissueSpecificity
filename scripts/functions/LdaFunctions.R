@@ -255,9 +255,17 @@ PenalizedLdaLong <- function(fits.best, N.long, jmodel, jmodel.bg, jlambda, K, j
   return(lda.out)
 }
 
-BoxplotLdaOut <- function(out, jtitle = "Title", jdim = 1){
+BoxplotLdaOut <- function(out, jtitle = "Title", jdim = 1, axis.names=FALSE, jlab="Projection Space"){
   out.df <- data.frame(xproj = out$xproj[, jdim], lab = out$y)
-  boxplot(xproj ~ lab, data = out.df, main = jtitle)
+  if (axis.names[[1]] == FALSE){
+    boxplot(xproj ~ lab, data = out.df, main = jtitle, names = axis.names, ylab=jlab)
+  } else {
+    boxplot(xproj ~ lab, data = out.df, main = jtitle, col = "lightgray", xaxt = "n",  xlab = "", ylab=jlab)
+    axis(1, labels = FALSE)
+    text(x =  seq_along(axis.names), y = par("usr")[3] - 1, srt = 45, adj = 1,
+         labels = axis.names, xpd = TRUE)
+    
+  }
 }
 
 ScatterLdaOut2D <- function(out, jtitle = "Title"){

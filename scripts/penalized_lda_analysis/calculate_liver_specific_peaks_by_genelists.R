@@ -111,8 +111,10 @@ df.out.lst$gene.type <- names(gene.lists)
 set.seed(0)
 
 gene.lists.rand <- list()
-for (i in seq(1000)){
-  jgenes.rand <- sample(jgenes.all, length(jgenes))
+n.trials <- 10000
+for (i in seq(n.trials)){
+  # jgenes.rand <- sample(jgenes.all, length(jgenes))
+  jgenes.rand <- sample(jgenes.flat.filt, length(jgenes))
   gene.lists.rand[[i]] <- jgenes.rand
 }
 df.out.lst.rand <- mclapply(gene.lists.rand, function(gene.list){
@@ -125,14 +127,16 @@ df.out.lst.rand <- do.call(rbind, df.out.lst.rand)
 # Calculate z-score -------------------------------------------------------
 
 df.out.lst.merged <- rbind(df.out.lst, df.out.lst.rand)
-save(df.out.lst.merged, file = "Robjs/n.liv.spec.df.out.lst.rand.Robj")
+outf <- paste0("Robjs/n.liv.spec.df.out.lst.rand.similarlyexpressed.", n.trials, ".Robj")
+# save(df.out.lst.merged, file = "Robjs/n.liv.spec.df.out.lst.rand.Robj")
+save(df.out.lst.merged, file = outf)
 
 print(Sys.time() - start)
 
 
 # Downstream --------------------------------------------------------------
 
-do.downstream <- TRUE
+do.downstream <- FALSE
 if (do.downstream){
   load("Robjs/n.liv.spec.df.out.lst.rand.Robj", v=T)
   ggplot(subset(df.out.lst.merged, gene.type == "Random"), aes(x = frac.n.spec.by.gene)) + geom_histogram() + geom_vline(aes(xintercept = 0.43)) + ggtitle("Fraction of genes with at least one Liver-specific DHS (random)")
