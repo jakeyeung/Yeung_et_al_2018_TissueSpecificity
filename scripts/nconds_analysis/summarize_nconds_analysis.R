@@ -75,5 +75,6 @@ fits.best$n.rhyth.fac <- as.factor(sapply(as.numeric(fits.best$n.rhyth), functio
 
 # ggplot(subset(fits.best, n.rhyth != 0), aes(x = as.factor(n.rhyth.fac), y = 2 * amp.avg)) + geom_jitter(alpha = 0.2) + xlab("Number of rhythmic tissues") + ylab("Average amplitude (peak to trough)") 
 ggplot(subset(fits.best, n.rhyth != 0), aes(x = as.factor(n.rhyth.fac), y = 2 * amp.avg)) + geom_boxplot() + xlab("Number of rhythmic tissues") + ylab("Average amplitude (peak to trough)")  + theme_bw(16)
+# ggplot(subset(fits.best, n.rhyth != 0 & amp.avg > 0.1), aes(x = as.factor(n.rhyth.fac), y = 2 * amp.avg)) + geom_boxplot() + xlab("Number of rhythmic tissues") + ylab("Average amplitude (peak to trough)")  + theme_bw(16)
 
 

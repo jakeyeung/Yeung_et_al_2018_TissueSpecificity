@@ -7,8 +7,10 @@ setwd("/home/yeung/projects/tissue-specificity")
 # Load --------------------------------------------------------------------
 
 # inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/closest_bed_multigene/all_sites.closest.filter.genelst.dist.50000.long.bed"
-inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/closest_bed_multigene/all_sites.closest.filter.genelst.dist.50000.long.with_peaks.bed"
+# inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/closest_bed_multigene/all_sites.closest.filter.genelst.dist.50000.long.with_peaks.bed"
+inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/closest_bed_multigene/all_sites.closest.filter.Mus_flat.dist.50000.long.bed"
+outf <- "Robjs/N.long.Mus_flat.Robj"
 N.long.livertwflat <- read.table(inf, header = FALSE, sep = "\t")  # 16 gigs
 colnames(N.long.livertwflat) <- c("chromo", "start", "end", "motif", "sitecount", "gene", "dist", "peak")
-save(N.long.livertwflat, file = "Robjs/N.long.livertwflat.Robj")  # 2.5 gigs
+save(N.long.livertwflat, file = outf)  # 2.5 gigs
 print(Sys.time() - start)

@@ -13,7 +13,7 @@ library(hash)
 
 # Functions ---------------------------------------------------------------
 
-GetLiverSpecStats <- function(S.long, jgenes, jcutoff, distfilt, jlab){
+GetTissueSpecStats <- function(S.long, jgenes, jcutoff, distfilt, jlab, jtiss="Liver"){
   # Mean number of liver-specific DHS per gene
   # Total genes with liver-specific DHS
   # Total number of liver-specific DHS
@@ -26,7 +26,7 @@ GetLiverSpecStats <- function(S.long, jgenes, jcutoff, distfilt, jlab){
   
   # Identify tissue-specific peaks ------------------------------------------
   
-  rhyth.tiss <- c("Liver")
+  rhyth.tiss <- c(jtiss)
   
   # take peaks with Liver signal greater than cutoff
   jtiss <- levels(S.sub$tissue)
@@ -89,6 +89,7 @@ load("Robjs/dat.fit.Robj", v=T)
 
 jgenes.all <- as.character(fits.best$gene)
 jgenes <- as.character(subset(fits.best, model == "Liver")$gene)
+jgenes.mus <- as.character(subset(fits.best, model == "Mus")$gene)
 jgenes.flat <- as.character(subset(fits.best, model == "")$gene)
 jgenes.flat.filt <- subset(dat.fit, gene %in% jgenes.flat) %>%
   group_by(gene) %>%
@@ -98,9 +99,9 @@ jgenes.flat.filt <- unique(as.character(jgenes.flat.filt$gene))
 clock.controlled.genes <- as.character(subset(fits.all.long.wtkohog, model %in% c("WT,Liver", "WT;KO;Liver", "WT;Liver", "Liver"))$gene)
 jgenes.filt <- intersect(jgenes, clock.controlled.genes)
 
-gene.lists <- list("jgenes"=jgenes, "jgenes.filt"=jgenes.filt, "jgenes.flat"=jgenes.flat, "jgenes.flat.filt"=jgenes.flat.filt)
+gene.lists <- list("jgenes"=jgenes, "jgenes.filt"=jgenes.filt, "jgenes.flat"=jgenes.flat, "jgenes.flat.filt"=jgenes.flat.filt, "jgenes.mus"=jgenes.mus)
 df.out.lst <- mclapply(gene.lists, function(gene.list){
-  df.out <- GetLiverSpecStats(S.long, gene.list, jcutoff, distfilt, "TODO")
+  df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, distfilt, "TODO")
 }, mc.cores = 4)
 df.out.lst <- do.call(rbind, df.out.lst)
 df.out.lst$gene.type <- names(gene.lists)
@@ -118,7 +119,7 @@ for (i in seq(n.trials)){
   gene.lists.rand[[i]] <- jgenes.rand
 }
 df.out.lst.rand <- mclapply(gene.lists.rand, function(gene.list){
-  df.out <- GetLiverSpecStats(S.long, gene.list, jcutoff, distfilt, "Random")
+  df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, distfilt, "Random")
 }, mc.cores = 10)
 print(head(df.out.lst.rand))
 df.out.lst.rand <- do.call(rbind, df.out.lst.rand)

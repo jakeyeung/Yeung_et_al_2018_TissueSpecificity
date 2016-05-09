@@ -44,7 +44,7 @@ labs <- c(rep(1, nrow(m1)), rep(2, nrow(m2)), rep(3, nrow(m3)))
 colnames(m.all) <- c("TissueFactor", "ClockFactor")
 
 plot(m.all[, "TissueFactor"], m.all[, "ClockFactor"], pch = ".")
-text(m.all[, "TissueFactor"], m.all[, "ClockFactor"], labels = labs)
+text(m.all[, "TissueFactor"], m.all[, "ClockFactor"], labels = labs, col = labs)
 
 m.noise <- matrix(NA, nrow = nrow(m.all), ncol = n.motifs - ncol(m.all))
 

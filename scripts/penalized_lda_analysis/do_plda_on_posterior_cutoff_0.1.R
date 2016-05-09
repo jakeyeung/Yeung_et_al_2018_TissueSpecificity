@@ -323,7 +323,7 @@ PlotLdaOut(out.cross.rhythtiss3, take.n = 50, from.bottom = FALSE, jtitle = past
 
 # Cross prod on tiss and rhyth: do 2D -------------------------------------
 
-jlambda <- 0.02  # liv only
+jlambda <- 0.025  # liv only
 out.cross.rhythtiss3 <- PenalizedLDA(mat.fgbg.cross.rhythtiss3, labels3, lambda = jlambda, K = 2, standardized = FALSE)
 
 print(qplot(out.cross.rhythtiss3$xproj[, 1], out.cross.rhythtiss3$xproj[, 2], colour = as.factor(labels3), geom = "point", alpha = I(0.2)) + ggtitle("2D plot single factors + tissuerhyth cross"))
@@ -331,10 +331,12 @@ print(qplot(out.cross.rhythtiss3$xproj[, 1], out.cross.rhythtiss3$xproj[, 2], co
 PlotLdaOut(out.cross.rhythtiss3, jdim = 1, jtitle = "Discrim 1: single factors + tissrhyth cross", take.n = 30, from.bottom = TRUE)
 PlotLdaOut(out.cross.rhythtiss3, jdim = 2, jtitle = "Discrim 2: single factors + tissrhyth cross", take.n = 30, from.bottom = TRUE)
 
-m3.dim1 <- SortLda(out.3, jdim = 1)
-m3.dim2 <- SortLda(out.3, jdim = 2)
+m3.dim1 <- SortLda(out.cross.rhythtiss3, jdim = 1)
+m3.dim2 <- SortLda(out.cross.rhythtiss3, jdim = 2)
 
-PlotLdaOut2D(out.3, jcex = 0.5)
+# PlotLdaOut2D(out.cross.rhythtiss3, jcex = 0.5)
+plot(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], pch = ".")
+text(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], names(out.cross.rhythtiss3$x))
 
 # boxplots on dim1
 BoxplotLdaOut(out.cross.rhythtiss3, jdim = 1)
