@@ -3,7 +3,7 @@ library(grid)
 
 
 PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle="", facet.rows = 1, jcex=24){  
-  source('scripts/functions/DataHandlingFunctions.R')
+  source('~/projects/tissue-specificity/scripts/functions/DataHandlingFunctions.R')
   tissue <- as.character(unique(dat.sub$tissue))
   # plot expression, but collapse into rhythmic parameters
   dat.sub <- subset(dat.long, gene == jgene)
@@ -127,6 +127,7 @@ PlotFirstNComponents <- function(svd.complex, comps = c(1), period = 24){
   # Plot first N.comps
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   for (comp in comps){
+    # GetEigens from SvdFunctions.R
     eigens <- GetEigens(svd.complex, period=24, comp=comp, adj.mag = TRUE)
     multiplot(eigens$v.plot, eigens$u.plot, layout = jlayout)
   }
@@ -713,21 +714,42 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
   # fourier amplitudes are half-amplitudes of the sine-wave
   # http://www.prosig.com/signal-processing/FourierAnalysis.pdf
   # Default: ampscale = 2 because fourier amplitude is more like half-amplitude by default
+  # 
+  # Add colours
+  # http://stackoverflow.com/questions/20808009/remove-extra-space-and-ring-at-the-edge-of-a-polar-plot
   df <- data.frame(amp = Mod(vec.complex) * ampscale,
                    phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
                    label = labels)
   
+  amp.max <- ceiling(max(df$amp))
+  if (amp.max <= 1){
+    amp.step <- 0.5
+  } else {
+    amp.step <- 1
+  }
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
     geom_point(size = 0.5) +
     coord_polar(theta = "y") + 
     xlab(xlab) +
     ylab(ylab) +
     ggtitle(title) +
-    scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2)) + 
+    scale_y_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
+    scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, amp.step)) + 
     theme_bw() + 
+    # geom_hline(yintercept = seq(0, 5, by = 1), colour = "grey90", size = 0.2) +
+    geom_vline(xintercept = seq(0, amp.max, by = amp.step), colour = "grey70", size = 0.2) +
+    geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey70", size = 0.2) +
+#     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+#           panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
-          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
-    expand_limits(x = 0)  # we want center to be 0
+          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+          panel.border = element_blank(),
+          legend.key = element_blank(),
+          axis.ticks = element_blank(),
+          panel.grid  = element_blank())
+    # expand_limits(x = 0)  # we want center to be 0
+    
+
   if (constant.amp != FALSE){
     m <- m + geom_text(aes(x = amp, y = phase), vjust = 0, size = constant.amp)
   } else {

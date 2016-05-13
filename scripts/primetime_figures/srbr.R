@@ -211,7 +211,7 @@ genes.tw <- as.character(fits.tw$gene)
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
 eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)  
+multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)  
 
 dev.off()
 
