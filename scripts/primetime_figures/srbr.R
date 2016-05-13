@@ -209,7 +209,7 @@ genes.tw <- as.character(fits.tw$gene)
 #outobj <- PlotHeatmapNconds(fits.tw, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 6, peak.to.trough=TRUE, ylab="Phase (CT)")
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)  
 
@@ -269,7 +269,7 @@ s.act <- SvdOnComplex(act.complex, value.var = "exprs.adj")
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 for (comp in seq(1)){
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 14, pretty.names = TRUE)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 6, label.n = 25, pretty.names = TRUE, peak.to.trough = TRUE, jtitle = "")
   multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
 }
 dev.off()

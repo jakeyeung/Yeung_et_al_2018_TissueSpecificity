@@ -389,7 +389,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
   return(dat.complex)
 }
 
-GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, peak.to.trough = FALSE){
+GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, peak.to.trough = FALSE, jtitle){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -445,15 +445,22 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   eigensamp.sorted <- eigensamp[order(Mod(eigensamp), decreasing = TRUE)]
   names(eigensamp.sorted)[(label.n + 1):length(eigensamp.sorted)] <- ""
   # END
-
+  
+  if (missing(jtitle)){
+    jtitle1 <- paste0("Tissue Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)")  
+    jtitle2 <- paste0("Gene Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)")
+  } else {
+    jtitle1 <- jtitle
+    jtitle2 <- jtitle
+  }
   gene.labels <- rownames(s.complex$u)
   v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, 
-                         title = paste0("Tissue Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)"), 
+                         title = jtitle1, 
                          xlab = xlab, ylab = ylab, ampscale = 1, constant.amp = constant.amp)
     
   # u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)
   u.plot <- PlotComplex2(eigensamp.sorted, labels = names(eigensamp.sorted), omega = omega, 
-                         title = paste0("Gene Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)"), 
+                         title = jtitle2, 
                          xlab = xlab, ylab = ylab, ampscale = 2, constant.amp = constant.amp)
   return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
 }

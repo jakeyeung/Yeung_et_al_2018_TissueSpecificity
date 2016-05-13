@@ -737,8 +737,8 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
     scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, amp.step)) + 
     theme_bw() + 
     # geom_hline(yintercept = seq(0, 5, by = 1), colour = "grey90", size = 0.2) +
-    geom_vline(xintercept = seq(0, amp.max, by = amp.step), colour = "grey70", size = 0.2) +
-    geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey70", size = 0.2) +
+    geom_vline(xintercept = seq(0, amp.max, by = amp.step), colour = "grey50", size = 0.2, linetype = "dotted") +
+    geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "dashed") +
 #     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
 #           panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
