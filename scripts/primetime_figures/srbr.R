@@ -103,6 +103,7 @@ dev.off()
 
 # Genome-wide amplitudes --------------------------------------------------
 
+# from fourier directory total_variance.noise_floor.R
 pdf(file.path(outdir, paste0(plot.i, ".genomewide_amplitude.pdf")))
 plot.i <- plot.i + 1
 
@@ -136,25 +137,23 @@ dev.off()
 
 # Examples to motivate ----------------------------------------------------
 
-load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+pdf(file.path(outdir, paste0(plot.i, ".gene_exprs_examps.pdf")))
+plot.i <- plot.i + 1
 
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
 
 library(hash)
 
-jgene <- "Tars"
-jgene <- "Arntl"
-jgene <- 
-
-m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == "rnaseq"), jgene, amp.filt = 0.20, jtitle=jgene)
-print(m)
-
-
-m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Dbp" & experiment == "rnaseq"))
-m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Tars" & experiment == "rnaseq"))
-m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ddc" & experiment == "rnaseq"))
-m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Myod1" & experiment == "rnaseq"))
-print(m1)
-
+jgenes <- c("Dbp", "Bcl7c", "Tnnt1")
+m.list <- list()
+i <- 1
+for (jgene in jgenes){
+  m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == "rnaseq"), jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8)
+  m.list[[i]] <- m
+  i <- i + 1
+}
+do.call(multiplot, m.list)
+dev.off()
 
 
 # Figure 2 Tissue-modules ----------------------------------------------------------
