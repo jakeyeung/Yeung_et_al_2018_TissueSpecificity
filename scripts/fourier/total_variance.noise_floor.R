@@ -2,6 +2,8 @@
 # Jake Yeung
 # assess noise floor in total variance
 
+rm(list=ls())
+
 remove.wfat <- TRUE
 
 load("Robjs/dat.var.filt.fixed.Robj", v=T)
@@ -241,7 +243,6 @@ dat.fit.24 <- dat.fit.24[order(dat.fit.24$amp, decreasing = TRUE), ]
 amp.thres <- seq(from = 0, to = max(dat.fit.12$amp, dat.fit.24$amp), by = 0.15)
 
 pval.cutoff <- 0.01
-
 dat.fit.24.ngenes.thres <- subset(dat.fit.24, pval < pval.cutoff) %>%
   group_by(tissue) %>%
   do(NGenesByAmp.long(., amp.thres))
@@ -263,15 +264,28 @@ dat.fit.24.ngenes.thres$rhyth <- as.factor(24)
 dat.fit.12.ngenes.thres$rhyth <- as.factor(12)
 dat.fit.ngenes.thres <- rbind(dat.fit.24.ngenes.thres, dat.fit.12.ngenes.thres)
 
-ggplot(dat.fit.ngenes.thres, aes(x = 2 * amp.thres, y = n.genes, colour = rhyth)) + geom_line() + 
+ggplot(dat.fit.ngenes.thres, aes(x = 2 * amp.thres, y = n.genes + 1, colour = rhyth)) + geom_line() + 
   facet_wrap(~tissue) + theme_bw(24) + ggtitle(paste("12 and 24 hour rhythms. Pval >", pval.cutoff)) +
   theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  xlab("Amplitude (fold change peak/trough)") + ylab("Number of Genes") + xlim(c(0, 5))
+  xlab("Amplitude (fold change peak/trough)") + ylab("Number of Genes") + xlim(c(0, 5)) + 
+  scale_y_log10()
 
 dat.test <- subset(dat.fit.24, pval < 0.01 & tissue == "Liver")
 
 n.genes.amp.thres <- NGenesByAmp(dat.test$amp, amp.thres)
 
+# order by total genes
+ngenes.sum <- dat.fit.ngenes.thres %>%
+  group_by(tissue) %>%
+  summarise(total = sum(n.genes)) %>%
+  arrange(desc(total))
+dat.fit.ngenes.thres$tissue <- factor(as.character(dat.fit.ngenes.thres$tissue), levels = ngenes.sum$tissue)
+ggplot(subset(dat.fit.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + geom_line() + 
+  theme_bw(24) +
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 5)) + 
+  scale_y_log10() + 
+  geom_vline(xintercept = 2, linetype = "dotted")
 
 # How much variance is explained by our modules ---------------------------
 
