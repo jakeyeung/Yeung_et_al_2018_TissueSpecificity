@@ -30,13 +30,19 @@ PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha =
   m <- m + ylab(.ylab) + xlab("Time (CT)")
 }
 
-PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE){
+PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE, avg.method = "mean"){
   dat.mean.sub <- subset(dat.mean, gene %in% genes)
   if (sorted){
     # sort by highesst to lowest mean expression
-    dat.mean.sum <- dat.mean.sub %>%
-      group_by(tissue) %>%
-      summarise(mean.exprs = mean(exprs.mean))
+    if (avg.method == "mean"){
+      dat.mean.sum <- dat.mean.sub %>%
+        group_by(tissue) %>%
+        summarise(mean.exprs = mean(exprs.mean))  
+    } else if (avg.method == "median"){
+      dat.mean.sum <- dat.mean.sub %>%
+        group_by(tissue) %>%
+        summarise(mean.exprs = median(exprs.mean))  
+    }
     dat.mean.sum <- dat.mean.sum[order(dat.mean.sum$mean.exprs, decreasing = T), ]
     dat.mean.sub$tissue <- factor(as.character(dat.mean.sub$tissue), levels = as.character(dat.mean.sum$tissue))
   }

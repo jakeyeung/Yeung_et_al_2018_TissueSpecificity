@@ -31,6 +31,8 @@ source("scripts/functions/ShannonEntropy.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/GetActSvd.R")
 source("scripts/functions/SortByTissue.R")
+source("scripts/functions/LoadActivitiesLong.R")
+source("scripts/functions/RemoveP2Name.R")
 
 CorrelatePromoterUsageToAmp <- function(tpm.filt, dat.rhyth.relamp, avgexprsdic, filter.tissues, tissue.spec){
   source("scripts/functions/AlternativeFirstExonsFunctions.R")
@@ -821,8 +823,6 @@ dev.off()
 # PCA on mean activity tissues  -------------------------------------------
 
 pdf("plots/primetime_plots2/mean_activities_pca.pdf")
-
-source("scripts/functions/RemoveP2Name.R")
 
 act.rnaseq <- act.long %>%
   subset(., experiment == "rnaseq") %>% 

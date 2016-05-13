@@ -53,8 +53,8 @@ PlotPolarHistogram <- function(fits.sub, countstring="Count"){
     theme_bw() + 
     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
           panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
-          axis.title = element_text(size = 24),
-          strip.text = element_text(size = 12)) + 
+          axis.title = element_text(size = 12),
+          strip.text = element_text(size = 6)) + 
     coord_polar(theta = "x")
   return(m2)
 }

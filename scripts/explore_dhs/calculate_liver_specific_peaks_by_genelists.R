@@ -9,6 +9,8 @@ jmc.cores <- 1
 args <- commandArgs(trailingOnly=TRUE)
 jtiss <- args[1]
 print(paste("Tissue", jtiss))
+n.trials <- as.numeric(args[2])
+if (is.na(n.trials)) stop("Trials not numeric")
 
 start <- Sys.time()
 setwd("/home/yeung/projects/tissue-specificity")
@@ -36,24 +38,30 @@ GetTissueSpecStats <- function(S.long, jgenes, jcutoff, distfilt, jlab, jtiss="L
   rhyth.tiss <- c(jtiss)
   
   # take peaks with Liver signal greater than cutoff
-  jtiss <- levels(S.sub$tissue)
-  tiss.i <- which(jtiss %in% rhyth.tiss)
-  others.i <- which(!jtiss %in% rhyth.tiss)
+  tiss.all <- levels(S.sub$tissue)
+  tiss.i <- which(tiss.all %in% rhyth.tiss)
+  others.i <- which(!tiss.all %in% rhyth.tiss)
+  if (length(tiss.i) == 0) stop(paste("Unknown tissue"))
   
-  S.sub.liverpeaks <- S.sub %>%
+  S.sub.tissuepeaks <- S.sub %>%
     group_by(peak) %>%  # tissue order as "Cere", "Heart", "Kidney", "Liver", "Lung", "Mus"
     # filter(mean(zscore[tiss.i]) > jcutoff & mean(zscore[others.i]) < jcutoff)
     filter(min(zscore[tiss.i]) > jcutoff & max(zscore[others.i]) < jcutoff)
   
   # Find how many peaks -----------------------------------------------------
   
-  # label peaks as liver-specific or not
+  # label peaks as tissue-specific or not
+  jpeaks <- as.character(S.sub.tissuepeaks$peak)
+  if (length(jpeaks > 1)){
+    tiss.spec.peaks <- hash(as.character(S.sub.tissuepeaks$peak), TRUE)
+  } else {
+    tiss.spec.peaks <- hash("nopeaks", TRUE)
+  }
   
-  liv.spec.peaks <- hash(as.character(S.sub.liverpeaks$peak), TRUE)
   
-  S.sub$is.liv.spec <- sapply(as.character(S.sub$peak), function(p){
-    is.liv.spec <- liv.spec.peaks[[p]]
-    if (is.null(is.liv.spec)){
+  S.sub$is.tiss.spec <- sapply(as.character(S.sub$peak), function(p){
+    is.tiss.spec <- tiss.spec.peaks[[p]]
+    if (is.null(is.tiss.spec)){
       return(FALSE)
     } else {
       return(TRUE)
@@ -61,20 +69,20 @@ GetTissueSpecStats <- function(S.long, jgenes, jcutoff, distfilt, jlab, jtiss="L
   })
   S.sub.n.livspec <- subset(S.sub, tissue == "Liver") %>%
     group_by(tissue, gene) %>%
-    summarise(n.liv.spec = length(which(is.liv.spec == TRUE))) %>%
+    summarise(n.tiss.spec = length(which(is.tiss.spec == TRUE))) %>%
     mutate(gene.type = jlab)
   
   
-  # How many genes have liver-specific genes? -------------------------------
+  # How many genes have tissue-specific genes? -------------------------------
   
-  n.liv.spec.sum <- S.sub.n.livspec %>%
+  n.tiss.spec.sum <- S.sub.n.livspec %>%
     group_by(gene.type) %>%
-    summarise(mean.liv.spec.per.gene = sum(n.liv.spec) / length(n.liv.spec), 
-              total.liv.spec = sum(n.liv.spec), 
-              total.genes = length(n.liv.spec), 
-              genes.with.liv.spec = length(which(n.liv.spec > 0)), 
-              frac.n.spec.by.gene = genes.with.liv.spec / total.genes)
-  return(n.liv.spec.sum)
+    summarise(mean.tiss.spec.per.gene = sum(n.tiss.spec) / length(n.tiss.spec), 
+              total.tiss.spec = sum(n.tiss.spec), 
+              total.genes = length(n.tiss.spec), 
+              genes.with.tiss.spec = length(which(n.tiss.spec > 0)), 
+              frac.n.spec.by.gene = genes.with.tiss.spec / total.genes)
+  return(n.tiss.spec.sum)
 }
 
 
@@ -87,7 +95,7 @@ jcutoff <- 1.5
 
 load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
-load("Robjs/N.long.livertwflat.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
+# load("Robjs/N.long.livertwflat.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
 load("Robjs/wtko.dat.wtko.hog.commongenes.Robj", v=T)
 load("Robjs/wtko.fits.all.long.commongenes.Robj", v=T)
 load("Robjs/dat.fit.Robj", v=T)
@@ -126,7 +134,6 @@ print(df.out.lst)
 set.seed(0)
 
 gene.lists.rand <- list()
-n.trials <- 100000
 for (i in seq(n.trials)){
   jgenes.rand <- sample(jgenes.all, length(jgenes))
   # jgenes.rand <- sample(jgenes.flat.filt, length(jgenes))
@@ -141,14 +148,14 @@ if (jmc.cores == 1){
     df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, distfilt, "Random", jtiss = jtiss)
   }, mc.cores = jmc.cores)
 }
-print(head(df.out.lst.rand))
 df.out.lst.rand <- do.call(rbind, df.out.lst.rand)
+print(head(df.out.lst.rand))
 
 
 # Calculate z-score -------------------------------------------------------
 
 df.out.lst.merged <- rbind(df.out.lst, df.out.lst.rand)
-outf <- paste0("Robjs/n.liv.spec.df.out.lst.rand.", n.trials, ".tissue.", jtiss, ".Robj")
+outf <- paste0("Robjs/n.tiss.spec.df.out.lst.rand.", n.trials, ".tissue.", jtiss, ".Robj")
 # save(df.out.lst.merged, file = "Robjs/n.liv.spec.df.out.lst.rand.Robj")
 save(df.out.lst.merged, file = outf)
 print(Sys.time() - start)

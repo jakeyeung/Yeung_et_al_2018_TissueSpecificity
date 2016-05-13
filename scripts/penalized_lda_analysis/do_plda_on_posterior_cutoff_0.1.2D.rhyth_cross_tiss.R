@@ -184,6 +184,11 @@ colnames(mat.fgbg.3) <- sapply(colnames(mat.fgbg.3), function(cname){
 }, USE.NAMES = FALSE)
 
 
+jlambda <- 0.1  # liv only
+out.3 <- PenalizedLDA(mat.fgbg.3, labels3, lambda = jlambda, K = 2, standardized = FALSE)
+PlotLdaOut2D(out.3, jcex = 0.5)
+
+
 # Cross prod on tiss and rhyth --------------------------------------------
 rhyth.motifs <- sapply(GetTopMotifs("rhythmic"), RemoveP2Name, USE.NAMES = FALSE)
 tissue.motifs <- sapply(GetTopMotifs("tissue"), RemoveP2Name, USE.NAMES = FALSE)

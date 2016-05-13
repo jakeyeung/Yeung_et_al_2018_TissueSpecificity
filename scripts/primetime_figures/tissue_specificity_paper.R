@@ -41,6 +41,7 @@ source("scripts/functions/AlternativeFirstExonsFunctions.R")
 source("scripts/functions/FisherTestSitecounts.R")
 source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/LdaFunctions.R")
+source("scripts/functions/LoadActivitiesLong.R")
 
 
 # Figure 1A Present high level variation BETWEEN TISSUES and WITHIN TISSUES (time) ------------------
@@ -510,6 +511,18 @@ fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
 })
 
 pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.global_stats.pdf")))
+fits.tspec.sum <- CountModels(subset(fits.best, n.rhyth == 1)) 
+m1 <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(stat = "identity") + 
+  xlab("") + 
+  ylab("Count") + 
+  theme_bw(24) + 
+  theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1))
+jmods <- c("Liver", "Adr", "BFAT", "Mus")
+m2 <- PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% jmods), "Count")
+multiplot(m1, m2, cols = 2) 
+dev.off()
+
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.global_stats.pdf")))
 plot.i <- plot.i + 1
 # Plot global statistics
 
@@ -915,8 +928,27 @@ dev.off()
 
 
 # Tissue-wide regulation --------------------------------------------------
+pdf(file.path(outdir, paste0(plot.i, ".MARA_tissue_wide.pdf")))
+plot.i <- plot.i + 1
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
+act.long <- LoadActivitiesLong(indir)
+act.complex <- TemporalToFrequencyDatLong(act.long, period = 24, n = 8, interval = 6, add.entropy.method = "array")
+act.complex$exprs.adj <- act.complex$exprs.transformed * act.complex$frac.weight  # why frac.weight?
+act.complex$mod.exprs <- Mod(act.complex$exprs.transformed)
+act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
 
+# no WFAT
+act.complex <- subset(act.complex, !tissue %in% filt.tiss)
 
+s.act <- SvdOnComplex(act.complex, value.var = "exprs.adj")
+
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+for (comp in seq(1)){
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 14, pretty.names = TRUE)
+  multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
+}
+
+dev.off()
 
 # Tissue-specific ----------------------------------------------------
 

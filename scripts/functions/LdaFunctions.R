@@ -290,7 +290,7 @@ PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom
   }
   # optionally filter if there are too many to plot
   if (is.na(take.n) & (is.na(from.bottom))){
-    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
+    wordcloud::textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
   } else {
     if (from.bottom){
       # take from bottom (head)
@@ -300,7 +300,7 @@ PlotLdaOut <- function(out, jtitle = "Title", jcex = 1, take.n = NA, from.bottom
       discrim.filt <- tail(discrim.filt, take.n)
       cnames <- tail(cnames, take.n)
     }
-    textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
+    wordcloud::textplot(x = seq(length(discrim.filt)), y = discrim.filt, words = cnames, main = jtitle, xlab = "Index", ylab = "Loadings", cex = jcex)
   }
 }
 
@@ -313,7 +313,7 @@ PlotLdaOut2D <- function(out, jdim = 1, jtitle = "Title", jcex = 1, jxlab="Discr
   discrim.filt <- discrim.vec[rows.keep, ]
   cnames <- colnames(out$x)[rows.keep]
   # optionally filter if there are too many to plot
-  textplot(x = discrim.filt[, 1], y = discrim.filt[, 2], words = cnames, main = jtitle, xlab = jxlab, ylab = jylab, cex = jcex)
+  wordcloud::textplot(x = discrim.filt[, 1], y = discrim.filt[, 2], words = cnames, main = jtitle, xlab = jxlab, ylab = jylab, cex = jcex)
   #   plot(x = discrim.filt[, 1], y = discrim.filt[, 2],main = jtitle, xlab = "Discrim 1", ylab = "Discrim 2", cex = jcex)
 }
 
