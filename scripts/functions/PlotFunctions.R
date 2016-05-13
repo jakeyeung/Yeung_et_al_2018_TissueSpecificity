@@ -1,6 +1,37 @@
 library(ggplot2)
 library(grid)
 
+
+PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle=""){  
+  source('scripts/functions/DataHandlingFunctions.R')
+  tissue <- as.character(unique(dat.sub$tissue))
+  # plot expression, but collapse into rhythmic parameters
+  dat.sub <- subset(dat.long, gene == jgene)
+  
+  fits.sub <- subset(fits.best, gene == jgene)
+  params.lst <- fits.sub$param.list[[1]]
+  params <- names(params.lst)
+  params.amp <- params.lst[params[grepl("amp", params)]]
+  params.amp <- params.amp[which(params.amp > amp.filt)]
+  # rhyths <- sapply(names(sort(params.lst[params[grepl("amp", params)]], decreasing = TRUE)), function(n) strsplit(n, "\\.")[[1]][[1]], USE.NAMES = FALSE)
+  rhyths <- sapply(names(sort(params.amp, decreasing = TRUE)), function(n) strsplit(n, "\\.")[[1]][[1]], USE.NAMES = FALSE)
+  # annotate dat.sub with rhythm param
+  # rhyths <- sapply(params.amp, function(p) strsplit(p, "\\.")[[1]][[1]], USE.NAMES = FALSE)
+  rhyth.hash <- hash(tissue, sapply(tissue, function(tiss){
+    # indx <- rhyths[which(rhyths == tiss)]
+    # label as rhythmic group with same parameters
+    rhyth.group <- MatchGroup(tiss, rhyths, no.match.str="Flat")
+    return(rhyth.group)
+  }))
+  # annotate dat.sub
+  # order by amplitude
+  dat.sub$grp <- factor(sapply(as.character(dat.sub$tissue), function(tiss) rhyth.hash[[tiss]], USE.NAMES = FALSE), levels = c(rhyths, "Flat"))
+  m <- ggplot(dat.sub, aes(x = time, y = exprs, group = tissue, colour = grp)) + facet_wrap(~grp) + geom_point() + geom_line() + 
+    theme_bw(24) + theme(aspect.ratio = 1, legend.position = "none") + xlab("Time (CT)") + ylab("Log2 Expression") + ggtitle(jtitle)
+  return(m)
+}
+
+
 PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha = 0.05, jtitle = ""){
   dat.sub <- subset(dat.long, gene %in% genes & tissue %in% tissues)
   

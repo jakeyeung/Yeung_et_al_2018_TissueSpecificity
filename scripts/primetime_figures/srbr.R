@@ -101,6 +101,62 @@ ggplot(dat.fit.periods.sub, aes(x = period, y = ssq.residuals, colour = gene)) +
 dev.off()
 
 
+# Genome-wide amplitudes --------------------------------------------------
+
+pdf(file.path(outdir, paste0(plot.i, ".genomewide_amplitude.pdf")))
+plot.i <- plot.i + 1
+
+load("Robjs/dat.fit.Robj", v=T); dat.fit.24 <- dat.fit
+dat.fit.24 <- subset(dat.fit.24, tissue != "WFAT")
+dat.fit.24 <- dat.fit.24[order(dat.fit.24$amp, decreasing = TRUE), ]
+
+amp.thres <- seq(from = 0, to = max(dat.fit.12$amp, dat.fit.24$amp), by = 0.15)
+
+pval.cutoff <- 0.01
+dat.fit.24.ngenes.thres <- subset(dat.fit.24, pval < pval.cutoff) %>%
+  group_by(tissue) %>%
+  do(NGenesByAmp.long(., amp.thres))
+dat.fit.24.ngenes.thres$rhyth <- as.factor(24)
+
+# order by total genes
+ngenes.sum <- dat.fit.24.ngenes.thres %>%
+  group_by(tissue) %>%
+  summarise(total = sum(n.genes)) %>%
+  arrange(desc(total))
+dat.fit.24.ngenes.thres$tissue <- factor(as.character(dat.fit.24.ngenes.thres$tissue), levels = ngenes.sum$tissue)
+ggplot(subset(dat.fit.24.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + geom_line() + 
+  theme_bw(24) +
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
+  xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 5)) + 
+  scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
+  geom_vline(xintercept = 1, linetype = "dotted")
+
+dev.off()
+
+
+# Examples to motivate ----------------------------------------------------
+
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+
+
+library(hash)
+
+jgene <- "Tars"
+jgene <- "Arntl"
+jgene <- 
+
+m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == "rnaseq"), jgene, amp.filt = 0.20, jtitle=jgene)
+print(m)
+
+
+m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Dbp" & experiment == "rnaseq"))
+m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Tars" & experiment == "rnaseq"))
+m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Ddc" & experiment == "rnaseq"))
+m1 <- PlotGeneAcrossTissuesRnaseq(subset(dat.long, gene == "Myod1" & experiment == "rnaseq"))
+print(m1)
+
+
+
 # Figure 2 Tissue-modules ----------------------------------------------------------
 
 filt.tiss <- c("WFAT")

@@ -29,3 +29,15 @@ GetRowIndx <- function(dat, cname){
   if (length(indx) == 0) warning("Warning, cname not found in column names of dat")
   return(indx)
 }
+
+MatchGroup <- function(x, group, no.match.str = "Flat"){
+  # group is list of comma separated strings
+  # return group[i] which contains x
+  group.lst <- sapply(group, function(g) strsplit(g, ","), USE.NAMES = FALSE)
+  match <- group.lst[which(sapply(group.lst, function(r) x %in% r))]
+  if (length(match) == 0){
+    return(no.match.str)
+  } else {
+    return(paste0(match[[1]], collapse=","))
+  }
+}
