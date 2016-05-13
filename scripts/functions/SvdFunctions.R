@@ -446,6 +446,7 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   names(eigensamp.sorted)[(label.n + 1):length(eigensamp.sorted)] <- ""
   # END
   
+  gene.labels <- rownames(s.complex$u)
   if (missing(jtitle)){
     jtitle1 <- paste0("Tissue Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)")  
     jtitle2 <- paste0("Gene Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)")
@@ -453,7 +454,6 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
     jtitle1 <- jtitle
     jtitle2 <- jtitle
   }
-  gene.labels <- rownames(s.complex$u)
   v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, 
                          title = jtitle1, 
                          xlab = xlab, ylab = ylab, ampscale = 1, constant.amp = constant.amp)

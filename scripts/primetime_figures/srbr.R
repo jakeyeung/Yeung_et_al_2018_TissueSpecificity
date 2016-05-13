@@ -144,7 +144,7 @@ load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_av
 
 library(hash)
 
-jgenes <- c("Dbp", "Bcl7c", "Tnnt1")
+jgenes <- c("Dbp", "Bcl7c", "Tnnt1", "Slc44a1")
 m.list <- list()
 i <- 1
 for (jgene in jgenes){
@@ -157,6 +157,9 @@ dev.off()
 
 
 # Figure 2 Tissue-modules ----------------------------------------------------------
+
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.global_stats.pdf")))
+plot.i <- plot.i + 1
 
 filt.tiss <- c("WFAT")
 # load("Robjs/fits.best.collapsed_models.Robj", verbose=T)
@@ -180,8 +183,6 @@ fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
   }
 })
 
-pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.global_stats.pdf")))
-plot.i <- plot.i + 1
 fits.tspec.sum <- CountModels(subset(fits.best, n.rhyth == 1)) 
 m1 <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(stat = "identity") + 
   xlab("") + 
@@ -196,12 +197,13 @@ PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% c(jmods, "Mus")),
 
 dev.off()
 
-pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.tissue_wide.pdf")))
-plot.i <- plot.i + 1
 dat.mean.rnaseq <- subset(dat.long, experiment == "rnaseq") %>%
   group_by(gene, tissue, experiment) %>%
   summarise(exprs.mean = mean(exprs))
 
+
+pdf(file.path(outdir, paste0(plot.i, ".tissue_modules.tissue_wide.pdf")))
+plot.i <- plot.i + 1
 
 # Plot tissue wide genes
 fits.tw <- subset(fits.best, n.rhyth >= 8)
@@ -209,7 +211,7 @@ genes.tw <- as.character(fits.tw$gene)
 #outobj <- PlotHeatmapNconds(fits.tw, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 6, peak.to.trough=TRUE, ylab="Phase (CT)")
+eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 6, peak.to.trough=TRUE, ylab="Phase (CT)", jtitle = "")
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)  
 
