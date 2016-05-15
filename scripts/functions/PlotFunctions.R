@@ -31,13 +31,34 @@ PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 
   return(m)
 }
 
+FilterGenesByTissue <- function(dat.long, genes.lst, tissues){
+  # filter genes by tissue.
+  # genes.lst, list of genes, with names matching to tissues
+  dat.sub <- lapply(tissues, function(tiss){
+    gene.lst <- genes[[tiss]]
+    return(subset(dat.long, gene %in% gene.lst & tissue == tiss))
+  })
+  dat.sub <- do.call(rbind, dat.sub)
+  return(dat.sub)
+}
 
-PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha = 0.05, jtitle = ""){
-  dat.sub <- subset(dat.long, gene %in% genes & tissue %in% tissues)
-  
+PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha = 0.05, jtitle = "", jnrow = 1){
+  # jnrow: only for more than 1 tissue
+  # if more than 1 tissue, genes is a list of vectors with names matching to tissues
+  if (length(tissues) > 1){
+    # expect list of genes with tissues as names
+    dat.sub <- lapply(tissues, function(tiss){
+      gene.lst <- genes[[tiss]]
+      return(subset(dat.long, gene %in% gene.lst & tissue == tiss))
+    })
+    dat.sub <- do.call(rbind, dat.sub)
+  } else {
+    # genes are just a vector
+    dat.sub <- subset(dat.long, gene %in% genes & tissue %in% tissues)  
+  }
   # scale and center
   dat.sub <- dat.sub %>%
-    group_by(gene, experiment) %>%
+    group_by(gene, experiment, tissue) %>%
     mutate(exprs.scaled = scale(exprs, center = T, scale = jscale))
   
   if (length(tissues) == 1){
@@ -47,7 +68,7 @@ PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha =
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank()) 
   } else {
-    m <- ggplot(subset(dat.sub, experiment == "rnaseq"), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~tissue) + ggtitle(jtitle)
+    m <- ggplot(subset(dat.sub), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~tissue, nrow = jnrow) + ggtitle(jtitle)
     m <- m + theme_bw(24) + 
       theme(aspect.ratio=1,
             panel.grid.major = element_blank(),

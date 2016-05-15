@@ -220,6 +220,33 @@ dev.off()
 pdf(file.path(outdir, paste0(plot.i, ".overlay_exprs.pdf")))
 plot.i <- plot.i + 1
 
+# plot all 4 tissues
+jtissues <- c("Liver", "Adr", "BFAT", "Mus")
+# jtissues <- c("Adr")
+genes.lst <- list()
+for (tiss in jtissues){
+  genes.lst[[tiss]] <- as.character(subset(fits.best, model == tiss)$gene)
+}
+dat.sub <- subset(dat.long, experiment == "array" & gene %in% jgenes & tissue %in% jtissues)
+# rearrange tissues
+dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = jtissues)
+m <- PlotOverlayTimeSeries(dat.sub, genes.lst, tissues = jtissues, jalpha = 0.05, jtitle = paste0("Tissue-specific rhythmic genes"))
+print(m)
+
+# fits.sub <- subset(fits.best, model %in% jtissues)
+# models.hash <- hash(as.character(fits.sub$gene), as.character(fits.sub$model))
+# dat.mean.rnaseq.sub <- subset(dat.mean.rnaseq, gene %in% as.character(fits.sub$gene))
+# dat.mean.rnaseq.sub$model <- sapply(as.character(dat.mean.rnaseq.sub$gene), function(g) models.hash[[g]])
+# m2 <- PlotMeanExprsOfModel(dat.mean.rnaseq.sub, unlist(genes.lst, use.names = FALSE), jtissues) + facet_wrap(~model, nrow = 1)
+# print(m2)
+
+plots.lst <- list()
+for (tiss in jtissues){
+  genes <- genes.lst[[tiss]]
+  plots.lst[[tiss]] <- PlotMeanExprsOfModel(dat.mean.rnaseq, genes, tiss, avg.method = "median") + theme_bw(6)
+}
+multiplot(plots.lst[[1]], plots.lst[[2]], plots.lst[[3]], plots.lst[[4]], cols = 4)
+
 jtiss <- "Adr"
 Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
@@ -281,11 +308,18 @@ dev.off()
 pdf(file.path(outdir, paste0(plot.i, ".MARA_tissue_spec.pdf")))
 plot.i <- plot.i + 1
 act.long <- subset(act.long, !tissue %in% filt.tiss)
+PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & tissue == "Adr" & experiment == "array")) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
+PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experiment == "array")) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
+
 PlotActivitiesWithSE(subset(act.long, gene == "SPIB.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
 dev.off()
 
+
+# Mean expression of modules ----------------------------------------------
+
+PlotMeanExprsOfModel(dat.mean, genes, jmodel, sorted = TRUE, avg.method = "mean")
 
 # DHS enrichemnt ----------------------------------------------------------
 
@@ -369,7 +403,7 @@ dev.off()
 # WT-KO genes motif enrichment --------------------------------------------
 
 
-pdf(file.path(outdir, paste0(plot.i, ".wtko.pdf")))
+pdf(file.path(outdir, paste0(plot.i, ".motifs.pdf")))
 plot.i <- plot.i + 1
 
 mat.fgbg.lab.lst.3 <- SetUpMatForLda(subset(mat.fg, gene %in% genes.liv.wtliv), mat.bgnonliver, mat.bg, has.peaks = TRUE)

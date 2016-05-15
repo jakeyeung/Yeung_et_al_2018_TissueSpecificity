@@ -1,6 +1,8 @@
 # 2016-04-012
 # promoters_crossproduct_hic1.R
 
+rm(list=ls())
+
 library(hash)
 library(ggplot2)
 library(dplyr)
@@ -34,6 +36,19 @@ N.sub <- N.sub[order(N.sub$HIC1.p2, decreasing = TRUE), ]
 
 hic1.hash <- hash(as.character(N.sub$Gene.ID), as.character(N.sub$HIC1.p2))  # vectorize probably faster?
 
+
+# Run without HIC1 --------------------------------------------------------
+
+N.nohic1 <- N[, colnames(N)[which(colnames(N) != "HIC1.p2")]]
+N.nohic1 <- cbind(Gene.ID = rownames(N.nohic1), N.nohic1)
+
+write.table(N.nohic1, file = "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids.no_HIC1.mat", quote = FALSE, row.names = FALSE, sep = "\t")
+
+
+# Run on shellscript ------------------------------------------------------
+LoadActivitiesPlotSvd("/home/yeung/projects/tissue-specificity/results/MARA/bic_modules_no_HIC1//TissueWide.centeredTRUE", 1)
+
+
 # Do cross prods ----------------------------------------------------------
 
 hic1.vec <- N$HIC1.p2
@@ -56,6 +71,7 @@ write.table(N.crossonly, file = "/home/yeung/projects/tissue-specificity/data/si
 
 
 # Run MARA from script ----------------------------------------------------
+# from /home/yeung/projects/ridge-regression/run_scripts
 
 
 
