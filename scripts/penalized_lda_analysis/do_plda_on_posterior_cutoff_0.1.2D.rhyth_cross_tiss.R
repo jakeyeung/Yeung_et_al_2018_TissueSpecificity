@@ -9,8 +9,8 @@ setwd("/home/yeung/projects/tissue-specificity")
 args <- commandArgs(trailingOnly=TRUE)
 # distfilt <- as.numeric(args[1])
 # jcutoff <- as.numeric(args[2])
-distfilt <- 5000
-jcutoff <- 1.5  # arbitrary
+distfilt <- 10000
+jcutoff <- 2  # arbitrary
 cleanup <- FALSE
 writepeaks <- FALSE
 if (is.na(distfilt)) stop("Distfilt must be numeric")
@@ -173,6 +173,20 @@ print(paste("N.peaks bg", length(liver.peaks.bg)))
 mat.fg <- dcast(subset(N.sub, peak %in% liver.peaks.fg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 mat.bgnonliver <- dcast(subset(N.sub, peak %in% nonliver.peaks.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 mat.bg <- dcast(subset(N.sub.flat, peak %in% liver.peaks.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
+
+
+
+# Liver vs Flat -----------------------------------------------------------
+
+mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg, has.peaks = TRUE)
+mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), function(cname){
+  return(RemoveCommasBraces(cname))
+}, USE.NAMES = FALSE)
+jlambda <- 0.1  # liv only
+out <- PenalizedLDA(mat.fgbg, labels, lambda = jlambda, K = 1, standardized = FALSE)
+PlotLdaOut(out, jcex = 0.5)
 
 # Compare with all 3 ------------------------------------------------------
 

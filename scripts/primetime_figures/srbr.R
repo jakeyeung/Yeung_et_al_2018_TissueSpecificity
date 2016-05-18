@@ -386,8 +386,23 @@ dev.off()
 
 pdf(file.path(outdir, paste0(plot.i, ".penalized_lda_singletons.pdf")))
 plot.i <- plot.i + 1
-load("Robjs/penalized_lda_liver_matrices.Robj", v=T)
+# load("Robjs/penalized_lda_liver_matrices.Robj", v=T)
+load("Robjs/penalized_lda_matrices.dist10kb.jcutoff2.Robj", v=T)
 
+# WITH LIVER vs FLAT
+mat.fgbg.lab.lst <- SetUpMatForLda(mat.fg, mat.bg, has.peaks = TRUE)
+mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), function(cname){
+  return(RemoveCommasBraces(cname))
+}, USE.NAMES = FALSE)
+jlambda <- 0.1  # liv only
+out <- PenalizedLDA(mat.fgbg, labels, lambda = jlambda, K = 1, standardized = FALSE)
+jsize <- sqrt(out$discrim[, 1]^2 * 5) + 0.01
+PlotLdaOut(out, jcex = 0.6, jtitle = "")
+
+
+# WITH LIVER vs FLAT vs NONLIVER
 mat.fgbg.lab.lst.3 <- SetUpMatForLda(mat.fg, mat.bgnonliver, mat.bg, has.peaks = TRUE)
 mat.fgbg.3 <- mat.fgbg.lab.lst.3$mat.fgbg; labels3 <- mat.fgbg.lab.lst.3$labels
 colnames(mat.fgbg.3) <- sapply(colnames(mat.fgbg.3), RemoveP2Name)
@@ -455,17 +470,24 @@ dev.off()
 pdf(file.path(outdir, paste0(plot.i, ".motifs.pdf")))
 plot.i <- plot.i + 1
 
+mat.fgbg.lab.lst <- SetUpMatForLda(subset(mat.fg, gene %in% genes.liv), mat.bg, has.peaks = TRUE)
+mat.fgbg <- mat.fgbg.lab.lst$mat.fgbg; labels <- mat.fgbg.lab.lst$labels
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), RemoveP2Name)
+colnames(mat.fgbg) <- sapply(colnames(mat.fgbg), function(cname){
+  return(RemoveCommasBraces(cname))
+}, USE.NAMES = FALSE)
+jlambda <- 0.1  # liv only
+out <- PenalizedLDA(mat.fgbg, labels, lambda = jlambda, K = 1, standardized = FALSE)
+PlotLdaOut(out, jcex = 0.5)
+
 mat.fgbg.lab.lst.3 <- SetUpMatForLda(subset(mat.fg, gene %in% genes.liv.wtliv), mat.bgnonliver, mat.bg, has.peaks = TRUE)
 mat.fgbg.3 <- mat.fgbg.lab.lst.3$mat.fgbg; labels3 <- mat.fgbg.lab.lst.3$labels
 colnames(mat.fgbg.3) <- sapply(colnames(mat.fgbg.3), RemoveP2Name)
 colnames(mat.fgbg.3) <- sapply(colnames(mat.fgbg.3), function(cname){
   return(RemoveCommasBraces(cname))
 }, USE.NAMES = FALSE)
-
-
 jlambda <- 0.1  # liv only
 out.3 <- PenalizedLDA(mat.fgbg.3, labels3, lambda = jlambda, K = 2, standardized = FALSE)
-
 jsize <- sqrt(out.3$discrim[, 1]^2 + out.3$discrim[, 2]^2) * 5 + 0.01
 plot(out.3$discrim[, 1], out.3$discrim[, 2], pch = ".", 
      xlab = "Liver-specific DHS vs Nonliver-specific DHS", ylab = "Liver-specific rhythmic DHS vs Others", 
