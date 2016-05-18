@@ -1,3 +1,11 @@
+NrhythToStr <- function(n.rhyth, max.n.rhyth = 8){
+  if (n.rhyth < max.n.rhyth){
+    return(as.character(n.rhyth))
+  } else {
+    return(paste0(max.n.rhyth, "+"))
+  }
+}
+
 CountModels <- function(fits.best.sub){
   fits.sum <- fits.best.sub %>%
     group_by(model) %>%

@@ -46,6 +46,10 @@ source("scripts/functions/LdaFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/RemoveCommasBraces.R")
+source("scripts/functions/PlotFunctions.R")
+source("scripts/functions/FourierFunctions.R")
+source("scripts/functions/HandleMotifNames.R")
+source("scripts/functions/NcondsAnalysisFunctions.R")
 
 
 
@@ -111,7 +115,7 @@ load("Robjs/dat.fit.Robj", v=T); dat.fit.24 <- dat.fit
 dat.fit.24 <- subset(dat.fit.24, tissue != "WFAT")
 dat.fit.24 <- dat.fit.24[order(dat.fit.24$amp, decreasing = TRUE), ]
 
-amp.thres <- seq(from = 0, to = max(dat.fit.12$amp, dat.fit.24$amp), by = 0.15)
+amp.thres <- seq(from = 0, to = max(dat.fit.24$amp), by = 0.15)
 
 pval.cutoff <- 0.01
 dat.fit.24.ngenes.thres <- subset(dat.fit.24, pval < pval.cutoff) %>%
@@ -144,7 +148,8 @@ load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_av
 
 library(hash)
 
-jgenes <- c("Dbp", "Bcl7c", "Tnnt1", "Slc44a1")
+jgenes <- c("Dbp", "Tnnt1", "Bcl7c", "Slc44a1")
+jgenes <- rev(jgenes)
 m.list <- list()
 i <- 1
 for (jgene in jgenes){
@@ -153,8 +158,19 @@ for (jgene in jgenes){
   i <- i + 1
 }
 do.call(multiplot, m.list)
+# multiplot(m.list[[1]], m.list[[2]], m.list[[3]], m.list[[4]], cols = 2)
 dev.off()
 
+
+pdf(file.path(outdir, paste0(plot.i, ".model_selection_summary.pdf")))
+plot.i <- plot.i + 1
+load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
+
+fits.best$n.rhyth.fac <- as.factor(sapply(as.numeric(fits.best$n.rhyth), function(n) NrhythToStr(n)))
+ggplot(subset(fits.best, n.rhyth != 0), aes(x = as.factor(n.rhyth.fac), y = 2 * amp.avg)) + geom_boxplot() + xlab("# rhythmic tissues") + ylab("Log fold change")  + theme_bw(16) + 
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+dev.off()
 
 # Figure 2 Tissue-modules ----------------------------------------------------------
 
@@ -166,7 +182,6 @@ filt.tiss <- c("WFAT")
 # load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.15.phase_sd.Robj", verbose=T)
 # load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.1.phase_sd_diff_avg.Robj", verbose=T)
 # load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
-load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
 load("Robjs/dat.complex.fixed_rik_genes.Robj")
 
 if (remove.wfat){
@@ -217,7 +232,7 @@ multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)
 
 dev.off()
 
-pdf(file.path(outdir, paste0(plot.i, ".overlay_exprs.pdf")))
+pdf(file.path(outdir, paste0(plot.i, ".overlay_exprs.pdf")), paper = "USr")
 plot.i <- plot.i + 1
 
 # plot all 4 tissues
@@ -227,10 +242,11 @@ genes.lst <- list()
 for (tiss in jtissues){
   genes.lst[[tiss]] <- as.character(subset(fits.best, model == tiss)$gene)
 }
+jgenes <- unlist(genes.lst)
 dat.sub <- subset(dat.long, experiment == "array" & gene %in% jgenes & tissue %in% jtissues)
 # rearrange tissues
 dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = jtissues)
-m <- PlotOverlayTimeSeries(dat.sub, genes.lst, tissues = jtissues, jalpha = 0.05, jtitle = paste0("Tissue-specific rhythmic genes"))
+m <- PlotOverlayTimeSeries(dat.sub, genes.lst, tissues = jtissues, jalpha = 0.025, jtitle = paste0(""))
 print(m)
 
 # fits.sub <- subset(fits.best, model %in% jtissues)
@@ -251,7 +267,7 @@ jtiss <- "Adr"
 Adr.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
-m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "array"), Adr.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m2)
 PlotMeanExprsOfModel(dat.mean.rnaseq, Adr.genes, jtiss, avg.method = "median")
 
@@ -259,15 +275,15 @@ jtiss <- "BFAT"
 BFAT.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, BFAT.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
-m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), BFAT.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "array"), BFAT.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m2)
-PlotMeanExprsOfModel(dat.mean.rnaseq, BFAT.genes, jtiss, avg.method = "median")
+PlotMeanExprsOfModel(dat.mean.rnaseq, BFAT.genes, jtiss, avg.method = "mean")
 
 jtiss <- "Mus"
 Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, Mus.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
-m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), Mus.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "array"), Mus.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m2)
 PlotMeanExprsOfModel(dat.mean.rnaseq, Mus.genes, jtiss, avg.method = "median")
 
@@ -275,7 +291,7 @@ jtiss <- "Liver"
 Liver.genes <- as.character(subset(fits.best, model == jtiss)$gene)
 m <- PlotOverlayTimeSeries(dat.long, Liver.genes, tissues = jtiss, jscale = T, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m)
-m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "rnaseq"), Liver.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
+m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "array"), Liver.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m2)
 PlotMeanExprsOfModel(dat.mean.rnaseq, Liver.genes, jtiss, avg.method = "median")
 
@@ -308,18 +324,38 @@ dev.off()
 pdf(file.path(outdir, paste0(plot.i, ".MARA_tissue_spec.pdf")))
 plot.i <- plot.i + 1
 act.long <- subset(act.long, !tissue %in% filt.tiss)
-PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & tissue == "Adr" & experiment == "array")) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
-PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2" & experiment == "array")) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
+jmotifs.lst <- list("BFAT"="MEF2.A.B.C.D..p2", "Adr"="HNF4A_NR2F1.2.p2")
+for (jtiss in names(jmotifs.lst)){
+  jmotif <- jmotifs.lst[[jtiss]]
+  m <- PlotActivitiesWithSE(subset(act.long, gene == jmotif & tissue == jtiss & experiment == "array")) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
+  m1 <- PlotActivitiesWithSE(subset(act.long, gene == jmotif & experiment == "array")) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
+  print(m)
+  print(m1)
+}
+
+jmotif <- "MEF2.A.B.C.D..p2"
+act.sub <- subset(act.long, gene == jmotif & experiment == "array")
+act.sub.mean <- act.sub %>%
+  group_by(tissue) %>%
+  summarise(mean.exprs = mean(exprs)) %>%
+  arrange(desc(mean.exprs))
+# act.sub$tissue <- factor(as.character(act.sub$tissue), levels = c("Mus", "Heart", "BS", "Hypo", "Cere", "Aorta", "Lung", "Adr", "BFAT", "Kidney", "Liver"))
+act.sub$tissue <- factor(as.character(act.sub$tissue), levels = as.character(act.sub.mean$tissue))
+PlotActivitiesWithSE(act.sub) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
+
+dat.sub <- subset(dat.long, gene == "Mef2c" & experiment == "array")
+dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = as.character(act.sub.mean$tissue))
+PlotGeneAcrossTissues(dat.sub) + theme_bw()  + theme(aspect.ratio = 1, legend.position = "none")
+
 
 PlotActivitiesWithSE(subset(act.long, gene == "SPIB.p2"))
-PlotActivitiesWithSE(subset(act.long, gene == "MEF2.A.B.C.D..p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
 dev.off()
 
 
 # Mean expression of modules ----------------------------------------------
 
-PlotMeanExprsOfModel(dat.mean, genes, jmodel, sorted = TRUE, avg.method = "mean")
+# PlotMeanExprsOfModel(dat.mean, genes, jmodel, sorted = TRUE, avg.method = "mean")
 
 # DHS enrichemnt ----------------------------------------------------------
 
@@ -337,12 +373,12 @@ df.out.lst.merged <- lapply(list.files(maindir), function(fname){
 })
 df.out.lst.merged <- do.call(rbind, df.out.lst.merged)
 head(df.out.lst.merged)
-jsub <- subset(df.out.lst.merged, gene.type %in% c("jgenes", "jgenes.flat.filt"))
+jsub <- subset(df.out.lst.merged, gene.type %in% c("jgenes"))
 newlab <- hash(as.character(subset(jsub, gene.type == "jgenes")$tissue), paste0(subset(jsub, gene.type == "jgenes")$tissue, "\nN=", subset(jsub, gene.type == "jgenes")$total.genes))
 jsub$Tissue <- sapply(as.character(jsub$tissue), function(tiss) newlab[[tiss]])
 jsub <- OrderDecreasing(jsub, "Tissue", "frac.n.spec.by.gene")
 ggplot(jsub, aes(x = Tissue, y = frac.n.spec.by.gene, fill = gene.type)) + geom_bar(stat = "identity", position = "dodge") + xlab("") + ylab("Fraction of genes with tissue-specific DHS within 10kb") + 
-  theme_bw(18) + theme(aspect.ratio = 1, legend.position = "bottom")
+  theme_bw(18) + theme(aspect.ratio = 1, legend.position = "none")
 dev.off()
 
 
@@ -386,17 +422,30 @@ genes.tw <- as.character(subset(fits.best, n.rhyth >= 8)$gene)
 
 fits.sub.liv <- subset(fits.all.long.wtkohog, gene %in% genes.liv & model != "")
 
+
 # genes.liv.wtliv <- as.character(subset(fits.sub.liv, model %in% c("WT,Liver", "WT;KO;Liver", "WT;Liver", "KO;WT,Liver", "Liver", "WT", "WT,Liver", "WT;Liver"))$gene)
 # genes.liv.wtliv <- as.character(subset(fits.sub.liv, model %in% c("WT,Liver", "WT;KO;Liver", "WT;Liver", "KO;WT,Liver"))$gene)
 # genes.liv.wtliv <- as.character(subset(fits.sub.liv, model %in% c("WT,Liver", "WT;Liver", "Liver", "WT", "WT,Liver", "WT;Liver"))$gene)
 genes.liv.wtliv <- as.character(subset(fits.sub.liv, model %in% c("WT,Liver", "WT;Liver", "Liver", "WT"))$gene)
 print(paste("N genes:", length(genes.liv.wtliv)))
 
+# show an example
+jgene <- "Mreg"
+jsub <- subset(dat.wtko.hog, gene == jgene)
+jsub <- jsub %>%
+  group_by(tissue) %>%
+  mutate(exprs.center = exprs - mean(exprs))
+jsub$exprs <- jsub$exprs.center + 10
+
+jsub$tissue <- factor(jsub$tissue, levels = c("Liver", "WT", "KO"))
+PlotGeneAcrossTissues(jsub) + theme_bw() + theme(aspect.ratio = 1)
+
 # s.liv.wtliv <- SvdOnComplex(subset(dat.complex.wtko, gene %in% genes.liv.wtliv), value.var = "exprs.transformed")
 s.liv.wtliv <- SvdOnComplex(subset(dat.complex.wtko.hog, gene %in% genes.liv.wtliv), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.liv.wtliv, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2)
+eigens.tw <- GetEigens(s.liv.wtliv, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2, peak.to.trough = TRUE)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
+multiplot(eigens.tw$v.plot, eigens.tw$u.plot + xlim(0, 2), layout = jlayout)
+multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)
 dev.off()
 
 

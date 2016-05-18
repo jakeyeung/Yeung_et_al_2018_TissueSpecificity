@@ -4,7 +4,7 @@ library(grid)
 
 PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle="", facet.rows = 1, jcex=24){  
   source('~/projects/tissue-specificity/scripts/functions/DataHandlingFunctions.R')
-  tissue <- as.character(unique(dat.sub$tissue))
+  tissue <- as.character(unique(dat.long$tissue))
   # plot expression, but collapse into rhythmic parameters
   dat.sub <- subset(dat.long, gene == jgene)
   
@@ -63,13 +63,13 @@ PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha =
   
   if (length(tissues) == 1){
     m <- ggplot(subset(dat.sub), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~experiment) + ggtitle(jtitle)
-    m <- m + theme_bw(24) + 
+    m <- m + theme_bw(12) + 
       theme(aspect.ratio=1,
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank()) 
   } else {
     m <- ggplot(subset(dat.sub), aes(x = time, y = exprs.scaled, group = gene)) + geom_line(alpha = jalpha) + facet_wrap(~tissue, nrow = jnrow) + ggtitle(jtitle)
-    m <- m + theme_bw(24) + 
+    m <- m + theme_bw(12) + 
       theme(aspect.ratio=1,
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank()) 
@@ -102,8 +102,8 @@ PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE, avg.met
     theme(aspect.ratio=1,
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank()) +
-    xlab("") + ylab("Mean expression of gene") +
-    ggtitle(paste0("Mean expression: ", length(genes), " in ", jmodel, " module"))
+    xlab("") + ylab("Log2 Exprs") +
+    ggtitle(paste0("Mean exprs of ", length(genes), " genes in ", jmodel, " module"))
   return(m)
 }
 

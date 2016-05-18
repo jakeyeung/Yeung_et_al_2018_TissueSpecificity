@@ -28,13 +28,7 @@ dat.complex.tempvargene <- dat.complex %>%
   group_by(gene) %>%
   summarise(total.temp.var = sum(Mod(2 * exprs.transformed) ^ 2))
 
-NrhythToStr <- function(n.rhyth, max.n.rhyth = 8){
-  if (n.rhyth < max.n.rhyth){
-    return(as.character(n.rhyth))
-  } else {
-    return(paste0(max.n.rhyth, "+"))
-  }
-}
+
 
 n.rhyth.hash <- hash(as.character(fits.best$gene), sapply(fits.best$n.rhyth, function(n) NrhythToStr(n)))
 n.rhyth.hash2 <- hash(as.character(fits.best$gene), fits.best$n.rhyth)
