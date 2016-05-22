@@ -77,7 +77,7 @@ plot.i <- plot.i + 1
 xscale_periods <- seq(6, 30, 2)
 ggplot(subset(dat.fit.periods.sub), aes(x = period)) + geom_histogram(binwidth = diff(range(dat.fit.periods.sub$period))/55) + geom_vline(xintercept=24, linetype="dotted") + 
   scale_x_continuous(breaks=xscale_periods) + 
-  xlab("Period with minimum RSS (h)") + ylab("Number of genes") +
+  xlab("Period with best fit (h)") + ylab("Number of genes") +
   theme_bw(24) + theme(aspect.ratio=1,
                        panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
@@ -91,7 +91,7 @@ m2 <- ggplot(subset(dat.fit.periods.sub), aes(x = period)) + geom_histogram(binw
   geom_vline(xintercept=12, linetype="dotted", size = linesize) +
   scale_x_continuous(breaks=xscale_periods_smaller) + 
   facet_wrap(~tissue) +
-  xlab("Period with minimum RSS") + ylab("Count") +
+  xlab("Period with best fit (h)") + ylab("Count") +
   theme_bw(24) + theme(aspect.ratio=1,
                        panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
@@ -148,16 +148,24 @@ load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_av
 
 library(hash)
 
-jgenes <- c("Dbp", "Tnnt1", "Bcl7c", "Slc44a1")
+jgenes <- c("Dbp", "Ndrg1", "Pi4k2a", "Slc44a1")
 jgenes <- rev(jgenes)
 m.list <- list()
 i <- 1
-for (jgene in jgenes){
-  m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == "rnaseq"), jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8)
-  m.list[[i]] <- m
-  i <- i + 1
-}
+# jexperiments <- c("array", "rnaseq")
+# for (jexp in jexperiments){
+jexp <- "array"
+  for (jgene in jgenes){
+    m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
+                                      jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8,
+                                      pointsize = 0)
+    # m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long), jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8)
+    print(m)
+    m.list[[i]] <- m
+    i <- i + 1
+  }
 do.call(multiplot, m.list)
+# }
 # multiplot(m.list[[1]], m.list[[2]], m.list[[3]], m.list[[4]], cols = 2)
 dev.off()
 
@@ -197,6 +205,11 @@ fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
     return("")
   }
 })
+
+# count based on amp
+# fits.counts.by.amp <- fits.best %>%
+#   group_by(tissue) %>%
+#   do(NGenesByAmp.long(., amp.thres))
 
 fits.tspec.sum <- CountModels(subset(fits.best, n.rhyth == 1)) 
 m1 <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(stat = "identity") + 
