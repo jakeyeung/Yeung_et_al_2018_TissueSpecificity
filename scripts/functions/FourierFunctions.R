@@ -3,9 +3,9 @@
 # functions related to Mr. Fourier
 
 
-NGenesByAmp.long <- function(amps.long, amp.thres){
-  tiss <- amps.long$tissue[[1]]
-  return(NGenesByAmp(amps.long$amp, amp.thres, tiss))
+NGenesByAmp.long <- function(amps.long, amp.thres, labelid="tissue", varid="amp"){
+  tiss <- amps.long[[labelid]][[1]]
+  return(NGenesByAmp(amps.long[[varid]], amp.thres, tiss))
 }
 
 NGenesByAmp <- function(amps, amp.thres, tiss=""){

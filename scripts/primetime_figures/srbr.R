@@ -207,9 +207,27 @@ fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
 })
 
 # count based on amp
-# fits.counts.by.amp <- fits.best %>%
-#   group_by(tissue) %>%
-#   do(NGenesByAmp.long(., amp.thres))
+amp.thres <- seq(from = 0, to = max(dat.fit.24$amp), by = 0.15)
+
+fits.best$n.rhyth.lab <- sapply(fits.best$n.rhyth, function(n){
+  if (n >= 8){
+    return("8-11")
+  } else if (n <= 3){
+    return("1-3")
+  } else {
+    return("4-7")
+  }
+})
+fits.counts.by.amp <- subset(fits.best, n.rhyth > 0) %>%
+  group_by(n.rhyth.lab) %>%
+  do(NGenesByAmp.long(., amp.thres, labelid = "n.rhyth.lab", varid = "amp.avg"))
+ggplot(fits.counts.by.amp, aes(x = amp.thres, y = n.genes, group = tissue, colour = as.factor(tissue))) + geom_line() + 
+  geom_line() + 
+  theme_bw(24) +
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
+  xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0.15, 5)) + 
+  scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
+  geom_vline(xintercept = 1.4, linetype = "dotted")
 
 fits.tspec.sum <- CountModels(subset(fits.best, n.rhyth == 1)) 
 m1 <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(stat = "identity") + 
