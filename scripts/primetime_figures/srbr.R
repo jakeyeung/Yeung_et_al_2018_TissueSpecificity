@@ -50,6 +50,7 @@ source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/FourierFunctions.R")
 source("scripts/functions/HandleMotifNames.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
+source("scripts/functions/LongToMat.R")
 
 
 
@@ -212,22 +213,28 @@ amp.thres <- seq(from = 0, to = max(dat.fit.24$amp), by = 0.15)
 fits.best$n.rhyth.lab <- sapply(fits.best$n.rhyth, function(n){
   if (n >= 8){
     return("8-11")
+  } else if (n == 1){
+    return("1")
   } else if (n <= 3){
-    return("1-3")
+    return("2-4")
   } else {
-    return("4-7")
+    return("5-7")
   }
 })
 fits.counts.by.amp <- subset(fits.best, n.rhyth > 0) %>%
   group_by(n.rhyth.lab) %>%
-  do(NGenesByAmp.long(., amp.thres, labelid = "n.rhyth.lab", varid = "amp.avg"))
-ggplot(fits.counts.by.amp, aes(x = amp.thres, y = n.genes, group = tissue, colour = as.factor(tissue))) + geom_line() + 
-  geom_line() + 
-  theme_bw(24) +
-  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
-  xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0.15, 5)) + 
+  do(NGenesByAmp.long(., amp.thres, labelid = "n.rhyth.lab", varid = "amp.avg", outlabel = "n.rhyth.lab"))
+ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = n.rhyth.lab, colour = as.factor(n.rhyth.lab))) + geom_line() + 
+  geom_line(size = 2) + 
+  theme_bw(20) +
+  labs(colour = "# Rhythmic\nTissues") + 
+  theme(aspect.ratio=1, 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) +
+  xlab("Avg Amplitude of Rhythmic Tissues") + ylab("# Genes") + xlim(c(0.15, 6)) + 
   scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
-  geom_vline(xintercept = 1.4, linetype = "dotted")
+  geom_vline(xintercept = 2.8, linetype = "dotted") + 
+  scale_colour_brewer(palette = "Spectral")
 
 fits.tspec.sum <- CountModels(subset(fits.best, n.rhyth == 1)) 
 m1 <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(stat = "identity") + 
@@ -236,10 +243,14 @@ m1 <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(stat = "ident
   theme_bw(24) + 
   theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1))
 jmods <- c("Liver", "Adr", "BFAT", "Mus")
+jmods2 <- c("Adr", "BFAT", "Mus")
 m2 <- PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% jmods), "Count")
+m3 <- PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% jmods2), "Count")
 multiplot(m1, m2, cols = 2) 
+multiplot(m1, m3, cols = 2) 
 
 PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% c(jmods, "Mus")), "Count") + facet_wrap(~tissue, nrow = 1)
+PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% c(jmods2)), "Count") + facet_wrap(~tissue, nrow = 1)
 
 dev.off()
 
@@ -268,6 +279,7 @@ plot.i <- plot.i + 1
 
 # plot all 4 tissues
 jtissues <- c("Liver", "Adr", "BFAT", "Mus")
+jtissues2 <- c("Adr", "BFAT", "Mus")
 # jtissues <- c("Adr")
 genes.lst <- list()
 for (tiss in jtissues){
@@ -278,7 +290,9 @@ dat.sub <- subset(dat.long, experiment == "array" & gene %in% jgenes & tissue %i
 # rearrange tissues
 dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = jtissues)
 m <- PlotOverlayTimeSeries(dat.sub, genes.lst, tissues = jtissues, jalpha = 0.025, jtitle = paste0(""))
+m2 <- PlotOverlayTimeSeries(dat.sub, genes.lst, tissues = jtissues2, jalpha = 0.025, jtitle = paste0(""))
 print(m)
+print(m2)
 
 # fits.sub <- subset(fits.best, model %in% jtissues)
 # models.hash <- hash(as.character(fits.sub$gene), as.character(fits.sub$model))
@@ -309,6 +323,37 @@ print(m)
 m2 <- PlotOverlayTimeSeries(subset(dat.long, experiment == "array"), BFAT.genes, tissues = jtiss, jalpha = 0.05, jtitle = paste0(jtiss, "-specific rhythmic genes"))
 print(m2)
 PlotMeanExprsOfModel(dat.mean.rnaseq, BFAT.genes, jtiss, avg.method = "mean")
+
+# plot mean exprs of BFAT with Mef2c accumulation
+jsub.mean <- subset(dat.mean.rnaseq, gene %in% BFAT.genes)
+# annotate mef2c mrna accumulation
+jsub.mef2c <- subset(dat.mean.rnaseq, gene == "Mef2c")
+jsub.hash <- hash(as.character(jsub.mef2c$tissue), jsub.mef2c$exprs.mean)
+jsub.mean$mef2c <- sapply(as.character(jsub.mean$tissue), function(tiss) jsub.hash[[tiss]])
+
+jsub.mean.meds <- jsub.mean %>%
+  group_by(tissue) %>%
+  summarise(exprs.med = median(exprs.mean),
+            mef2c = unique(mef2c),
+            upper = quantile(exprs.mean, probs = 0.75),
+            lower = quantile(exprs.mean, probs = 0.25))
+ggplot(jsub.mean.meds, aes(x = mef2c, y = exprs.med, label = tissue)) + 
+  geom_point(size = 2) + 
+  geom_text(aes(x = mef2c, y = upper + 0.3), size = 7.5) + 
+  xlab("Mean Mef2c mRNA accumulation") + 
+  ylab("Mean exprs of gene") + 
+  geom_errorbar(aes(ymin = lower, ymax = upper, width = 0.25)) + 
+  theme_bw(24) + 
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+# plot in a way that clusters other genes
+jgene <- "Mef2c"
+m1 <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == "array"), 
+                                   jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8,
+                                   pointsize = 0) + theme_bw(24) + theme(legend.position = "none", aspect.ratio = 1)
+print(m1)
+
 
 jtiss <- "Mus"
 Mus.genes <- as.character(subset(fits.best, model == jtiss)$gene)
@@ -377,6 +422,8 @@ PlotActivitiesWithSE(act.sub) + theme_bw() + theme(aspect.ratio = 1, legend.posi
 dat.sub <- subset(dat.long, gene == "Mef2c" & experiment == "array")
 dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = as.character(act.sub.mean$tissue))
 PlotGeneAcrossTissues(dat.sub) + theme_bw()  + theme(aspect.ratio = 1, legend.position = "none")
+
+# plot mean exprs with mRNA accumulation of mef2c
 
 
 PlotActivitiesWithSE(subset(act.long, gene == "SPIB.p2"))
@@ -477,7 +524,7 @@ print(paste("N genes:", length(genes.liv.wtliv)))
 
 # show an example
 jgene <- "Mreg"
-jsub <- subset(dat.wtko.hog, gene == jgene)
+jsub <- subset(dat.wtko.hog, gene == jgene & experiment != "array")
 jsub <- jsub %>%
   group_by(tissue) %>%
   mutate(exprs.center = exprs - mean(exprs))
@@ -492,6 +539,14 @@ eigens.tw <- GetEigens(s.liv.wtliv, period = 24, comp = 1, label.n = 15, eigenva
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.tw$v.plot, eigens.tw$u.plot + xlim(0, 2), layout = jlayout)
 multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)
+
+# plot heatmap
+library(gplots)
+fits.best.sub <- subset(fits.best, gene %in% genes.liv.wtliv)
+dat.sub <- subset(dat.wtko.hog, gene %in% genes.liv.wtliv)
+dat.sub$experiment <- "array"
+PlotHeatmapNconds(fits.best.sub, dat.sub, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
+
 dev.off()
 
 

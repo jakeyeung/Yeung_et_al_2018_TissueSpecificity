@@ -860,7 +860,8 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
   
   jmodel <- as.character(fits.best.sub$model[[1]])
   
-  dat.sub <- subset(dat.long, gene %in% genes & experiment == jexperiment & !tissue %in% filt.tiss)
+  # dat.sub <- subset(dat.long, gene %in% genes & experiment == jexperiment & !tissue %in% filt.tiss)
+  dat.sub <- dat.long
   
   # center and scale
   dat.sub <- dat.sub %>%

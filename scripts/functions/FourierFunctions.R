@@ -3,18 +3,20 @@
 # functions related to Mr. Fourier
 
 
-NGenesByAmp.long <- function(amps.long, amp.thres, labelid="tissue", varid="amp"){
+NGenesByAmp.long <- function(amps.long, amp.thres, labelid="tissue", varid="amp", outlabel = "tissue"){
   tiss <- amps.long[[labelid]][[1]]
-  return(NGenesByAmp(amps.long[[varid]], amp.thres, tiss))
+  return(NGenesByAmp(amps.long[[varid]], amp.thres, tiss, outlabel))
 }
 
-NGenesByAmp <- function(amps, amp.thres, tiss=""){
+NGenesByAmp <- function(amps, amp.thres, lab="", outlabel="tissue"){
   n.genes <- rep(length(amp.thres), times = length(amp.thres)) 
   for (i in seq(amp.thres)){
     amp.t <- amp.thres[i]
     n.genes[i] <- length(which(amps > amp.t))
   }
-  return(data.frame(amp.thres = amp.thres, n.genes = n.genes, tissue = tiss))
+  out.dat <- data.frame(amp.thres = amp.thres, n.genes = n.genes)
+  out.dat[[outlabel]] <- lab
+  return(out.dat)
 }
 
 FracVarByGeneList <- function(dat.var.s, dat.var.filt, dat.complex.all_T, genes.sub, period.for.sort = 24, jlab = NULL){
