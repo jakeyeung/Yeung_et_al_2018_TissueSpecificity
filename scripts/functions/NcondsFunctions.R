@@ -762,10 +762,10 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
     criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
     weight <- exp(-0.5 * criterion)
     weight.raw <- criterion
-  } else if (get.criterion == "BF"){
-    criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
-    weight <- exp(-0.5 * criterion)
-    weight.raw <- criterion
+  } else if (get.criterion == "AIC"){
+    #TODO
+    warning("AIC no yet implemented.")
+  } else {
     rsquared <- GetRSquaredFromFits(dat.gene$exprs, fit$residuals)
     #     # sanity check
     #         rsquared.check <- summary(lm(dat.gene$exprs ~ mat))$r.squared
@@ -773,17 +773,14 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
     #         print(paste("RSquared real: ", rsquared))
     N <- length(dat.gene$exprs)
     p <- length(fit$coefficients)
-    bf <- GetBayesFactor(N, p, rsquared)
-    
-    return(list(fit = fit$coefficients, weight = weight, weight.raw = bf))
-  } else {
-    warning("Model selection methods other than BIC not implemented")
-    weight <- NA
+    bf <- GetBayesFactor(N, p, rsquared, method = get.criterion, plot.integrand = FALSE)
+    weight <- bf
+    weight.raw <- -2 * log(bf)
   }
   if (condensed){
-    return(list(fit = fit$coefficients, weight = weight, weight.raw = weight.raw))
+    return(list(fit = fit$coefficients, weight = weight, weight.raw = weight.raw, method = get.criterion))
   } else {
-    return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
+    return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight, method = get.criterion))
   }
 }
 
@@ -800,12 +797,17 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
   # hyperg = "hyper-g priors"
   # zf_laplace = "Zellner-Siow priors approximated with Laplace"
   # hyperg_laplace = "hyper g approximated with Laplace
-  
-  rscale <- 1
+  # eb = "Empirical Bayes" use mode of g 
   
   if (method == "zf"){
     # get Marginal Likelihood of the model
     bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
+    if (bf[[4]] == "OK"){
+      bf <- bf[[1]]
+    } else {
+      warning(paste("Integration returned non-OK message", bf[[4]]))
+      bf <- bf[[1]]
+    }
   } else if (method == "zf_laplace"){
     warning("zf_laplace still buggy")
     # Approximate Marginal Likelihood of the model
@@ -815,6 +817,9 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
   } else if (method == "hyperg"){
     a <- 3  # 2 to 4 is OK. 3 is recommended by Liang et al 2008
     bf <- ((a - 2) / (p + a - 2)) * Re(hypergeo::hypergeo(A = (N - 1 / 2), B = 1, C = (p + a) / 2, z = rsquared))
+  } else if (method == "eb"){
+    g.mode <- ModeG(N, p, rsquared)
+    bf <- ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
   }
   if (plot.integrand){
     par(mar = c(5,5,2,5))
@@ -829,7 +834,6 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
       mtext(side = 4, line = 3, 'd2h')
     }
   }
-  # print(bf)
   # print(paste("BF:", format(bf, scientific = TRUE)))
   return(bf)
 }
