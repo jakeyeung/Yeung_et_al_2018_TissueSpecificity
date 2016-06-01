@@ -762,6 +762,20 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
     criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
     weight <- exp(-0.5 * criterion)
     weight.raw <- criterion
+  } else if (get.criterion == "BF"){
+    criterion <- BICFromLmFit(fit$coefficients, fit$residuals)
+    weight <- exp(-0.5 * criterion)
+    weight.raw <- criterion
+    rsquared <- GetRSquaredFromFits(dat.gene$exprs, fit$residuals)
+    #     # sanity check
+    #         rsquared.check <- summary(lm(dat.gene$exprs ~ mat))$r.squared
+    #         print(paste("RSquared calculated: ", rsquared))
+    #         print(paste("RSquared real: ", rsquared))
+    N <- length(dat.gene$exprs)
+    p <- length(fit$coefficients)
+    bf <- GetBayesFactor(N, p, rsquared)
+    
+    return(list(fit = fit$coefficients, weight = weight, weight.raw = bf))
   } else {
     warning("Model selection methods other than BIC not implemented")
     weight <- NA
@@ -771,6 +785,145 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
   } else {
     return(list(fit = fit$coefficients, residuals = fit$residuals, weight = weight))
   }
+}
+
+GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
+  # Bayes Factor a la Liang et al 2008 mixture of g priors
+  # http://www.tandfonline.com/doi/abs/10.1080/00273171.2012.734737
+  # http://amstat.tandfonline.com/doi/abs/10.1198/016214507000001337#.V017rTdWeMM  
+  # 
+  # Taken from Richard Morey Bayes Factor package
+  # github code: https://github.com/richarddmorey/BayesFactor/blob/a90b5929a8f44de1ef853b49de1d49b3c8095285/pkg/BayesFactor/R/regressionBF-utility.R
+  #
+  # Methods:
+  # zf = "Zellner-Siow priors"
+  # hyperg = "hyper-g priors"
+  # zf_laplace = "Zellner-Siow priors approximated with Laplace"
+  # hyperg_laplace = "hyper g approximated with Laplace
+  
+  rscale <- 1
+  
+  if (method == "zf"){
+    # get Marginal Likelihood of the model
+    bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
+  } else if (method == "zf_laplace"){
+    warning("zf_laplace still buggy")
+    # Approximate Marginal Likelihood of the model
+    approx <- LaplaceApprox(N, p, rsquared)
+    print(paste("mode:", approx$g.mode))
+    bf <- approx$bf
+  } else if (method == "hyperg"){
+    a <- 3  # 2 to 4 is OK. 3 is recommended by Liang et al 2008
+    bf <- ((a - 2) / (p + a - 2)) * Re(hypergeo::hypergeo(A = (N - 1 / 2), B = 1, C = (p + a) / 2, z = rsquared))
+  }
+  if (plot.integrand){
+    par(mar = c(5,5,2,5))
+    g <- seq(0, 1000)
+    cat(paste("N:", N, "\np:", p, "\nR2:", rsquared, "\n"))
+    plot(g, ModelLikelihood(g, N = N, p = p, R2 = rsquared), type = "l", main = paste("N:", N, "\np:", p, "\nR2:", rsquared, "\n"))
+    if (method == "zf_laplace"){
+      abline(v = approx$g.mode, lty = 3)
+      par(new = T)
+      plot(g, SecondDerivG(g, N, p, rsquared), type = "l", lty = 2, axes=F, xlab=NA, ylab=NA)
+      axis(side = 4)
+      mtext(side = 4, line = 3, 'd2h')
+    }
+  }
+  # print(bf)
+  # print(paste("BF:", format(bf, scientific = TRUE)))
+  return(bf)
+}
+
+LaplaceApprox <- function(N, p, R2){
+  # Approximate the marginal likelihood using LaPlace
+  # Appendix A of Liang et al 2008
+  # 
+  ## Compute second derivative
+  g.mode <- ModeG(N, p, R2)
+  d2h <- SecondDerivG(g.mode, N, p, R2)  # Equation A.2
+  print(paste("d2h:", d2h))
+  sig <- (-1 * d2h) ^ -0.5
+  print(paste("sig:", sig))
+  bf <- sqrt(2 * pi)* sig * ModelLikelihood(g.mode, N, p, R2, .log = TRUE, log.const = 0, return.log = TRUE)  # Equation A.1
+  return(list(bf = bf, g.mode = g.mode))
+}
+
+ModeG <- function(N, p, R2){
+  # approximate with Laplace integral
+  ### Compute approximation to posterior mode of g
+  ### Liang et al Eq. A.3, assuming a=b=0
+  g3 = -(1 - R2) * (p + 3) #* g^3 
+  g2 = (N - p - 4 - 2 * (1 - R2)) #* g^2
+  g1 = (N * (2 - R2) - 3) #*g
+  g0 = N
+  sol = polyroot(c(g0, g1, g2, g3))  # solutions to cubic equation
+  ## Pick the real solution
+  g.mode = Re(sol[which.min(Im(sol)^2)])
+}
+
+SecondDerivG <- function(g, N, p, R2, a = 0, b = 0, verbose=FALSE){
+  # Liang et al Eq. A. 3
+  t1 <- (N - 1) * (1 - R2) ^ 2 / (1 + (g * (1 - R2))) ^ 2
+  t2 <- -1 * (N - p - 1) / ((1 + g) ^ 2)
+  t3 <- (3 - 2 * a) / (g ^ 2)
+  t4 <- -1 * (2 * N / g ^ 3)
+  d2h <- 0.5 * (t1 + t2 + t3 + t4)
+  if (verbose){
+    cat(paste("t1: ", t1, "\nt2", t2, "\nt3", t3, "\nt4", t4, "\n"))
+  }
+#   d2h <- 0.5 * ( 
+#     (((N - 1)*(1 - R2)) / ((1 + g * (1 - R2)) ^ 2)) - 
+#     ((N - p - 1) / ((1 + g) ^ 2)) + 
+#     ((3 - 2 * a) / (g ^ 2)) - 
+#     ((2 * N) / (g ^ 3))
+#     )
+  return(d2h)
+}
+
+ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = FALSE, method = "zf"){
+  if (!.log){
+    L <- (((1 + g) ^ ((N - p - 1) / 2)) * (1 + (1 - R2) * g) ^ -((N - 1) / 2)) * PriorG(N, g, .log = FALSE, method = "zf")
+  } else {
+    L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
+    # exponentiate at the end
+    if (!return.log){
+      L <- exp(L)
+    }
+  }
+  return(L)
+}
+
+PriorG <- function(N, g, .log=FALSE, method = "zf"){
+  # Evaluate prior distribution of g
+  # uses Inv-Gamma(1/2, N/2)
+  if (method == "zf"){
+    shape <- 1/2
+    scale <- N/2  # differs from BayesFactor implementation
+    prior.g <- InvGamma(g, shape, scale, .log = .log)
+    # prior.g <- MCMCpack::dinvgamma(g, shape, scale)
+  } else if (method == "hg"){
+    a <- 3  # range from 2 to 4 is reasonable. Equation 16 of Liang et al 2008
+    prior.g <- (a - 2)
+  } else {
+    warning("Unknown method")
+  }
+  return(prior.g)
+}
+
+InvGamma <- function(g, shape, scale, .log=FALSE){
+  const <- ((scale ^ shape) / gamma(shape))
+  if (!.log){
+    d <- const * g ^ (-shape - 1) * exp(-scale / g)
+  } else {
+    d <- log(const) + (-shape - 1) * log(g) + (-scale / g)
+  }
+  return(d)
+}
+
+GetRSquaredFromFits <- function(y, residuals){
+  TSS <- sum((y - mean(y)) ^ 2)
+  RSS <- sum(residuals^2)
+  return(1 - (RSS / TSS))
 }
 
 GetSelectionCriterion <- function(fits, model.selection = "BIC"){
