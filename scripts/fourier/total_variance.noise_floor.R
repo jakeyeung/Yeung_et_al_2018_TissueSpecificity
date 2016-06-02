@@ -12,36 +12,7 @@ load("Robjs/dat.var.filt.fixed.Robj", v=T)
 
 # Functions ---------------------------------------------------------------
 
-NGenesByAmp.long <- function(amps.long, amp.thres){
-  tiss <- amps.long$tissue[[1]]
-  return(NGenesByAmp(amps.long$amp, amp.thres, tiss))
-}
-
-NGenesByAmp <- function(amps, amp.thres, tiss=""){
-  n.genes <- rep(length(amp.thres), times = length(amp.thres)) 
-  for (i in seq(amp.thres)){
-    amp.t <- amp.thres[i]
-    n.genes[i] <- length(which(amps > amp.t))
-  }
-  return(data.frame(amp.thres = amp.thres, n.genes = n.genes, tissue = tiss))
-}
-
-FracVarByGeneList <- function(dat.var.s, dat.var.filt, dat.complex.all_T, genes.sub, period.for.sort = 24, jlab = NULL){
-  total.var.24.12 <- hash(paste(as.character(subset(dat.var.s, period %in% c(12, 24))$tissue), subset(dat.var.s, period %in% c(12, 24))$period, sep = ";"), subset(dat.var.s, period %in% c(12, 24))$sum_sqr_mod)
-  dat.var.filt.sub <- subset(dat.var.filt, gene %in% genes.sub)
-  dat.complex.all_T.sub <- subset(dat.complex.all_T, gene %in% genes.sub & period %in% c(24, 12)) %>%
-    group_by(tissue, period) %>%
-    summarise(var.sub = sum(Mod(exprs.transformed) ^ 2) * 2)
-  dat.complex.all_T.sub$var.temp.total <- sapply(paste(as.character(dat.complex.all_T.sub$tissue), dat.complex.all_T.sub$period, sep = ";"), function(tiss) total.var.24.12[[tiss]])
-  dat.complex.all_T.sub$var.norm <- dat.complex.all_T.sub$var.sub / dat.complex.all_T.sub$var.temp.total
-  if (is.numeric(period.for.sort)){
-    dat.sub <- subset(dat.complex.all_T.sub, period == period.for.sort)
-    dat.complex.all_T.sub$tissue <- factor(dat.complex.all_T.sub$tissue, levels = dat.sub$tissue[order(dat.sub$var.norm, decreasing = TRUE)])
-  }
-  # add label
-  if (!is.null(jlab)) dat.complex.all_T.sub$label <- jlab
-  return(dat.complex.all_T.sub)
-}
+source("scripts/functions/FourierFunctions.R")
 
 # MAIN --------------------------------------------------------------------
 
