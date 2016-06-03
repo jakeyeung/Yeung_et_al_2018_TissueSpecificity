@@ -79,7 +79,7 @@ dat.fit.periods.sub$tissue <- factor(dat.fit.periods.sub$tissue, levels = tissue
 xscale_periods <- seq(6, 30, 2)
 plot.periods.all <- ggplot(subset(dat.fit.periods.sub), aes(x = period)) + geom_histogram(binwidth = diff(range(dat.fit.periods.sub$period))/55) + geom_vline(xintercept=24, linetype="dotted") + 
   scale_x_continuous(breaks=xscale_periods) + 
-  xlab("Period with best fit (h)") + ylab("Number of genes") +
+  xlab("Period with best fit [h]") + ylab("Number of genes") +
   theme_bw(24) + theme(aspect.ratio=1,
                        panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
@@ -101,12 +101,7 @@ plot.periods.bytiss <- ggplot(subset(dat.fit.periods.sub), aes(x = period)) + ge
                        axis.line = element_line(colour = "black"),
                        axis.text.x=element_text(size=11))
 
-
-
-
-
 ### BEGIN FOURIER ANALYSIS ###
-
 load("Robjs/dat.complex.all_T.rbinded.Robj", verbose=T)
 
 if (remove.wfat){
@@ -159,28 +154,44 @@ dat.var.s$tissue <- factor(dat.var.s$tissue,
 dat.var.s$tissue <- factor(dat.var.s$tissue,
                            levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$sum_sqr_mod, decreasing = TRUE)])
 cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
-plot.spectral.power <- ggplot(subset(dat.var.s, period.factor.cond != "Other"), aes(x = tissue, y = sum_sqr_mod, fill = period.factor.cond)) + 
-  geom_bar(stat="identity", position=position_dodge(), colour="black") +
+barwidth=0.7
+plot.spectral.power <- ggplot() + 
+  geom_bar(data=subset(dat.var.s, period.factor.cond != "Other"), mapping=aes(x = tissue, y = sum_sqr_mod, fill = period.factor.cond),
+           stat="identity", position=position_dodge(), colour="black", width = barwidth) +
   theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1), 
                        panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
                        panel.background = element_blank(), 
                        axis.line = element_line(colour = "black"),
-                       legend.position="bottom") + xlab("") + ylab("Spectral power") +
-  scale_fill_manual(name = "Fourier component", drop=TRUE, values=cbPalette)
+                       aspect.ratio = 0.5, 
+                       legend.position="bottom") + xlab("") + ylab("Spectral power [(log2-FC)^2]") +
+  scale_fill_manual(name = "Period [h]", drop=TRUE, values=cbPalette)
 # add noise floor
 periods <- sort(unique(dat.var.s$period))
 noise.components <- periods[which(24 %% periods != 0)]
 
+# mean for all tissues
 dat.var.s.noisefloor <- subset(dat.var.s, period %in% noise.components) %>%
   group_by(period.factor) %>%
   summarise(sum_sqr_mod.mean = mean(sum_sqr_mod), 
             sum_sqr_mod.var = var(sum_sqr_mod), 
             sum_sqr_mod.min = min(sum_sqr_mod), 
             sum_sqr_mod.max = max(sum_sqr_mod))
+# tissue by tissue
+dat.var.s.noisefloor.bytiss <- subset(dat.var.s, period %in% noise.components) %>%
+  group_by(tissue) %>%
+  summarise(sum_sqr_mod.mean = mean(sum_sqr_mod))
+lstart <- 0.65
+dat.var.s.noisefloor.bytiss$start <- seq(lstart, by = 1, length.out = nrow(dat.var.s.noisefloor.bytiss))
+dat.var.s.noisefloor.bytiss$end <- seq(lstart + barwidth, by = 1, length.out = nrow(dat.var.s.noisefloor.bytiss))
 
+# add noise floor that is tissuewide
 noise.floor <- mean(dat.var.s.noisefloor$sum_sqr_mod.mean)
-plot.spectral.power <- plot.spectral.power + geom_hline(aes(yintercept = noise.floor), linetype="dotted")
+plot.spectral.power.noiseflr <- plot.spectral.power + geom_hline(aes(yintercept = noise.floor), linetype="dotted")
+
+# add tissue-specific noise floor
+plot.spectral.power.noiseflr.bytiss <- plot.spectral.power + geom_segment(data = dat.var.s.noisefloor.bytiss, mapping=aes(x=start, xend=end, y=sum_sqr_mod.mean, yend=sum_sqr_mod.mean), linetype = "dotted")
+
 
 # plot normalized spectral power
 dat.var.s1_adj$tissue <- factor(dat.var.s1_adj$tissue,
@@ -193,7 +204,7 @@ plot.normalized.spectral.power <- ggplot(dat.var.s1_adj, aes(x = period.factor, 
                        axis.line = element_line(colour = "black"),
                        legend.position="bottom") +
   facet_wrap(~tissue) +
-  xlab("Fourier component (h)") + ylab("Normalized spectral power")
+  xlab("Period [h]") + ylab("Normalized spectral power")
 
 ### END FOURIER ANALYSIS ###
 
@@ -242,7 +253,7 @@ ngenes.sum <- dat.fit.ngenes.thres %>%
 dat.fit.ngenes.thres$tissue <- factor(as.character(dat.fit.ngenes.thres$tissue), levels = ngenes.sum$tissue)
 plot.genomewide.amps <- ggplot(subset(dat.fit.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + geom_line(size = 2.5) + 
   theme_bw(24) +
-  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  theme(aspect.ratio=0.5, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "bottom") +
   xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 7)) + 
   scale_y_log10(breaks = c(10, 100, 1000)) + 
   geom_vline(xintercept = 2, linetype = "dotted") + 
@@ -255,7 +266,8 @@ pdf(file.path(outdir, paste0(plot.i, ".overview_of_dataset.pdf")))
 plot.i <- plot.i + 1
 print(plot.periods.all)
 print(plot.periods.bytiss)
-print(plot.spectral.power)
+print(plot.spectral.power.noiseflr)
+print(plot.spectral.power.noiseflr.bytiss)
 print(plot.normalized.spectral.power)
 print(plot.genomewide.amps)
 dev.off()
@@ -264,7 +276,6 @@ dev.off()
 # Nconds Summary ----------------------------------------------------------
 
 ### BEGIN AMPS OF MODULES ###
-
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
 
 fits.rhyth <- subset(fits.best, n.params > 0)
