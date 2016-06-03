@@ -541,11 +541,11 @@ multiplot(eigens.tw$v.plot, eigens.tw$u.plot + xlim(0, 2), layout = jlayout)
 multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)
 
 # plot heatmap
-library(gplots)
-fits.best.sub <- subset(fits.best, gene %in% genes.liv.wtliv)
-dat.sub <- subset(dat.wtko.hog, gene %in% genes.liv.wtliv)
-dat.sub$experiment <- "array"
-PlotHeatmapNconds(fits.best.sub, dat.sub, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
+# library(gplots)
+# fits.best.sub <- subset(fits.best, gene %in% genes.liv.wtliv)
+# dat.sub <- subset(dat.wtko.hog, gene %in% genes.liv.wtliv)
+# dat.sub$experiment <- "array"
+# PlotHeatmapNconds(fits.best.sub, dat.sub, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 
 dev.off()
 

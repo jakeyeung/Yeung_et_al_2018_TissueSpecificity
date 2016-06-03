@@ -4,19 +4,27 @@
 
 rm(list=ls())
 
+library(ggplot2)
+library(dplyr)
+
 remove.wfat <- TRUE
-
-load("Robjs/dat.var.filt.fixed.Robj", v=T)
-
-
 
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/FourierFunctions.R")
 
+
+# Load --------------------------------------------------------------------
+
+
+
+load("Robjs/dat.var.filt.fixed.Robj", v=T)
+
+
+
+
+
 # MAIN --------------------------------------------------------------------
-
-
 
 # order factors
 dat.var.filt.bytiss <- dat.var.filt %>%
@@ -34,7 +42,6 @@ dat.var.filt.sort <- dat.var.filt %>%
 ggplot(subset(dat.var.filt.sort, tissue != "WFAT"), aes(y = var.temp.cum.norm, x = var.temp.i)) + geom_line() + facet_wrap(~tissue) + 
   theme_bw() + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
   ylab("Cumulant of temporal variance (normalized by total variance)") + xlab("Gene index") + ggtitle("Contribution of temporal variance for each gene")
-
 
 
 # Figure 1B Temporal variation using Fourier analysis ------------------
@@ -202,6 +209,7 @@ load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 source("scripts/functions/PlotGeneAcrossTissues.R", v=T)
 
 if (remove.wfat){
+  dat.long <- subset(dat.long, tissue != "WFAT")
   dat.fit.24 <- subset(dat.fit.24, tissue != "WFAT")
   dat.fit.12 <- subset(dat.fit.12, tissue != "WFAT")
 }
@@ -300,7 +308,5 @@ eigens.res <- GetEigens(s.res, period = 24, comp = 3, label.n = 15, eigenval = T
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.res$u.plot, eigens.res$v.plot, layout = jlayout)  
 
-
-# Summarize pairs ---------------------------------------------------------
 
 
