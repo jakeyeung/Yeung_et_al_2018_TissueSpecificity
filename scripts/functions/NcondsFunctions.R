@@ -1126,7 +1126,12 @@ GetRhythmicFormula <- function(exprs, time, intercepts, w = 2 * pi / 24, with.in
 }
 
 GetFlatModel <- function(dat.gene){
-  des.mat.flat <- model.matrix(exprs ~ 0 + tissue + tissue:experiment, dat.gene)
+  des.mat.flat <- tryCatch({
+    model.matrix(exprs ~ 0 + tissue + tissue:experiment, dat.gene)
+  }, error = function(e) {
+    # error, try without experiment
+    model.matrix(exprs ~ 0 + tissue, dat.gene)
+  })
 }
 
 GetRhythModel <- function(dat.gene, w = 2 * pi / 24){
