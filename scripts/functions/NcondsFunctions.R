@@ -820,6 +820,8 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
   } else if (method == "eb"){
     g.mode <- ModeG(N, p, rsquared)
     bf <- ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
+  } else {
+    stop(paste0("Unknown method specified: ", method))
   }
   if (plot.integrand){
     par(mar = c(5,5,2,5))
