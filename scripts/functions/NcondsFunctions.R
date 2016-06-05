@@ -801,7 +801,30 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
   
   if (method == "zf"){
     # get Marginal Likelihood of the model
-    bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
+    debug <- TRUE
+    if (debug){
+      gvec <- seq(0, 500000, length.out = 1000)
+      print(paste("N:", N))
+      print(paste("p:", p))
+      print(paste("R2:", rsquared))
+      bf.real <- exp(linearReg.R2stat(N=N, p=p, R2=rsquared, rscale = 1)[['bf']])
+      plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l", main="g vs integrand")
+      gvec.log <- seq(-1000, 1000, length.out = 1000)
+      plot(gvec.log, ModelLikelihood2(gvec.log, N=N, p=p, R2=rsquared), type = "l", main="log(g) vs transformed integrand")
+      # test my modellikelihood
+      g.mode <- ModeG(N, p, rsquared)
+      bf.old <- ModelLikelihood(g.mode, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
+      bf.bylog <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared)
+      print(paste("BF old:", bf.old[[1]]))
+      print(paste("BF real:", bf.real))
+      print(paste("BF by log:", bf.bylog[[1]]))
+    }
+    # bf <- integrate(ModelLikelihood, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
+    # bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
+    bf <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared)
+    if (debug){
+      print(paste("BF diff", abs(bf[[1]] - bf.real) / bf.real))
+    }
     if (bf[[4]] == "OK"){
       bf <- bf[[1]]
     } else {
@@ -818,6 +841,14 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
     a <- 3  # 2 to 4 is OK. 3 is recommended by Liang et al 2008
     bf <- ((a - 2) / (p + a - 2)) * Re(hypergeo::hypergeo(A = (N - 1 / 2), B = 1, C = (p + a) / 2, z = rsquared))
   } else if (method == "eb"){
+    debug <- TRUE
+    if (debug){
+      g.mode <- ModeG(N, p, rsquared)
+      print(g.mode)
+      gvec <- seq(0, 50000, length.out = 1000)
+      plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l")
+      abline(v = g.mode)
+    }
     g.mode <- ModeG(N, p, rsquared)
     bf <- ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
   } else {
@@ -886,10 +917,27 @@ SecondDerivG <- function(g, N, p, R2, a = 0, b = 0, verbose=FALSE){
   return(d2h)
 }
 
+log1pExp <- function(x){
+  return(log(1 + x))
+}
+
 ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = FALSE, method = "zf"){
   if (!.log){
     L <- (((1 + g) ^ ((N - p - 1) / 2)) * (1 + (1 - R2) * g) ^ -((N - 1) / 2)) * PriorG(N, g, .log = FALSE, method = "zf")
   } else {
+    debug <- FALSE
+    if (debug){
+      # print((N - p -1) * log1pExp(g))
+      # print(g + log(1 - R2))
+      # print(.5 * ((N - p - 1 ) * log1pExp(g) - (N - 1) * log1pExp(g + log(1 - R2))))
+      # a2 <- .5 * ((N - p - 1 ) * log1pExp(g) - (N - 1) * log1pExp(g + log(1 - R2)))  
+      # a1 <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g)
+      a2 <- (- (N - 1)/2 * log1pExp(g + log(1 - R2)))
+      a1 <-  (-(N - 1) / 2) * log(1 + (1 - R2) * g)
+      print(paste("a from jake:", a1))
+      print(paste("a from morey", a2))
+      print(paste("a from jake + correction", a1 + log(g)))
+    }
     L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
     # exponentiate at the end
     if (!return.log){
@@ -899,13 +947,38 @@ ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = F
   return(L)
 }
 
-PriorG <- function(N, g, .log=FALSE, method = "zf"){
+log1pExp <- Vectorize(function(x){
+  # return log(1 + exp(x)), preventing Infs
+  if (x > -log(.Machine$double.eps)){
+    # log(1 + exp(x)) == x, x too large for computer
+    return(x)
+  } else{
+    return(log(1 + exp(x)))
+  }
+}, "x")
+
+ModelLikelihood2 <- function(tau, N, p, R2, shift=0){
+  # integrate from -Inf to Inf, function of log(g)
+  tau <- tau + shift
+  
+  a <- ((N - 1 - p) / 2) * log1pExp(tau) +  # log1pExp works when tau is large
+    ((-N - 1) / 2) * log1pExp(tau + log(1 - R2))  # log1pExp(tau + log(1 - R2)) == log(1 + (1 - R2) * exp(tau))
+  # a <- .5 * ((N - p - 1 ) * log1pExp(g) - (N - 1) * log1pExp(g + log(1 - R2)))
+  L <- a + PriorG(N, tau, .log=TRUE, .logx = TRUE, method="zf") + tau
+  return(exp(L))
+}
+
+PriorG <- function(N, g, .log=TRUE, .logx=FALSE, method = "zf"){
   # Evaluate prior distribution of g
   # uses Inv-Gamma(1/2, N/2)
   if (method == "zf"){
     shape <- 1/2
     scale <- N/2  # differs from BayesFactor implementation
-    prior.g <- InvGamma(g, shape, scale, .log = .log)
+    if (!.logx){
+      prior.g <- InvGamma(g, shape, scale, .log = TRUE, .logx=.logx)
+    } else {
+      prior.g <- InvGamma(g, shape, scale, .log = TRUE, .logx=.logx)
+    }
     # prior.g <- MCMCpack::dinvgamma(g, shape, scale)
   } else if (method == "hg"){
     a <- 3  # range from 2 to 4 is reasonable. Equation 16 of Liang et al 2008
@@ -916,12 +989,18 @@ PriorG <- function(N, g, .log=FALSE, method = "zf"){
   return(prior.g)
 }
 
-InvGamma <- function(g, shape, scale, .log=FALSE){
+InvGamma <- function(g, shape, scale, .log=FALSE, .logx=FALSE){
   const <- ((scale ^ shape) / gamma(shape))
   if (!.log){
+    if (.logx) warning("Log x not coded for when .log=FALSE")
     d <- const * g ^ (-shape - 1) * exp(-scale / g)
   } else {
-    d <- log(const) + (-shape - 1) * log(g) + (-scale / g)
+    if (!.logx){
+      d <- log(const) + (-shape - 1) * log(g) + (-scale / g)
+    } else {
+      # g is exp(tau)
+      d <- log(const) + (-shape - 1) * g + (-scale * exp(-g))
+    }
   }
   return(d)
 }

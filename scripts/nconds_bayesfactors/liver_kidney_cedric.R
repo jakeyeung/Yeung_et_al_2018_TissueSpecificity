@@ -13,6 +13,7 @@ source("scripts/functions/Queue.R")
 source("scripts/functions/ListFunctions.R")
 source("scripts/functions/MemoryManagement.R")
 source("scripts/functions/EnvironmentsFunctions.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
 
 TissueFromCname <- function(cname){
   # "X0_1 -> Kidney"
@@ -61,9 +62,62 @@ dat <- data.frame(gene = dat.mat$name,
 dat.env <- DatLongToEnvironment(dat)
 
 
-# Run bayes factors -------------------------------------------------------
+# Plot genes --------------------------------------------------------------
 
-gene <- "Slc44a1"
-test <- MakeDesMatRunFitEnv(dat.env, gene, as.character(unique(dat$tissue)), 
-                            n.rhyth.max = 2, w = 2 * pi / 24, criterion = "eb", normalize.weights = TRUE, cutoff = 1e-5, top.n = NULL, sparse = FALSE)
+PlotGeneAcrossTissues(subset(dat, gene == "Lrriq3"))
+
+
+# Run bayes factors -------------------------------------------------------
+tissues <- as.character(unique(dat$tissue))
+
+# test
+jgene <- "Slc44a1"
+jgene <- "Lrriq3"
+jgene <- "Cdc20"
+jgene <- ls(dat.env)[[10000]]
+jgene <- "Ppp3ca"
+jgene <- "Slc44a1"
+jgene <- "Alb"
+test <- MakeDesMatRunFitEnv(dat.env, jgene, tissues, 
+                            n.rhyth.max = 2, w = 2 * pi / 24, criterion = "zf", normalize.weights = TRUE, cutoff = 1e-5, top.n = NULL, sparse = FALSE)
+PlotGeneAcrossTissues(subset(dat, gene == jgene))
+
+library(BayesFactor)
+exp(linearReg.R2stat(N=48, p=2, R2=0.999199925619844, rscale = 0.353553390593274)[['bf']])
+exp(linearReg.R2stat(N=48, p=2, R2=0.999199925619844, rscale = 1)[['bf']])
+
+
+# do for real
+start <- Sys.time()
+# Rprof()
+
+# genes <- c("Lrriq3", "Cdc20")
+fits.all <- lapply(ls(dat.env), function(gene){
+  print(gene)
+  # fits.all <- mclapply(genes, function(gene){
+  MakeDesMatRunFitEnv(dat.env, gene, tissues, 
+                      n.rhyth.max = 2, w = 2 * pi / 24, 
+                      criterion = "zf", normalize.weights = TRUE, 
+                      cutoff = 1e-5, top.n = NULL, sparse = FALSE)
+})
+print(Sys.time() - start)
+
+
+# genes <- c("Lrriq3", "Cdc20")
+fits.all <- mclapply(ls(dat.env), function(gene){
+# fits.all <- mclapply(genes, function(gene){
+  MakeDesMatRunFitEnv(dat.env, gene, tissues, 
+                      n.rhyth.max = 2, w = 2 * pi / 24, 
+                      criterion = "zf", normalize.weights = TRUE, 
+                      cutoff = 1e-5, top.n = NULL, sparse = FALSE)
+}, mc.cores = 5)
+print(Sys.time() - start)
+
+fits.all.long <- lapply(fits.all, function(x){
+  gene <- x$gene
+  x$gene <- NULL
+  fits.temp.long <- ListToLong(x, gene, top.n = 5)
+})
+fits.all.long <- do.call(rbind, fits.all.long)
+print(Sys.time() - start)
 
