@@ -164,7 +164,7 @@ plot.spectral.power <- ggplot() +
                        panel.background = element_blank(), 
                        axis.line = element_line(colour = "black"),
                        aspect.ratio = 0.5, 
-                       legend.position="bottom") + xlab("") + ylab("Spectral power [(log2-FC)^2]") +
+                       legend.position="bottom") + xlab("") + ylab("Spectral power [log2]^2") +
   scale_fill_manual(name = "Period [h]", drop=TRUE, values=cbPalette)
 # add noise floor
 periods <- sort(unique(dat.var.s$period))
@@ -196,16 +196,25 @@ plot.spectral.power.noiseflr.bytiss <- plot.spectral.power + geom_segment(data =
 # plot normalized spectral power
 dat.var.s1_adj$tissue <- factor(dat.var.s1_adj$tissue,
                                 levels = dat.var.s1_adj.24$tissue[order(dat.var.s1_adj.24$s1_normalized, decreasing = TRUE)])
-plot.normalized.spectral.power <- ggplot(dat.var.s1_adj, aes(x = period.factor, y = s1_normalized)) +  geom_bar(stat = "identity") + facet_wrap(~tissue) + 
-  theme_bw(24) + theme(axis.text.x=element_text(size=11, angle=90,vjust = 0, hjust = 1), 
+# add tissue-specific noise floor
+dat.var.s1_adj.noisefloor.bytiss <- subset(dat.var.s1_adj, period %in% noise.components) %>%
+  group_by(tissue) %>%
+  summarise(s1_normalized = mean(s1_normalized))
+dat.var.s1_adj.noisefloor.bytiss$start <- seq(lstart, by = 1, length.out = nrow(dat.var.s1_adj.noisefloor.bytiss))
+dat.var.s1_adj.noisefloor.bytiss$end <- seq(lstart + barwidth, by = 1, length.out = nrow(dat.var.s1_adj.noisefloor.bytiss))
+
+plot.normalized.spectral.power <- ggplot() + 
+  geom_bar(data=subset(dat.var.s1_adj, period.factor.cond != "Other"), mapping=aes(x = tissue, y = s1_normalized, fill = period.factor.cond),
+           stat="identity", position=position_dodge(), colour="black", width = barwidth) +
+  theme_bw(24) + theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1), 
                        panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
                        panel.background = element_blank(), 
                        axis.line = element_line(colour = "black"),
-                       legend.position="bottom") +
-  facet_wrap(~tissue) +
-  xlab("Period [h]") + ylab("Normalized spectral power")
-
+                       aspect.ratio = 0.5, 
+                       legend.position="bottom") + xlab("") + ylab("Normalized spectral power") +
+  scale_fill_manual(name = "Period [h]", drop=TRUE, values=cbPalette)
+plot.normalized.spectral.power <- plot.normalized.spectral.power + geom_segment(data = dat.var.s1_adj.noisefloor.bytiss, mapping=aes(x=start, xend=end, y=s1_normalized, yend = s1_normalized), linetype = "dotted")
 ### END FOURIER ANALYSIS ###
 
 ### BEGIN GENOMEWIDE AMP ANALYSIS ###
@@ -309,7 +318,7 @@ plots.nconds.amps <- ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.gen
   geom_line(size = 2) + 
   theme_bw(20) +
   labs(colour = "# Rhythmic\nTissues") + 
-  theme(aspect.ratio=1, 
+  theme(aspect.ratio=0.5, 
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
   xlab("Avg Amplitude of Rhythmic Tissues") + ylab("# Genes") + xlim(c(0.15, 6)) + 
@@ -345,10 +354,10 @@ fits.tspec.sum <- CountModels(subset(fits.best, n.rhyth == 1))
 plots.ts.counts <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(stat = "identity") + 
   xlab("") + 
   ylab("Count") + 
-  theme_bw(24) + 
+  theme_bw(20) + 
   theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1))
 jmods <- c("Liver", "Adr", "BFAT", "Mus")
-plots.phase.histo <- PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% jmods), "Count")
+plots.phase.histo <- PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% jmods), "Count") + theme(strip.text.x = element_text(size = 16))
 
 # tissue-wide
 load("Robjs/dat.complex.fixed_rik_genes.Robj")
@@ -359,7 +368,7 @@ fits.tw <- subset(fits.best, n.rhyth >= 8)
 genes.tw <- as.character(fits.tw$gene)
 
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 2, peak.to.trough = TRUE)
+eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 5, peak.to.trough = TRUE)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 
 ### END SUMMARY OF MODULES
@@ -552,7 +561,5 @@ plot.i <- plot.i + 1
 dev.off()
 
 # Liver 4CSeq -------------------------------------------------------------
-
-
 
 

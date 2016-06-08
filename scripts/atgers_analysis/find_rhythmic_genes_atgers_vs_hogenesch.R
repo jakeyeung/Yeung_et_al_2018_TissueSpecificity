@@ -18,9 +18,6 @@ dat <- read.delim2(inf, header = TRUE, sep = "\t")
 
 load("Robjs/dat.long.fixed_rik_genes.Robj")
 
-
-
-
 # Keep columns with exons -------------------------------------------------
 
 keep.cols <- "*Exon*"

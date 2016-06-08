@@ -1,7 +1,6 @@
 library(ggplot2)
 library(grid)
 
-
 PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle="", facet.rows = 1, jcex=24, pointsize=1){  
   source('~/projects/tissue-specificity/scripts/functions/DataHandlingFunctions.R')
   tissue <- as.character(unique(dat.long$tissue))
