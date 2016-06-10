@@ -508,7 +508,6 @@ MakeDesMatRunFit <- function(dat.gene, gene, tissues, n.rhyth.max, w = 2 * pi / 
     print(n.rhyth.max)
     warning("N rhyth max cannot be less than 2")
   }
-  
   tiss.combos <- GetAllCombos(tissues, ignore.full = FALSE)
   my_mat.queue <- new.queue()
   
@@ -732,6 +731,15 @@ BICFromLmFit <- function(coefficients, residuals){
   return(criterion)
 }
 
+AICFromLmFit <- function(coefficients, residuals){
+  # from vector of coefs and residuals, calculate AIC
+  n <- length(residuals)
+  RSS <- sum(residuals ^ 2)
+  k <- length(coefficients)
+  criterion <- n * log(RSS / n) + 2 * k
+  return(criterion)
+}
+
 FitModels <- function(dat.gene, my_mat, get.criterion = "BIC", normalize.weights = TRUE){
   # Fit many models with lm.fit() which is faster than lm()
   fits <- lapply(my_mat, function(mat) FitModel(dat.gene, mat, get.criterion))
@@ -763,8 +771,9 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
     weight <- exp(-0.5 * criterion)
     weight.raw <- criterion
   } else if (get.criterion == "AIC"){
-    #TODO
-    warning("AIC no yet implemented.")
+    criterion <- AICFromLmFit(fit$coefficients, fit$residuals)
+    weight <- exp(-0.5 * criterion)
+    weight.raw <- criterion
   } else {
     rsquared <- GetRSquaredFromFits(dat.gene$exprs, fit$residuals)
     #     # sanity check
@@ -773,9 +782,14 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
     #         print(paste("RSquared real: ", rsquared))
     N <- length(dat.gene$exprs)
     p <- length(fit$coefficients)
-    bf <- GetBayesFactor(N, p, rsquared, method = get.criterion, plot.integrand = FALSE)
-    weight <- bf
-    weight.raw <- -2 * log(bf)
+    bf <- tryCatch({
+      bf <- GetBayesFactor(N, p, rsquared, method = get.criterion, plot.integrand = FALSE)  # output is log
+    }, error = function(e) {
+      print(e)
+      bf <- NA
+    })
+    weight <- exp(bf)
+    weight.raw <- -bf
   }
   if (condensed){
     return(list(fit = fit$coefficients, weight = weight, weight.raw = weight.raw, method = get.criterion))
@@ -784,7 +798,7 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
   }
 }
 
-GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
+GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=FALSE){
   # Bayes Factor a la Liang et al 2008 mixture of g priors
   # http://www.tandfonline.com/doi/abs/10.1080/00273171.2012.734737
   # http://amstat.tandfonline.com/doi/abs/10.1198/016214507000001337#.V017rTdWeMM  
@@ -805,17 +819,10 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
     if (debug){
       g.mode <- ModeG(N, p, rsquared)
       gvec <- seq(0, 500000, length.out = 1000)
-      # print(paste("N:", N))
-      # print(paste("p:", p))
-      # print(paste("R2:", rsquared))
-      bf.real <- exp(linearReg.R2stat(N=N, p=p, R2=rsquared, rscale = 1)[['bf']])
-      # plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l", main="g vs integrand")
-      # gvec.log <- seq(-50, 50, length.out = 1000)
-      # print(head(gvec.log))
-      # gvec.log.shift <- gvec.log - log(g.mode)
-      # print(head(gvec.log))
-      # plot(gvec.log, ModelLikelihood2(gvec.log, N=N, p=p, R2=rsquared, shift = log(g.mode)), type = "l", main=paste("log(g) vs transformed integrand. Mode:", signif(log(g.mode), digits = 2)))
-      # abline(v = log(g.mode))
+      bf.real <- exp(linearReg.R2stat(N=N, p=p, R2=rsquared, rscale = 1)[['bf']])  # needs BayesFactor package
+      gvec.log <- seq(-50, 50, length.out = 1000)
+      plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log=TRUE, log.const=0, return.log=FALSE), type = "l", main=paste("log(g) vs transformed integrand. Mode:", signif(log(g.mode), digits = 2)))
+      plot(gvec.log, ModelLikelihood2(gvec.log, N=N, p=p, R2=rsquared, shift = log(g.mode)), type = "l", main=paste("log(g) vs transformed integrand. Mode:", signif(log(g.mode), digits = 2)))
       # test my modellikelihood
       bf.old <- ModelLikelihood(g.mode, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
       bf.bylog <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, log.const = 0, shift = log(g.mode))
@@ -824,17 +831,10 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
       print(paste("BF by log:", bf.bylog[[1]]))
     }
     # bf <- integrate(ModelLikelihood, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
-    gmode <- ModeG(N, p, R2 = rsquared)
-    log.const <- ModelLikelihood2(tau = 0, N = N, p = p, R2 = rsquared, shift = log(gmode), return.log=TRUE)
-    
-    bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
-    print(paste("0 to inf:", log(bf[[1]])))
-    bf <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, log.const = log.const, shift = log(gmode))  # shift to centre
-    print(paste("log const:", log.const))
-    print(paste("log bf:", log(bf[[1]])))
-    if (debug){
-      print(paste("BF diff", abs(bf[[1]] - bf.real) / bf.real))
-    }
+    g.mode <- ModeG(N, p, R2 = rsquared)
+    log.const <- ModelLikelihood2(tau = 0, N = N, p = p, R2 = rsquared, shift = log(g.mode), return.log=TRUE)
+    # bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
+    bf <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, log.const = log.const, shift = log(g.mode))  # shift to centre
     if (bf[[4]] == "OK"){
       bf <- log(bf[[1]]) + log.const
     } else {
@@ -849,9 +849,9 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
     bf <- approx$bf
   } else if (method == "hyperg"){
     a <- 3  # 2 to 4 is OK. 3 is recommended by Liang et al 2008
-    bf <- ((a - 2) / (p + a - 2)) * Re(hypergeo::hypergeo(A = (N - 1 / 2), B = 1, C = (p + a) / 2, z = rsquared))
+    bf <- log(((a - 2) / (p + a - 2)) * Re(hypergeo::hypergeo(A = (N - 1 / 2), B = 1, C = (p + a) / 2, z = rsquared)))
   } else if (method == "eb"){
-    debug <- TRUE
+    debug <- FALSE
     if (debug){
       g.mode <- ModeG(N, p, rsquared)
       print(g.mode)
@@ -860,7 +860,7 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
       abline(v = g.mode)
     }
     g.mode <- ModeG(N, p, rsquared)
-    bf <- ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
+    bf <- log(ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE))
   } else {
     stop(paste0("Unknown method specified: ", method))
   }
@@ -877,7 +877,6 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
       mtext(side = 4, line = 3, 'd2h')
     }
   }
-  # print(paste("BF:", format(bf, scientific = TRUE)))
   return(bf)
 }
 
@@ -906,6 +905,10 @@ ModeG <- function(N, p, R2){
   sol = polyroot(c(g0, g1, g2, g3))  # solutions to cubic equation
   ## Pick the real solution
   g.mode = Re(sol[which.min(Im(sol)^2)])
+  if (g.mode <= 0){
+    g.mode <- N / 20  # somewhere close to 0, can't do log of negs
+  }
+  return(g.mode)
 }
 
 SecondDerivG <- function(g, N, p, R2, a = 0, b = 0, verbose=FALSE){
@@ -927,10 +930,6 @@ SecondDerivG <- function(g, N, p, R2, a = 0, b = 0, verbose=FALSE){
   return(d2h)
 }
 
-log1pExp <- function(x){
-  return(log(1 + x))
-}
-
 ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = FALSE, method = "zf"){
   if (!.log){
     L <- (((1 + g) ^ ((N - p - 1) / 2)) * (1 + (1 - R2) * g) ^ -((N - 1) / 2)) * PriorG(N, g, .log = FALSE, method = "zf")
@@ -948,8 +947,9 @@ ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = F
       print(paste("a from morey", a2))
       print(paste("a from jake + correction", a1 + log(g)))
     }
-    # L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
-    L <- (((N - p - 1) / 2) * log1pExp(log(g)) + (-(N - 1) / 2) * log1pExp(log((1 - R2) * g)) + PriorG(N, g, .log = TRUE, method = "zf"))
+    # two lines should be equal
+    # L <- (((N - p - 1) / 2) * log1pExp(log(g)) + (-(N - 1) / 2) * log1pExp(log((1 - R2) * g)) + PriorG(N, g, .log = TRUE, method = "zf"))
+    L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
     # exponentiate at the end
     if (!return.log){
       L <- exp(L)
