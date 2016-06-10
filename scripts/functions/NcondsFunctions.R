@@ -801,7 +801,7 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
   
   if (method == "zf"){
     # get Marginal Likelihood of the model
-    debug <- TRUE
+    debug <- FALSE
     if (debug){
       g.mode <- ModeG(N, p, rsquared)
       gvec <- seq(0, 500000, length.out = 1000)
@@ -818,23 +818,28 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
       # abline(v = log(g.mode))
       # test my modellikelihood
       bf.old <- ModelLikelihood(g.mode, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
-      bf.bylog <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, shift = log(g.mode))
+      bf.bylog <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, log.const = 0, shift = log(g.mode))
       print(paste("BF old:", bf.old[[1]]))
       print(paste("BF real:", bf.real))
       print(paste("BF by log:", bf.bylog[[1]]))
     }
     # bf <- integrate(ModelLikelihood, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
-    # bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
     gmode <- ModeG(N, p, R2 = rsquared)
-    bf <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, shift = log(gmode))  # shift to centre
+    log.const <- ModelLikelihood2(tau = 0, N = N, p = p, R2 = rsquared, shift = log(gmode), return.log=TRUE)
+    
+    bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
+    print(paste("0 to inf:", log(bf[[1]])))
+    bf <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, log.const = log.const, shift = log(gmode))  # shift to centre
+    print(paste("log const:", log.const))
+    print(paste("log bf:", log(bf[[1]])))
     if (debug){
       print(paste("BF diff", abs(bf[[1]] - bf.real) / bf.real))
     }
     if (bf[[4]] == "OK"){
-      bf <- bf[[1]]
+      bf <- log(bf[[1]]) + log.const
     } else {
       warning(paste("Integration returned non-OK message", bf[[4]]))
-      bf <- bf[[1]]
+      bf <- log(bf[[1]])
     }
   } else if (method == "zf_laplace"){
     warning("zf_laplace still buggy")
@@ -943,13 +948,30 @@ ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = F
       print(paste("a from morey", a2))
       print(paste("a from jake + correction", a1 + log(g)))
     }
-    L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
+    # L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
+    L <- (((N - p - 1) / 2) * log1pExp(log(g)) + (-(N - 1) / 2) * log1pExp(log((1 - R2) * g)) + PriorG(N, g, .log = TRUE, method = "zf"))
     # exponentiate at the end
     if (!return.log){
       L <- exp(L)
     }
   }
   return(L)
+}
+
+ModelLikelihood2 <- function(tau, N, p, R2, log.const=0, shift=0, return.log=FALSE){
+  # integrate from -Inf to Inf, function of log(g)
+  # allow shift to move tau where peak is centre
+  tau <- tau + shift
+  a <- ((N - 1 - p) / 2) * log1pExp(tau) +  # log1pExp works when tau is large
+   (-(N - 1) / 2) * log1pExp(tau + log(1 - R2))  # log1pExp(tau + log(1 - R2)) == log(1 + (1 - R2) * exp(tau))
+  # a = .5 * ((N - p - 1 ) * log1pExp(tau) - 
+  #             (N - 1) * log1pExp(tau + log(1 - R2)))
+  L <- a + PriorG(N, tau, .log=TRUE, .logx = TRUE, method="zf") - log.const + tau
+  if (!return.log){
+    return(exp(L))
+  } else {
+    return(L)
+  }
 }
 
 log1pExp <- Vectorize(function(x){
@@ -962,17 +984,7 @@ log1pExp <- Vectorize(function(x){
   }
 }, "x")
 
-ModelLikelihood2 <- function(tau, N, p, R2, shift=0){
-  # integrate from -Inf to Inf, function of log(g)
-  # allow shift to move tau where peak is centre
-  tau <- tau + shift
-  
-  a <- ((N - 1 - p) / 2) * log1pExp(tau) +  # log1pExp works when tau is large
-    ((-N - 1) / 2) * log1pExp(tau + log(1 - R2))  # log1pExp(tau + log(1 - R2)) == log(1 + (1 - R2) * exp(tau))
-  # a <- .5 * ((N - p - 1 ) * log1pExp(g) - (N - 1) * log1pExp(g + log(1 - R2)))
-  L <- a + PriorG(N, tau, .log=TRUE, .logx = TRUE, method="zf") + tau
-  return(exp(L))
-}
+
 
 PriorG <- function(N, g, .log=TRUE, .logx=FALSE, method = "zf"){
   # Evaluate prior distribution of g
@@ -1004,7 +1016,7 @@ InvGamma <- function(g, shape, scale, .log=FALSE, .logx=FALSE){
     if (!.logx){
       d <- log(const) + (-shape - 1) * log(g) + (-scale / g)
     } else {
-      # g is exp(tau)
+      # g is tau
       d <- log(const) + (-shape - 1) * g + (-scale * exp(-g))
     }
   }

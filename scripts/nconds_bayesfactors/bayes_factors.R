@@ -35,11 +35,15 @@ test <- MakeDesMatRunFitEnv(dat.env, gene, as.character(unique(dat.sub$tissue)),
 # check
 N <- 64
 p <- 8
-R2 <- 0.89170133186249
+# R2 <- 0.89170133186249
+R2 <- 0.70133186249
+R2 <- 0.10133186249
 
 library(BayesFactor)
-exp(linearReg.R2stat(N=64, p=8, R2=0.89170133186249, rscale = 0.353553390593274)[['bf']])
-exp(linearReg.R2stat(N=64, p=8, R2=0.89170133186249, rscale = 1)[['bf']])
-GetBayesFactor(N, p, R2, method = "zf", plot.integrand = FALSE)
+# exp(linearReg.R2stat(N=64, p=8, R2=0.89170133186249, rscale = 0.353553390593274)[['bf']])
+b1 <- linearReg.R2stat(N=64, p=8, R2=R2, rscale = 1)[['bf']]
+b2 <- GetBayesFactor(N, p, R2, method = "zf", plot.integrand = FALSE)
+print(b2 - b1)
+
 GetBayesFactor(N, p, R2, method = "hyperg", plot.integrand = TRUE)
 GetBayesFactor(N, p, R2, method = "eb", plot.integrand = TRUE)
