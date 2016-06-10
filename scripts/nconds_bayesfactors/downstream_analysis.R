@@ -43,7 +43,7 @@ PlotGeneAcrossTissues(subset(dat, gene == "Cry1"))
 # Add amplitude and phase info --------------------------------------------
 
 fits.long.filt$amp <- sapply(fits.long.filt$param.list, function(p) GetAvgAmpFromParams(params = p, by.model = FALSE))
-fits.long.filt$phase <- sapply(fits.long.filt$param.list, function(p) GePhaseFromParams(params = p, by.model = FALSE))
+fits.long.filt$phase <- sapply(fits.long.filt$param.list, function(p) GetPhaseFromParams(params = p, by.model = FALSE))
 fits.long.filt$phase.diff <- sapply(fits.long.filt$param.list, function(p) GetMaxPhaseDiffFromParams(params = p, by.model=FALSE))
 
 # Count -------------------------------------------------------------------

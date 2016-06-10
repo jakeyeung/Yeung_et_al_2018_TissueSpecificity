@@ -182,7 +182,7 @@ GetSdPhaseFromParams <- function(params, by.model=FALSE){
   return(sqrt(phases.var))
 }
 
-GePhaseFromParams <- function(params, by.model=FALSE){
+GetPhaseFromParams <- function(params, by.model=FALSE){
   # works only for n.params == 1
   phases <- params[grepl("phase", names(params))]
   if (by.model){
