@@ -56,7 +56,7 @@ source("scripts/functions/FourierFunctions.R")
 source("scripts/functions/HandleMotifNames.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/LongToMat.R")
-source("scripts/functions/ColorFunctions.R.R")
+source("scripts/functions/ColorFunctions.R")
 
 
 
@@ -328,7 +328,7 @@ plots.nconds.amps <- ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.gen
   theme(aspect.ratio=0.5, 
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
-  xlab("Avg Amplitude of Rhythmic Tissues") + ylab("# Genes") + xlim(c(0.15, 6)) + 
+  xlab("Mean Fold Change") + ylab("# Genes") + xlim(c(0.15, 6)) + 
   scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
   geom_vline(xintercept = 2.8, linetype = "dotted") + 
   scale_colour_brewer(palette = "Spectral")
@@ -395,10 +395,11 @@ jtiss <- "Liver"
 tissues <- c("Liver", "BFAT", "Mus", "Adr")
 for (jtiss in tissues){
   PlotHeatmapAmpPhasePval(gene.list = as.character(subset(fits.best, model == jtiss)$gene), fits.relamp, use.alpha = FALSE, title = "", single.tissue = TRUE)
+  PlotHeatmapAmpPhasePval(gene.list = as.character(subset(fits.best, model == jtiss)$gene), fits.relamp, use.alpha = FALSE, title = "", single.tissue = FALSE)
   ts.genes <- as.character(subset(fits.best, model == jtiss)$gene)
   gene.order <- subset(fits.relamp, tissue == jtiss & gene %in% ts.genes)
   gene.order <- as.character(gene.order[order(gene.order$phase), ]$gene)
-  PlotHeatmapGeneList(gene.order, dat.long, blackend = 1, minval = -2, maxval = 2, jtitle=jtiss)
+  PlotHeatmapGeneList(gene.order, dat.long, blackend = 1, minval = -2, maxval = 2, jtitle=jtiss, jtiss = jtiss)
 }
 multiplot(plots.ts.counts, plots.phase.histo)
 multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)  
@@ -421,7 +422,7 @@ s.act <- SvdOnComplex(act.complex, value.var = "exprs.adj")
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 for (comp in seq(1)){
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 14, pretty.names = TRUE)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 14, pretty.names = TRUE, peak.to.trough = TRUE)
 }
 ### END TISSUEWIDE REGULATORS ###
 

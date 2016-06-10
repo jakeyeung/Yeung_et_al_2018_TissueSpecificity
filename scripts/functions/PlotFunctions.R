@@ -828,14 +828,14 @@ PlotEigensamp <- function(svd.obj, comp, omega = 2 * pi / 24, rotate=TRUE){
 
 # Heatmaps ----------------------------------------------------------------
 
-PlotHeatmapGeneList <- function(gene.lst.ordered, dat.long, blackend, minval, maxval, jtitle=""){
+PlotHeatmapGeneList <- function(gene.lst.ordered, dat.long, blackend, minval, maxval, jtiss="", jtitle=""){
   jsub <- subset(dat.long, tissue == jtiss & gene %in% gene.lst.ordered & experiment == "array")
   jsub <- jsub %>%
     group_by(gene) %>%
     mutate(exprs.scaled = scale(exprs, center = TRUE, scale = TRUE))
   M <- dcast(jsub, gene ~ time, value.var = "exprs.scaled"); rownames(M) <- M$gene; M$gene <- NULL
   # reorder
-  M <- M[gene.order, ]
+  M <- M[gene.lst.ordered, ]
   PlotExprsHeatmap(M, jtitle = jtitle, blackend=blackend, minval = minval, maxval = maxval, jdendro = "none")  
 }
 
