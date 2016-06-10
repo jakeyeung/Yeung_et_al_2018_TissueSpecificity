@@ -1,5 +1,9 @@
 library(PhaseHSV)
 
+FactorToHex <- function(i, colhash){
+  return(colhash[[as.character(i)]])
+}
+
 HexColorToRgb <- function(hex){
   # HEX input: #FFC8DD
   R <- as.integer(paste0("0x", substr(hex, 2, 3)))

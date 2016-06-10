@@ -1,6 +1,8 @@
 library(ggplot2)
 library(grid)
 
+
+
 PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle="", facet.rows = 1, jcex=24, pointsize=1){  
   source('~/projects/tissue-specificity/scripts/functions/DataHandlingFunctions.R')
   tissue <- as.character(unique(dat.long$tissue))
@@ -81,7 +83,7 @@ PlotOverlayTimeSeries <- function(dat.long, genes, tissues, jscale = T, jalpha =
   m <- m + ylab(.ylab) + xlab("Time (CT)")
 }
 
-PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE, avg.method = "mean"){
+PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE, avg.method = "mean", desc=T){
   dat.mean.sub <- subset(dat.mean, gene %in% genes)
   if (sorted){
     # sort by highesst to lowest mean expression
@@ -94,7 +96,7 @@ PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE, avg.met
         group_by(tissue) %>%
         summarise(mean.exprs = median(exprs.mean))  
     }
-    dat.mean.sum <- dat.mean.sum[order(dat.mean.sum$mean.exprs, decreasing = T), ]
+    dat.mean.sum <- dat.mean.sum[order(dat.mean.sum$mean.exprs, decreasing = desc), ]
     dat.mean.sub$tissue <- factor(as.character(dat.mean.sub$tissue), levels = as.character(dat.mean.sum$tissue))
   }
   m <- ggplot(dat.mean.sub, aes(x = tissue, y = exprs.mean)) + geom_boxplot() + theme_bw(18) + 
@@ -826,11 +828,22 @@ PlotEigensamp <- function(svd.obj, comp, omega = 2 * pi / 24, rotate=TRUE){
 
 # Heatmaps ----------------------------------------------------------------
 
-PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellowstart = 0.151, maxval = 1, dist.method = "manhattan"){
+PlotHeatmapGeneList <- function(gene.lst.ordered, dat.long, blackend, minval, maxval, jtitle=""){
+  jsub <- subset(dat.long, tissue == jtiss & gene %in% gene.lst.ordered & experiment == "array")
+  jsub <- jsub %>%
+    group_by(gene) %>%
+    mutate(exprs.scaled = scale(exprs, center = TRUE, scale = TRUE))
+  M <- dcast(jsub, gene ~ time, value.var = "exprs.scaled"); rownames(M) <- M$gene; M$gene <- NULL
+  # reorder
+  M <- M[gene.order, ]
+  PlotExprsHeatmap(M, jtitle = jtitle, blackend=blackend, minval = minval, maxval = maxval, jdendro = "none")  
+}
+
+PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellowstart = 0.151, minval = 0, maxval = 1, dist.method = "manhattan", jdendro = "both"){
   library(gplots)
   my.palette <- colorRampPalette(c("black", "yellow"))(n = 300)
   # # (optional) defines the color breaks manually for a "skewed" color transition
-  col.breaks = c(seq(0, blackend, length=150),  # black
+  col.breaks = c(seq(minval, blackend, length=150),  # black
                  seq(yellowstart, maxval, length=151))  # yellow
   # par(mar=c(17,8,4,8)+0.1) 
   par(mar=c(5,4,4,2)+0.1)
@@ -844,11 +857,35 @@ PlotRelampHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.15, yellows
             trace="none", 
             cexCol=1.7, 
             labRow=NA, 
-            dendrogram = "both",
+            dendrogram = jdendro,
             main = jtitle,
             margins=c(8,30),
             distfun = function(x) dist(x, method = dist.method))
 }
+
+PlotExprsHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.3, minval = 0, maxval = 1, jdendro = "none"){
+  library(gplots)
+  my.palette <- colorRampPalette(c("black", "yellow"))(n = 300)
+  # # (optional) defines the color breaks manually for a "skewed" color transition
+  col.breaks = c(seq(minval, blackend, length=150),  # black
+                 seq(blackend + 0.01, maxval, length=151))  # yellow
+  heatmap.2(as.matrix(M), 
+            col=my.palette, 
+            breaks = col.breaks, 
+            scale="none", 
+            key=T, 
+            keysize=1.5, 
+            density.info = "density", 
+            trace="none", 
+            cexCol=1.4, 
+            labRow=NA, 
+            Rowv=FALSE,
+            Colv=FALSE,
+            dendrogram = jdendro,
+            main = jtitle,
+            margins=c(5, 10))
+}
+
 
 PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", blueend = -0.5, blackend = 0.5, min.n = -3, max.n = 3, remove.gene.labels=FALSE, jlabRow = NULL, jlabCol = NULL){
   
@@ -1001,4 +1038,56 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
   #     diff(range(row))) 
   #   }
   return(list(mat=mat, phases.dat=phases.dat))
+}
+
+PlotHeatmapAmpPhasePval <- function(gene.list, fits.relamp, use.alpha, title="", single.tissue=FALSE){
+  fits.sub <- subset(fits.relamp, gene %in% gene.list) 
+  # sort by phases of jtiss
+  fits.sub <- fits.sub %>%
+    group_by(tissue) %>%
+    arrange(phase)
+  # order by sum of amplitude
+  fits.sumamp <- fits.sub %>%
+    group_by(tissue) %>%
+    summarise(amp.sum = sum(amp)) %>%
+    arrange(desc(amp.sum))
+  
+  tissue.order <- as.character(as.character(fits.sumamp$tissue))
+  gene.order <- as.character(subset(fits.sub, tissue == jtiss)$gene)
+  
+  fits.sub$cols <- as.factor(mapply(PhaseAmpPvalToColor, fits.sub$phase, fits.sub$amp, fits.sub$pval, MoreArgs = list(rotate.hr = -8)))
+  # add pvalue for alpha
+  fits.sub$cols.alpha <- factor(mapply(function(hex, pval) AddAlphaToHexColor(hex, alpha = SaturationCurve(-log10(pval), Vmax = 1, k = 0.25, x0 = 0)),
+                                       as.character(fits.sub$cols), as.numeric(fits.sub$pval)))
+  
+  if (use.alpha){
+    fits.sub$cols.i <- seq(nrow(fits.sub))
+    colhash <- hash(as.character(fits.sub$cols.i), as.character(fits.sub$cols.alpha))
+  } else {
+    # fits.sub$cols.i <- as.numeric(fits.sub$cols)
+    fits.sub$cols.i <- seq(nrow(fits.sub))
+    colhash <- hash(as.character(fits.sub$cols.i), as.character(fits.sub$cols))
+  }
+  
+  fits.mat <- dcast(fits.sub, formula = gene ~ tissue, value.var = "cols.i")
+  rownames(fits.mat) <- fits.mat$gene
+  fits.mat$gene <- NULL
+  # rreoder
+  fits.mat <- fits.mat[gene.order, ]
+  fits.mat <- fits.mat[, tissue.order]
+  fits.mat <- as.matrix(fits.mat)
+  if (!single.tissue){
+    par(mar=c(5.1,4.1,6.1,2.1))
+    image(t(fits.mat), col = sapply(sort(unlist(fits.mat)), FactorToHex, colhash), yaxt = "n", xaxt = "n", axes=FALSE,xlab="",ylab="",srt=0, main=title)
+    axis(3, at = seq(0, 1, length.out = ncol(fits.mat)), labels=colnames(fits.mat), srt=0, tick=FALSE)  
+    par(mar=c(5.1,4.1,4.1,2.1))
+  } else {
+    tissue <- colnames(fits.mat)[[1]]
+    fits.mat <- as.matrix(fits.mat)[, 1]  # take single tissue
+    # par(mar=c(5.1,20.1,4.1,20.1))
+    par(mar=c(5.1,10.1,4.1,10.1))
+    image(t(fits.mat), col = sapply(sort(unlist(fits.mat)), FactorToHex, colhash), yaxt = "n", xaxt = "n", axes=FALSE,xlab="",ylab="",srt=0, main=title)
+    axis(3, at = seq(0, 1, length.out = 1), labels=tissue, srt=0, tick=FALSE)  
+    par(mar=c(5.1,4.1,4.1,2.1))
+  }
 }

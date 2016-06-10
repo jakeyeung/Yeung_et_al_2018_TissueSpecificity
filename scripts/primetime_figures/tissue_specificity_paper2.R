@@ -1,6 +1,7 @@
 # 2016-06-02
 # Clean up figures
 
+rm(list=ls())
 
 # Inits -------------------------------------------------------------------
 
@@ -46,6 +47,7 @@ source("scripts/functions/AlternativeFirstExonsFunctions.R")
 source("scripts/functions/FisherTestSitecounts.R")
 source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/LdaFunctions.R")
+source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/LoadActivitiesLong.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/RemoveCommasBraces.R")
@@ -54,6 +56,7 @@ source("scripts/functions/FourierFunctions.R")
 source("scripts/functions/HandleMotifNames.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/LongToMat.R")
+source("scripts/functions/ColorFunctions.R.R")
 
 
 
@@ -93,13 +96,16 @@ plot.periods.bytiss <- ggplot(subset(dat.fit.periods.sub), aes(x = period)) + ge
   geom_vline(xintercept=12, linetype="dotted", size = linesize) +
   scale_x_continuous(breaks=xscale_periods_smaller) + 
   facet_wrap(~tissue) +
-  xlab("Period with best fit (h)") + ylab("Count") +
-  theme_bw(24) + theme(aspect.ratio=1,
+  xlab("Period with best fit [h]") + ylab("Count") +
+  theme_bw(12) + theme(aspect.ratio=1,
                        panel.grid.major = element_blank(), 
                        panel.grid.minor = element_blank(), 
                        panel.background = element_blank(), 
                        axis.line = element_line(colour = "black"),
-                       axis.text.x=element_text(size=11))
+                       axis.text.x=element_text(size=12),
+                       axis.title.x=element_text(size = 24),
+                       axis.title.y=element_text(size = 24),
+                       strip.text = element_text(size = 12))
 
 ### BEGIN FOURIER ANALYSIS ###
 load("Robjs/dat.complex.all_T.rbinded.Robj", verbose=T)
@@ -266,7 +272,8 @@ plot.genomewide.amps <- ggplot(subset(dat.fit.ngenes.thres, rhyth == 24), aes(x 
   xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 7)) + 
   scale_y_log10(breaks = c(10, 100, 1000)) + 
   geom_vline(xintercept = 2, linetype = "dotted") + 
-  scale_colour_brewer(palette = "Spectral")
+  scale_colour_brewer(palette = "Spectral") + 
+  ggtitle(paste0("Pval < ", pval.cutoff))
 ### END GENOMEWIDE AMP ANALYSIS ###
 
 
@@ -359,6 +366,10 @@ plots.ts.counts <- ggplot(fits.tspec.sum, aes(x = model, y = count)) + geom_bar(
 jmods <- c("Liver", "Adr", "BFAT", "Mus")
 plots.phase.histo <- PlotPolarHistogram(subset(fits.best, n.rhyth == 1 & model %in% jmods), "Count") + theme(strip.text.x = element_text(size = 16))
 
+# Tissue-specific plots
+load("Robjs/fits.relamp.Robj", v=T); fits.relamp <- subset(fits.relamp, tissue != "WFAT")
+# plot heatmaps at print output
+
 # tissue-wide
 load("Robjs/dat.complex.fixed_rik_genes.Robj")
 if (remove.wfat){
@@ -379,9 +390,18 @@ plot.i <- plot.i + 1
 
 print(plots.nconds.amps)
 do.call(multiplot, plots.nconds.examples)
+# add heatmaps
+jtiss <- "Liver"
+tissues <- c("Liver", "BFAT", "Mus", "Adr")
+for (jtiss in tissues){
+  PlotHeatmapAmpPhasePval(gene.list = as.character(subset(fits.best, model == jtiss)$gene), fits.relamp, use.alpha = FALSE, title = "", single.tissue = TRUE)
+  ts.genes <- as.character(subset(fits.best, model == jtiss)$gene)
+  gene.order <- subset(fits.relamp, tissue == jtiss & gene %in% ts.genes)
+  gene.order <- as.character(gene.order[order(gene.order$phase), ]$gene)
+  PlotHeatmapGeneList(gene.order, dat.long, blackend = 1, minval = -2, maxval = 2, jtitle=jtiss)
+}
 multiplot(plots.ts.counts, plots.phase.histo)
 multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)  
-
 dev.off()
 
 # Regulation by MARA analysis ---------------------------------------------
@@ -432,7 +452,17 @@ dat.sub <- subset(dat.long, gene == "Mef2c" & experiment == "array")
 dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = as.character(act.sub.mean$tissue))
 PlotGeneAcrossTissues(dat.sub) + theme_bw()  + theme(aspect.ratio = 1, legend.position = "none")
 
+# Plot mean expression with mRNA 
+dat.mean.rnaseq <- subset(dat.long, experiment == "rnaseq") %>%
+  group_by(gene, tissue, experiment) %>%
+  summarise(exprs.mean = mean(exprs))
+genes <- as.character(subset(fits.best, model == "BFAT")$gene)
+tiss <- "BFAT"
+plots.meanexprs <- PlotMeanExprsOfModel(dat.mean.rnaseq, genes, jmodel = "BFAT", sorted = TRUE, avg.method = "median", desc = F)
+
 # plot mean exprs with mRNA accumulation of mef2c
+# TODO
+
 PlotActivitiesWithSE(subset(act.long, gene == "SPIB.p2"))
 PlotActivitiesWithSE(subset(act.long, gene == "HNF4A_NR2F1.2.p2"))
 
@@ -460,6 +490,7 @@ dev.off()
 # print output
 pdf(file.path(outdir, paste0(plot.i, ".regulation.pdf")))
 plot.i <- plot.i + 1
+print(plots.meanexprs)
 multiplot(eigens.act$u.plot, eigens.act$v.plot, layout = jlayout)
 dev.off()
 
@@ -481,12 +512,13 @@ head(df.out.lst.merged)
 gene.types <- c("jgenes", "jgenes.flat.filt")
 
 jsub <- subset(df.out.lst.merged, gene.type %in% gene.types)
-newlab <- hash(as.character(subset(jsub, gene.type %in% gene.types)$tissue), paste0(subset(jsub, gene.type %in% gene.types)$tissue, "\nN=", subset(jsub, gene.type %in% gene.types)$total.genes))
+newlab <- hash(as.character(subset(jsub, gene.type == "jgenes")$tissue), paste0(subset(jsub, gene.type == "jgenes")$tissue, "\nN=", subset(jsub, gene.type == "jgenes")$total.genes))
 jsub$Tissue <- sapply(as.character(jsub$tissue), function(tiss) newlab[[tiss]])
 jsub <- OrderDecreasing(jsub, "Tissue", "frac.n.spec.by.gene")
-plots.dhs.sites <- ggplot(jsub, aes(x = Tissue, y = frac.n.spec.by.gene, fill = gene.type)) + geom_bar(stat = "identity", position = "dodge") + xlab("") + ylab("Fraction of genes with tissue-specific DHS within 10kb") + 
-  theme_bw(18) + theme(aspect.ratio = 1, legend.position = "bottom") + scale_fill_discrete(name="Rhythmicity of Gene",
-                                                                                           labels=c("Rhythmic", "Flat"))
+plots.dhs.sites <- ggplot(jsub, aes(x = Tissue, y = frac.n.spec.by.gene, fill = gene.type)) + geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  xlab("") + ylab("Fraction of genes with tissue-specific DHS within 10kb") + 
+  theme_bw(18) + theme(aspect.ratio = 1, legend.position = "bottom", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  scale_fill_discrete(name="Rhythmicity of Gene", labels=c("Rhythmic", "Flat"))
 
 ### BEGIN MOTIF ANALYSIS ###
 load("Robjs/penalized_lda_matrices.dist10kb.jcutoff2.Robj", v=T)
@@ -511,6 +543,26 @@ colnames(mat.fgbg.3) <- sapply(colnames(mat.fgbg.3), function(cname){
 jlambda <- 0.10  # liv only
 out.3 <- PenalizedLDA(mat.fgbg.3, labels3, lambda = jlambda, K = 2, standardized = FALSE)
 jsize <- sqrt(out.3$discrim[, 1]^2 + out.3$discrim[, 2]^2) * 5 + 0.01
+
+# WITH LIVER vs FLAT vs NONLIVER: pairs
+rhyth.motifs <- sapply(GetTopMotifs("rhythmic"), RemoveP2Name, USE.NAMES = FALSE)
+tissue.motifs <- sapply(GetTopMotifs("tissue"), RemoveP2Name, USE.NAMES = FALSE)
+
+# remove tissue motifs in rhyth
+rhyth.motifs <- rhyth.motifs[which(!rhyth.motifs %in% intersect(rhyth.motifs, tissue.motifs))]
+
+mat.rhyth3 <- subset(mat.fgbg.3, select = intersect(rhyth.motifs, colnames(mat.fgbg.3)))
+mat.tiss3 <- subset(mat.fgbg.3, select = intersect(tissue.motifs, colnames(mat.fgbg.3)))
+mat.rhythtiss3 <- CrossProductTwoSets(mat.rhyth3, mat.tiss3)
+
+mat.fgbg.cross.rhythtiss3 <- cbind(mat.fgbg.3, mat.rhythtiss3)
+# remove columns with 0 variance 
+mat.fgbg.cross.rhythtiss3[which(colSums(mat.fgbg.cross.rhythtiss3) == 0)] <- list(NULL)
+
+jlambda <- 0.025  # liv only
+out.cross.rhythtiss3 <- PenalizedLDA(mat.fgbg.cross.rhythtiss3, labels3, lambda = jlambda, K = 2, standardized = FALSE)
+
+
 ### END MOTIF ANALYSIS ###
 
 
@@ -551,10 +603,18 @@ pdf(file.path(outdir, paste0(plot.i, ".dhs.pdf")))
 plot.i <- plot.i + 1
   print(plots.dhs.sites)
   PlotLdaOut(out, jcex = 0.6, jtitle = "")
+  # plot no pairs
   plot(out.3$discrim[, 1], out.3$discrim[, 2], pch = ".", 
        xlab = "Liver-specific DHS vs Nonliver-specific DHS", ylab = "Liver-specific rhythmic DHS vs Others", 
        main="Motifs separating btwn tissues (x-axis) and rhythmicity (y-axis)")
   text(out.3$discrim[, 1], out.3$discrim[, 2], names(out.3$x), cex = jsize)
+  abline(v = 0); abline(h = 0)
+  # plot pairs
+  jsize3 <- sqrt(out.cross.rhythtiss3$discrim[, 1]^2 + out.cross.rhythtiss3$discrim[, 2]^2) * 5 + 0.01
+  plot(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], pch = ".", 
+       xlab = "Liver-specific DHS vs Nonliver-specific DHS", ylab = "Liver-specific rhythmic DHS vs Others", 
+       main="Motifs that separate between tissues (x-axis) and rhythmic in liver (y-axis)")
+  text(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], names(out.cross.rhythtiss3$x), cex = jsize3)
   abline(v = 0); abline(h = 0)
   multiplot(eigens.liv$v.plot, eigens.liv$u.plot + xlim(0, 2), layout = jlayout)
   multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)
