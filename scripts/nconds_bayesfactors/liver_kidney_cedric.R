@@ -7,6 +7,7 @@ rm(list=ls())
 
 library(dplyr)
 library(ggplot2)
+library(BayesFactor)  # for checking
 
 source("scripts/functions/NcondsFunctions.R")
 source("scripts/functions/Queue.R")
@@ -76,16 +77,15 @@ jgene <- "Lrriq3"
 jgene <- "Cdc20"
 jgene <- ls(dat.env)[[10000]]
 jgene <- "Ppp3ca"
-jgene <- "Slc44a1"
 jgene <- "Alb"
+jgene <- "Slc44a1"
 test <- MakeDesMatRunFitEnv(dat.env, jgene, tissues, 
                             n.rhyth.max = 2, w = 2 * pi / 24, criterion = "zf", normalize.weights = TRUE, cutoff = 1e-5, top.n = NULL, sparse = FALSE)
 PlotGeneAcrossTissues(subset(dat, gene == jgene))
 
-library(BayesFactor)
 exp(linearReg.R2stat(N=48, p=2, R2=0.999199925619844, rscale = 0.353553390593274)[['bf']])
-exp(linearReg.R2stat(N=48, p=2, R2=0.999199925619844, rscale = 1)[['bf']])
-
+exp(linearReg.R2stat(N=48, p=2, R2=0.8, rscale = 1)[['bf']])
+GetBayesFactor(N = 48, p = 2, rsquared = 0.8, method = "zf")
 
 # do for real
 start <- Sys.time()

@@ -803,25 +803,30 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=TRUE){
     # get Marginal Likelihood of the model
     debug <- TRUE
     if (debug){
-      gvec <- seq(0, 500000, length.out = 1000)
-      print(paste("N:", N))
-      print(paste("p:", p))
-      print(paste("R2:", rsquared))
-      bf.real <- exp(linearReg.R2stat(N=N, p=p, R2=rsquared, rscale = 1)[['bf']])
-      plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l", main="g vs integrand")
-      gvec.log <- seq(-1000, 1000, length.out = 1000)
-      plot(gvec.log, ModelLikelihood2(gvec.log, N=N, p=p, R2=rsquared), type = "l", main="log(g) vs transformed integrand")
-      # test my modellikelihood
       g.mode <- ModeG(N, p, rsquared)
+      gvec <- seq(0, 500000, length.out = 1000)
+      # print(paste("N:", N))
+      # print(paste("p:", p))
+      # print(paste("R2:", rsquared))
+      bf.real <- exp(linearReg.R2stat(N=N, p=p, R2=rsquared, rscale = 1)[['bf']])
+      # plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l", main="g vs integrand")
+      # gvec.log <- seq(-50, 50, length.out = 1000)
+      # print(head(gvec.log))
+      # gvec.log.shift <- gvec.log - log(g.mode)
+      # print(head(gvec.log))
+      # plot(gvec.log, ModelLikelihood2(gvec.log, N=N, p=p, R2=rsquared, shift = log(g.mode)), type = "l", main=paste("log(g) vs transformed integrand. Mode:", signif(log(g.mode), digits = 2)))
+      # abline(v = log(g.mode))
+      # test my modellikelihood
       bf.old <- ModelLikelihood(g.mode, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)
-      bf.bylog <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared)
+      bf.bylog <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, shift = log(g.mode))
       print(paste("BF old:", bf.old[[1]]))
       print(paste("BF real:", bf.real))
       print(paste("BF by log:", bf.bylog[[1]]))
     }
     # bf <- integrate(ModelLikelihood, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
     # bf <- integrate(ModelLikelihood, lower=0, upper=Inf, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE)  # ModelLikelihood ratio with NULL model
-    bf <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared)
+    gmode <- ModeG(N, p, R2 = rsquared)
+    bf <- integrate(ModelLikelihood2, lower=-Inf, upper=Inf, N=N, p=p, R2=rsquared, shift = log(gmode))  # shift to centre
     if (debug){
       print(paste("BF diff", abs(bf[[1]] - bf.real) / bf.real))
     }
@@ -959,6 +964,7 @@ log1pExp <- Vectorize(function(x){
 
 ModelLikelihood2 <- function(tau, N, p, R2, shift=0){
   # integrate from -Inf to Inf, function of log(g)
+  # allow shift to move tau where peak is centre
   tau <- tau + shift
   
   a <- ((N - 1 - p) / 2) * log1pExp(tau) +  # log1pExp works when tau is large
