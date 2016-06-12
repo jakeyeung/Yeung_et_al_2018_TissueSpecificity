@@ -11,26 +11,37 @@ FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE){
   # Fit rhythmic model to long dat. Expect dat to be per tissue per gene.
   # use lapply and ddply to vectorize this code.
   # dat needs columns: tissue time experiment exprs
-  
-  
+    
   # Get parameters from complex model: used later
-  GetParamsRhythModel <- function(myfit){
+  GetParamsRhythModel <- function(myfit, n.experiments){
     model.params <- coef(myfit)
-    return(list(intercept.array = model.params[1],
-                intercept.rnaseq = model.params[2],
-                a = model.params[3],
-                b = model.params[4]))
+    if (n.experiments > 1){
+      return(list(intercept.array = model.params[1],
+                  intercept.rnaseq = model.params[2],
+                  a = model.params[3],
+                  b = model.params[4]))
+    } else {
+      return(list(intercept = model.params[1],
+                  a = model.params[2],
+                  b = model.params[3]))
+    }
   }
   
-#   tissue <- unique(dat$tissue)
+  #   tissue <- unique(dat$tissue)
   tissue <- dat$tissue[1]
   w = 2 * pi / T.period
+  n.experiments = length(unique(as.character(dat$experiment)))
   # Expect columns exprs and time
-  rhyth.fit <- lm(exprs ~ 0 + experiment + cos(w * time) + sin(w * time), data = dat)
-  flat.fit <- lm(exprs ~ 0 + experiment, data = dat)
+  if (n.experiments > 1){
+    rhyth.fit <- lm(exprs ~ 0 + experiment + cos(w * time) + sin(w * time), data = dat)
+    flat.fit <- lm(exprs ~ 0 + experiment, data = dat)
+  } else {
+    rhyth.fit <- lm(exprs ~ 1 + cos(w * time) + sin(w * time), data = dat)
+    flat.fit <- lm(exprs ~ 1, data = dat)
+  }
   compare.fit <- anova(flat.fit, rhyth.fit)
   pval <- compare.fit["Pr(>F)"][[1]][2]
-  model.params <- GetParamsRhythModel(rhyth.fit)  # y = experimentarray + experimentrnaseq + a cos(wt) + b sin(wt)
+  model.params <- GetParamsRhythModel(rhyth.fit, n.experiments)  # y = experimentarray + experimentrnaseq + a cos(wt) + b sin(wt)
   amp <- sqrt(model.params$a ^ 2 + model.params$b ^ 2)
   phase.rad <- atan2(model.params$b, model.params$a)
   phase.time <- (phase.rad / w) %% T.period
@@ -39,23 +50,38 @@ FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE){
     ssq.residuals <- anova(rhyth.fit)["Residuals", "Sum Sq"]
     ssq.residuals.flat <- anova(flat.fit)["Residuals", "Sum Sq"]
     variance <- ssq.residuals / nrow(dat) # both rhyth and flat the same
-#     chi_sqr.rhyth <- ssq.residuals / variance
-#     chi_sqr.flat <- ssq.residuals.flat / variance
     
-#     dat.out <- data.frame(ssq.residuals = ssq.residuals, variance = variance)
-    dat.out <- data.frame(tissue = tissue, 
-                          cos.part = model.params$a, sin.part = model.params$b, 
-                          amp = amp, phase = phase.time, pval = pval,
-                          int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq,
-                          variance = variance,
-                          ssq.residuals = ssq.residuals,
-                          ssq.residuals.flat = ssq.residuals.flat,
-                          variance = variance)
+    if (n.experiments > 1){
+      dat.out <- data.frame(tissue = tissue, 
+                            cos.part = model.params$a, sin.part = model.params$b, 
+                            amp = amp, phase = phase.time, pval = pval,
+                            int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq,
+                            variance = variance,
+                            ssq.residuals = ssq.residuals,
+                            ssq.residuals.flat = ssq.residuals.flat,
+                            variance = variance)
+    } else {
+        dat.out <- data.frame(tissue = tissue, 
+                            cos.part = model.params$a, sin.part = model.params$b, 
+                            amp = amp, phase = phase.time, pval = pval,
+                            int = model.params$intercept,
+                            variance = variance,
+                            ssq.residuals = ssq.residuals,
+                            ssq.residuals.flat = ssq.residuals.flat,
+                            variance = variance)
+    }
   } else {
-    dat.out <- data.frame(tissue = tissue, 
-                          cos.part = model.params$a, sin.part = model.params$b, 
-                          amp = amp, phase = phase.time, pval = pval,
-                          int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq)
+    if (n.experiments > 1){
+      dat.out <- data.frame(tissue = tissue, 
+                            cos.part = model.params$a, sin.part = model.params$b, 
+                            amp = amp, phase = phase.time, pval = pval,
+                            int.array = model.params$intercept.array, int.rnaseq = model.params$intercept.rnaseq)
+    } else {
+      dat.out <- data.frame(tissue = tissue, 
+                            cos.part = model.params$a, sin.part = model.params$b, 
+                            amp = amp, phase = phase.time, pval = pval,
+                            int = model.params$intercept)
+    }
   }
   return(dat.out)
 }
