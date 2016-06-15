@@ -3,7 +3,8 @@
 
 rm(list=ls())
 
-CENTER=TRUE
+CENTER=FALSE
+SCALE=FALSE
 
 setwd("/home/yeung/projects/tissue-specificity")
 
@@ -26,10 +27,10 @@ source("scripts/functions/LiverKidneyFunctions.R")
 
 dat <- LoadLivKid()
 
-if (CENTER){
+if (CENTER | SCALE){
   dat <- dat %>% 
     group_by(gene) %>%
-    mutate(exprs = scale(exprs, center=TRUE, scale=FALSE))
+    mutate(exprs = scale(exprs, center=CENTER, scale=SCALE))
 }
 
 print(head(dat))
@@ -65,10 +66,10 @@ dat.env <- DatLongToEnvironment(dat)
 # do for real
 start <- Sys.time()
 
-for (method in c("zf", "eb", "hyperg", "BIC", "AIC")){
-# for (method in c("AIC")){
+# for (method in c("zf", "eb", "hyperg", "BIC", "AIC")){
+for (method in c("eb")){
   print(paste("method:", method))
-  outf <- paste0("Robjs/fits.bayesfactors.livkid.center.", CENTER, ".meth.", method, ".Robj")
+  outf <- paste0("Robjs/fits.bayesfactors.livkid.center.", CENTER, ".scale.", SCALE, ".meth.", method, ".Robj")
   print(paste("Outf:", outf))
   fits.all <- lapply(ls(dat.env), function(gene){
     MakeDesMatRunFitEnv(dat.env, gene, tissues.uniq, 

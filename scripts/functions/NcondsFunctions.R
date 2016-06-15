@@ -851,15 +851,17 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=FALSE){
     a <- 3  # 2 to 4 is OK. 3 is recommended by Liang et al 2008
     bf <- log(((a - 2) / (p + a - 2)) * Re(hypergeo::hypergeo(A = (N - 1 / 2), B = 1, C = (p + a) / 2, z = rsquared)))
   } else if (method == "eb"){
-    debug <- FALSE
-    if (debug){
-      g.mode <- ModeG(N, p, rsquared)
-      print(g.mode)
-      gvec <- seq(0, 50000, length.out = 1000)
-      plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l")
-      abline(v = g.mode)
-    }
-    g.mode <- ModeG(N, p, rsquared)
+    # proper way is to do EM algorithm, which I will not do.
+    g.mode <- 1000
+    # debug <- FALSE
+    # if (debug){
+    #   g.mode <- ModeG(N, p, rsquared)
+    #   print(g.mode)
+    #   gvec <- seq(0, 50000, length.out = 1000)
+    #   plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l")
+    #   abline(v = g.mode)
+    # }
+    # g.mode <- ModeG(N, p, rsquared)
     bf <- log(ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE))
   } else {
     stop(paste0("Unknown method specified: ", method))

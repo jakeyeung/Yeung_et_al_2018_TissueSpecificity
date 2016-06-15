@@ -1,6 +1,6 @@
 # PlotGeneAcrossTissues.R
 
-PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pretty = FALSE){
+PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pretty = FALSE, jxlab="CT"){
   library(ggplot2)
   if (missing(jtitle)){
     jtitle = unique(dat$gene)
@@ -21,11 +21,12 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
     m <- ggplot(dat, aes(x = time, y = exprs)) 
   }
     m <- m + 
-    geom_point() + 
-    geom_line() + 
-    facet_wrap(~tissue) +
-    ggtitle(jtitle) + 
-    ylab(label = jylab)
+      geom_point() + 
+      geom_line() + 
+      facet_wrap(~tissue) +
+      ggtitle(jtitle) + 
+      ylab(label = jylab) + 
+      xlab(label = jxlab)
   if (make.pretty){
    m <- m + theme_bw() + theme(panel.grid.major = element_blank(),
                                panel.grid.minor = element_blank(),
