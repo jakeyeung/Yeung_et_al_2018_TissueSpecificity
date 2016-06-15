@@ -113,7 +113,6 @@ jsub <- subset(fits.long.filt, method == "zf" & model == "Kidney;Liver" & amp > 
 print(jsub[order(jsub$phase.diff, decreasing=TRUE), ])
 
 
-
 # Summarize by SVD --------------------------------------------------------
 
 jmeth <- "zf"
@@ -157,6 +156,11 @@ jgene <- "Slc25a25"
 jgene <- "Gm16550"
 jgene <- "Col13a1"
 PlotGeneAcrossTissues(subset(dat, gene == jgene))
+
+
+# Analyze genes that differ between models --------------------------------
+
+
 
 # Take top genes and ask whether they're highly expressed -----------------
 

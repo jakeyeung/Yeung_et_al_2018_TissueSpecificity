@@ -1,6 +1,6 @@
 # PlotGeneAcrossTissues.R
 
-PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE){
+PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pretty = FALSE){
   library(ggplot2)
   if (missing(jtitle)){
     jtitle = unique(dat$gene)
@@ -11,14 +11,26 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE){
   } else {
     jylab <- "mRNA expression (log2 scale)"
   }
-  m <- ggplot(dat, aes(x = time, y = exprs,
-                       group = experiment, 
-                       colour = experiment)) + 
+  n.exper = length(as.character(unique(dat$experiment)))
+  
+  if (n.exper > 1){
+    m <- ggplot(dat, aes(x = time, y = exprs,
+                         group = experiment, 
+                         colour = experiment)) 
+  } else {
+    m <- ggplot(dat, aes(x = time, y = exprs)) 
+  }
+    m <- m + 
     geom_point() + 
     geom_line() + 
     facet_wrap(~tissue) +
     ggtitle(jtitle) + 
     ylab(label = jylab)
+  if (make.pretty){
+   m <- m + theme_bw() + theme(panel.grid.major = element_blank(),
+                               panel.grid.minor = element_blank(),
+                               aspect.ratio = 1)
+  }
   return(m)
 }
 
@@ -115,14 +127,16 @@ PlotEncodeRnaseq <- function(dat, jtitle, sort.by.tissue = TRUE, by.var = "tpm")
   return(p)
 }
 
-CalculatePeriodogramLong <- function(dat, jexperiment = "array", remove.inf = TRUE){
+CalculatePeriodogramLong <- function(dat, jexperiment = "array", time.interval = NULL, remove.inf = TRUE){
   # interval between sampling points, in hours
   if (jexperiment == "array"){
     interval <- 2  # hrs
-  } else {
+  } else if (jexperiment == "rnaseq"){
     interval <- 6  # hrs
+  } else {
+    interval <- jinterval
   }
-  exprs <- subset(dat, experiment == jexperiment)$exprs
+  exprs <- dat$exprs
   p <- CalculatePeriodogram(exprs)
   periods <- signif(interval / p$freq, digits = 3)
   dat.var.s <- data.frame(periodogram = p$p.scaled, period = periods)
@@ -134,12 +148,23 @@ CalculatePeriodogramLong <- function(dat, jexperiment = "array", remove.inf = TR
   return(dat.var.s)
 }
 
-PlotPeriodogramLong <- function(dat, jexperiment = "array", jtitle = "Plot title"){
+PlotPeriodogramLong <- function(dat, jexperiment = "array", time.interval = NULL, jtitle = "Plot title"){
   # expect dat to be by gene
   # Plot periodogram of the gene
   source("~/projects/tissue-specificity/scripts/functions/FourierFunctions.R")
+  n.exper <- length(as.character(unique(dat$experiment)))
+  if (n.exper > 1){
+    dat <- subset(dat, experiment == jexperiment)
+  }
+  
   dat.periodogram <- dat %>%
     group_by(gene, tissue) %>%
-    do(CalculatePeriodogramLong(., jexperiment))
-  ggplot(dat.periodogram, aes(x = period, y = periodogram)) + facet_wrap(~tissue) +  geom_bar(stat = "identity")
+    do(CalculatePeriodogramLong(., jexperiment, time.interval))
+  ggplot(dat.periodogram, aes(x = period, y = periodogram)) + facet_wrap(~tissue) +  geom_bar(stat = "identity") + 
+    theme_bw() + 
+    theme(axis.text.x=element_text(angle=90,vjust = 0, hjust = 1),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          aspect.ratio = 1) + 
+    xlab("Periodogram") + ylab("Period [h]")
 }

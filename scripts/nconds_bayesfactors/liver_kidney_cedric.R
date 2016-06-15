@@ -3,13 +3,15 @@
 
 rm(list=ls())
 
+CENTER=TRUE
+
 setwd("/home/yeung/projects/tissue-specificity")
 
 # Functions ---------------------------------------------------------------
 
-library(dplyr)
-library(ggplot2)
-library(BayesFactor)  # for checking
+require(dplyr)
+require(ggplot2)
+require(BayesFactor)  # for checking
 
 source("scripts/functions/NcondsFunctions.R")
 source("scripts/functions/Queue.R")
@@ -23,6 +25,16 @@ source("scripts/functions/LiverKidneyFunctions.R")
 # Load and wrangle data ---------------------------------------------------
 
 dat <- LoadLivKid()
+
+if (CENTER){
+  dat <- dat %>% 
+    group_by(gene) %>%
+    mutate(exprs = scale(exprs, center=TRUE, scale=FALSE))
+}
+
+print(head(dat))
+
+tissues.uniq <- unique(as.character(dat$tissue))
 
 # Fit models --------------------------------------------------------------
 
@@ -56,7 +68,7 @@ start <- Sys.time()
 for (method in c("zf", "eb", "hyperg", "BIC", "AIC")){
 # for (method in c("AIC")){
   print(paste("method:", method))
-  outf <- paste0("Robjs/fits.bayesfactors.livkid.meth.", method, ".Robj")
+  outf <- paste0("Robjs/fits.bayesfactors.livkid.center.", CENTER, ".meth.", method, ".Robj")
   print(paste("Outf:", outf))
   fits.all <- lapply(ls(dat.env), function(gene){
     MakeDesMatRunFitEnv(dat.env, gene, tissues.uniq, 
