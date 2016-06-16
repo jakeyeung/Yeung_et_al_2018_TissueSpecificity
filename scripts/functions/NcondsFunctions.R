@@ -866,8 +866,8 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=FALSE){
   } else {
     # guess that user set method as "g"
     if (!is.numeric(method)){
-	# if not numeric, expect form g=1000
-	g <- as.numeric(strsplit(method, "=")[[1]][[2]])
+    	# if not numeric, expect form g=1000
+    	g <- as.numeric(strsplit(method, "=")[[1]][[2]])
     	# stop(paste0("Unknown method specified and not a number: ", method))
     } else {
     	g <- method
@@ -940,9 +940,13 @@ SecondDerivG <- function(g, N, p, R2, a = 0, b = 0, verbose=FALSE){
   return(d2h)
 }
 
-ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = FALSE, method = "zf"){
+ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = FALSE, method = "zf", add.prior=TRUE){
   if (!.log){
-    L <- (((1 + g) ^ ((N - p - 1) / 2)) * (1 + (1 - R2) * g) ^ -((N - 1) / 2)) * PriorG(N, g, .log = FALSE, method = "zf")
+    if (add.prior){
+      L <- (((1 + g) ^ ((N - p - 1) / 2)) * (1 + (1 - R2) * g) ^ -((N - 1) / 2)) * PriorG(N, g, .log = FALSE, method = "zf")
+    } else {
+      L <- (((1 + g) ^ ((N - p - 1) / 2)) * (1 + (1 - R2) * g) ^ -((N - 1) / 2))
+    }
   } else {
     debug <- FALSE
     if (debug){
@@ -959,7 +963,11 @@ ModelLikelihood <- function(g, N, p, R2, .log=FALSE, log.const=0, return.log = F
     }
     # two lines should be equal
     # L <- (((N - p - 1) / 2) * log1pExp(log(g)) + (-(N - 1) / 2) * log1pExp(log((1 - R2) * g)) + PriorG(N, g, .log = TRUE, method = "zf"))
-    L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
+    if (add.prior){
+      L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g) + PriorG(N, g, .log = TRUE, method = "zf")
+    } else {
+      L <- (((N - p - 1) / 2) * log(1 + g)) + (-(N - 1) / 2) * log(1 + (1 - R2) * g)
+    }
     # exponentiate at the end
     if (!return.log){
       L <- exp(L)

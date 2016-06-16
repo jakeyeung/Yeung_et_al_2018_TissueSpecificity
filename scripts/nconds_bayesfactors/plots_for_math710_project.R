@@ -3,6 +3,8 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 plotdir <- "plots/liver_kidney_math710"
 dir.create(plotdir)
 
@@ -159,6 +161,12 @@ plot.counts <- ggplot(fits.sum, aes(x = model.label, fill = method, y = count)) 
         panel.grid.minor = element_blank(), 
         panel.background = element_blank())
 
+plot.counts.noeb <- ggplot(subset(fits.sum, method != "eb"), aes(x = model.label, fill = method, y = count)) + geom_bar(stat = "identity", position = "dodge", width=0.5) + theme_bw(24) + 
+  scale_fill_manual(values=cbPalette, labels = c("AIC", "BIC", "HyperG", "Zellner-Siow")) + xlab("") + 
+  theme(aspect.ratio = 1, axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 12),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank())
 
 
 # Discrepancies -----------------------------------------------------------

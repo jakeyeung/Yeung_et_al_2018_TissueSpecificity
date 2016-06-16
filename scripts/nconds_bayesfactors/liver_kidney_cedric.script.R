@@ -2,6 +2,7 @@
 # Run Bayes Factors on Kidney and Liver from Cedric's data
 
 rm(list=ls())
+setwd("/home/yeung/projects/tissue-specificity")
 
 args <- commandArgs(trailingOnly=TRUE)
 method <- args[[1]]
@@ -11,8 +12,10 @@ print(paste("METHOD:", method))
 DATA="nestle"  # hogenesch|nestle
 CENTER=FALSE
 SCALE=FALSE
+outf <- paste0("Robjs/bayes_factors_gsweep/fits.bayesfactors.livkid.data.", DATA, ".center.", CENTER, ".scale.", SCALE, ".meth.", method, ".Robj")
+print(paste("Outf:", outf))
+if (file.exists(outf)) stop(paste("Outf exists, exiting", outf))
 
-setwd("/home/yeung/projects/tissue-specificity")
 
 # Functions ---------------------------------------------------------------
 
@@ -89,11 +92,6 @@ dat.env <- DatLongToEnvironment(dat)
 # do for real
 start <- Sys.time()
 
-# for (method in c("zf", "eb", "hyperg", "BIC", "AIC")){
-# for (method in c("eb")){
-# for (method in c("g=250", "g=500", "g=750", "g=1000")){
-  print(paste("method:", method))
-  outf <- paste0("Robjs/fits.bayesfactors.livkid.data.", DATA, ".center.", CENTER, ".scale.", SCALE, ".meth.", method, ".Robj")
   print(paste("Outf:", outf))
   fits.all <- lapply(ls(dat.env), function(gene){
     MakeDesMatRunFitEnv(dat.env, gene, tissues.uniq, 
@@ -110,7 +108,6 @@ start <- Sys.time()
   })
   fits.all.long <- do.call(rbind, fits.all.long)
   save(fits.all.long, file=outf)
-# }
 
 print(Sys.time() - start)
 
