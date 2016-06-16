@@ -864,7 +864,15 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=FALSE){
     # g.mode <- ModeG(N, p, rsquared)
     bf <- log(ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE))
   } else {
-    stop(paste0("Unknown method specified: ", method))
+    # guess that user set method as "g"
+    if (!is.numeric(method)){
+	# if not numeric, expect form g=1000
+	g <- as.numeric(strsplit(method, "=")[[1]][[2]])
+    	# stop(paste0("Unknown method specified and not a number: ", method))
+    } else {
+    	g <- method
+    }
+    bf <- log(ModelLikelihood(g = g, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE))
   }
   if (plot.integrand){
     par(mar = c(5,5,2,5))

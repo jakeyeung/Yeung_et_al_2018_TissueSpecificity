@@ -3,6 +3,11 @@
 
 rm(list=ls())
 
+args <- commandArgs(trailingOnly=TRUE)
+method <- args[[1]]
+
+print(paste("METHOD:", method))
+
 DATA="nestle"  # hogenesch|nestle
 CENTER=FALSE
 SCALE=FALSE
@@ -84,7 +89,7 @@ dat.env <- DatLongToEnvironment(dat)
 # do for real
 start <- Sys.time()
 
-for (method in c("zf", "eb", "hyperg", "BIC", "AIC")){
+# for (method in c("zf", "eb", "hyperg", "BIC", "AIC")){
 # for (method in c("eb")){
 # for (method in c("g=250", "g=500", "g=750", "g=1000")){
   print(paste("method:", method))
@@ -105,7 +110,7 @@ for (method in c("zf", "eb", "hyperg", "BIC", "AIC")){
   })
   fits.all.long <- do.call(rbind, fits.all.long)
   save(fits.all.long, file=outf)
-}
+# }
 
 print(Sys.time() - start)
 
