@@ -7,7 +7,6 @@ setwd("/home/yeung/projects/tissue-specificity")
 
 library(dplyr)
 library(ggplot2)
-setwd("/home/yeung/projects/tissue-specificity")
 
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/GetClockGenes.R")
@@ -94,7 +93,45 @@ fits.count <- fits.long.filt %>%
 tvar.flat <- hash(as.character(subset(fits.count, model == "")$g), subset(fits.count, model == "")$tvar)
 fits.count$tvar.flat <- sapply(as.character(fits.count$g), function(g) tvar.flat[[g]])
 
-ggplot(fits.count, aes(x = g, y = n.genes, colour = model, group = model)) + geom_point() + geom_line() + xlim(0, 5001)
-ggplot(fits.count, aes(x = g, y = tvar, colour = model, group = model)) + geom_point() + geom_line() + xlim(0, 5001)
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#009E73")
+pdf("plots/liver_kidney_math710/gsweep.pdf")
+ggplot(fits.count, aes(x = g, y = n.genes, colour = model, group = model)) + geom_point(size = 3) + geom_line() + xlim(0, 5001) +
+  theme_bw() + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank()) +
+  scale_colour_manual(values=cbPalette) + 
+  ylab("# genes")
+  
+
+ggplot(fits.count, aes(x = g, y = tvar, colour = model, group = model)) + geom_point(size = 3) + geom_line() + xlim(0, 5001) +
+  theme_bw() + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank()) +
+  scale_colour_manual(values=cbPalette) +
+  ylab("24h Spectral Power") + 
+  geom_vline(xintercept = 1000)
+
+ggplot(fits.count, aes(x = g, y = tvar, colour = model, group = model)) + geom_point(size = 3) + geom_line() + xlim(0, 10001) +
+  theme_bw() + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank()) +
+  scale_colour_manual(values=cbPalette) +
+  ylab("24h Spectral Power") + 
+  geom_vline(xintercept = 1000)
+  
 # ratio of flat model
-ggplot(fits.count, aes(x = g, y = tvar / tvar.flat, colour = model, group = model)) + geom_point() + geom_line() + xlim(0, 1001)
+ggplot(fits.count, aes(x = g, y = tvar / tvar.flat, colour = model, group = model)) + geom_point(size = 3) + geom_line() + xlim(0, 1001) +
+  theme_bw() + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank()) +
+  scale_colour_manual(values=cbPalette) +
+  ylab("tvar / tvarflat")
+dev.off()

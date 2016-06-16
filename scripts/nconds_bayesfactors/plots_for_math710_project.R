@@ -4,6 +4,8 @@
 rm(list=ls())
 
 setwd("/home/yeung/projects/tissue-specificity")
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#009E73")
+
 
 plotdir <- "plots/liver_kidney_math710"
 dir.create(plotdir)
@@ -135,6 +137,19 @@ plot.fourier.norm <- ggplot(dat.var.s, aes(x = period.factor, y = sum_sqr_mod.no
 
 # Nconds Summary ----------------------------------------------------------
 
+library(hash)
+
+dat.freq.tvar <- dat.freq %>%
+  group_by(gene) %>%
+  summarize(tvar = sum(Mod(exprs.transformed * 2) ^ 2))
+temp.var <- hash(as.character(dat.freq.tvar$gene), dat.freq.tvar$tvar)
+
+fits.long.filt$tvar <- sapply(as.character(fits.long.filt$gene), function(g) temp.var[[g]])
+
+fits.tvar <- fits.long.filt %>%
+  group_by(method, model) %>%
+  summarise(tvar = sum(tvar))
+
 fits.sum <- fits.long.filt %>%
   group_by(method, model) %>%
   summarise(count = length(model))
@@ -152,22 +167,60 @@ fits.sum$model.label <- mapply(function(model, n.param){
 }, fits.sum$model, fits.sum$n.params)
 
 fits.sum$model.label <- factor(fits.sum$model.label, levels = fits.sum$model.label[1:5])
+fits.sum$method <- factor(fits.sum$method, levels = c("AIC", "hyperg", "BIC", "zf", "eb"))
 
-cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#D55E00", "#CC79A7", "#F0E442", "#009E73", "#0072B2")
+
+fits.tvar$n.params <- sapply(as.character(fits.tvar$model), function(m){
+  n.tiss <- 2
+  s <- strsplit(m, ";")[[1]]
+  n.params <- n.tiss + 2 * length(s)
+  return(paste0("(p=", n.params, ")"))
+})
+
+fits.tvar$model.label <- mapply(function(model, n.param){
+  if (model == "") model <- "Flat"
+  paste(model, n.param, sep = "\n")
+}, fits.tvar$model, fits.tvar$n.params)
+
+fits.tvar$model.label <- factor(fits.tvar$model.label, levels = fits.tvar$model.label[1:5])
+fits.tvar$method <- factor(fits.tvar$method, levels = c("AIC", "hyperg", "BIC", "zf", "eb"))
+
+
+# jsub <- subset(fits.sum)
+# jsub$method <- factor(jsub$method, levels = c("AIC", "hyperg", "BIC", "zf", "eb"))
 plot.counts <- ggplot(fits.sum, aes(x = model.label, fill = method, y = count)) + geom_bar(stat = "identity", position = "dodge", width=0.5) + theme_bw(24) + 
-  scale_fill_manual(values=cbPalette, labels = c("AIC", "BIC", "g=1000", "HyperG", "Zellner-Siow")) + xlab("") + 
+  scale_fill_manual(values=cbPalette, labels = c("AIC", "HyperG", "BIC", "Zellner-Siow", "g=1000")) + 
+  xlab("") + ylab("# genes") + 
   theme(aspect.ratio = 1, axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 12),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(), 
         panel.background = element_blank())
 
-plot.counts.noeb <- ggplot(subset(fits.sum, method != "eb"), aes(x = model.label, fill = method, y = count)) + geom_bar(stat = "identity", position = "dodge", width=0.5) + theme_bw(24) + 
-  scale_fill_manual(values=cbPalette, labels = c("AIC", "BIC", "HyperG", "Zellner-Siow")) + xlab("") + 
+plot.var <- ggplot(fits.tvar, aes(x = model.label, fill = method, y = tvar)) + geom_bar(stat = "identity", position = "dodge", width=0.5) + theme_bw(24) + 
+  scale_fill_manual(values=cbPalette, labels = c("AIC", "HyperG", "BIC", "Zellner-Siow", "g=1000")) + 
+  xlab("") + ylab("24h Spectral Power") + 
+theme(aspect.ratio = 1, axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 12),
+      panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(), 
+      panel.background = element_blank())
+  
+jsub <- subset(fits.sum, method != "eb")
+jsub$method <- factor(jsub$method, levels = c("AIC", "hyperg", "BIC", "zf"))
+plot.counts.noeb <- ggplot(jsub, aes(x = model.label, fill = method, y = count)) + geom_bar(stat = "identity", position = "dodge", width=0.5) + theme_bw(24) + 
+  scale_fill_manual(values=cbPalette, labels = c("AIC", "HyperG", "BIC", "Zellner-Siow")) + xlab("") + 
   theme(aspect.ratio = 1, axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 12),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(), 
         panel.background = element_blank())
 
+jsub <- subset(fits.tvar, method != "eb")
+jsub$method <- factor(jsub$method, levels = c("AIC", "hyperg", "BIC", "zf"))
+plot.var.noeb <- ggplot(jsub, aes(x = model.label, fill = method, y = tvar)) + geom_bar(stat = "identity", position = "dodge", width=0.5) + theme_bw(24) + 
+  scale_fill_manual(values=cbPalette, labels = c("AIC", "HyperG", "BIC", "Zellner-Siow")) + xlab("") + ylab("24h Spectral Power") + 
+  theme(aspect.ratio = 1, axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 12),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank())
 
 # Discrepancies -----------------------------------------------------------
 
@@ -190,17 +243,20 @@ print(plot.periods.all + facet_wrap(~tissue) + theme(strip.text.x = element_text
 print(plot.fourier)
 print(plot.fourier.norm)
 print(plot.counts)
+print(plot.counts.noeb)
+print(plot.var)
+print(plot.var.noeb)
 dev.off()
 
-pdf(file.path(plotdir, "liverkidneysvd.pdf"))
+pdf(file.path(plotdir, "liverkidneysvd.amp.pdf"))
 # Compare Kidney,Liver model
 for (jmeth in c("AIC", "hyperg", "BIC", "zf", "eb")){
   for (jtiss in list("Kidney,Liver")){
     genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% jtiss)$gene)
     for (i in c(1)){
       s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, jtitle = jmeth)
+      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE)
+      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE, jtitle = jmeth)
       jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
       multiplot(eigens1$u.plot, eigens1$v.plot, layout = jlayout)
       multiplot(eigens2$u.plot, eigens2$v.plot, layout = jlayout)
@@ -256,14 +312,17 @@ for (jtiss in list("Liver", "Kidney")){
 
 
 # plot examples
+pdf(file.path(plotdir, "examples.pdf"))
 jgenes <- c("Arntl", "Nr1d1", "Npas2", "Cry1", "Cry2", "Per1", "Per2", "Per3", "Gm15459", "Hspa8", "Dbp", "Slc44a1", "Osgin1", "Gm11128")
 for (jgene in jgenes){
   print(PlotGeneAcrossTissues(subset(dat, gene == jgene), make.pretty = TRUE))
   print(PlotGeneAcrossTissues(subset(dat, gene == jgene), make.pretty = TRUE, do.facet.wrap = FALSE))
-  print(ggplot(subset(fits.long, gene == jgene), aes(x = method, y = weight, fill = model)) + geom_bar(stat = "identity", position = "dodge") + theme_bw() + ggtitle(jgene) + 
-    scale_x_discrete(labels = c("AIC", "BIC", "g=1000", "HyperG", "Zellner-Siow")) + 
-      theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank())) + 
-    xlab("") + ylab("Probability")
+  print(ggplot(subset(fits.long, gene == jgene & method != "eb"), aes(x = method, y = weight, fill = model)) + geom_bar(stat = "identity", position = "dodge") + theme_bw() + ggtitle(jgene) + 
+    scale_x_discrete(labels = c("AIC", "BIC", "HyperG", "Zellner-Siow")) + 
+      scale_fill_manual(values=cbPalette) + 
+      theme(aspect.ratio=1, panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(), panel.background = element_blank()) + 
+    xlab("") + ylab("Probability"))
   print(PlotPeriodogramLong(subset(dat, gene == jgene)))
 }
 dev.off()

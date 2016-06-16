@@ -5,7 +5,7 @@
 # 2016-06-16
 
 n=0
-maxjobs=25
+maxjobs=13
 inf="/home/yeung/projects/tissue-specificity/scripts/nconds_bayesfactors/liver_kidney_cedric.script.R"
 for g in 10 50 101 251 501 751 1001 2001 3001 4001 5001 7501 10001; do
 	meth="g=$g"

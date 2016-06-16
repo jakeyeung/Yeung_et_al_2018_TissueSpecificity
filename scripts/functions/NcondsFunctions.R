@@ -853,26 +853,17 @@ GetBayesFactor <- function(N, p, rsquared, method = "zf", plot.integrand=FALSE){
   } else if (method == "eb"){
     # proper way is to do EM algorithm, which I will not do.
     g.mode <- 1000
-    # debug <- FALSE
-    # if (debug){
-    #   g.mode <- ModeG(N, p, rsquared)
-    #   print(g.mode)
-    #   gvec <- seq(0, 50000, length.out = 1000)
-    #   plot(gvec, ModelLikelihood(gvec, N=N, p=p, R2=rsquared, .log = TRUE, log.const = 0, return.log = FALSE), type = "l")
-    #   abline(v = g.mode)
-    # }
-    # g.mode <- ModeG(N, p, rsquared)
     bf <- log(ModelLikelihood(g = g.mode, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE))
   } else {
     # guess that user set method as "g"
     if (!is.numeric(method)){
     	# if not numeric, expect form g=1000
     	g <- as.numeric(strsplit(method, "=")[[1]][[2]])
-    	# stop(paste0("Unknown method specified and not a number: ", method))
     } else {
     	g <- method
     }
-    bf <- log(ModelLikelihood(g = g, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE))
+    # no prior needed (Equation 8 of Liang 2008)
+    bf <- log(ModelLikelihood(g = g, N = N, p = p, R2 = rsquared, .log = TRUE, log.const = 0, return.log = FALSE, add.prior = FALSE))
   }
   if (plot.integrand){
     par(mar = c(5,5,2,5))
