@@ -1,6 +1,6 @@
 # PlotGeneAcrossTissues.R
 
-PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pretty = FALSE, jxlab="CT", do.facet.wrap=TRUE){
+PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pretty = FALSE, jxlab="CT", do.facet.wrap=TRUE, by.linetype=FALSE){
   library(ggplot2)
   if (missing(jtitle)){
     jtitle = unique(dat$gene)
@@ -27,13 +27,25 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
     if (do.facet.wrap){
       m <- m + geom_point() + geom_line() + facet_wrap(~tissue)
     } else {
-      m <- m + geom_point(data = dat, aes(x = time, y = exprs, group = tissue, colour = tissue)) + geom_line(data = dat, aes(x = time, y = exprs, group = tissue, colour = tissue))
+      if (!by.linetype){
+        m <- m + geom_point(data = dat, aes(x = time, y = exprs, group = tissue, colour = tissue)) + geom_line(data = dat, aes(x = time, y = exprs, group = tissue, colour = tissue))
+      } else {
+        m <- m + geom_point(data = dat, aes(x = time, y = exprs, group = tissue, linetype = tissue)) + geom_line(data = dat, aes(x = time, y = exprs, group = tissue, linetype = tissue))
+      }
     }
   if (make.pretty){
    m <- m + theme_bw() + theme(panel.grid.major = element_blank(),
                                panel.grid.minor = element_blank(),
                                aspect.ratio = 1)
   }
+  return(m)
+}
+
+PlotGeneTissuesWTKO <- function(dat, timelabel="ZT"){
+  m <- ggplot(subset(dat, gene == jgene), aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
+    geom_point() + geom_line() + xlab(timelabel) + ylab("log2 expression") + 
+    theme_bw(24) + 
+    facet_wrap(~geno) + theme(aspect.ratio = 1, legend.position = "bottom")
   return(m)
 }
 

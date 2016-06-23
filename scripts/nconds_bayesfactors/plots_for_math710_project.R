@@ -272,8 +272,8 @@ for (jmeth in c("AIC", "hyperg", "BIC", "zf", "eb")){
     genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% jtiss)$gene)
     for (i in c(1, 2)){
       s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, jtitle = jmeth)
+      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE)
+      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE, jtitle = jmeth)
       jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
       multiplot(eigens1$u.plot, eigens1$v.plot, layout = jlayout)
       multiplot(eigens2$u.plot, eigens2$v.plot, layout = jlayout)
@@ -285,8 +285,8 @@ dev.off()
 pdf(file.path(plotdir, "genomewide.pdf"))
 # Compare Kidney,Liver model
       s <- SvdOnComplex(subset(dat.freq), value.var = "exprs.transformed")
-      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, jtitle = jmeth)
+      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE)
+      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE, jtitle = jmeth)
       jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
       multiplot(eigens1$u.plot, eigens1$v.plot, layout = jlayout)
       multiplot(eigens2$u.plot, eigens2$v.plot, layout = jlayout)
@@ -300,8 +300,8 @@ for (jtiss in list("Liver", "Kidney")){
     genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% jtiss)$gene)
     for (i in c(1)){
       s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, jtitle = jmeth)
+      eigens1 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE)
+      eigens2 <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = FALSE, jtitle = jmeth)
       jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
       multiplot(eigens1$u.plot, eigens1$v.plot, layout = jlayout)
       multiplot(eigens2$u.plot, eigens2$v.plot, layout = jlayout)
@@ -312,16 +312,21 @@ for (jtiss in list("Liver", "Kidney")){
 
 
 # plot examples
-pdf(file.path(plotdir, "examples.pdf"))
+fits.long$method <- factor(as.character(fits.long$method), levels = c("AIC", "hyperg", "BIC", "zf", "eb"))
+pdf(file.path(plotdir, "examples.g1000.pdf"))
 jgenes <- c("Arntl", "Nr1d1", "Npas2", "Cry1", "Cry2", "Per1", "Per2", "Per3", "Gm15459", "Hspa8", "Dbp", "Slc44a1", "Osgin1", "Gm11128")
 for (jgene in jgenes){
-  print(PlotGeneAcrossTissues(subset(dat, gene == jgene), make.pretty = TRUE))
-  print(PlotGeneAcrossTissues(subset(dat, gene == jgene), make.pretty = TRUE, do.facet.wrap = FALSE))
-  print(ggplot(subset(fits.long, gene == jgene & method != "eb"), aes(x = method, y = weight, fill = model)) + geom_bar(stat = "identity", position = "dodge") + theme_bw() + ggtitle(jgene) + 
-    scale_x_discrete(labels = c("AIC", "BIC", "HyperG", "Zellner-Siow")) + 
+  # print(PlotGeneAcrossTissues(subset(dat, gene == jgene), make.pretty = TRUE))
+  print(PlotGeneAcrossTissues(subset(dat, gene == jgene), make.pretty = TRUE, do.facet.wrap = FALSE, by.linetype = TRUE) + xlab("Time") + 
+    theme(title = element_text(size = 20), axis.title.x = element_text(size = 20), axis.title.y = element_text(size=20), axis.text.x = element_text(size = 20), axis.text.y = element_text(size = 20), 
+          legend.title = element_text(size = 20), legend.text=element_text(size=20)))
+  print(ggplot(subset(fits.long, gene == jgene), aes(x = method, y = weight, fill = model)) + geom_bar(stat = "identity", position = "dodge") + theme_bw() + ggtitle(jgene) + 
+    scale_x_discrete(labels = c("AIC", "HyperG", "BIC", "Zellner-Siow", "g=1000")) + 
       scale_fill_manual(values=cbPalette) + 
-      theme(aspect.ratio=1, panel.grid.major = element_blank(), 
-            panel.grid.minor = element_blank(), panel.background = element_blank()) + 
+      theme(title = element_text(size = 20), aspect.ratio=1, panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(), panel.background = element_blank(),
+            axis.title.x = element_text(size = 20), axis.title.y = element_text(size=20), axis.text.x = element_text(size = 20, angle = 45, hjust = 1), axis.text.y = element_text(size = 20), 
+            legend.title = element_text(size = 20), legend.text=element_text(size=20)) + 
     xlab("") + ylab("Probability"))
   print(PlotPeriodogramLong(subset(dat, gene == jgene)))
 }
