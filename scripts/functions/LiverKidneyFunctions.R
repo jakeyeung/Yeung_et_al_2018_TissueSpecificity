@@ -9,6 +9,16 @@ CollapseTissueGeno <- function(dat.long, keep.tissue.col=FALSE){
   return(dat.long)
 }
 
+SameTimepointsLivKid <- function(dat.long){
+  # Make Liver and Kidney same number of timepoints (tissue column). Should work for collapse or not collapse
+  conds <- unique(as.character(dat.long$tissue))
+  conds.lst = list()
+  for (cond in conds){
+    conds.lst[[cond]] <- unique(subset(dat.long, tissue == cond)$time)
+  }
+  common.times <- Reduce(intersect, conds.lst)
+  return(subset(dat.long, time %in% common.times))
+}
 
 # Functions for handling DAT_I_I liver kidney Cedric
 TissueFromCname <- function(cname){
