@@ -19,7 +19,8 @@ dat <- read.table(inf, header = TRUE, row.names = 1)
 
 genes <- Transcript2Gene(rownames(dat), return.original = FALSE)  # slow
 sampnames <- colnames(dat)
-dat$gene <- genes
+# dat$gene <- genes
+# dat$gene <- NULL
 
 # Convert to long ---------------------------------------------------------
 
@@ -74,20 +75,23 @@ dat.bytranscript <- data.frame(gene = rep(genes, length(sampnames)),
 dat.long <- dat.bytranscript %>%
   group_by(gene, tissue, time, geno, feeding, experiment) %>%
   summarise(exprs.linear = sum(tpm)) %>%
-  filter(exprs.linear > 0)
+  group_by(gene) %>%
+  filter(max(exprs.linear) > 0)
 dat.long$exprs <- log2(dat.long$exprs.linear + eps)
 
 dat.long$geno <- factor(as.character(dat.long$geno), levels = c("SV129", "BmalKO"))
+dat.long$tissue <- factor(as.character(dat.long$tissue), levels = c("Liver", "Kidney"))
 # Plot example ------------------------------------------------------------
-
-jgene <- "Arntl"
-jgene <- "Dbp"
-jgene <- "Nr1d1"
-jgene <- "Gm129"
-jgene <- "Ciart"
-jgene <- "Npas2"
-
-PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
+# 
+# jgene <- "Arntl"
+# jgene <- "Dbp"
+# jgene <- "Nr1d1"
+# jgene <- "Gm129"
+# jgene <- "Ciart"
+# jgene <- "Npas2"
+# 
+# PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
 
 dir.create("Robjs/liver_kidney_atger_nestle")
-save(dat.long, file="Robjs/liver_kidney_atger_nestle/dat.long.Robj")
+save(dat.long, file="Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj")
+

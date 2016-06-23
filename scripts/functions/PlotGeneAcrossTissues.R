@@ -41,10 +41,10 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
   return(m)
 }
 
-PlotGeneTissuesWTKO <- function(dat, timelabel="ZT"){
-  m <- ggplot(subset(dat, gene == jgene), aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
+PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle=""){
+  m <- ggplot(dat, aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
     geom_point() + geom_line() + xlab(timelabel) + ylab("log2 expression") + 
-    theme_bw(24) + 
+    theme_bw(24) + ggtitle(jtitle) + 
     facet_wrap(~geno) + theme(aspect.ratio = 1, legend.position = "bottom")
   return(m)
 }

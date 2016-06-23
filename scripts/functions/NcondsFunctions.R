@@ -785,6 +785,7 @@ FitModel <- function(dat.gene, mat, weight.sum, get.criterion="BIC", condensed=F
     bf <- tryCatch({
       bf <- GetBayesFactor(N, p, rsquared, method = get.criterion, plot.integrand = FALSE)  # output is log
     }, error = function(e) {
+      print(as.character(dat.gene$gene[[1]]))
       print(e)
       bf <- NA
     })
