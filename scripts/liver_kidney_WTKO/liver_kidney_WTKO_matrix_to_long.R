@@ -1,6 +1,6 @@
 # 2016-06-22
 # Jake Yeung
-# liver_kidney_WTKO_explore.R
+# liver_kidney_WTKO_matrix_to_long.R
 
 rm(list=ls())
 

@@ -1,5 +1,16 @@
-# Functions for handling DAT_I_I liver kidney Cedric
+# Functions for handling Atger-Kidney from Nestle and Jerome
 
+CollapseTissueGeno <- function(dat.long, keep.tissue.col=FALSE){
+  # Collapse tissue into tissuegeno, so you can use functions that expect "tissues" as conditions in colname (hack)
+  if (keep.tissue.col){
+    dat.long$tissue.old <- dat.long$tissue
+  }
+  dat.long$tissue <- factor(paste(dat.long$tissue, dat.long$geno, sep = "_"), levels = c("Liver_SV129", "Kidney_SV129", "Liver_BmalKO", "Kidney_BmalKO"))
+  return(dat.long)
+}
+
+
+# Functions for handling DAT_I_I liver kidney Cedric
 TissueFromCname <- function(cname){
   # "X0_1 -> Kidney"
   # "X0_1_liver -> Liver"
