@@ -379,14 +379,14 @@ plot.i <- plot.i + 1
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
 act.long <- LoadActivitiesLong(indir)
 act.complex <- TemporalToFrequencyDatLong(act.long, period = 24, n = 8, interval = 6, add.entropy.method = "array")
-act.complex$exprs.adj <- act.complex$exprs.transformed * act.complex$frac.weight  # why frac.weight?
-act.complex$mod.exprs <- Mod(act.complex$exprs.transformed)
-act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
+# act.complex$exprs.adj <- act.complex$exprs.transformed * act.complex$frac.weight  # why frac.weight?
+# act.complex$mod.exprs <- Mod(act.complex$exprs.transformed)
+# act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
 
 # no WFAT
 act.complex <- subset(act.complex, !tissue %in% filt.tiss)
 
-s.act <- SvdOnComplex(act.complex, value.var = "exprs.adj")
+s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 for (comp in seq(1)){

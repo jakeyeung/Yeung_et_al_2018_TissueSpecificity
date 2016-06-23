@@ -743,7 +743,7 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
                    phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
                    label = labels)
   
-  amp.max <- ceiling(max(df$amp))
+  amp.max <- ceiling(max(df$amp) * 2) / 2
   if (amp.max <= 1){
     amp.step <- 0.5
   } else {
