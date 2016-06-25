@@ -36,3 +36,36 @@ AppendGeneID <- function(dat){
   dat <- cbind(Gene.ID, dat)
   return(dat)
 }
+
+AnnotatePseudogenes <- function(gene.list, return.original=TRUE){
+  library("biomaRt")
+  # https://support.bioconductor.org/p/74322/  need to use host and biomart
+  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  gos <- getBM(gene.list,attributes=c("external_gene_name", "gene_biotype"),
+               filters=c("external_gene_name"),
+               mart=mart.obj)
+  gl <- gos[match(gene.list, gos[,1]), 2]
+  ## if not found, then keep ENSEMBL name
+  print(paste0("Could not match ", length(gl[is.na(gl)]), " genes."))
+  if (return.original){
+    gl[is.na(gl)] <- gene.list[is.na(gl)] 
+  }
+  return(gl)
+}
+
+AnnotateTranscriptLength <- function(gene.list, return.original=TRUE, min.length=1000){
+  library("biomaRt")
+  # https://support.bioconductor.org/p/74322/  need to use host and biomart
+  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  gos <- getBM(gene.list,attributes=c("external_gene_name", "transcript_length"),
+               filters=c("external_gene_name"),
+               mart=mart.obj)
+  print(gos[match(gene.list, gos[, 1]), ])
+  gl <- gos[match(gene.list, gos[,1]), 2]
+  ## if not found, then keep ENSEMBL name
+  print(paste0("Could not match ", length(gl[is.na(gl)]), " genes."))
+  if (return.original){
+    gl[is.na(gl)] <- gene.list[is.na(gl)] 
+  }
+  return(gl)
+}
