@@ -20,6 +20,52 @@ SameTimepointsLivKid <- function(dat.long){
   return(subset(dat.long, time %in% common.times))
 }
 
+StaggeredTimepointsLivKid <- function(dat.long){
+  # Take consecutive timepoints for liver and kidney (keep all liver, take kidney not in liver)
+  # Make Liver and Kidney same number of timepoints (tissue column). Should work for collapse or not collapse
+  conds <- unique(as.character(dat.long$tissue))
+  conds.lst <- list()
+  minsize <- Inf
+  mintimes <- c()
+  for (cond in conds){
+    conds.lst[[cond]] <- unique(subset(dat.long, tissue == cond)$time)
+    if (length(conds.lst[[cond]]) < minsize){
+      minsize <- length(conds.lst[[cond]])
+      mintimes <- conds.lst[[cond]]
+    } 
+  }
+  dat.sub <- dat.long %>%
+    group_by(tissue) %>%
+    do(SetdiffTimepoints(., mintimes))
+  return(dat.sub)
+}
+
+SetdiffTimepoints <- function(dat.tiss, mintimes){
+  # if dat.tiss matches mintimes, do nothing
+  # if dat.tiss larger than mintimes, take setdiff
+  times <- unique(dat.tiss$time)
+  if (all(times == mintimes)){
+    return(dat.tiss)
+  } else {
+    times.new <- setdiff(times, mintimes)
+    return(subset(dat.tiss, time %in% times.new))
+  }
+}
+
+RemoveLowlyExpressedGenes <- function(dat.long, jquantile = 0.9, jcutoff = 1, show.plot=FALSE){
+  dat.mean <- dat.long %>%
+    group_by(gene) %>%
+    summarise(exprs.max = quantile(exprs, probs = 0.9))
+  
+  if (show.plot){
+    plot(density(dat.mean$exprs.max))
+    abline(v=jcutoff)
+  }
+  genes.cut <- as.character(subset(dat.mean, exprs.max <= jcutoff)$gene)
+  dat.long <- subset(dat.long, ! gene %in% genes.cut)
+  return(dat.long)
+}
+
 # Functions for handling DAT_I_I liver kidney Cedric
 TissueFromCname <- function(cname){
   # "X0_1 -> Kidney"
