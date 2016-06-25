@@ -429,7 +429,7 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
     eigengene <- 1 * eigengene
     eigensamp <- 2 * eigensamp
     xlab <- "Log2 Fold Change"
-    ylab <- "Phase (CT)"
+    # ylab <- "Phase (CT)"
   } else {
     xlab <- "Amp (mean to peak)"
   }
