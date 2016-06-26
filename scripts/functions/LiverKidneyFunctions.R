@@ -1,5 +1,35 @@
 # Functions for handling Atger-Kidney from Nestle and Jerome
 
+RemoveLowExprsPseudoShortGenes <- function(dat.long, ggbiotype="protein_coding", gglength = 250, jcutoff = 1, show.plot=FALSE){
+  dat.sub <- subset(dat.long, !is.na(gene))
+  
+  # Remove pseudogenes nd short genes
+  genes <- unique(as.character(dat.sub$gene))
+  genes.biotype <- AnnotatePseudogenes(genes, return.original = FALSE)
+  genes.length <- AnnotateTranscriptLength(genes, return.original = FALSE)
+  biotype.hash <- hash(genes, genes.biotype)
+  length.hash <- hash(genes, genes.length)
+  dat.sub$gbiotype <- sapply(as.character(dat.sub$gene), function(g) biotype.hash[[g]])
+  dat.sub$glength <- sapply(as.character(dat.sub$gene), function(g) length.hash[[g]])
+  dat.sub <- subset(dat.sub, gbiotype == ggbiotype & glength > gglength)
+  
+  # remove lowly expressed genes
+  dat.mean <- dat.sub %>%
+    group_by(gene) %>%
+    summarise(exprs.max = quantile(exprs, probs = 0.9))
+  
+  if (show.plot){
+    plot(density(dat.mean$exprs.max))
+    jcutoff <- 1
+    abline(v=jcutoff)
+  }
+  
+  genes.cut <- as.character(subset(dat.mean, exprs.max <= jcutoff)$gene)
+  
+  dat.sub <- subset(dat.sub, !gene %in% genes.cut)
+  return(dat.sub)
+}
+
 CollapseTissueGeno <- function(dat.long, keep.tissue.col=FALSE){
   # Collapse tissue into tissuegeno, so you can use functions that expect "tissues" as conditions in colname (hack)
   if (keep.tissue.col){

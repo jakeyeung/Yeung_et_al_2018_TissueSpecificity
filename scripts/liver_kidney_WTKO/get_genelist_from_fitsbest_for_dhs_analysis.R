@@ -9,6 +9,8 @@ library(ggplot2)
 
 
 outdir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/liver_kidney_wtko_modules"
+jmethod <- "g=1001"
+jmethod <- "BIC"
 
 # Sources -----------------------------------------------------------------
 
@@ -18,20 +20,22 @@ source("scripts/functions/LiverKidneyFunctions.R")
 
 # Load --------------------------------------------------------------------
 
-load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.Robj", v=T)
+# load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/dat.freq.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
 
+# dat.long <- StaggeredTimepointsLivKid(dat.long)
 
 # Get gene lists ----------------------------------------------------------
 
 
-models <- c("Kidney_SV129,Liver_SV129", "Kidney_SV129", "Liver_SV129")
+models <- c("Liver_SV129,Kidney_SV129", "Kidney_SV129", "Liver_SV129")
 
 for (m in models){
-  outname <- paste0(gsub(",", "-", m), ".list")
+  outname <- paste0(gsub(",", "-", m), ".method.", jmethod, ".list")
   outf <- file.path(outdir, outname)
-  genes <- as.character(subset(fits.long.filt, model == m)$gene)
+  genes <- as.character(subset(fits.long.filt, model == m & method == jmethod)$gene)
   sink(file = outf)
   for (g in genes){
     cat(g)
@@ -40,5 +44,7 @@ for (m in models){
   sink()
 }
 
-jgene <- "Zfp651"
-PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
+# jgene <- "Zfp651"
+# jgene <- "Cdr2"
+# jgene <- "Cldn10"
+# PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))

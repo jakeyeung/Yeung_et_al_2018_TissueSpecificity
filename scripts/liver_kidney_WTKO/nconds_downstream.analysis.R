@@ -15,40 +15,24 @@ source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/GetClockGenes.R")
 source("scripts/functions/BiomartFunctions.R")
 
-load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.Robj", v=T)
+# load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
 dat.orig <- dat.long
 
 dat.long <- CollapseTissueGeno(dat.long)
-dat.long <- SameTimepointsLivKid(dat.long)
+dat.long <- StaggeredTimepointsLivKid(dat.long)
+# dat.long <- SameTimepointsLivKid(dat.long)
 
 # filter NA changes
 dat.long <- subset(dat.long, !is.na(gene))
 
-# Filter lowly expressed genes --------------------------------------------
 
-# Remove pseudogenes
-genes <- unique(as.character(dat.long$gene))
-genes.biotype <- AnnotatePseudogenes(genes, return.original = FALSE)
-genes.length <- AnnotateTranscriptLength(genes, return.original = FALSE)
-biotype.hash <- hash(genes, genes.biotype)
-length.hash <- hash(genes, genes.length)
-dat.long$gbiotype <- sapply(as.character(dat.long$gene), function(g) biotype.hash[[g]])
-dat.long$glength <- sapply(as.character(dat.long$gene), function(g) length.hash[[g]])
-dat.long <- subset(dat.long, gbiotype == "protein_coding" & glength > 250)
+# Filter to common genes --------------------------------------------------
 
+genes.keep <- unique(as.character(fits.long.filt$gene))
 
-dat.mean <- dat.long %>%
-  group_by(gene) %>%
-  summarise(exprs.max = quantile(exprs, probs = 0.9))
-
-plot(density(dat.mean$exprs.max))
-jcutoff <- 1
-abline(v=jcutoff)
-
-genes.cut <- as.character(subset(dat.mean, exprs.max <= jcutoff)$gene)
-
-dat.long <- subset(dat.long, ! gene %in% genes.cut)
+dat.long <- subset(dat.long, gene %in% genes.keep)
 
 # Project to Frequency ----------------------------------------------------
 
@@ -68,12 +52,11 @@ for (i in seq(1)){
 
 # All periods -------------------------------------------------------------
 
-
+periods <- rep(48, 6) / seq(1, 6)  # 48/1, 48/2 ... 48/12
 loadfile <- "Robjs/liver_kidney_atger_nestle/dat.complex.all_T.Robj"
 if (file.exists(loadfile)){
   load(loadfile)
 } else {
-  periods <- rep(48, 6) / seq(1, 6)  # 48/1, 48/2 ... 48/12
   
   library(parallel)
   dat.complexes <- mclapply(periods, function(period, dat.long){
@@ -94,10 +77,12 @@ if (file.exists(loadfile)){
 
 # By clusters -------------------------------------------------------------
 
+jmeth <- "zf"
+jmeth <- "BIC"
 jmeth <- "g=1001"
 i <- 1
 
-genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_SV129,Liver_SV129"))$gene)
+genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129,Kidney_SV129"))$gene)
 
 s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
 eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
@@ -112,6 +97,12 @@ eigens <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
+genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_BmalKO"))$gene)
+
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
 genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129"))$gene)
 
@@ -121,10 +112,17 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
 
+genes.tw <- as.character(subset(fits.long.filt, method ==jmeth & model %in% c("Liver_SV129;Kidney_SV129"))$gene)
+
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = i, label.n = length(genes.tw) - 1, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
 
 # Count by temporal variance ----------------------------------------------
 
-fits.g <- subset(fits.long.filt, !gene %in% genes.cut & !method %in% c("zf"))
+fits.g <- subset(fits.long.filt, gene %in% genes.keep & !method %in% c("zf"))
 fits.g$g <- sapply(fits.g$method, function(m){
   g = tryCatch({
     g <- as.numeric(strsplit(m, "=")[[1]][[2]])
@@ -172,8 +170,8 @@ fits.count$tvar.flat <- sapply(as.character(fits.count$g), function(g) tvar.flat
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#009E73")
 
-jmodels <- c("Liver_SV129", "Kidney_SV129", "Kidney_SV129,Liver_SV129", "Kidney_SV129;Liver_SV129", "")
-jmodels <- c("Liver_SV129", "Kidney_SV129", "Kidney_SV129,Liver_SV129", "Kidney_SV129;Liver_SV129")
+jmodels <- c("Liver_SV129", "Kidney_SV129", "Liver_SV129,Kidney_SV129", "Liver_SV129;Kidney_SV129", "")
+jmodels <- c("Liver_SV129", "Kidney_SV129", "Liver_SV129,Kidney_SV129", "Liver_SV129;Kidney_SV129")
 
 bic.var <- subset(fits.count, g == "BIC" & model %in% jmodels)
 
@@ -192,4 +190,19 @@ ggplot(subset(fits.count, model %in% jmodels & g != "BIC"), aes(x = as.numeric(g
   geom_hline(yintercept=bic.var$tvar[[4]], colour=cbPalette[[4]], linetype = "dotted") + 
   geom_vline(xintercept = 1000)
 
+bic.n.genes <- subset(fits.count, g == "BIC" & model %in% jmodels)
 
+ggplot(subset(fits.count, model %in% jmodels & g != "BIC"), aes(x = as.numeric(g), y = n.genes, colour = model, group = model)) + geom_point(size = 3) + geom_line() + xlim(0, 5001) + 
+  theme_bw() + 
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank()) +
+  scale_colour_manual(values=cbPalette) +
+  ylab(jylab) + 
+  xlab("g (larger g favors simpler models)") + 
+  geom_hline(yintercept=bic.var$n.genes[[1]], colour=cbPalette[[1]], linetype = "dotted") + 
+  geom_hline(yintercept=bic.var$n.genes[[2]], colour=cbPalette[[2]], linetype = "dotted") + 
+  geom_hline(yintercept=bic.var$n.genes[[3]], colour=cbPalette[[3]], linetype = "dotted") + 
+  geom_hline(yintercept=bic.var$n.genes[[4]], colour=cbPalette[[4]], linetype = "dotted") + 
+  geom_vline(xintercept = 1000)

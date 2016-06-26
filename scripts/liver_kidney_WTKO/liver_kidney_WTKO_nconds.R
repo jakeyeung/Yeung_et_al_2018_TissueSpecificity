@@ -25,19 +25,30 @@ print(paste("METHOD:", method))
 CENTER=FALSE
 SCALE=FALSE
 removesamps=TRUE
+stagger=TRUE
 # outf <- paste0("Robjs/liver_kidney_atger_nestle/nconds/fits.nconds.center.", CENTER, ".scale.", SCALE, ".meth.", method, ".Robj")
-outf <- paste0("Robjs/liver_kidney_atger_nestle/nconds/fits.nconds.removesamps.", removesamps, ".meth.", method, ".Robj")
+outf <- paste0("Robjs/liver_kidney_atger_nestle/nconds/fits.nconds.stagger.", stagger, ".removesamps.", removesamps, ".meth.", method, ".Robj")
 
 # Load --------------------------------------------------------------------
 
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
 
+
+# Filter bad genes --------------------------------------------------------
+
+# Can filter bad genes now, but better to do it downstream!
+# dat.long <- RemoveLowExprsPseudoShortGenes(dat.long, gbiotype = "protein_coding", glength = 250, show.plot = FALSE)
+
 # Prepare data to fit models ----------------------------------------------
 
-# dat.long$tissue <- factor(paste(dat.long$tissue, dat.long$geno, sep = "_"), levels = c("Liver_SV129", "Kidney_SV129", "Liver_BmalKO", "Kidney_BmalKO"))
 dat.long <- CollapseTissueGeno(dat.long)
 if (removesamps){
-  dat.long <- SameTimepointsLivKid(dat.long)
+  if (stagger){
+    # Stagger removes ZT2 from Kidney, which is an outlier when we use Kallisto
+    dat.long <- StaggeredTimepointsLivKid(dat.long)
+  } else {
+    dat.long <- SameTimepointsLivKid(dat.long)
+  }
 }
 
 dat.long <- subset(dat.long, select = c(gene, tissue, time, experiment, exprs))
