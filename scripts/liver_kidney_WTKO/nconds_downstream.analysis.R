@@ -199,7 +199,7 @@ ggplot(subset(fits.count, model %in% jmodels & g != "BIC"), aes(x = as.numeric(g
         panel.grid.minor = element_blank(), 
         panel.background = element_blank()) +
   scale_colour_manual(values=cbPalette) +
-  ylab(jylab) + 
+  ylab("# genes") + 
   xlab("g (larger g favors simpler models)") + 
   geom_hline(yintercept=bic.var$n.genes[[1]], colour=cbPalette[[1]], linetype = "dotted") + 
   geom_hline(yintercept=bic.var$n.genes[[2]], colour=cbPalette[[2]], linetype = "dotted") + 
