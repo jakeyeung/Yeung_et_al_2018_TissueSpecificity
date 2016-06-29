@@ -4,13 +4,20 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(dplyr)
 library(ggplot2)
 
+set.seed(0)
 
-outdir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/liver_kidney_wtko_modules"
-jmethod <- "g=1001"
-jmethod <- "BIC"
+outdir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/liver_kidney_wtko_modules_allgenes"
+dir.create(outdir)
+# jmethod <- "BIC"
+# jmethod <- "g=1001"
+max.genes <- Inf
+jmethods <- c("BIC", "g=1001")
+
 
 # Sources -----------------------------------------------------------------
 
@@ -30,18 +37,31 @@ load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
 # Get gene lists ----------------------------------------------------------
 
 
-models <- c("Liver_SV129,Kidney_SV129", "Kidney_SV129", "Liver_SV129")
-
-for (m in models){
-  outname <- paste0(gsub(",", "-", m), ".method.", jmethod, ".list")
-  outf <- file.path(outdir, outname)
-  genes <- as.character(subset(fits.long.filt, model == m & method == jmethod)$gene)
-  sink(file = outf)
-  for (g in genes){
-    cat(g)
-    cat("\n")
+for (jmethod in jmethods){
+  models <- c("Liver_SV129,Kidney_SV129", "Kidney_SV129", "Liver_SV129", "")
+  
+  for (m in models){
+    if (m != ""){
+      mname <- m
+    } else {
+      mname <- "Flat"
+    }
+    outname <- paste0(gsub(",", "-", mname), ".method.", jmethod, ".list")
+    outf <- file.path(outdir, outname)
+    genes <- as.character(subset(fits.long.filt, model == m & method == jmethod)$gene)
+    if (length(genes) > max.genes){
+      # down sample 
+      print(paste("Down sampling for method", jmethod))
+      genes <- sample(genes, size = max.genes, replace = FALSE)
+    }
+    sink(file = outf)
+    for (g in genes){
+      cat(g)
+      cat("\n")
+    }
+    sink()
   }
-  sink()
+	
 }
 
 # jgene <- "Zfp651"

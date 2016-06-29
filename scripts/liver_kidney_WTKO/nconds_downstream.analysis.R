@@ -82,6 +82,30 @@ jmeth <- "BIC"
 jmeth <- "g=1001"
 i <- 1
 
+genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129,Liver_BmalKO"))$gene)
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
+genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129;Liver_BmalKO"))$gene)
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
+genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_SV129,Kidney_BmalKO"))$gene)
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
+genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_SV129;Kidney_BmalKO"))$gene)
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
 genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129,Kidney_SV129"))$gene)
 
 s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
