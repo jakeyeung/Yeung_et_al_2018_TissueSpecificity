@@ -21,14 +21,6 @@ source('scripts/functions/AlternativeFirstExonsFunctions.R')
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/NcondsFunctions.R")
 
-GetGeneModelKeys <- function(dat, tiss){
-  rhyth.tiss <- gsub(pattern = ";", replacement = ",", x = dat$model)
-  rhyth.tiss <- strsplit(rhyth.tiss, ",")[[1]]
-  
-  is.rhyth <- tiss %in% rhyth.tiss
-  return(data.frame(tissue = tiss, is.rhyth = is.rhyth))
-}
-
 # Load --------------------------------------------------------------------
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", verbose=T)
@@ -45,7 +37,7 @@ fits.best$n.rhyth <- sapply(fits.best$model, GetNrhythFromModel)
 fits.best$amp.avg <- mapply(GetAvgAmpFromParams, fits.best$param.list, fits.best$model)
 fits.best$phase.sd <- mapply(GetSdPhaseFromParams, fits.best$param.list, fits.best$model)
 fits.best$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.best$param.list, fits.best$model)
-fits.best$phase.avg <- mapply(GePhaseFromParams, fits.best$param.list, fits.best$model)
+fits.best$phase.avg <- mapply(GetPhaseFromParams, fits.best$param.list, fits.best$model)
 
 # Annotate tpm.afe.avg by model -------------------------------------------
 
@@ -61,7 +53,6 @@ is.rhyth.dic <- hash(keys, vals)
 tpm.afe.avg <- subset(tpm.afe.avg, gene_name %in% unique(fits.best$gene))
 tpm.afe.avg$amp <- mapply(function(jtiss, jgene) is.rhyth.dic[[paste(jtiss, jgene, sep = ",")]], 
                           as.character(tpm.afe.avg$tissue), as.character(tpm.afe.avg$gene_name))
-
 
 
 # Just sort genes by largest distance in promoter usage space -------------

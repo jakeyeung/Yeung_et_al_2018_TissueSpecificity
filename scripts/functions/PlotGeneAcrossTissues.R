@@ -71,7 +71,7 @@ PlotGeneAcrossTissuesRnaseq <- function(dat, jtitle, convert.linear = FALSE){
     theme(axis.text.x=element_text(angle=90,vjust = 0)) + theme_bw(24)
 }
 
-PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE){
+PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE, transcript_id = "transcript_id"){
   library(ggplot2)
   
   if (missing(jtitle)){
@@ -80,10 +80,11 @@ PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE){
     jtitle = paste(jgene, jtranscript)
   }
   if (log2.transform == FALSE){
-    m <- ggplot(dat, aes(x = time, y = tpm, group = transcript_id, colour = transcript_id, shape = transcript_id)) 
+    m <- ggplot(dat, aes_string(x = "time", y = "tpm", group = transcript_id, colour = transcript_id, shape = transcript_id)) 
     jylab <- "TPM expression"
   } else {
-    m <- ggplot(dat, aes(x = time, y = log2(tpm + 0.01), group = transcript_id, colour = transcript_id, shape = transcript_id))
+    dat$log2tpm <- log2(dat$tpm + 0.01)
+    m <- ggplot(dat, aes_string(x = "time", y = "log2tpm", group = transcript_id, colour = transcript_id, shape = transcript_id))
     jylab <- "log2 TPM expression"
   }
   m <- m + theme(legend.position="bottom") +

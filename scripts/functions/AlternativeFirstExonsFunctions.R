@@ -1,3 +1,11 @@
+GetGeneModelKeys <- function(dat, tiss){
+  rhyth.tiss <- gsub(pattern = ";", replacement = ",", x = dat$model)
+  rhyth.tiss <- strsplit(rhyth.tiss, ",")[[1]]
+  
+  is.rhyth <- tiss %in% rhyth.tiss
+  return(data.frame(tissue = tiss, is.rhyth = is.rhyth))
+}
+
 GetMaxDist <- function(proms, tiss.vec){
   dist.tiss <- as.matrix(dist(proms))
   max.dist.tiss <- max(dist.tiss)
@@ -97,17 +105,17 @@ PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg", draw.e
   #   print(paste("Interscore", sum((mu2 - mu1) ^ 2)))
   #   
   #   # Gaussian distribution
-  #   intraprob1 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mean = mu1, sigma = sig1$cov))) / sum(weights1)
-  #   intraprob2 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu2, sigma = sig2$cov))) / sum(weights2)
-  #   interprob1 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu1, sig1$cov))) / sum(weights2)
-  #   interprob2 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mu2, sig1$cov))) / sum(weights1)
+  #   intraprob1 <- sum(weights1 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mean = mu1, sigma = sig1$cov))) / sum(weights1)
+  #   intraprob2 <- sum(weights2 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mu2, sigma = sig2$cov))) / sum(weights2)
+  #   interprob1 <- sum(weights2 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mu1, sig1$cov))) / sum(weights2)
+  #   interprob2 <- sum(weights1 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mu2, sig1$cov))) / sum(weights1)
 }
 
-CalculateGaussianCenters <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE){
+CalculateGaussianCenters <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE, transcript_id = "transcript_id"){
   if (length(unique(dat$tissue)) <= 1){
     return(NA)
   }
-  proms.full <- GetPromoterUsage(dat, jvar = jvar, do.svd = do.svd, append.tiss = TRUE, get.means = TRUE, get.entropy = FALSE)  
+  proms.full <- GetPromoterUsage(dat, jvar = jvar, do.svd = do.svd, append.tiss = TRUE, get.means = TRUE, get.entropy = FALSE, transcript_id = transcript_id)  
   proms <- subset(proms.full$dat.mat.trans, select = -c(amp, tissue))
   amp <- proms.full$dat.mat.trans$amp
   
@@ -152,10 +160,10 @@ CalculateGaussianDists <- function(dat){
   
   center.dists <- sum((mu2 - mu1) ^ 2)
   amp.range <- max(amp) - min(amp)
-  intrascore1 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mean = mu1, sigma = sig1$cov))) / sum(weights1)
-  intrascore2 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu2, sigma = sig2$cov))) / sum(weights2)
-  interscore1 <- sum(weights2 * apply(proms, 1, function(x) dmvnorm(x, mu1, sig1$cov))) / sum(weights2)
-  interscore2 <- sum(weights1 * apply(proms, 1, function(x) dmvnorm(x, mu2, sig1$cov))) / sum(weights1)
+  intrascore1 <- sum(weights1 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mean = mu1, sigma = sig1$cov))) / sum(weights1)
+  intrascore2 <- sum(weights2 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mu2, sigma = sig2$cov))) / sum(weights2)
+  interscore1 <- sum(weights2 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mu1, sig1$cov))) / sum(weights2)
+  interscore2 <- sum(weights1 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mu2, sig1$cov))) / sum(weights1)
   return(data.frame(center.dists=center.dists, amp.range = amp.range, intrascore1=intrascore1, intrascore2=intrascore2, interscore1=interscore1, interscore2=interscore2))
 }
 
@@ -228,10 +236,19 @@ KeepUpToThres <- function(vec, thres, min.dim = 2){
   return(1:i)
 }
 
-GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE){
+GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE, transcript_id = "transcript_id"){
   # get promoter usage
-  dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = jvar)
-  dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
+  if (!is.null(dat$mean)){
+    jform <- paste0("tissue + amp + mean ~ ", transcript_id)
+    # dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = jvar)
+    dat.mat <- dcast(dat, as.formula(jform), value.var = jvar)
+    dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp, mean))
+  } else {
+    jform <- paste0("tissue + amp ~ ", transcript_id)
+    # dat.mat <- dcast(dat, tissue + amp + mean~ transcript_id, value.var = jvar)
+    dat.mat <- dcast(dat, as.formula(jform), value.var = jvar)
+    dat.mat.prom <- subset(dat.mat, select = -c(tissue, amp))
+  }
   if (do.svd){
     # reduce dim
     dat.mat.prom <- sweep(dat.mat.prom, MARGIN = 1, STATS = rowMeans(dat.mat.prom), FUN = "-")
