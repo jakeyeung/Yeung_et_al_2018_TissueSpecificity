@@ -39,7 +39,7 @@ if (jmodels == "Kidney_SV129"){
   rhyth.tiss <- c("Liver")
   flat.tiss <- c("Kidney")
 }
-outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.Liver.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".method.", jmethod, ".Robj")
+outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.model.", jmodels[[1]], ".distfilt.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".method.", jmethod, ".Robj")
 if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
 
 library(dplyr)
@@ -207,6 +207,10 @@ mat.fg <- dcast(subset(N.sub, peak %in% liver.peaks.fg), formula = peak + gene ~
 mat.bgnonliver <- dcast(subset(N.sub, peak %in% nonliver.peaks.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 mat.bg <- dcast(subset(N.sub.flat, peak %in% flat.peaks.liv.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 
+
+save(mat.fg, mat.bgnonliver, mat.bg, file = outfile.robj)
+print(paste("Matrices saved to:", outfile.robj))
+
 # Visualize selected peaks in heatmap -------------------------------------
 
 # sanity check
@@ -346,45 +350,4 @@ for (jdat in list(mat.fg, mat.bgnonliver, mat.bg)){
   bedToUCSC(jbed, outpdf = file.path(outdir, outname), leftwindow = 500, rightwindow = 500, theURL = "http://genome-euro.ucsc.edu/cgi-bin/hgTracks?hgsid=216113768_gOhEDfRc8B232JB2uV8N5dcx6oHf&hgt.psOutput=on")
   i <- i + 1
 }
-# 
-# # How many are enriched? Plot the data ------------------------------------
-# 
-# labels.rename <- hash(as.character(seq(3)), jlabs)
-# 
-# mat.all <- rbind(mat.fg, mat.bgnonliver, mat.bg)
-# mat.all$label <- sapply(as.character(labels3), function(l) labels.rename[[l]])
-# mat.melt <- melt(mat.all, id.vars = c("gene", "peak", "label"), variable.name = "motif", value.name = "motif.count")
-# 
-# # # remove duplicates
-# # mat.melt <- subset(mat.melt, !peak %in% duplicated(peak))
-# 
-# ggplot(subset(mat.melt, motif == "ZNF238.p2"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# ggplot(subset(mat.melt, motif == "FOXA2.p3"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# ggplot(subset(mat.melt, motif == "RORA.p2"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# ggplot(subset(mat.melt, motif == "ONECUT1,2.p2"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# ggplot(subset(mat.melt, motif == "bHLH_family.p2"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# ggplot(subset(mat.melt, motif == "SRY.p2"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# ggplot(subset(mat.melt, motif == "BPTF.p2"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# ggplot(subset(mat.melt, motif == "MEF2{A,B,C,D}.p2"), aes(x = motif.count, fill = label)) + geom_density(alpha = 0.25) + scale_x_log10()
-# 
-# # how many above 0.5 posterior?
-# mat.npeaks <- subset(mat.melt, motif.count > 0.5) %>%
-#   group_by(label) %>%
-#   summarise(n.peaks = length(unique(peak)))
-# n.peaks.hash <- hash(mat.npeaks$label, mat.npeaks$n.peaks)
-# 
-# mat.count <- subset(mat.melt, motif.count > 0.5) %>%
-#   group_by(label, motif) %>%
-#   summarise(count = length(motif.count), 
-#             jsum = sum(motif.count))
-# 
-# mat.count$count.norm <- apply(mat.count, 1, function(row){
-#   l <- row[[1]]
-#   npeaks <- n.peaks.hash[[l]]
-#   count <- as.numeric(row[[3]])
-#   count.norm <- count / npeaks
-# })
-# 
-# 
-# 
 

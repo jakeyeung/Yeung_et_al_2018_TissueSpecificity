@@ -379,7 +379,7 @@ fits.tw <- subset(fits.best, n.rhyth >= 8)
 genes.tw <- as.character(fits.tw$gene)
 
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 5, peak.to.trough = TRUE)
+eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 
 ### END SUMMARY OF MODULES
@@ -426,8 +426,29 @@ for (comp in seq(1)){
 }
 ### END TISSUEWIDE REGULATORS ###
 
+### BEGIN TISSUEWIDE REGULATORS: TW GENES ONLY ###
+twmaradir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
+
+act.long <- LoadActivitiesLong(twmaradir)
+act.complex <- TemporalToFrequencyDatLong(act.long, period = 24, n = 8, interval = 6, add.entropy.method = "array")
+
+comp <- 1
+s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+
+eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 19, pretty.names = TRUE, peak.to.trough = TRUE, jtitle = "")
+multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
+### END TISSUEWIDE REGULATORS: TW GENES ONLY ###
+
 
 ### BEGIN TISSUESPECIFIC REGULATORS ###
+
+# Plot mean expression with mRNA 
+dat.mean.rnaseq <- subset(dat.long, experiment == "rnaseq") %>%
+  group_by(gene, tissue, experiment) %>%
+  summarise(exprs.mean = mean(exprs))
+
+
 pdf(file.path(outdir, "tissuespec.reg.pdf"))
 act.long <- subset(act.long, tissue != "WFAT")
 jmotifs.lst <- list("BFAT"="MEF2.A.B.C.D..p2", "Adr"="HNF4A_NR2F1.2.p2", "Mus"="SPIB.p2")
@@ -449,14 +470,28 @@ act.sub.mean <- act.sub %>%
 act.sub$tissue <- factor(as.character(act.sub$tissue), levels = as.character(act.sub.mean$tissue))
 PlotActivitiesWithSE(act.sub) + theme_bw() + theme(aspect.ratio = 1, legend.position = "none")
 
-dat.sub <- subset(dat.long, gene == "Mef2c" & experiment == "array")
+dat.sub <- subset(dat.long, gene == "Mef2c" & experiment == "array" & tissue != "WFAT")
 dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = as.character(act.sub.mean$tissue))
 PlotGeneAcrossTissues(dat.sub) + theme_bw()  + theme(aspect.ratio = 1, legend.position = "none")
 
-# Plot mean expression with mRNA 
-dat.mean.rnaseq <- subset(dat.long, experiment == "rnaseq") %>%
-  group_by(gene, tissue, experiment) %>%
-  summarise(exprs.mean = mean(exprs))
+m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == "array"), 
+                                  "Mef2c", amp.filt = 0.2, jtitle="Mef2c", facet.rows = 1, jcex = 8,
+                                  pointsize = 0)
+print(m)
+
+dat.sub <- subset(dat.long, gene == "Icam1" & experiment == "rnaseq" & tissue != "WFAT")
+dat.mean.sub <- subset(dat.mean.rnaseq, gene == "Icam1"); dat.mean.sub <- dat.mean.sub[order(dat.mean.sub$exprs.mean, decreasing = TRUE), ]
+dat.sub$tissue <- factor(as.character(dat.sub$tissue), levels = as.character(dat.mean.sub$tissue))
+PlotGeneAcrossTissues(dat.sub) + theme_bw()  + theme(aspect.ratio = 1, legend.position = "none")
+
+jsub <- subset(fits.best, gene == "Icam1")
+jsub$model <- c("Mus")
+jsub$param.list[[1]] <- jsub$param.list[[1]][which(names(jsub$param.list[[1]]) != "Cere.amp")]
+m <- PlotGeneByRhythmicParameters(jsub, subset(dat.long, experiment == "rnaseq"), 
+                                  "Icam1", amp.filt = 0.2, jtitle="Icam1", facet.rows = 1, jcex = 8,
+                                  pointsize = 0)
+print(m)
+
 genes <- as.character(subset(fits.best, model == "BFAT")$gene)
 tiss <- "BFAT"
 plots.meanexprs <- PlotMeanExprsOfModel(dat.mean.rnaseq, genes, jmodel = "BFAT", sorted = TRUE, avg.method = "median", desc = F)

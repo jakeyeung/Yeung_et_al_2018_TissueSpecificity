@@ -268,7 +268,7 @@ genes.tw <- as.character(fits.tw$gene)
 #outobj <- PlotHeatmapNconds(fits.tw, dat.long, filt.tiss, jexperiment="array", blueend = -1, blackend = 1, min.n = -2.5, max.n = 2.5)
 
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 6, peak.to.trough=TRUE, ylab="Phase (CT)", jtitle = "")
+eigens.tw <- GetEigens(s.tw, period = 24, comp = 1, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough=TRUE, ylab="Phase (CT)", jtitle = "")
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens.tw$v.plot, eigens.tw$u.plot, layout = jlayout)  
 
@@ -377,11 +377,9 @@ dev.off()
 pdf(file.path(outdir, paste0(plot.i, ".MARA_tissue_wide.pdf")))
 plot.i <- plot.i + 1
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA/MARA_motevo_with_se.redo/activities"
+
 act.long <- LoadActivitiesLong(indir)
 act.complex <- TemporalToFrequencyDatLong(act.long, period = 24, n = 8, interval = 6, add.entropy.method = "array")
-# act.complex$exprs.adj <- act.complex$exprs.transformed * act.complex$frac.weight  # why frac.weight?
-# act.complex$mod.exprs <- Mod(act.complex$exprs.transformed)
-# act.complex$mod.exprs.adj <- Mod(act.complex$exprs.adj)
 
 # no WFAT
 act.complex <- subset(act.complex, !tissue %in% filt.tiss)
@@ -390,9 +388,31 @@ s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 for (comp in seq(1)){
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 6, label.n = 25, pretty.names = TRUE, peak.to.trough = TRUE, jtitle = "")
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 25, pretty.names = TRUE, peak.to.trough = TRUE, jtitle = "")
   multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
 }
+
+# tissue wide genes
+twmaradir <- "/home/yeung/projects/tissue-specificity/results/MARA/bic_modules/TissueWide.centeredTRUE"
+
+act.long <- LoadActivitiesLong(twmaradir)
+act.complex <- TemporalToFrequencyDatLong(act.long, period = 24, n = 8, interval = 6, add.entropy.method = "array")
+
+# no WFAT
+act.complex <- subset(act.complex, !tissue %in% filt.tiss)
+
+s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
+
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+for (comp in seq(1)){
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 25, pretty.names = TRUE, peak.to.trough = TRUE, jtitle = "")
+  multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
+}
+
+# Expression of HIC1 across tissues
+print(PlotGeneAcrossTissues(subset(dat.long, gene == "Hic1" & experiment == "rnaseq"), make.pretty = TRUE))
+
+
 dev.off()
 
 # Tissue-specific ----------------------------------------------------
