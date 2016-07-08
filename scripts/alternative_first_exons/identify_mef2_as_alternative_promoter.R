@@ -29,7 +29,8 @@ tpm.afe <- tpm.merged %>%
 
 # Explore mef2 ------------------------------------------------------------
 
-tpm.mef2 <- subset(tpm.afe, gene_name == "Mef2c")
+jgene <- "Insig2"
+tpm.mef2 <- subset(tpm.afe, gene_name == jgene)
 
 ggplot(tpm.mef2, aes(x = time, y = log2(100 * tpm + 1), group = transcript_id, colour = transcript_id, fill = transcript_id)) + 
-  geom_point() + geom_line() + facet_wrap(~tissue)
+  geom_point() + geom_line() + facet_wrap(~tissue) + theme(legend.position = "bottom")

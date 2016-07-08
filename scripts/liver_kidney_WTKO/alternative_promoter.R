@@ -8,6 +8,7 @@ library(dplyr)
 library(ggplot2)
 library(hash)
 library(mvtnorm)
+library(reshape2)
 
 source("scripts/functions/BiomartFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
@@ -124,15 +125,33 @@ jgene <- "Osgin1"
 jgene <- "Zranb1"
 jgene <- "Aox3"
 jgene <- "Upp2"
-jgene <- "Aqp8"
 jgene <- "9530068E07Rik"
 jgene <- "Prkd3"
 jgene <- "Sh3bgrl2"
 jgene <- "Por"
+jgene <- "Aqp9"
+jgene <- "Npnt"
+jgene <- "Wdtc1"
+jgene <- "Zranb1"
+jgene <- "Psen2"
+jgene <- "Prkd3"
+jgene <- "Insig2"
+jgene <- "Upp2"
+jgene <- "Ddc"
 jgene <- "Usp2"
 jgene <- "Slc45a3"
 
-PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & geno == "SV129"), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript")
-PromoterSpacePlots.nostics(subset(tpm.gauss, gene == jgene)$sigs[[1]], jgene, draw.ellipse = T)
-PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
-subset(fits.orig, gene == jgene)
+genes <- as.character(head(data.frame(subset(tpm.gauss, gene %in% jgenes, select=-sigs)), n = 50)$gene)
+
+pdf("plots/alternative_exon_usage/liver_kidney.atger_nestle.pdf")
+for (jgene in genes){
+  print(jgene)
+  tx <- GetPromoterUsage(subset(tpm.afe.avg, gene == jgene), transcript_id = "transcript", get.entropy=FALSE, return.transcripts=TRUE)[[1]]$transcript
+  print(PlotGeneTissuesWTKO(subset(dat.long, gene == jgene)) + ggtitle(jgene))
+  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & geno == "SV129" & transcript %in% tx), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
+  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & geno == "SV129"), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
+}
+dev.off()
+
+# PromoterSpacePlots.nostics(subset(tpm.gauss, gene == jgene)$sigs[[1]], jgene, draw.ellipse = F)
+# subset(fits.orig, gene == jgene)

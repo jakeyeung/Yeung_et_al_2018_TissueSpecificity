@@ -26,7 +26,7 @@ GetPromoterUsageMaxDist <- function(dat, jvar = "tpm_norm.avg"){
 }
 # plot top hits
 PlotPromoter <- function(tpm.afe.avg.sub, jtitle="Title"){
-  proms.full <- GetPromoterUsage(dat, jvar = "tpm_norm.avg", get.means = FALSE, get.entropy = FALSE)
+  proms.full <- GetPromoterUsage(tpm.afe.avg.sub, jvar = "tpm_norm.avg", get.means = FALSE, get.entropy = FALSE)
   proms <- subset(proms.full$dat.mat.trans, select = -c(amp, tissue))
   plot(proms[, 1], proms[, 2], main = jtitle, xlab = "Promoter usage (1st component)", ylab = "Promoter usage (2nd component)")
   par(cex.axis=1, cex.lab=2, cex.main=2, cex.sub=1)
@@ -236,7 +236,7 @@ KeepUpToThres <- function(vec, thres, min.dim = 2){
   return(1:i)
 }
 
-GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE, transcript_id = "transcript_id"){
+GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE, transcript_id = "transcript_id", return.transcripts=FALSE){
   # get promoter usage
   if (!is.null(dat$mean)){
     jform <- paste0("tissue + amp + mean ~ ", transcript_id)
@@ -263,6 +263,22 @@ GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 
     }
     dat.mat.prom <- sweep(dat.mat.prom.s$u[, keep], MARGIN = 2, STATS = dat.mat.prom.s$d[keep], FUN = "*")
     dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom) 
+    if (return.transcripts){
+      dat.mat.v <- sweep(dat.mat.prom.s$v[, keep], MARGIN = 2, STATS = dat.mat.prom.s$d[keep], FUN = "*")
+      # take most polarizing two transcripts
+      transcripts <- colnames(subset(dat.mat, select = -c(tissue, amp)))
+      dat.mat.v.mean <- apply(dat.mat.v, 1, function(row) sum(row ^ 2))
+      
+      n <- length(dat.mat.v.mean)
+      tx1.i <- which.max(dat.mat.v.mean)[[1]]
+      tx2.i <- which(dat.mat.v.mean == sort(dat.mat.v.mean, partial = n - 1)[n - 1])[[1]]
+      
+      dat.mat.v.keep <- dat.mat.v.mean[c(tx1.i, tx2.i)]
+      tx <- transcripts[c(tx1.i, tx2.i)]
+      
+      dat.mat.trans <- cbind(dat.mat.trans, dat.mat.v.keep)
+      dat.mat.trans$transcript <- tx
+    }
   } else {
     dat.mat.trans <- data.frame(amp = dat.mat$amp, dat.mat.prom)
   }

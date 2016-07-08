@@ -4,6 +4,8 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(dplyr)
 library(ggplot2)
 
