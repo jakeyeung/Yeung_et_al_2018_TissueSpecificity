@@ -16,12 +16,12 @@ CountModels <- function(fits.best.sub){
   return(fits.sum)
 }
 
-PlotPolarHistogram <- function(fits.sub, countstring="Count"){
+PlotPolarHistogram <- function(fits.sub, countstring="Count", phase.cname = "phase.avg"){
   # countstring="Count" or "NormCount"
   fits.sub.sum <- CountModels(fits.sub)
   # bin manually
   # 24 and 0 are the same bin
-  fits.sub$bin <- sapply(fits.sub$phase.avg, function(p){
+  fits.sub$bin <- sapply(fits.sub[[phase.cname]], function(p){
     if (p > 0.5){
       phase.bin <- round(p, digits = 0)
     } else {

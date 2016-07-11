@@ -26,11 +26,17 @@ library(reshape2)
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney/atger_with_kidney"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney.Liver_SV129/atger_with_kidney.Liver_SV129"
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney.Liver_SV129,Kidney_SV129/atger_with_kidney.Liver_SV129,Kidney_SV129"
-indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney.Kidney_SV129/atger_with_kidney.Kidney_SV129"
+# indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney.Kidney_SV129/atger_with_kidney.Kidney_SV129"
+
+# with enhancers 40kb
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney.dist_40000.cutoff_3.model_Liver_SV129.method_g=1001/atger_kidney.Liver_SV129.g=1001"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney.dist_40000.cutoff_3.model_Liver_SV129.method_g=1001.cross_TRUE/atger_kidney.Liver_SV129.g=1001"
+indir <- "/home/yeung/projects/tissue-specificity/results/MARA/atger_kidney.dist_40000.cutoff_3.model_Liver_SV129.method_g=1001.cross_TRUE/atger_kidney.Liver_SV129.g=1001"
 
 act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = TRUE)
 
-jgene <- "PAX5"
+jgene <- "RORA"
+jgene <- "CUX2"
 PlotActivitiesWithSE.rnaseq(subset(act.long, gene == jgene & experiment == "rnaseq")) + theme_bw(24)
 
 # find most tissue-specific
@@ -72,7 +78,7 @@ s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 for (comp in seq(1)){
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 14)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 45)
   multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
 }
 

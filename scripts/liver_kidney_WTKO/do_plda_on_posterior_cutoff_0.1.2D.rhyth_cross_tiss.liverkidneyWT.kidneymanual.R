@@ -17,8 +17,7 @@ jcutoff.low <- 0  # arbitrary
 # jcutoff <- 3  # arbitrary
 cleanup <- FALSE
 writepeaks <- FALSE
-# jmethod <- "g=1001"
-jmethod <- "BIC"
+jmethod <- "g=1001"
 
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
@@ -26,14 +25,13 @@ print(paste("Distance filter:", distfilt))
 print(paste("DHS signal zscore cutoff:", jcutoff))
 
 saveplot <- FALSE
-saverobj <- FALSE
 outdir <- "plots/penalized_lda/liver_kidney_wtko"
 dir.create(outdir)
-outf <- paste0(outdir, "2D.posterior.multigene.distfilt.liverWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".pdf")
+outf <- paste0(outdir, "2D.posterior.multigene.distfilt.kidneyWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".pdf")
 amp.min <- 0
 
-# jmodels <- c("Kidney_SV129")
-jmodels <- c("Liver_SV129")
+jmodels <- c("Kidney_SV129")
+# jmodels <- c("Liver_SV129")
 if (jmodels == "Kidney_SV129"){
   rhyth.tiss <- c("Kidney")
   flat.tiss <- c("Liver")
@@ -41,10 +39,8 @@ if (jmodels == "Kidney_SV129"){
   rhyth.tiss <- c("Liver")
   flat.tiss <- c("Kidney")
 }
-if (saverobj){
-  outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.model.", jmodels[[1]], ".distfilt.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".method.", jmethod, ".Robj")
-  if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
-}
+outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.model.", jmodels[[1]], ".distfilt.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".method.", jmethod, ".Robj")
+if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
 
 library(dplyr)
 library(reshape2)
@@ -81,17 +77,11 @@ colMax <- function(dat){
 
 # from multigene_analysis.play_with_parameters.R 
 if (!exists("fits.best")){
-  load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
-  fits.best.hog <- fits.best
-  
   load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
-  fits.best.orig <- fits.long.filt
   fits.best <- fits.long.filt; rm(fits.long.filt)
   fits.best <- subset(fits.best, method == jmethod)
 } 
 if (!exists("dat.long")){
-  load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
-  dat.long.hog <- dat.long
   load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
   dat.orig <- dat.long
   dat.long <- CollapseTissueGeno(dat.long, keep.tissue.col = TRUE)
@@ -103,13 +93,7 @@ if (!exists("N.long.filt")){
   # load("Robjs/liver_kidney_atger_nestle/N.long.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
   load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
 }
-# get fit from f24
 
-load("Robjs/liver_kidney_atger_nestle/fits.bytiss.Robj", v=T)
-
-fits.bytiss <- subset(fits.bytiss, tissue %in% jmodels & gene != "")
-liver.amp <- hash(as.character(fits.bytiss$gene), fits.bytiss$amp)
-liver.phase <- hash(as.character(fits.bytiss$gene), fits.bytiss$phase)
 
 
 # Get genes and peaks -----------------------------------------------------
@@ -160,7 +144,6 @@ S.sub.liverpeaks <- S.sub %>%
 S.sub.nonliverpeaks <- S.sub %>%
   group_by(peak, gene) %>%
   # filter(min(zscore[others.i]) > jcutoff & max(zscore[tiss.i]) > jcutoff)
-  # filter(min(zscore[others.i]) > 0.5 * jcutoff & max(zscore[tiss.i]) < jcutoff.low)
   filter(min(zscore[others.i]) > 0.5 * jcutoff & max(zscore[tiss.i]) < jcutoff.low)
   # filter(min(zscore[others.i]) > jcutoff)
 
@@ -225,10 +208,8 @@ mat.bgnonliver <- dcast(subset(N.sub, peak %in% nonliver.peaks.bg), formula = pe
 mat.bg <- dcast(subset(N.sub.flat, peak %in% flat.peaks.liv.bg), formula = peak + gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 
 
-if (saverobj){
-  save(mat.fg, mat.bgnonliver, mat.bg, file = outfile.robj)
-  print(paste("Matrices saved to:", outfile.robj))
-}
+save(mat.fg, mat.bgnonliver, mat.bg, file = outfile.robj)
+print(paste("Matrices saved to:", outfile.robj))
 
 # Visualize selected peaks in heatmap -------------------------------------
 
@@ -291,11 +272,10 @@ abline(v = 0); abline(h = 0)
 # # Cross prod on tiss and rhyth --------------------------------------------
 
 rhyth.motifs <- sapply(GetTopMotifs("rhythmic"), RemoveP2Name, USE.NAMES = FALSE)
-rhyth.motifs <- c(rhyth.motifs, c("SRF"))
-rhyth.motifs <- rhyth.motifs[which( ! rhyth.motifs %in% c("ATF6"))]
 tissue.motifs <- sapply(GetTopMotifs("tissue"), RemoveP2Name, USE.NAMES = FALSE)
-tissue.motifs <- c(tissue.motifs, c("ATF5_CREB3", "ATF6"))
-tissue.motifs <- tissue.motifs[which( ! tissue.motifs %in% c("SRF"))]
+# add from previous analysis
+# rhyth.motifs <- c(rhyth.motifs, "ATF6", "ATF5_CREB3")
+tissue.motifs <- c(tissue.motifs, "ATF6", "ATF5_CREB3")
 
 # remove tissue motifs in rhyth
 rhyth.motifs <- rhyth.motifs[which(!rhyth.motifs %in% intersect(rhyth.motifs, tissue.motifs))]
@@ -346,124 +326,28 @@ par(mfrow=c(1,1))
 if (saveplot){
   dev.off()
 }
-
-
-# Downstream analysis -----------------------------------------------------
-
-# first plot distribution of phases of genes
-liv.rhyth <- subset(fits.best, model == "Liver_SV129")
-liv.rhyth$phase <- sapply(liv.rhyth$param.list, function(p) p["Liver_SV129.phase"])
-phase.cname <- "phase"
-
-hog.liver.genes <- as.character(subset(fits.best.hog, model == "Liver")$gene)
-# liv.rhyth <- subset(fits.best.hog, model == "Liver")
-# phase.cname <- "phase.avg"
-
-source("scripts/functions/NcondsAnalysisFunctions.R")
-PlotPolarHistogram(subset(liv.rhyth, gene %in% hog.liver.genes), countstring = "Count", phase.cname = phase.cname)
-
-# count motifs
-mat.tmp <- mat.fgbg.cross.rhythtiss3
-mat.tmp$peakgene <- rownames(mat.tmp)
-jlabs.vec <- sapply(labels3, function(l){
-  jlabs[[l]]
-})
-mat.tmp$gene <- sapply(mat.tmp$peakgene, function(pg) strsplit(pg, ";")[[1]][[2]])
-mat.tmp$label <- jlabs.vec
-
-mat.long <- melt(mat.tmp, id.vars = c("label", "peakgene", "gene"), variable.name = "motif")
-
-jmotif <- "RORA;HNF4A_NF2F1.2"
-jmotif <- "RORA;FOXA2"
-jmotif <- "PAX3.7;ATF5_CREB3"
-jmotif <- "NR4A2;CUX2"
-jmotif <- "RORA;HNF4A_NR2F1.2"
-jmotif <- "RORA;CUX2"
-jmotif <- "SRF;ONECUT1.2"
-
-mat.gene <- mat.long %>%
-  group_by(gene, label, motif) %>%
-  summarise(max.motif.count = max(value))  
-
-jgrep <- "RORA;CUX2"
-jgrep <- "RORA;CUX2|RORA;FOXA2|NR4A2;CUX2"
-jgrep <- "RORA"
-jgrep <- "RORA;CUX2"
-jgrep <- "RORA;FOXA2"
-jgrep <- "RORA;HNF4"
-jgrep <- "^RORA$"
-jgrep <- "SRF;ONECUT1.2"
-jgrep <- "^HSF1.2$"
-jmotifs <- as.character(unique(mat.long$motif))[grep(jgrep, as.character(unique(mat.long$motif)))]
-jsub <- subset(mat.long, motif %in% jmotifs)
-# assign amp
-jsub.gene <- jsub %>%
-  group_by(gene, label, motif) %>%
-  summarise(max.motif.count = max(value))
-jsub.gene$amp <- sapply(as.character(jsub.gene$gene), function(g) liver.amp[[g]])
-jsub.gene$phase <- sapply(as.character(jsub.gene$gene), function(g) liver.phase[[g]])
-
-# plot enrichment of peaks
-# ggplot(jsub, aes(x = label, y = value)) + geom_boxplot() + theme_bw()
-
-# plot enrichment at gene level
-# ggplot(jsub.gene, aes(x = label, y = max.motif.count)) + geom_boxplot() + theme_bw()
-
-# ggplot(subset(jsub.gene, label == "Liv rhyth" & max.motif.count > 0.1), aes(x = phase)) +  ggtitle(jmotif) + geom_histogram() + xlim(c(0, 24))
-
-jsub.plot <- subset(jsub.gene, label == "Liv rhyth" & max.motif.count > 0)
-amp.max <- ceiling(max(jsub.plot$amp))
-ggplot(jsub.plot, aes(alpha = max.motif.count, x = amp, y = phase)) + coord_polar(theta = "y") + geom_point() + ggtitle(jgrep) + 
-  scale_y_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
-  scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, length.out = 2)) + 
-  theme_bw() + 
-  # geom_hline(yintercept = seq(0, 5, by = 1), colour = "grey90", size = 0.2) +
-  # geom_vline(xintercept = seq(0, amp.max, by = amp.step), colour = "grey50", size = 0.2, linetype = "dashed") +
-  geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
-  geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
-  #     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
-  #           panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + 
-  theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
-        panel.border = element_blank(),
-        legend.key = element_blank(),
-        axis.ticks = element_blank(),
-        panel.grid  = element_blank())
-
-
-head(jsub[order(jsub$value, decreasing = TRUE), ], n = 50)
-# get phase
-jgene <- "Wrnip1"
-subset(fits.best, gene == jgene)$param.list[[1]]
-PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
-
-as.character(unique(mat.long$motif))[grep("RORA", as.character(unique(mat.long$motif)))]
-
-
-
 # Download browser peaks --------------------------------------------------
 
-if (saveplot){
-  # pick top 20ish
-  set.seed(0)
-  top.n <- 25
-  outdir <- paste0("/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/liver_kidney_plda_peaks.stringent", ".cutoff.", jcutoff, ".cutofflow.", jcutoff.low, ".distfilt.", distfilt)
-  dir.create(outdir)
-  jhash <- hash(as.character(seq(3)), c("livpeaksFG.pdf", "nonlivpeaksBG.pdf", "flatliverpeaksBG.pdf"))
-  i <- 1
-  for (jdat in list(mat.fg, mat.bgnonliver, mat.bg)){
-    outname <- jhash[[as.character(i)]]
-    peaks <- as.character(jdat$peak)
-    peaks.sub <- sample(peaks, min(top.n, length(peaks)))
-    jbed <- lapply(peaks.sub, CoordToBed); jbed <- do.call(rbind, jbed)
-    # write beds to file
-    sink(file = file.path(outdir, paste0(sub("^([^.]*).*", "\\1", outname), ".txt")))
-    for (p in peaks.sub){
-      cat(p)
-      cat("\n")
-    }
-    sink()
-    bedToUCSC(jbed, outpdf = file.path(outdir, outname), leftwindow = 500, rightwindow = 500, theURL = "http://genome-euro.ucsc.edu/cgi-bin/hgTracks?hgsid=216113768_gOhEDfRc8B232JB2uV8N5dcx6oHf&hgt.psOutput=on")
-    i <- i + 1
+# pick top 20ish
+set.seed(0)
+top.n <- 25
+outdir <- paste0("/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/liver_kidney_plda_peaks.stringent", ".cutoff.", jcutoff, ".cutofflow.", jcutoff.low, ".distfilt.", distfilt)
+dir.create(outdir)
+jhash <- hash(as.character(seq(3)), c("livpeaksFG.pdf", "nonlivpeaksBG.pdf", "flatliverpeaksBG.pdf"))
+i <- 1
+for (jdat in list(mat.fg, mat.bgnonliver, mat.bg)){
+  outname <- jhash[[as.character(i)]]
+  peaks <- as.character(jdat$peak)
+  peaks.sub <- sample(peaks, min(top.n, length(peaks)))
+  jbed <- lapply(peaks.sub, CoordToBed); jbed <- do.call(rbind, jbed)
+  # write beds to file
+  sink(file = file.path(outdir, paste0(sub("^([^.]*).*", "\\1", outname), ".txt")))
+  for (p in peaks.sub){
+    cat(p)
+    cat("\n")
   }
+  sink()
+  bedToUCSC(jbed, outpdf = file.path(outdir, outname), leftwindow = 500, rightwindow = 500, theURL = "http://genome-euro.ucsc.edu/cgi-bin/hgTracks?hgsid=216113768_gOhEDfRc8B232JB2uV8N5dcx6oHf&hgt.psOutput=on")
+  i <- i + 1
 }
+

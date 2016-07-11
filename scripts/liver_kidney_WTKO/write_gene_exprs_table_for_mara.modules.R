@@ -14,7 +14,8 @@ source("scripts/functions/BiomartFunctions.R")
 args <- commandArgs(trailingOnly = TRUE)
 jmodel <- args[[1]]
 outdir <- args[[2]]
-jmethod <- "g=1001"
+jmethod <- args[[3]]
+# jmethod <- "g=1001"
 
 # Load --------------------------------------------------------------------
 
