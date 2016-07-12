@@ -5,6 +5,7 @@ rm(list=ls())
 
 library(dplyr)
 library(ggplot2)
+library(reshape2)
 
 source("scripts/functions/LiverKidneyFunctions.R")
 source("scripts/functions/BiomartFunctions.R")
@@ -16,7 +17,7 @@ load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
 
 # Filter genes and combine tissue and genotype ----------------------------
 
-dat.long <- RemoveLowExprsPseudoShortGenes(dat.long)
+# dat.long <- RemoveLowExprsPseudoShortGenes(dat.long)  # causes problems when matching genes from N?
 dat.long <- CollapseTissueGeno(dat.long)
 dat.long <- StaggeredTimepointsLivKid(dat.long)
 
@@ -34,6 +35,7 @@ M.center <- sweep(M, MARGIN = 1, rowMeans(M), FUN = "-")
 tissues <- as.character(unique(dat.long$tissue))
 
 outdir <- "/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney"
+dir.create(outdir, showWarnings = FALSE)
 for (tiss in tissues){
   M.sub <- cbind(Gene.ID = rownames(M.center), M.center[, grepl(pattern = tiss, x = colnames(M.center)), ])
   write.table(M.sub, file = file.path(outdir, paste0(tiss, ".mat")), quote = FALSE, sep = "\t", row.names = FALSE)

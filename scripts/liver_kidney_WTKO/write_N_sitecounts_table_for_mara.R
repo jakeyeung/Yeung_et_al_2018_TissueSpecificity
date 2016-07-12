@@ -15,13 +15,13 @@ if (!debug){
   args <- commandArgs(trailingOnly=TRUE)
   distfilt <- as.numeric(args[1])
   jcutoff <- as.numeric(args[2])
-  jcutoff.low <- 0
+  jcutoff.low <- 0.5
   jmethod <- args[3]
   jmodels <- c(args[4])  # "Liver_SV129"
 } else {
   distfilt <- 40000
   jcutoff <- 3  # arbitrary
-  jcutoff.low <- 0
+  jcutoff.low <- 0.5
   jmethod <- "g=1001"
   jmodels = c("Liver_SV129")
 }
@@ -30,10 +30,10 @@ cleanup <- FALSE
 writepeaks <- FALSE
 # jmethod <- "BIC"
 
-outdir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/liver_kidney_sitecounts_tissuespecpeaks"
+outdir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/liver_kidney_sitecounts_tissuespecpeaks_cutofflow"
 dir.create(outdir, showWarnings = FALSE)
-f <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_FALSE.", "tspeaks_", tissue.spec.peaks, ".mat")
-f.cross <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_TRUE.", "tspeaks_", tissue.spec.peaks, ".mat")
+f <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_FALSE.", "tspeaks_", tissue.spec.peaks, ".cutofflow_", jcutoff.low, ".mat")
+f.cross <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_TRUE.", "tspeaks_", tissue.spec.peaks, ".cutofflow_", jcutoff.low, ".mat")
 
 outf.mat <- file.path(outdir, f)
 outf.mat.cross <- file.path(outdir, f.cross)

@@ -7,6 +7,12 @@ rm(list=ls())
 
 setwd("/home/yeung/projects/tissue-specificity")
 
+# dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA/liver_kidney_wt_ko_cross_prods_analysis"
+dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_prods_tspeaks_TRUE"
+dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_prods_tspeaks_cutofflow_05"
+dirmainbase <- basename(dirmain)
+fname <- paste0(dirmainbase, ".pdf")
+
 # Functions ---------------------------------------------------------------
 
 source("scripts/functions/GetTissueTimes.R")
@@ -33,14 +39,20 @@ GetParam <- function(s, i){
 
 # Load --------------------------------------------------------------------
 
-dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA/liver_kidney_wt_ko_cross_prods_analysis"
-indirs <- list.dirs(dirmain, full.names = TRUE, recursive = FALSE)
 
-outdir <- "plots/liver_kidney_wtko_mara"
-dir.create(outdir, showWarnings = FALSE)
-pdf(file.path(outdir, "liver_kidney_mara_cross_activities.pdf"))
+indirs <- list.dirs(dirmain, full.names = TRUE, recursive = FALSE)
+print(indirs)
+
+outdir <- file.path("plots", "MARA", dirmainbase)
+
+print(paste("Outdir:", outdir))
+dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
+
+pdf(file.path(outdir, fname))
 for (indirmain in indirs){
+  print(indirmain)
   indir <- list.dirs(indirmain, full.names = TRUE, recursive = FALSE)
+  print(indir)
   act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = FALSE)
 
   omega <- 2 * pi / 24
@@ -58,10 +70,12 @@ for (indirmain in indirs){
     # multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
   }
   # find RORA.p2.FOXA2.p3
-  x <- Mod(eigens.act$eigensamp)
-  # filter for RORA guys
-  x <- x[grepl("RORA", names(x))]
-  x <- x[order(x, decreasing = TRUE)]
-  qplot(x = seq(length(x)), y = x, label = names(x), geom = "point") +  geom_text_repel() + theme_bw() + ggtitle(jtitle)
+  for (mtf in c("RORA", "SRF")){
+    x <- Mod(eigens.act$eigensamp)
+    # filter for RORA guys
+    x <- x[grepl(mtf, names(x))]
+    x <- x[order(x, decreasing = TRUE)]
+    print(qplot(x = seq(length(x)), y = x, label = names(x), geom = "point") +  geom_text_repel() + theme_bw() + ggtitle(jtitle))
+  }
 }
 dev.off()
