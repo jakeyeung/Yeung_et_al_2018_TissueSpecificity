@@ -5,11 +5,11 @@ rm(list=ls())
 
 setwd("/home/yeung/projects/tissue-specificity")
 
-# debug <- FALSE
-debug <- TRUE
+debug <- FALSE
+# debug <- TRUE
 print(paste("DEBUG:", debug))
 
-tissue.spec.peaks <- FALSE
+tissue.spec.peaks <- TRUE
 
 if (!debug){
   args <- commandArgs(trailingOnly=TRUE)
@@ -25,7 +25,6 @@ if (!debug){
   jmethod <- "g=1001"
   jmodels = c("Liver_SV129")
 }
-
 
 cleanup <- FALSE
 writepeaks <- FALSE
