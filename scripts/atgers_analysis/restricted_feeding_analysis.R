@@ -9,6 +9,7 @@ library(reshape2)
 library(PhaseHSV)
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/LiverKidneyFunctions.R")
+source("scripts/functions/BiomartFunctions.R")
 
 
 # Load Kallisto -----------------------------------------------------------
@@ -27,6 +28,7 @@ dat.livkid <- LoadLivKid()
 # Load Exon-Intron quantification -----------------------------------------
 
 inf <- "/home/yeung/data/tissue_specificity/atger_et_al/GSE73554_WT_RF_Intron_Exon_RFP.txt"
+# inf <- "/home/yeung/data/tissue_specificity/atger_et_al/GSE73554_WT_AL_Intron_Exon_RFP.txt"
 dat <- read.delim2(inf, header = TRUE, sep = "\t")
 
 keep.cols <- "*Exon*"
@@ -47,6 +49,7 @@ dat.atger.long <- data.frame(gene = dat$Gene_Symbol,
 
 dat.atger.long$samp.numeric <- as.numeric(chartr(old = "CDAB", new = '1234', x = dat.atger.long$samp))
 
+# dat.atger.long <- subset(dat.atger.long, samp %in% c("A", "B"))
 dat.atger.long <- subset(dat.atger.long, samp %in% c("C", "D"))
 dat.atger.long$time <- mapply(function(time, samp.num) time + 24 * (samp.num - 1), dat.atger.long$time, dat.atger.long$samp.numeric)
 
@@ -54,7 +57,6 @@ dat.atger.long$time <- mapply(function(time, samp.num) time + 24 * (samp.num - 1
 jgene <- "Per1"
 jgene <- "Wrnipl1"
 jgene <- "Upp2"
-jgene <- "Arntl"
 jgene <- "Npas2"
 jgene <- "Mreg"
 jgene <- "Dbp"
@@ -68,13 +70,17 @@ jgene <- "Snurf"
 jgene <- "Ighj1"
 jgene <- "Gm8325"
 jgene <- "Igkj2"
+jgene <- "Gm26602"
+jgene <- "Il6st"
+jgene <- "Wrnip1"
+jgene <- "Arntl"
+PlotGeneTissuesWTKO(subset(dat.orig, gene == jgene)) + theme_bw() + theme(aspect.ratio = 1) + ggtitle(jgene)
 m1 <- PlotGeneAcrossTissues(subset(dat.atger.long, gene == jgene)) + theme_bw() + theme(aspect.ratio = 1)
 m2 <- PlotGeneAcrossTissues(subset(dat.long, gene == jgene & tissue == "Liver_SV129")) + theme_bw() + theme(aspect.ratio = 1)
 multiplot(m1, m2, cols = 2)
-PlotGeneTissuesWTKO(subset(dat.orig, gene == jgene)) + theme_bw() + theme(aspect.ratio = 1) + ggtitle(jgene)
 
 
-# do pca
+  # do pca
 
 # PCA ---------------------------------------------------------------------
 
@@ -89,8 +95,10 @@ if (dat.type == "exon"){
 } else if (dat.type == "livkid"){
   M <- dcast(subset(dat.livkid, tissue == "Liver"), formula = gene ~ time , value.var = "exprs")
 } else if (dat.type == "orig"){
-  dat.orig.rm <- RemoveLowExprsPseudoShortGenes(dat.orig)
-  M <- dcast(subset(dat.orig.rm, tissue == "Kidney" & geno == "SV129" & !is.na(gene)), formula = gene ~ time, value.var = "exprs")
+  if (!exists(dat.orig.rm)){
+    dat.orig.rm <- RemoveLowExprsPseudoShortGenes(dat.orig)
+  }
+  M <- dcast(subset(dat.orig.rm, tissue == "Kidney" & geno == "SV129" & !is.na(gene) & time != 2), formula = gene ~ time, value.var = "exprs")
 }
 rownames(M) <- M$gene; M$gene <- NULL
 
