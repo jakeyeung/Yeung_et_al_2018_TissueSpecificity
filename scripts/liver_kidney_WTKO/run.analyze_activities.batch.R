@@ -8,8 +8,13 @@ rm(list=ls())
 setwd("/home/yeung/projects/tissue-specificity")
 
 # dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA/liver_kidney_wt_ko_cross_prods_analysis"
-dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_prods_tspeaks_TRUE"
-dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_prods_tspeaks_cutofflow_05"
+# dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_prods_tspeaks_TRUE"
+# dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_prods_tspeaks_cutofflow_05"
+# dirmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.limitprod"
+args <- commandArgs(trailingOnly=TRUE)
+dirmain <- args[[1]]
+outf <- args[[2]]
+
 dirmainbase <- basename(dirmain)
 fname <- paste0(dirmainbase, ".pdf")
 
@@ -43,12 +48,13 @@ GetParam <- function(s, i){
 indirs <- list.dirs(dirmain, full.names = TRUE, recursive = FALSE)
 print(indirs)
 
-outdir <- file.path("plots", "MARA", dirmainbase)
+# outdir <- file.path("plots", "MARA", dirmainbase)
 
-print(paste("Outdir:", outdir))
-dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
+# print(paste("Outdir:", outdir))
+# dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
 
-pdf(file.path(outdir, fname))
+# pdf(file.path(outdir, fname))
+pdf(outf)
 for (indirmain in indirs){
   print(indirmain)
   indir <- list.dirs(indirmain, full.names = TRUE, recursive = FALSE)

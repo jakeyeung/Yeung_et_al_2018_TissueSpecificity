@@ -7,6 +7,9 @@
 writescript="/home/yeung/projects/tissue-specificity/scripts/liver_kidney_WTKO/write_N_sitecounts_table_for_mara.R"
 [[ ! -e $writescript ]] && echo "$writescript not found, exiting" && exit 1
 
+outdir=$1
+[[ ! -d $outdir ]] && mkdir $outdir
+
 n=0
 maxjobs=6
 
@@ -15,8 +18,8 @@ maxjobs=6
 model="Liver_SV129"
 for method in "g=1001" "BIC"; do
 	for dist in 10000 20000 40000; do
-		for cutoff in 1.5 2 3; do
-			Rscript $writescript $dist $cutoff $method $model&
+		for cutoff in 2 2.5 3; do
+			Rscript $writescript $dist $cutoff $method $model $outdir&
 				if (( $(($((++n)) % $maxjobs)) == 0 )) ; then
 					# define maxjobs and n using maxjobsn skeleton
 				    wait # wait until all have finished (not optimal, but most times good enough)

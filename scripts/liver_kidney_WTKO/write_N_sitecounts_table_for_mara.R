@@ -10,27 +10,31 @@ debug <- FALSE
 print(paste("DEBUG:", debug))
 
 tissue.spec.peaks <- TRUE
+do.cross <- TRUE
 
 if (!debug){
   args <- commandArgs(trailingOnly=TRUE)
   distfilt <- as.numeric(args[1])
   jcutoff <- as.numeric(args[2])
-  jcutoff.low <- 0.5
+  jcutoff.low <- 0
   jmethod <- args[3]
   jmodels <- c(args[4])  # "Liver_SV129"
+  outdir <- args[5]
 } else {
   distfilt <- 40000
   jcutoff <- 3  # arbitrary
   jcutoff.low <- 0.5
   jmethod <- "g=1001"
   jmodels = c("Liver_SV129")
+  outdir <- "/tmp"
 }
+
 
 cleanup <- FALSE
 writepeaks <- FALSE
 # jmethod <- "BIC"
 
-outdir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/liver_kidney_sitecounts_tissuespecpeaks_cutofflow"
+# outdir <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/liver_kidney_sitecounts_tissuespecpeaks_cutofflow_limited_crossprods"
 dir.create(outdir, showWarnings = FALSE)
 f <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_FALSE.", "tspeaks_", tissue.spec.peaks, ".cutofflow_", jcutoff.low, ".mat")
 f.cross <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_TRUE.", "tspeaks_", tissue.spec.peaks, ".cutofflow_", jcutoff.low, ".mat")
@@ -38,8 +42,8 @@ f.cross <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, "
 outf.mat <- file.path(outdir, f)
 outf.mat.cross <- file.path(outdir, f.cross)
 
-if (file.exists(outf.mat) & file.exists(outf.mat.cross)){
-  stop("File exists, stopping")
+if (file.exists(outf.mat) | file.exists(outf.mat.cross)){
+  stop("Matrix exists, exiting")
 }
 
 if (is.na(distfilt)) stop("Distfilt must be numeric")
@@ -86,8 +90,8 @@ source("scripts/functions/LiverKidneyFunctions.R")
 
 # from multigene_analysis.play_with_parameters.R 
 if (!exists("fits.best")){
-  load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
-  fits.best.hog <- fits.best
+  # load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+  # fits.best.hog <- fits.best
   
   load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
   fits.best.orig <- fits.long.filt
@@ -95,14 +99,14 @@ if (!exists("fits.best")){
   fits.best <- subset(fits.best, method == jmethod)
   if (nrow(fits.best) == 0) stop("Method is wrong, fits.best is empty")
 } 
-if (!exists("dat.long")){
-  load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
-  dat.long.hog <- dat.long
-  load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
-  dat.orig <- dat.long
-  dat.long <- CollapseTissueGeno(dat.long, keep.tissue.col = TRUE)
-  dat.long <- StaggeredTimepointsLivKid(dat.long)
-} 
+# if (!exists("dat.long")){
+#   load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
+#   dat.long.hog <- dat.long
+#   load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+#   dat.orig <- dat.long
+#   dat.long <- CollapseTissueGeno(dat.long, keep.tissue.col = TRUE)
+#   dat.long <- StaggeredTimepointsLivKid(dat.long)
+# } 
 if (!exists("S.long")) load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
 if (!exists("N.long.filt")){
   #   load("Robjs/N.long.livertwflat.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
@@ -186,8 +190,8 @@ N.gene <- subset(N.sub, peak %in% mara.peaks) %>%
 
 mat.liver <- dcast(N.gene, formula = gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 
-# write table
-if (!file.exists(outf.mat) & debug == FALSE){
+write table: uncomment to write singletons
+if (!file.exists(outf.mat) & debug == FALSE & do.cross == TRUE){
   print("Writing to:")
   print(outf.mat)
   write.table(mat.liver, file = outf.mat,
@@ -199,23 +203,32 @@ if (!file.exists(outf.mat) & debug == FALSE){
 
 # Create N matrix cross product -------------------------------------------
 
-rhyth.motifs <- GetTopMotifs("rhythmic")
-rhyth.motifs <- c(rhyth.motifs, c("SRF.p3"))
-rhyth.motifs <- rhyth.motifs[which( ! rhyth.motifs %in% c("ATF6.p2"))]
-tissue.motifs <- GetTopMotifs("tissue")
-tissue.motifs <- c(tissue.motifs, c("ATF5_CREB3.p2", "ATF6.p2"))
-tissue.motifs <- tissue.motifs[which( ! tissue.motifs %in% c("SRF.p3"))]
-
-# remove tissue motifs in rhyth
-rhyth.motifs <- rhyth.motifs[which(!rhyth.motifs %in% intersect(rhyth.motifs, tissue.motifs))]
-
+# Take top hits from Naef lab presentation
+rhyth.motifs <- c("RORA.p2", "SRF.p3", "XBP1.p3", "NR4A2.p2", "PAX3.7.p2")
+tissue.motifs <- c("ONECUT1.2.p2", "ATF5_CREB3.p2", "ATF6.p2", "CUX2.p2", "FOXA2.p3", "HNF4A_NR2F1.2.p2")
+# optionally remove singletons and keep only their pairs
 mat.rhyth <- subset(mat.liver, select = intersect(rhyth.motifs, colnames(mat.liver)))
 mat.tiss <- subset(mat.liver, select = intersect(tissue.motifs, colnames(mat.liver)))
+mat.liver <- mat.liver[, !grepl(paste(c(rhyth.motifs, tissue.motifs), collapse = "|"), colnames(mat.liver))]
 mat.rhythtiss <- CrossProductTwoSets(mat.rhyth, mat.tiss)
+
+# # Parameters used for Naef lab presentation 2016-07-12
+# rhyth.motifs <- GetTopMotifs("rhythmic")
+# rhyth.motifs <- c(rhyth.motifs, c("SRF.p3"))
+# rhyth.motifs <- rhyth.motifs[which( ! rhyth.motifs %in% c("ATF6.p2"))]
+# tissue.motifs <- GetTopMotifs("tissue")
+# tissue.motifs <- c(tissue.motifs, c("ATF5_CREB3.p2", "ATF6.p2"))
+# tissue.motifs <- tissue.motifs[which( ! tissue.motifs %in% c("SRF.p3"))]
+# # remove tissue motifs in rhyth
+# rhyth.motifs <- rhyth.motifs[which(!rhyth.motifs %in% intersect(rhyth.motifs, tissue.motifs))]
+
+# mat.rhyth <- subset(mat.liver, select = intersect(rhyth.motifs, colnames(mat.liver)))
+# mat.tiss <- subset(mat.liver, select = intersect(tissue.motifs, colnames(mat.liver)))
+# mat.rhythtiss <- CrossProductTwoSets(mat.rhyth, mat.tiss)
 
 mat.liver.cross <- cbind(mat.liver, mat.rhythtiss)
 
-if (!file.exists(outf.mat.cross) & debug == FALSE){
+if (!file.exists(outf.mat.cross) & debug == FALSE & do.cross == TRUE){
   print("Writing to:")
   print(outf.mat.cross)
   write.table(mat.liver.cross, file = outf.mat.cross,
