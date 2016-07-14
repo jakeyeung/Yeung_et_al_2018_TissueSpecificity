@@ -14,7 +14,8 @@ eps <- 1  # for log2 transform
 
 # Load --------------------------------------------------------------------
 
-inf="/home/shared/atgerWTKO_kidneyWTKO/LiverKidney_SV129BmalKO_RF_TotalRNAPolyARNA_kallisto_abundances.txt"
+# inf="/home/shared/atgerWTKO_kidneyWTKO/LiverKidney_SV129BmalKO_RF_TotalRNAPolyARNA_kallisto_abundances.txt"  # liver fastqs not merged!
+inf="/home/shared/atgerWTKO_kidneyWTKO/LiverKidney_SV129BmalKO_RF_TotalRNAPolyARNA_kallisto_abundances.bugfixed.txt"  # bug now fixed
 dat <- read.table(inf, header = TRUE, row.names = 1)
 
 genes <- Transcript2Gene(rownames(dat), return.original = FALSE)  # slow
@@ -93,5 +94,6 @@ dat.long$tissue <- factor(as.character(dat.long$tissue), levels = c("Liver", "Ki
 # PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
 
 dir.create("Robjs/liver_kidney_atger_nestle")
-save(dat.long, file="Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj")
+# save(dat.long, file="Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj")  # liver not merged, bad
+save(dat.long, file="Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj")  # bug now fixed
 

@@ -31,7 +31,7 @@ outf <- paste0("Robjs/liver_kidney_atger_nestle/nconds/fits.nconds.stagger.", st
 
 # Load --------------------------------------------------------------------
 
-load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
 
 
 # Filter bad genes --------------------------------------------------------

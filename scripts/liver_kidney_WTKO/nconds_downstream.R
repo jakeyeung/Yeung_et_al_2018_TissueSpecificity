@@ -21,8 +21,11 @@ source("scripts/functions/BiomartFunctions.R")
 
 # indir <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/nconds/removesampsFALSE"
 # indir <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/nconds"
-indir <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/nconds/staggered_timepoints"
-outrobj <- "Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj"
+# indir <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/nconds/staggered_timepoints"
+
+# 2016-07-14: redo with merged fastqs
+indir <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/nconds"
+outrobj <- "Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj"
 inf <- list.files(indir, pattern = "*.Robj")
 
 fits.long <- expandingList()
@@ -48,10 +51,13 @@ fits.long <- rbind_all(fits.long)
 
 # Filter lowly expressed genes --------------------------------------------
 
-load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
+
+dat.long <- CollapseTissueGeno(dat.long)
+dat.long <- StaggeredTimepointsLivKid(dat.long)
 
 genes.all <- unique(as.character(dat.long$gene))
-dat.long <- RemoveLowExprsPseudoShortGenes(dat.long, ggbiotype = "protein_coding", gglength = 250, jcutoff = 1, show.plot=FALSE)
+dat.long <- RemoveLowExprsPseudoShortGenes(dat.long, ggbiotype = "protein_coding", gglength = 0, jcutoff = 1, show.plot=FALSE)
 
 genes.keep <- unique(as.character(dat.long$gene))
 
