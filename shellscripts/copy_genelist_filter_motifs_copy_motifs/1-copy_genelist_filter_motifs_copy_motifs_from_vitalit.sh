@@ -15,17 +15,17 @@ motifscript="/home/yeung/projects/tissue-specificity/shellscripts/copy_genelist_
 
 # copy gene list to vitalit
 genelistdir="/home/yeung/projects/tissue-specificity/data/gene_lists/liver_kidney_wtko_modules_allgenes"
-genelistoutfVITAL="/scratch/el/monthly/jyeung/motevo_dhs_outputs/gene_lists/liver_kidney_wtko/liver_kidney_wtmodules.all_genes.bic_g1001.txt"
+genelistoutfVITAL="/scratch/el/monthly/jyeung/motevo_dhs_outputs/gene_lists/liver_kidney_wtko/liver_kidney_wtmodules.all_genes.bic_g1001.bugfixed.txt"
 bash $glistscript $genelistdir $genelistoutfVITAL
 ret=$?; [[ $ret -ne 0  ]] && echo "ERROR: script failed" && exit 1
 
 # filter script on vitalit
-filtdirVITAL="/scratch/el/monthly/jyeung/motevo_dhs_outputs/motevo_outputs/liver_kidney_wtko_closestbed_multiple_genes_ncond_modules.all_genes.bic_g1001"
+filtdirVITAL="/scratch/el/monthly/jyeung/motevo_dhs_outputs/motevo_outputs/liver_kidney_wtko_closestbed_multiple_genes_ncond_modules.all_genes.bic_g1001.bugfixed"
 ssh $remotehost "bash $filtscriptVITAL $genelistoutfVITAL $filtdirVITAL"
 ret=$?; [[ $ret -ne 0  ]] && echo "ERROR: script failed" && exit 1
 
 # copy bed files into rstudio
-outfbed="/home/yeung/data/tissue_specificity/motevo_dhs/liver_kidney_wtko_modules/all_sites.closest.filter.genelst.dist.50000.all_genes.bic_g1001.bed"
+outfbed="/home/yeung/data/tissue_specificity/motevo_dhs/liver_kidney_wtko_modules/all_sites.closest.filter.genelst.dist.50000.all_genes.bic_g1001.bugfixed.bed"
 bash $motifscript $filtdirVITAL $outfbed
 ret=$?; [[ $ret -ne 0  ]] && echo "ERROR: script failed" && exit 1
 

@@ -3,6 +3,8 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(dplyr)
 library(ggplot2)
 library(hash)
@@ -16,8 +18,8 @@ source("scripts/functions/GetClockGenes.R")
 source("scripts/functions/BiomartFunctions.R")
 
 # load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.Robj", v=T)
-load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
-load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
 dat.orig <- dat.long
 
 dat.long <- CollapseTissueGeno(dat.long)
@@ -70,46 +72,31 @@ if (file.exists(loadfile)){
   
   
   dat.complex.all_T <- do.call(rbind, dat.complexes)
-  save(dat.complex.all_T, file = "Robjs/liver_kidney_atger_nestle/dat.complex.all_T.Robj")
+  outfcomp <- "Robjs/liver_kidney_atger_nestle/dat.complex.all_T.bugfixed.Robj"
+  if (!file.exists(outfcomp)) save(dat.complex.all_T, file = outfcomp)
   rm(dat.complexes)
 }
+outffreq <- "Robjs/liver_kidney_atger_nestle/dat.freq.bugfixed.Robj"
+if (!file.exists(outffreq)) save(dat.freq, file = outffreq)
 
 
 # By clusters -------------------------------------------------------------
 
 jmeth <- "zf"
-jmeth <- "BIC"
+jmeth <- "g=4001"
 jmeth <- "g=1001"
+jmeth <- "BIC"
 i <- 1
 
-genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129,Liver_BmalKO"))$gene)
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
-
-genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129;Liver_BmalKO"))$gene)
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
-
-genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_SV129,Kidney_BmalKO"))$gene)
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
-
-genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_SV129;Kidney_BmalKO"))$gene)
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
-
 genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129,Kidney_SV129"))$gene)
-
 s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
 eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
+genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129"))$gene)
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
@@ -121,19 +108,41 @@ eigens <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
-genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_BmalKO"))$gene)
 
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
-genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129"))$gene)
+# 
+# genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129,Liver_BmalKO"))$gene)
+# s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+# eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+# jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+# 
+# genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Liver_SV129;Liver_BmalKO"))$gene)
+# s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+# eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+# jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+# 
+# genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_SV129,Kidney_BmalKO"))$gene)
+# s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+# eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+# jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+# 
+# genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_SV129;Kidney_BmalKO"))$gene)
+# s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+# eigens <- GetEigens(s, period = 24, comp = i, label.n = 10, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+# jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+# genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% c("Kidney_BmalKO"))$gene)
+# 
+# s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+# eigens <- GetEigens(s, period = 24, comp = i, label.n = 30, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+# jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
+
 
 
 genes.tw <- as.character(subset(fits.long.filt, method ==jmeth & model %in% c("Liver_SV129;Kidney_SV129"))$gene)

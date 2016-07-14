@@ -17,8 +17,8 @@ jcutoff.low <- 0  # arbitrary
 # jcutoff <- 3  # arbitrary
 cleanup <- FALSE
 writepeaks <- FALSE
-jmethod <- "g=1001"
-# jmethod <- "BIC"
+# jmethod <- "g=1001"
+jmethod <- "BIC"
 
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
@@ -42,7 +42,7 @@ if (jmodels == "Kidney_SV129"){
   flat.tiss <- c("Kidney")
 }
 if (saverobj){
-  outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.model.", jmodels[[1]], ".distfilt.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".Robj")
+  outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.model.", jmodels[[1]], ".distfilt.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".method.", jmethod, ".Robj")
   if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
 }
 

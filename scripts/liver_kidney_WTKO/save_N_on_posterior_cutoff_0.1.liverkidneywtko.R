@@ -9,8 +9,10 @@ setwd("/home/yeung/projects/tissue-specificity")
 
 # inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/liver_kidney_wtko_modules/all_sites.closest.filter.genelst.dist.50000.long.bed"
 # inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/liver_kidney_wtko_modules/all_sites.closest.filter.genelst.dist.50000.all_genes.bic_g1001.bed"
-inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/liver_kidney_wtko_modules/all_sites.closest.filter.genelst.dist.50000.all_genes.bic_g1001.bed"
-outf <- "Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.Robj"
+# inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/liver_kidney_wtko_modules/all_sites.closest.filter.genelst.dist.50000.all_genes.bic_g1001.bed"
+inf <- "/home/yeung/data/tissue_specificity/motevo_dhs/liver_kidney_wtko_modules/all_sites.closest.filter.genelst.dist.50000.all_genes.bic_g1001.bugfixed.bed"
+
+outf <- "Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.bugfixed.Robj"
 N.long.livertwflat <- read.table(inf, header = FALSE, sep = "\t")  # 16 gigs
 colnames(N.long.livertwflat) <- c("chromo", "start", "end", "motif", "sitecount", "gene", "dist", "peak")
 save(N.long.livertwflat, file = outf)  # 2.5 gigs

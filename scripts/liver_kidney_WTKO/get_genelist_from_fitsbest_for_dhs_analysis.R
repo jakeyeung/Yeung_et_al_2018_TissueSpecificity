@@ -1,6 +1,8 @@
 # 2016-06-25
 # Jake Yeung
 # First step to getting motifs from gene list 
+# Second step is a shellscript: /home/yeung/projects/tissue-specificity/shellscripts/copy_genelist_filter_motifs_copy_motifs/1-copy_genelist_filter_motifs_copy_motifs_from_vitalit.sh 
+
 
 rm(list=ls())
 
@@ -27,10 +29,9 @@ source("scripts/functions/LiverKidneyFunctions.R")
 
 # Load --------------------------------------------------------------------
 
-# load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.Robj", v=T)
-load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
-load("Robjs/liver_kidney_atger_nestle/dat.freq.Robj", v=T)
-load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
+# load("Robjs/liver_kidney_atger_nestle/dat.freq.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
 
 # dat.long <- StaggeredTimepointsLivKid(dat.long)
 

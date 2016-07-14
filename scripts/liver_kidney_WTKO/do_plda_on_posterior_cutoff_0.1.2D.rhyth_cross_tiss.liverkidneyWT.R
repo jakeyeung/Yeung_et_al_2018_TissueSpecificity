@@ -10,14 +10,16 @@ args <- commandArgs(trailingOnly=TRUE)
 distfilt <- as.numeric(args[1])
 jcutoff <- as.numeric(args[2])
 jcutoff.low <- as.numeric(args[3])
+jmethod <- args[4]
 # distfilt <- 10000
 # jcutoff <- 4  # arbitrary
 # jcutoff.low <- 0  # arbitrary
 # jcutoff <- 2  # arbitrary
 # jcutoff <- 3  # arbitrary
-cleanup <- FALSE
+cleanup <- TRUE
 writepeaks <- FALSE
-jmethod <- "g=1001"
+# jmethod <- "g=1001"
+# jmethod <- "BIC"
 
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
@@ -25,9 +27,11 @@ print(paste("Distance filter:", distfilt))
 print(paste("DHS signal zscore cutoff:", jcutoff))
 
 saveplot <- TRUE
+saverobj <- TRUE
 outdir <- "plots/penalized_lda/liver_kidney_wtko"
 dir.create(outdir)
-outf <- paste0(outdir, "2D.posterior.multigene.distfilt.morenonliv.liverWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".pdf")
+fnamebase <- paste0("2D.posterior.multigene.distfilt.morenonliv.bugfixed.liverWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod)
+outf <- file.path(outdir, paste0(fnamebase, ".pdf"))
 amp.min <- 0
 
 jmodels <- c("Liver_SV129")
@@ -38,14 +42,18 @@ if (jmodels == "Kidney_SV129"){
   rhyth.tiss <- c("Liver")
   flat.tiss <- c("Kidney")
 }
-outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.Liver.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".method.", jmethod, ".Robj")
-if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
+if (saverobj){
+  robjdir <- "Robjs/liver_kidney_atger_nestle"
+  outfile.robj <- file.path(robjdir, paste0(fnamebase, ".Robj"))
+  if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
+}
 
 library(dplyr)
 library(reshape2)
 library(ggplot2)
 library(hash)
 library(penalizedLDA)
+library(ggrepel)
 
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/PlotFunctions.R")
@@ -76,12 +84,12 @@ colMax <- function(dat){
 
 # from multigene_analysis.play_with_parameters.R 
 if (!exists("fits.best")){
-  load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
+  load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
   fits.best <- fits.long.filt; rm(fits.long.filt)
   fits.best <- subset(fits.best, method == jmethod)
 } 
 if (!exists("dat.long")){
-  load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+  load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
   dat.orig <- dat.long
   dat.long <- CollapseTissueGeno(dat.long, keep.tissue.col = TRUE)
   dat.long <- StaggeredTimepointsLivKid(dat.long)
@@ -90,7 +98,7 @@ if (!exists("S.long")) load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
 if (!exists("N.long.filt")){
 #   load("Robjs/N.long.livertwflat.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
   # load("Robjs/liver_kidney_atger_nestle/N.long.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
-  load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
+  load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.bugfixed.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
 }
 
 
@@ -166,8 +174,8 @@ S.sub.flat.nonliverpeaks <- S.sub.flat %>%
 # Mreg should contain peaks -----------------------------------------------
 
 jpeak <- "chr1:72173321-72173821"
-subset(S.long, peak == jpeak & tissue %in% c("Liver", "Kidney"))
-subset(S.sub, peak == jpeak & tissue %in% c("Liver", "Kidney"))
+# subset(S.long, peak == jpeak & tissue %in% c("Liver", "Kidney"))
+# subset(S.sub, peak == jpeak & tissue %in% c("Liver", "Kidney"))
 
 # Do PLDA -----------------------------------------------------------------
 
@@ -263,10 +271,21 @@ text(out.cross.3$discrim[, 1], out.cross.3$discrim[, 2], names(out.cross.3$x), c
 abline(v = 0); abline(h = 0)
 
 
-# # Cross prod on tiss and rhyth --------------------------------------------
+jlabs <-  c("Liv peaks rhyth", "Kid peaks rhyth", "Liv peaks flat")
+
+mat.fgbg.lab.lst.3 <- SetUpMatForLda(mat.fg, mat.bgnonliver, mat.bg, has.peaks = TRUE)
+mat.fgbg.3 <- mat.fgbg.lab.lst.3$mat.fgbg; labels3 <- mat.fgbg.lab.lst.3$labels
+colnames(mat.fgbg.3) <- sapply(colnames(mat.fgbg.3), RemoveP2Name)
+colnames(mat.fgbg.3) <- sapply(colnames(mat.fgbg.3), function(cname){
+  return(RemoveCommasBraces(cname))
+}, USE.NAMES = FALSE)
 
 rhyth.motifs <- sapply(GetTopMotifs("rhythmic"), RemoveP2Name, USE.NAMES = FALSE)
+rhyth.motifs <- c(rhyth.motifs, c("SRF"))
+rhyth.motifs <- rhyth.motifs[which( ! rhyth.motifs %in% c("ATF6"))]
 tissue.motifs <- sapply(GetTopMotifs("tissue"), RemoveP2Name, USE.NAMES = FALSE)
+tissue.motifs <- c(tissue.motifs, c("ATF5_CREB3", "ATF6"))
+tissue.motifs <- tissue.motifs[which( ! tissue.motifs %in% c("SRF"))]
 
 # remove tissue motifs in rhyth
 rhyth.motifs <- rhyth.motifs[which(!rhyth.motifs %in% intersect(rhyth.motifs, tissue.motifs))]
@@ -286,60 +305,89 @@ mat.fgbg.cross.rhythtiss3[which(colSums(mat.fgbg.cross.rhythtiss3) == 0)] <- lis
 jlambda <- 0.025  # liv only
 out.cross.rhythtiss3 <- PenalizedLDA(mat.fgbg.cross.rhythtiss3, labels3, lambda = jlambda, K = 2, standardized = FALSE)
 
-print(qplot(out.cross.rhythtiss3$xproj[, 1], out.cross.rhythtiss3$xproj[, 2], colour = as.factor(labels3), geom = "point", alpha = I(0.2)) + ggtitle("2D plot single factors + tissuerhyth cross"))
-
-PlotLdaOut(out.cross.rhythtiss3, jdim = 1, jtitle = "Discrim 1: single factors + tissrhyth cross", take.n = 30, from.bottom = TRUE)
-PlotLdaOut(out.cross.rhythtiss3, jdim = 2, jtitle = "Discrim 2: single factors + tissrhyth cross", take.n = 30, from.bottom = TRUE)
+# PlotLdaOut(out.cross.rhythtiss3, jdim = 1, jtitle = "Discrim 1: single factors + tissrhyth cross", take.n = 30, from.bottom = FALSE)
+# PlotLdaOut(out.cross.rhythtiss3, jdim = 2, jtitle = "Discrim 2: single factors + tissrhyth cross", take.n = 30, from.bottom = FALSE)
 
 m3.dim1 <- SortLda(out.cross.rhythtiss3, jdim = 1)
 m3.dim2 <- SortLda(out.cross.rhythtiss3, jdim = 2)
 
-jsize.pairs <- sqrt(out.cross.rhythtiss3$discrim[, 1]^2 + out.cross.rhythtiss3$discrim[, 2]^2) * 5 + 0.01
-plot(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], pch = ".",
-     xlab = "Liver-specific DHS vs Nonliver-specific DHS", ylab = "Liver-specific rhythmic DHS vs Others",
-     main="Motifs that separate between tissues (x-axis) and rhythmic in liver (y-axis)")
-text(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], names(out.cross.rhythtiss3$x), cex = jsize.pairs)
-abline(v = 0); abline(h = 0)
-BoxplotLdaOut(out.cross.rhythtiss3, jdim = 2, horizontal = FALSE, axis.names = jlabs, jtitle = "Yaxis: Liv rhyth vs others")
-BoxplotLdaOut(out.cross.rhythtiss3, jdim = 1, horizontal = TRUE, axis.names = jlabs, jtitle = "Xaxis: liver vs nonliver")
+BoxplotLdaOut(out.cross.rhythtiss3, jdim = 1, horizontal = TRUE, axis.names = jlabs, jtitle = "Projection on 1st vector: liver vs kidney DHS peaks")
+BoxplotLdaOut(out.cross.rhythtiss3, jdim = 2, horizontal = FALSE, axis.names = jlabs, jtitle = "Projection on 2nd vector: rhythmic vs flat DHS peaks")
 
-par(mfrow=c(2,2))
-jlabs <-  c("Liv rhyth", "Nonrhyth", "Liv flat")
+vec.length <- sqrt(out.cross.rhythtiss3$discrim[, 1]^2 + out.cross.rhythtiss3$discrim[, 2]^2)
+jsize.pairs <- vec.length * 5 + 0.01
 plot(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], pch = ".",
-     xlab = "Liver-specific DHS vs Nonliver-specific DHS", ylab = "Liver-specific rhythmic DHS vs Others",
+     xlab = "Liver-specific DHS vs Kidney-specific DHS", ylab = "Liver-specific rhythmic DHS vs Nonrhythmic DHS",
      main="Motifs that separate between tissues (x-axis) and rhythmic in liver (y-axis)")
 text(out.cross.rhythtiss3$discrim[, 1], out.cross.rhythtiss3$discrim[, 2], names(out.cross.rhythtiss3$x), cex = jsize.pairs)
 abline(v = 0); abline(h = 0)
-BoxplotLdaOut(out.cross.rhythtiss3, jdim = 2, horizontal = FALSE, axis.names = jlabs, jtitle = "Yaxis: Liv rhyth vs others")
-BoxplotLdaOut(out.cross.rhythtiss3, jdim = 1, horizontal = TRUE, axis.names = jlabs, jtitle = "Xaxis: liver vs nonliver")
-par(mfrow=c(1,1))
+
+jsize.pairs.cut <- sapply(vec.length, function(jsize){
+  if (jsize > 0.1){
+    return(jsize)
+  } else {
+    return(0)
+  }
+})
+
+labels <- names(out.cross.rhythtiss3$x)
+labels.cut <- mapply(function(jlab, jsize){
+  if (jsize <= 0){
+    return("")
+  } else {
+    return(jlab)
+  }
+}, labels, jsize.pairs.cut)
+
+dat.plot <- data.frame(x = out.cross.rhythtiss3$discrim[, 1],
+                       y = out.cross.rhythtiss3$discrim[, 2],
+                       motif = labels.cut,
+                       vec.length = vec.length,
+                       vec.length.cut = jsize.pairs.cut)
+dat.labs <- subset(dat.plot, vec.length.cut > 0)
+
+m <- ggplot(dat.plot, aes(x = x, y = y)) + 
+      geom_point(size = 0.01) + 
+      geom_text_repel(data = dat.labs, aes(x = x, y = y, label = motif), size = 2.5) + 
+      geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + theme_bw() + 
+      theme(aspect.ratio = 0.25, legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+      xlab("Motif loadings separating liver and kidney DHS peaks") + ylab("Motif loadings separating rhythmic and flat DHS peaks")
+print(m)
 
 if (saveplot){
   dev.off()
 }
+
+if (saverobj){
+  save(mat.fg, mat.bgnonliver, mat.bg, file = outfile.robj)
+  print(paste("Matrices saved to:", outfile.robj))
+}
 # Download browser peaks --------------------------------------------------
 
-# pick top 20ish
-set.seed(0)
-top.n <- 25
-outdir <- paste0("/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/liver_kidney_plda_peaks.stringent.morenonliv", ".cutoff.", jcutoff, ".cutofflow.", jcutoff.low, ".distfilt.", distfilt)
-dir.create(outdir)
-jhash <- hash(as.character(seq(3)), c("livpeaksFG.pdf", "nonlivpeaksBG.pdf", "flatliverpeaksBG.pdf"))
-i <- 1
-for (jdat in list(mat.fg, mat.bgnonliver, mat.bg)){
-  outname <- jhash[[as.character(i)]]
-  peaks <- as.character(jdat$peak)
-  peaks.sub <- sample(peaks, min(top.n, length(peaks)))
-  jbed <- lapply(peaks.sub, CoordToBed); jbed <- do.call(rbind, jbed)
-  # write beds to file
-  sink(file = file.path(outdir, paste0(sub("^([^.]*).*", "\\1", outname), ".txt")))
-  for (p in peaks.sub){
-    cat(p)
-    cat("\n")
+if (writepeaks){
+  # pick top 20ish
+  set.seed(0)
+  top.n <- 25
+  outdir <- paste0("/home/yeung/projects/tissue-specificity/plots/ucsc_motif_screenshots/liver_kidney_plda_peaks.stringent.morenonliv", ".cutoff.", jcutoff, ".cutofflow.", jcutoff.low, ".distfilt.", distfilt)
+  dir.create(outdir)
+  jhash <- hash(as.character(seq(3)), c("livpeaksFG.pdf", "nonlivpeaksBG.pdf", "flatliverpeaksBG.pdf"))
+  i <- 1
+  for (jdat in list(mat.fg, mat.bgnonliver, mat.bg)){
+    outname <- jhash[[as.character(i)]]
+    peaks <- as.character(jdat$peak)
+    peaks.sub <- sample(peaks, min(top.n, length(peaks)))
+    jbed <- lapply(peaks.sub, CoordToBed); jbed <- do.call(rbind, jbed)
+    # write beds to file
+    sink(file = file.path(outdir, paste0(sub("^([^.]*).*", "\\1", outname), ".txt")))
+    for (p in peaks.sub){
+      cat(p)
+      cat("\n")
+    }
+    sink()
+    bedToUCSC(jbed, outpdf = file.path(outdir, outname), leftwindow = 500, rightwindow = 500, theURL = "http://genome-euro.ucsc.edu/cgi-bin/hgTracks?hgsid=216113768_gOhEDfRc8B232JB2uV8N5dcx6oHf&hgt.psOutput=on")
+    i <- i + 1
   }
-  sink()
-  bedToUCSC(jbed, outpdf = file.path(outdir, outname), leftwindow = 500, rightwindow = 500, theURL = "http://genome-euro.ucsc.edu/cgi-bin/hgTracks?hgsid=216113768_gOhEDfRc8B232JB2uV8N5dcx6oHf&hgt.psOutput=on")
-  i <- i + 1
+    
 }
 # 
 # # How many are enriched? Plot the data ------------------------------------
