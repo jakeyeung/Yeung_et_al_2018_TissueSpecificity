@@ -70,18 +70,21 @@ for (indirmain in indirs){
 
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
+  
+  max.labs <- 25
+  jlabel.n <- ifelse(nrow(s.act$u) <= max.labs, nrow(s.act$u) - 1, max.labs)
   for (comp in seq(1)){
-    eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 25, jtitle = jtitle)
+    eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = jlabel.n, jtitle = jtitle)
     print(eigens.act$u.plot)
     # multiplot(eigens.act$v.plot, eigens.act$u.plot, layout = jlayout)
   }
   # find RORA.p2.FOXA2.p3
-  for (mtf in c("RORA", "SRF")){
-    x <- Mod(eigens.act$eigensamp)
-    # filter for RORA guys
-    x <- x[grepl(mtf, names(x))]
-    x <- x[order(x, decreasing = TRUE)]
-    print(qplot(x = seq(length(x)), y = x, label = names(x), geom = "point") +  geom_text_repel() + theme_bw() + ggtitle(jtitle))
-  }
+  # for (mtf in c("RORA", "SRF")){
+  #   x <- Mod(eigens.act$eigensamp)
+  #   # filter for RORA guys
+  #   x <- x[grepl(mtf, names(x))]
+  #   x <- x[order(x, decreasing = TRUE)]
+  #   print(qplot(x = seq(length(x)), y = x, label = names(x), geom = "point") +  geom_text_repel() + theme_bw() + ggtitle(jtitle))
+  # }
 }
 dev.off()

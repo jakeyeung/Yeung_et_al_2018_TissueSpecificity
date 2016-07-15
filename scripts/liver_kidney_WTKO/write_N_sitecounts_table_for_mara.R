@@ -93,7 +93,7 @@ if (!exists("fits.best")){
   # load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
   # fits.best.hog <- fits.best
   
-  load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
+  load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
   fits.best.orig <- fits.long.filt
   fits.best <- fits.long.filt; rm(fits.long.filt)
   fits.best <- subset(fits.best, method == jmethod)
@@ -111,7 +111,7 @@ if (!exists("S.long")) load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
 if (!exists("N.long.filt")){
   #   load("Robjs/N.long.livertwflat.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
   # load("Robjs/liver_kidney_atger_nestle/N.long.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
-  load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
+  load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.bugfixed.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
 }
 # get fit from f24
 
@@ -190,7 +190,7 @@ N.gene <- subset(N.sub, peak %in% mara.peaks) %>%
 
 mat.liver <- dcast(N.gene, formula = gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
 
-write table: uncomment to write singletons
+# write table: uncomment to write singletons
 if (!file.exists(outf.mat) & debug == FALSE & do.cross == TRUE){
   print("Writing to:")
   print(outf.mat)
@@ -204,8 +204,9 @@ if (!file.exists(outf.mat) & debug == FALSE & do.cross == TRUE){
 # Create N matrix cross product -------------------------------------------
 
 # Take top hits from Naef lab presentation
-rhyth.motifs <- c("RORA.p2", "SRF.p3", "XBP1.p3", "NR4A2.p2", "PAX3.7.p2")
+rhyth.motifs <- c("RORA.p2", "SRF.p3", "XBP1.p3", "NR4A2.p2", "PAX3.7.p2", "bHLH_family.p2")
 tissue.motifs <- c("ONECUT1.2.p2", "ATF5_CREB3.p2", "ATF6.p2", "CUX2.p2", "FOXA2.p3", "HNF4A_NR2F1.2.p2")
+
 # optionally remove singletons and keep only their pairs
 mat.rhyth <- subset(mat.liver, select = intersect(rhyth.motifs, colnames(mat.liver)))
 mat.tiss <- subset(mat.liver, select = intersect(tissue.motifs, colnames(mat.liver)))
@@ -226,7 +227,9 @@ mat.rhythtiss <- CrossProductTwoSets(mat.rhyth, mat.tiss)
 # mat.tiss <- subset(mat.liver, select = intersect(tissue.motifs, colnames(mat.liver)))
 # mat.rhythtiss <- CrossProductTwoSets(mat.rhyth, mat.tiss)
 
-mat.liver.cross <- cbind(mat.liver, mat.rhythtiss)
+# Take ONLY cross products, or do singletons + crossproducts
+# mat.liver.cross <- cbind(mat.liver, mat.rhythtiss)
+mat.liver.cross <- cbind(mat.liver$gene, mat.rhythtiss)
 
 if (!file.exists(outf.mat.cross) & debug == FALSE & do.cross == TRUE){
   print("Writing to:")

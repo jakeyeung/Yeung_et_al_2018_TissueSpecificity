@@ -4,10 +4,10 @@
 # Gluing write N sitecounts and run MARA for many parameters 
 # 2016-07-12
 
-Nmain="/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/liver_kidney_sitecounts_tissuespecpeaks_cutofflow0_singletons"
-maraout="/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/singletons"
-plotdir="/home/yeung/projects/tissue-specificity/plots/MARA/singletons_tspeak"
-plotout=$plotdir/"singletons.tspeak.pdf"
+Nmain="/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/liver_kidney_sitecounts_tissuespecpeaks_cutofflow0_cross_only"
+maraout="/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_only"
+plotdir="/home/yeung/projects/tissue-specificity/plots/MARA/cross_only"
+plotout=$plotdir/"cross_only.pdf"
 
 
 # write sitecounts

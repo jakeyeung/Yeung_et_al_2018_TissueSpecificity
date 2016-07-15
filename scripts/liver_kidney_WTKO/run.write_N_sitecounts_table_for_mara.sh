@@ -16,9 +16,9 @@ maxjobs=6
 # dist=40000
 # cutoff=3
 model="Liver_SV129"
-for method in "g=1001" "BIC"; do
-	for dist in 10000 20000 40000; do
-		for cutoff in 2 2.5 3; do
+for method in "g=1001"; do
+	for dist in 40000; do
+		for cutoff in 3; do
 			Rscript $writescript $dist $cutoff $method $model $outdir&
 				if (( $(($((++n)) % $maxjobs)) == 0 )) ; then
 					# define maxjobs and n using maxjobsn skeleton
