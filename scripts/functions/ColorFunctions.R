@@ -35,12 +35,12 @@ RotatePhase <- Vectorize(function(phase, rotate.hr=0){
   return(phase)
 }, "phase")
 
-PhaseAmpPvalToColor <- function(phase, amp, pval, rotate.hr=0){
+PhaseAmpPvalToColor <- function(phase, amp, pval, rotate.hr=0, pval.k = 0.25){
   # rotate.phase: rotate phase by some hours
   phase <- RotatePhase(phase, rotate.hr)
   phase.col <- PhaseToHsv(phase, min.phase = 0, max.phase = 24)
   amp.col <- SaturationCurve(amp, Vmax = 1, k = 2, x0 = 0)
-  pval.col <- SaturationCurve(-log10(pval), Vmax = 1, k = 0.25, x0 = 0)
+  pval.col <- SaturationCurve(-log10(pval), Vmax = 1, k = pval.k, x0 = 0)
   # convert bad phase amp pvals to 0,0,0
   bad.i <- which(is.na(phase.col) | is.na(amp.col) | is.na(pval.col))
   # make it 0 0 0

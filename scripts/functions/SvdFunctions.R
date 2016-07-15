@@ -449,7 +449,8 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   
   gene.labels <- rownames(s.complex$u)
   if (missing(jtitle)){
-    jtitle1 <- paste0("Tissue Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)")  
+    # jtitle1 <- paste0("Tissue Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)")  
+    jtitle1 <- "Tissue Module"
     jtitle2 <- paste0("Gene Module ", comp, " (", length(gene.labels), " genes)\n", signif(var.explained[comp], 2), " of total circadian variance)")
   } else {
     jtitle1 <- jtitle

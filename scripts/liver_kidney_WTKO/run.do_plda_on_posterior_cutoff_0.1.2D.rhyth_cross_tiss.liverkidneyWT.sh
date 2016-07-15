@@ -9,14 +9,15 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/liver_kidney_WTKO/do_
 jcutoffhigh=3
 jcutofflow="0"
 method="g=1001"
-distfilt=40000
+distfilt=20000
+model="Kidney_SV129"
 
 n=0
 maxjobs=8
-for method in "g=1001" "BIC"; do
-	for jcutoffhigh in "2.5" "3"; do
+for method in "g=1001"; do
+	for jcutoffhigh in "1.5" "2"; do
 		for jcutofflow in "0" "0.5"; do
-			Rscript $runscript $distfilt $jcutoffhigh $jcutofflow $method&
+			Rscript $runscript $distfilt $jcutoffhigh $jcutofflow $method $model&
 			if (( $(($((++n)) % $maxjobs)) == 0 )) ; then
 				# define maxjobs and n using maxjobsn skeleton
 			    wait # wait until all have finished (not optimal, but most times good enough)

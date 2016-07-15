@@ -2,7 +2,14 @@ library(ggplot2)
 library(ggrepel)
 library(grid)
 
+is_outlier <- function(x) {
+  return(x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+}
 
+is_top_N <- function(x, N){
+  top.n <- sort(x, decreasing = TRUE)[N]
+  return(x >= top.n)
+}
 
 PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle="", facet.rows = 1, jcex=24, pointsize=1){  
   source('~/projects/tissue-specificity/scripts/functions/DataHandlingFunctions.R')

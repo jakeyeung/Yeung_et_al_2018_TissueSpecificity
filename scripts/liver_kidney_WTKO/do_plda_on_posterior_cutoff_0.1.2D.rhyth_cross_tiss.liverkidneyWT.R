@@ -11,6 +11,7 @@ distfilt <- as.numeric(args[1])
 jcutoff <- as.numeric(args[2])
 jcutoff.low <- as.numeric(args[3])
 jmethod <- args[4]
+jmodel <- args[5]
 # distfilt <- 10000
 # jcutoff <- 4  # arbitrary
 # jcutoff.low <- 0  # arbitrary
@@ -30,11 +31,13 @@ saveplot <- TRUE
 saverobj <- TRUE
 outdir <- "plots/penalized_lda/liver_kidney_wtko"
 dir.create(outdir)
-fnamebase <- paste0("2D.posterior.multigene.distfilt.morenonliv.bugfixed.liverWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod)
+fnamebase <- paste0("2D.posterior.multigene.distfilt.morenonliv.bugfixed.liverWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".model.", jmodel)
+print(paste("Fname base:", fnamebase))
 outf <- file.path(outdir, paste0(fnamebase, ".pdf"))
 amp.min <- 0
 
-jmodels <- c("Liver_SV129")
+# jmodels <- c("Liver_SV129")
+jmodels <- c(jmodel)
 if (jmodels == "Kidney_SV129"){
   rhyth.tiss <- c("Kidney")
   flat.tiss <- c("Liver")
