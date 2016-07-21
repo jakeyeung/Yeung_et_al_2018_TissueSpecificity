@@ -6,8 +6,8 @@
 
 rm(list=ls())
 
-descrip <- "sep_liv_rhyth.RORA_bHLH_SRF.remove_pde9a"
-K <- 4
+descrip <- "sep_liv_rhyth.RORA_bHLH_SRF.fixsignbugfixed"
+K <- 3
 
 setwd("~/projects/tissue-specificity")
 
@@ -192,7 +192,7 @@ text(x = mat.pmd$v[, pc1], y = mat.pmd$v[, pc2], labels = mat.pmd$cnames)
 # map onto the two eigenpeak space
 # mat.M.orth <- mat.M %*% mat.pmd$v  %*% diag(mat.pmd$d)  # since v's are all negative, flip to negative 1 it should be equivalent. 
 # mat.M.orth <- mat.M %*% mat.pmd$v
-mat.pmd$v <- sweep(mat.pmd$v, MARGIN = 1, STATS = sign(mat.pmd$v), FUN = "*")  # fix sign so mean is positive
+mat.pmd$v <- sweep(mat.pmd$v, MARGIN = 2, STATS = sign(colSums(mat.pmd$v)), FUN = "*")  # fix sign so mean is positive
 mat.M.orth <- mat.M %*% mat.pmd$v  # just rotate by orthonormal vectors
 # mat.M.orth <- mat.pmd$u %*% diag(mat.pmd$d) %*% t(mat.pmd$v)
 # mat.M.orth <- abs(mat.M.orth)  # make positive
@@ -211,8 +211,8 @@ N.gene <- N.peaks %>%
 
 # remove outliers!?!?!?
 # outliers <- c("Pde9a", "Slc4a4", "Slc38a4", "Lhpp", "Upp2", "Kif1b")
-outliers <- c("Pde9a")
-N.gene <- subset(N.gene, !gene %in% outliers)
+# outliers <- c("Pde9a")
+# N.gene <- subset(N.gene, !gene %in% outliers)
 
 # from write_N_sitecounts_table_for_mara.R
 mat.liver.cross <- dcast(N.gene, formula = gene ~ motif, value.var = "sitecount", fun.aggregate = sum, fill = 0)
