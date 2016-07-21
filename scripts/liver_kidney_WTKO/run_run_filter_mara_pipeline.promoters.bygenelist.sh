@@ -16,7 +16,7 @@ runscript="/home/yeung/projects/ridge-regression/run_scripts/run_mara_batch_prom
 [[ ! -e $runscript ]] && echo "$runscript not found, exiting" && exit 1
 
 # geneexprsmain="/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney"
-geneexprsdir="/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney"
+geneexprsdir="/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney.bugfixed"
 [[ ! -d $outmain ]] && mkdir $outmain
 
 # Nmain="/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/liver_kidney_sitecounts"

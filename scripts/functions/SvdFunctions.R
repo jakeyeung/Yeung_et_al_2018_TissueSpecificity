@@ -444,7 +444,9 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   # BEGIN: for gene module: only label the top label.n genes
   names(eigensamp) <- rownames(s.complex$u)
   eigensamp.sorted <- eigensamp[order(Mod(eigensamp), decreasing = TRUE)]
-  names(eigensamp.sorted)[(label.n + 1):length(eigensamp.sorted)] <- ""
+  if (label.n < length(eigensamp.sorted)){
+    names(eigensamp.sorted)[(label.n + 1):length(eigensamp.sorted)] <- ""
+  }
   # END
   
   gene.labels <- rownames(s.complex$u)

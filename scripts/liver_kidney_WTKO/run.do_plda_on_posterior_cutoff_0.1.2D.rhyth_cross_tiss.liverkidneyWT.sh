@@ -9,13 +9,13 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/liver_kidney_WTKO/do_
 jcutoffhigh=3
 jcutofflow="0"
 method="g=1001"
-distfilt=20000
-model="Kidney_SV129"
+distfilt=50000
+model="Liver_SV129"
 
 n=0
 maxjobs=8
 for method in "g=1001"; do
-	for jcutoffhigh in "1.5" "2"; do
+	for jcutoffhigh in "3"; do
 		for jcutofflow in "0" "0.5"; do
 			Rscript $runscript $distfilt $jcutoffhigh $jcutofflow $method $model&
 			if (( $(($((++n)) % $maxjobs)) == 0 )) ; then

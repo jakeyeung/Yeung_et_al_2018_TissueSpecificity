@@ -215,6 +215,7 @@ jmotif <- c("RORA;ONECUT1.2")
 jmotif <- c("RORA;CUX2")
 jmotif <- c("NR4A2;ONECUT1.2")
 jmotif <- c("TFCP2")
+jmotif <- c("RORA;ATF5_CREB3")
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 # label outliers http://stackoverflow.com/questions/33524669/labeling-outliers-of-boxplots-in-r
@@ -239,6 +240,6 @@ ggplot(subset(mat.long, motif == jmotif), aes(y = sitecount, x = label)) + geom_
 ggplot(subset(mat.long, motif == jmotif & label != "Nonrhyth"), aes(x = sitecount, fill = label)) + geom_density(alpha = 0.33) + scale_fill_manual(values = cbPalette)
 ggplot(subset(mat.long, motif == jmotif), aes(x = sitecount, fill = label)) + geom_density(alpha = 0.33) + scale_fill_manual(values = cbPalette)
 
-fg.sub <- mat.fgbg.cross.rhythtiss3[which(labels3 == 1), jmotifs]
-bg.sub <- mat.fgbg.cross.rhythtiss3[which(labels3 == 3), jmotifs]
+fg.sub <- mat.fgbg.cross.rhythtiss3[which(labels3 == 1), jmotif]
+bg.sub <- mat.fgbg.cross.rhythtiss3[which(labels3 == 3), jmotif]
 

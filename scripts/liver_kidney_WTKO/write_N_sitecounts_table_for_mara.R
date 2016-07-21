@@ -38,11 +38,13 @@ writepeaks <- FALSE
 dir.create(outdir, showWarnings = FALSE)
 f <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_FALSE.", "tspeaks_", tissue.spec.peaks, ".cutofflow_", jcutoff.low, ".mat")
 f.cross <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_TRUE.", "tspeaks_", tissue.spec.peaks, ".cutofflow_", jcutoff.low, ".mat")
+f.cross_only <- paste0("sitecounts_enhancers.model_", jmodels, ".method_", jmethod, ".dist_", distfilt, ".cutoff_", jcutoff, ".cross_ONLY.", "tspeaks_", tissue.spec.peaks, ".cutofflow_", jcutoff.low, ".mat")
 
 outf.mat <- file.path(outdir, f)
 outf.mat.cross <- file.path(outdir, f.cross)
+outf.mat.cross_only <- file.path(outdir, f.cross_only)
 
-if (file.exists(outf.mat) | file.exists(outf.mat.cross)){
+if (file.exists(outf.mat) & file.exists(outf.mat.cross) & file.exists(outf.mat.cross_only)){
   stop("Matrix exists, exiting")
 }
 
@@ -228,13 +230,21 @@ mat.rhythtiss <- CrossProductTwoSets(mat.rhyth, mat.tiss)
 # mat.rhythtiss <- CrossProductTwoSets(mat.rhyth, mat.tiss)
 
 # Take ONLY cross products, or do singletons + crossproducts
-# mat.liver.cross <- cbind(mat.liver, mat.rhythtiss)
-mat.liver.cross <- cbind(mat.liver$gene, mat.rhythtiss)
+mat.liver.cross <- cbind(mat.liver, mat.rhythtiss)
 
 if (!file.exists(outf.mat.cross) & debug == FALSE & do.cross == TRUE){
   print("Writing to:")
   print(outf.mat.cross)
   write.table(mat.liver.cross, file = outf.mat.cross,
+              quote = FALSE, sep = "\t", row.names = FALSE)
+  
+}
+
+mat.liver.cross_only <- cbind(mat.liver$gene, mat.rhythtiss)
+if (!file.exists(outf.mat.cross_only) & debug == FALSE & do.cross == TRUE){
+  print("Writing to:")
+  print(outf.mat.cross_only)
+  write.table(mat.liver.cross_only, file = outf.mat.cross_only,
               quote = FALSE, sep = "\t", row.names = FALSE)
   
 }

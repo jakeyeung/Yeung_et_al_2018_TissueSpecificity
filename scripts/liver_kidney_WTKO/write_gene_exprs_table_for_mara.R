@@ -3,6 +3,8 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(dplyr)
 library(ggplot2)
 library(reshape2)
@@ -12,7 +14,7 @@ source("scripts/functions/BiomartFunctions.R")
 
 # Load --------------------------------------------------------------------
 
-load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
 
 
 # Filter genes and combine tissue and genotype ----------------------------
@@ -34,7 +36,7 @@ M.center <- sweep(M, MARGIN = 1, rowMeans(M), FUN = "-")
 
 tissues <- as.character(unique(dat.long$tissue))
 
-outdir <- "/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney"
+outdir <- "/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney.bugfixed"
 dir.create(outdir, showWarnings = FALSE)
 for (tiss in tissues){
   M.sub <- cbind(Gene.ID = rownames(M.center), M.center[, grepl(pattern = tiss, x = colnames(M.center)), ])
