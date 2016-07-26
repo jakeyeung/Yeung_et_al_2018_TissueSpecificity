@@ -8,6 +8,7 @@ rm(list=ls())
 
 descrip <- "sep_liv_rhyth.RORA_bHLH_SRF.fixsignbugfixed"
 K <- 3
+run.mara <- FALSE
 
 setwd("~/projects/tissue-specificity")
 
@@ -35,12 +36,6 @@ source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/FisherTestSitecounts.R")
 source("scripts/functions/ColorFunctions.R")
 
-PcToMotif <- function(v, pc, top.n = 3){
-  x <- v[, pc]
-  x <- x[which(x != 0)]
-  motif.names <- names(sort(x, decreasing = TRUE))
-  return(paste(motif.names[1:top.n], collapse = "-"))
-}
 
 
 # Load --------------------------------------------------------------------
@@ -184,6 +179,9 @@ print(mat.pmd)
 rownames(mat.pmd$u) <- mat.pmd$rnames
 rownames(mat.pmd$v) <- mat.pmd$cnames
 
+# optionally save
+# save(mat.pmd, file = "Robjs/penalized_lda_robjs/mat.pmd.RORA_bHLH_SRF.40000.g1001.Robj")
+
 pc1 <- 1
 pc2 <- 3
 plot(x = mat.pmd$v[, pc1], y = mat.pmd$v[, pc2])
@@ -250,7 +248,9 @@ marascript <- "/home/yeung/projects/tissue-specificity/scripts/liver_kidney_WTKO
 nmat <- outf.mat.cross
 outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/mara_out.", descrip, ".K_", K)
 cmd <- paste("bash", marascript, nmat, outmain)
-system(cmd)
+if (run.mara){
+  system(cmd)
+}
 
 # LOAD RESULTS
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/cross_only_decorrelated/2D.posterior.multigene.distfilt.morenonliv.bugfixed.liverWTKO.40000.cutoff.3.cutofflow0.method.g1001.mat/atger_with_kidney"
@@ -289,13 +289,14 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 max.labs <- 2
 jtitle <- ""
 for (comp in seq(1)){
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = K, jtitle = jtitle)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = K, jtitle = jtitle, peak.to.trough = TRUE)
   print(eigens.act$u.plot)
+  multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 }
 
 # # check what the motifs are
-pc1 <- 4
-pc2 <- 3
+pc1 <- 1
+pc2 <- 2
 
 library(wordcloud)
 wordcloud::textplot(x = mat.pmd$v[, pc1], y = mat.pmd$v[, pc2], words = mat.pmd$cnames, xlab = paste("PC", pc1), ylab = paste("PC", pc2))
