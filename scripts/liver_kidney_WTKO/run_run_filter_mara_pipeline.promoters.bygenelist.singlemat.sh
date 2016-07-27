@@ -8,7 +8,12 @@
 # outmain="/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.limitprod"
 Nmat=$1
 outdir=$2
+geneexprsdir=$3
 
+# if not supplied then assume liver and kidney
+if [ -z $geneexprsdir ]; then
+	geneexprsdir="/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney.bugfixed"
+fi
 
 initscript="/home/yeung/projects/tissue-specificity/scripts/liver_kidney_WTKO/write_gene_exprs_table_for_mara.modules.R"
 combinescript="/home/yeung/projects/ridge-regression/run_scripts/combine_activities_and_plot.one_dir.sh"
@@ -16,7 +21,7 @@ runscript="/home/yeung/projects/ridge-regression/run_scripts/run_mara_batch_prom
 [[ ! -e $runscript ]] && echo "$runscript not found, exiting" && exit 1
 
 # geneexprsmain="/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney"
-geneexprsdir="/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney.bugfixed"
+# geneexprsdir="/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney.bugfixed"
 
 bname=$(basename $Nmat)
 subdir=$(basename $geneexprsdir)
