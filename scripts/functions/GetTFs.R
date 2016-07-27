@@ -1,4 +1,4 @@
-GetTFs <- function(split.commas = TRUE, get.motifs = FALSE){
+GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE){
   # Vector containing gene names (may be comma separated), get gene list
   # 
   # Args:
@@ -11,6 +11,11 @@ GetTFs <- function(split.commas = TRUE, get.motifs = FALSE){
   tf.path <- file.path(data.dir, tf.fname)
   
   tf.mat <- read.table(tf.path, header=FALSE, row.names = 1, sep='\t')
+
+  if (get.mat.only){
+    tf.mat$V2 <- as.character(tf.mat$V2)
+    return(tf.mat)
+  }
   
   if (get.motifs == FALSE){
     tf_vector <- as.vector(tf.mat[, 1])
@@ -26,4 +31,15 @@ GetTFs <- function(split.commas = TRUE, get.motifs = FALSE){
     return(rownames(tf.mat))
   }
   return(genes.list)  
+}
+
+GetGenesFromMotifs <- function(jmotif, tfs){
+  # Return gene(s) that match a motif
+  genes <- strsplit(tfs[jmotif, ], ",")[[1]]
+  if (all(is.na(genes))){
+    # try grep
+    jgrep <- strsplit(jmotif, "\\.")[[1]][[1]]
+    genes <- strsplit(tfs[grepl(jgrep, rownames(tfs)), ], ",")[[1]]
+  }
+  return(genes)
 }
