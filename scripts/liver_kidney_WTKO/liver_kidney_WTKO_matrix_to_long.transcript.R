@@ -1,6 +1,7 @@
 # 2016-07-01
 # Jake Yeung
 # Alternative promoter usage
+# 2016-07-26: redo after merging fastqs (bugfixed)
 
 rm(list=ls())
 
@@ -16,8 +17,7 @@ eps <- 1  # for log2 transform
 
 # Load --------------------------------------------------------------------
 
-inf="/home/shared/atgerWTKO_kidneyWTKO/LiverKidney_SV129BmalKO_RF_TotalRNAPolyARNA_kallisto_abundances.txt"
-inf="/home/shared/atgerWTKO_kidneyWTKO/LiverKidney_SV129BmalKO_RF_TotalRNAPolyARNA_kallisto_abundances.first_exons.txt"
+inf="/home/shared/atgerWTKO_kidneyWTKO/LiverKidney_SV129BmalKO_RF_TotalRNAPolyARNA_kallisto_abundances.annotated.bugfixed.txt"
 dat <- read.table(inf, header = TRUE)
 
 genes <- dat$gene_name
@@ -78,4 +78,4 @@ dat.bytranscript <- data.frame(gene = rep(genes, length(sampnames)),
                                experiment = "RNASeq")
 
 # save to file 
-save(dat.bytranscript, file = "Robjs/liver_kidney_atger_nestle/dat.bytranscript.Robj")
+save(dat.bytranscript, file = "Robjs/liver_kidney_atger_nestle/dat.bytranscript.bugfixed.annotated.Robj")

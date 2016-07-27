@@ -70,13 +70,15 @@ GetTranscriptLoadings <- function(dat.sub, component = 1, jvar = "tpm.norm"){
 
 # Load --------------------------------------------------------------------
 
-load("Robjs/liver_kidney_atger_nestle/dat.bytranscript.Robj", v=T)
-load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
-load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
+# load("Robjs/liver_kidney_atger_nestle/dat.bytranscript.bugfixed.Robj", v=T)
+load("/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/dat.bytranscript.bugfixed.annotated.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj")
 
 dat.bytranscript <- StaggeredTimepointsLivKid(dat.bytranscript)
 dat.bytranscript <- CollapseTissueGeno(dat.bytranscript)  # match fits.long.filt
 
+dat.orig <- dat.long
 dat.long <- StaggeredTimepointsLivKid(dat.long)
 
 # Calculate fractional isoform usage --------------------------------------
