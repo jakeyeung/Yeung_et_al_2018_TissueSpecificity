@@ -13,7 +13,13 @@ GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE
   tf.mat <- read.table(tf.path, header=FALSE, row.names = 1, sep='\t')
 
   if (get.mat.only){
+    # change gene names that are not well named
+    # tf.mat$V2[grepl("Zfp161", tf.mat$V2)] <- "Zbtb14"
+    # tf.mat$V2[grepl("Tcfap2b", tf.mat$V2)] <- "Tfap2b"
     tf.mat$V2 <- as.character(tf.mat$V2)
+    tf.mat["TFAP2B.p2", ] <- "Tfap2b"
+    tf.mat["ZFP161.p2", ] <- "Zbtb14"
+    tf.mat["ZNF238.p2", ] <- "Zbtb18"
     return(tf.mat)
   }
   

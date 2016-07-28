@@ -19,7 +19,8 @@ load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v
 dat.orig <- dat.long
 dat.long <- StaggeredTimepointsLivKid(dat.long)
 
-jmod <- "all"
+# jmod <- "all"
+jmod <- "Kidney_SV129,Kidney_BmalKO"
 # outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
 outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
 indir <- file.path(outmain, "atger_with_kidney.bugfixed")
@@ -43,14 +44,13 @@ act.tissmean <- act.mean %>%
   group_by(gene, tiss) %>%
   summarise(exprs = mean(exprs))
 
-act.tissdiff <- act.tissmean %>%
-  group_by(gene) %>%
+act.tissdiff <- act.tissmean %>%  group_by(gene) %>%
   summarise(exprs.diff = diff(exprs)) %>%
   # arrange(desc(abs(exprs.diff)))
   arrange(exprs.diff)
 
 print(head(act.tissdiff))  # MYBL2.p2 etc
-jmotifs <- head(as.character(act.tissdiff$gene), n = 20)
+jmotifs <- head(as.character(act.tissdiff$gene), n = 35)
 plotdir <- "plots/mara_liver_kidney_modules"
 pdf(file.path(plotdir, paste0("tissue_spec_motifs.", jmod, ".pdf")))
 # jmotif <- "HSF1.2.p2"
@@ -60,8 +60,11 @@ for (jmotif in jmotifs){
   for (g in GetGenesFromMotifs(jmotif, tfs)){
     print(g)
     jsub <- subset(dat.orig, gene == g)
-    if (nrow(jsub)) 
-    print(PlotGeneTissuesWTKO(jsub, jtitle = g))
+    if (nrow(jsub) > 0){
+      print(PlotGeneTissuesWTKO(jsub, jtitle = g))
+    } else {
+      print(paste("Could not find gene:", g))
+    }
   }
 }
 dev.off()
