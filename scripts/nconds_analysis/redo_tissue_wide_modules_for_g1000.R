@@ -14,16 +14,19 @@ load("Robjs/fits.relamp.Robj", v=T)
 load("Robjs/dat.complex.fixed_rik_genes.Robj", v=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
 
+filter.by.amp <- FALSE
 
 # annotate ----------------------------------------------------------------
 
-fits.long$model <- mapply(FilterModelByAmp, fits.long$model, fits.long$param.list, MoreArgs = list(amp.cutoff = 0.15))
+if (filter.by.amp){
+  fits.long$model <- mapply(FilterModelByAmp, fits.long$model, fits.long$param.list, MoreArgs = list(amp.cutoff = 0.15))
+}
 fits.long$n.params <- sapply(fits.long$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
 fits.long$n.rhyth <- sapply(fits.long$model, GetNrhythFromModel)
 fits.long$amp.avg <- mapply(GetAvgAmpFromParams, fits.long$param.list, fits.long$model)
 fits.long$phase.sd <- mapply(GetSdPhaseFromParams, fits.long$param.list, fits.long$model)
 fits.long$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.long$param.list, fits.long$model)
-fits.long$phase.avg <- mapply(GePhaseFromParams, fits.long$param.list, fits.long$model)
+fits.long$phase.avg <- mapply(GetPhaseFromParams, fits.long$param.list, fits.long$model)
 
 
 # Sanity check ------------------------------------------------------------
@@ -46,7 +49,7 @@ multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
 Npath <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids"
 Npath.outmain <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/promoters_hogenesch"
 dir.create(Npath.outmain)
-Npath.out <- paste0(Npath.outmain, "sitecount.tissuewide.mat")
+Npath.out <- paste0(Npath.outmain, "sitecount.tissuewide.filteramp", filter.by.amp, "mat")
 N <- read.table(Npath, header=TRUE)
 
 N.sub <- subset(N, Gene.ID %in% genes.tw)
@@ -91,7 +94,7 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 max.labs <- 20
 jtitle <- ""
 for (comp in seq(1)){
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = 
-                            print(eigens.act$u.plot + ggtitle(jmod))
-                          # multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE)
+  print(eigens.act$u.plot)
+  multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 }
