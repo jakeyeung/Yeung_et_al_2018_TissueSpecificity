@@ -112,6 +112,8 @@ jmodel.lst <- as.character(fits.count$model)
 # jmodel <- c("Kidney_BmalKO")
 # jmodel <- c("Liver_BmalKO")
 
+# jmodel <- c("Kidney_SV129", "Kidney_SV129;Kidney_BmalKO", "Kidney_SV129;Liver_SV129,Liver_BmalKO", "Liver_SV129;Kidney_SV129")
+
 jmodel.lst <- c("all")
 for (jmodel in jmodel.lst){
   print(paste("Running model:", jmodel))
@@ -226,7 +228,4 @@ for (jmodel in jmodel.lst){
   
   dev.off()
 }
-
-
-
 

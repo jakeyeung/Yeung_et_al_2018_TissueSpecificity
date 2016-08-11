@@ -14,7 +14,7 @@ load("Robjs/fits.relamp.Robj", v=T)
 load("Robjs/dat.complex.fixed_rik_genes.Robj", v=T)
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
 
-filter.by.amp <- FALSE
+filter.by.amp <- 0.15
 
 # annotate ----------------------------------------------------------------
 
@@ -28,6 +28,9 @@ fits.long$phase.sd <- mapply(GetSdPhaseFromParams, fits.long$param.list, fits.lo
 fits.long$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.long$param.list, fits.long$model)
 fits.long$phase.avg <- mapply(GetPhaseFromParams, fits.long$param.list, fits.long$model)
 
+if (filter.by.amp == 0.15){
+  save(fits.long, file = "Robjs/nconds_g1000_11_tissues/fits_long.11_tiss_3_max.g1000.bestmodel.filteramp.0.15.Robj")
+}
 
 # Sanity check ------------------------------------------------------------
 
@@ -49,7 +52,7 @@ multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
 Npath <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids"
 Npath.outmain <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/promoters_hogenesch"
 dir.create(Npath.outmain)
-Npath.out <- paste0(Npath.outmain, "sitecount.tissuewide.filteramp", filter.by.amp, "mat")
+Npath.out <- paste0(Npath.outmain, "sitecount.tissuewide.filteramp.", filter.by.amp, ".mat")
 N <- read.table(Npath, header=TRUE)
 
 N.sub <- subset(N, Gene.ID %in% genes.tw)
@@ -65,7 +68,7 @@ nmat <- Npath.out
 
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.hogenesch"
 dir.create(outbase)
-outmain <- file.path(outbase, paste0("promoters.tissuewide"))
+outmain <- file.path(outbase, paste0("promoters.tissuewide.filteramp.", filter.by.amp, ".mat"))
 # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod)
 
 cmd <- paste("bash", marascript, nmat, outmain, geneexprsdir)
@@ -81,7 +84,7 @@ act.long <- LoadActivitiesLong(indir)
 # rename motifs based on the motifs with non-zero entries
 
 omega <- 2 * pi / 24
-act.complex <- act.long %>%
+act.complex <- subset(act.long, tissue != "WFAT") %>%
   group_by(gene, tissue) %>%
   do(ProjectToFrequency2(., omega, add.tissue=TRUE))
 

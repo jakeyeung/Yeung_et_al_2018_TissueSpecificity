@@ -20,6 +20,8 @@ GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE
     tf.mat["TFAP2B.p2", ] <- "Tfap2b"
     tf.mat["ZFP161.p2", ] <- "Zbtb14"
     tf.mat["ZNF238.p2", ] <- "Zbtb18"
+    tf.mat["ZNF238.p2", ] <- "Zbtb18"
+    tf.mat["TFCP2.p2", ] <- "Tfcp2"
     return(tf.mat)
   }
   

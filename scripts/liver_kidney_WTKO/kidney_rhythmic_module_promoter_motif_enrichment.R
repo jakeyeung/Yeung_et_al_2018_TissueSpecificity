@@ -20,7 +20,9 @@ source("scripts/functions/LiverKidneyFunctions.R")
 load("Robjs/N.long.promoters_500.Robj", verbose=T)
 # load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", verbose=T)
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/fits.bytiss.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
+fits.long.filt <- subset(fits.long.filt, method == "g=1001")
 
 dat.orig <- dat.long
 dat.long <- CollapseTissueGeno(dat.long)
@@ -44,6 +46,8 @@ fits.count <- fits.long.filt %>%
 fg.models <- "Kidney_SV129,Kidney_BmalKO"
 fg.models <- "Kidney_SV129"
 fg.models <- "Liver_SV129"
+fg.models <- "Liver_SV129,Liver_BmalKO"
+fg.models <- "Liver_BmalKO"
 flat.models <- ""
 tissuewide.models <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 genes.flat <- as.character(subset(fits.long.filt, model == flat.models)$gene)
@@ -80,7 +84,7 @@ PlotSeparation(out.flat, jtitle = paste("Rhyth model:", paste(fg.models, collaps
 xproj <- out.flat$xproj
 rownames(xproj) <- rownames(out.flat$x)
 
-head(xproj[order(xproj), ])
+head(xproj[order(xproj), ])f
 
 
 # Plot expression of genes matching to motif  -----------------------------
@@ -96,7 +100,7 @@ tfs <- GetTFs(get.mat.only = TRUE)
 for (jmotif in motifs){
   genes <- GetGenesFromMotifs(jmotif, tfs)
   for (g in genes){
-    jsub <- subset(dat.long, gene == g)
+    jsub <- subset(dat.orig, gene == g)
     
     if (nrow(jsub) > 0){
       print(PlotGeneTissuesWTKO(jsub, jtitle = g))
