@@ -8,8 +8,10 @@ jmc.cores <- 10
 # jtiss <- "Heart"
 args <- commandArgs(trailingOnly=TRUE)
 # jtiss <- args[1]
-jtiss <- "Liver"
-jmod <- args[1]
+# jtiss <- "Liver"
+jmod <- args[1]  # Liver_SV129
+jtiss <- args[2]  # Liver
+n.trials <- as.numeric(args[3])
 # jmod <- "Liver_SV129,Liver_BmalKO"
 # jmod <- "Liver_SV129"
 
@@ -17,7 +19,6 @@ random.is.flat <- TRUE
 
 print(paste("Tissue", jtiss))
 print(paste("Module", jmod))
-n.trials <- as.numeric(args[2])
 # n.trials <- 1000
 if (is.na(n.trials)) stop("Trials not numeric")
 
