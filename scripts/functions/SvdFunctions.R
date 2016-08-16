@@ -389,7 +389,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
   return(dat.complex)
 }
 
-GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, peak.to.trough = FALSE, jtitle){
+GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, peak.to.trough = FALSE, jtitle, label.gene=NA){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -444,8 +444,15 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   # BEGIN: for gene module: only label the top label.n genes
   names(eigensamp) <- rownames(s.complex$u)
   eigensamp.sorted <- eigensamp[order(Mod(eigensamp), decreasing = TRUE)]
+  names.orig <- names(eigensamp.sorted)
   if (label.n < length(eigensamp.sorted)){
     names(eigensamp.sorted)[(label.n + 1):length(eigensamp.sorted)] <- ""
+  }
+  # END
+  
+  # BEGIN: for gene module: also include a list of genes if not NA
+  if (!is.na(label.gene)){
+    names(eigensamp.sorted)[which(names.orig %in% label.gene)] <- names.orig[which(names.orig %in% label.gene)]
   }
   # END
   

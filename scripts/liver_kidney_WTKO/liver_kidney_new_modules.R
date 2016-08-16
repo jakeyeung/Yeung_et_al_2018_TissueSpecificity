@@ -100,7 +100,7 @@ jmodel.lst <- as.character(fits.count$model)
 
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 # jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO")
-# jmodel <- c("Liver_SV129,Kidney_SV129")
+jmodel <- c("Liver_SV129,Kidney_SV129")
 # jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 # jmodel <- c("Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Kidney_SV129;Kidney_BmalKO")
 # jmodel <- c("Liver_SV129,Liver_BmalKO", "Liver_SV129;Liver_BmalKO")
@@ -113,6 +113,8 @@ jmodel.lst <- as.character(fits.count$model)
 # jmodel <- c("Liver_BmalKO")
 
 # jmodel <- c("Kidney_SV129", "Kidney_SV129;Kidney_BmalKO", "Kidney_SV129;Liver_SV129,Liver_BmalKO", "Liver_SV129;Kidney_SV129")
+
+# jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO")
 
 jmodel.lst <- c("all")
 for (jmodel in jmodel.lst){
@@ -128,7 +130,7 @@ for (jmodel in jmodel.lst){
     genes.tw <- as.character(fits.long.filt$gene)
   }
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = i, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+  eigens <- GetEigens(s, period = 24, comp = i, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
   
@@ -142,7 +144,7 @@ for (jmodel in jmodel.lst){
   N.sub <- subset(N, Gene.ID %in% genes.tw)
   print(paste("Writing", nrow(N.sub), "promoters to file:", Npath.out))
   
-  write.table(N.sub, file = Npath.out, append = FALSE, quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+  if (!file.exists(Npath.out)) write.table(N.sub, file = Npath.out, append = FALSE, quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
   
   
   # Run MARA ----------------------------------------------------------------
@@ -165,6 +167,7 @@ for (jmodel in jmodel.lst){
   indir <- file.path(outmain, "atger_with_kidney.bugfixed")
   source("scripts/functions/LoadActivitiesLong.R")
   act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = FALSE)
+  # print(PlotActivitiesWithSE.rnaseq(subset(act.long, gene == jmotif & experiment == "rnaseq")) + theme_bw(24))
   # rename motifs based on the motifs with non-zero entries
   
   omega <- 2 * pi / 24

@@ -51,3 +51,7 @@ GetGenesFromMotifs <- function(jmotif, tfs){
   }
   return(genes)
 }
+
+GetMotifFromGene <- function(gene, tfs){
+  return(rownames(tfs)[grepl(gene, tfs[, 1])])
+}

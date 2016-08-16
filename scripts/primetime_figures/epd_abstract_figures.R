@@ -206,7 +206,7 @@ dat.mean.wtko <- dat.wtko.collapsed %>%
   summarise(exprs.mean = mean(exprs))
 
 # jmod <- "Liver_SV129,Liver_BmalKO"
-jmods <- c("Liver_SV129,Liver_BmalKO", "Liver_BmalKO", "Kidney_SV129", "Liver_SV129")
+jmods <- c("Liver_SV129,Liver_BmalKO", "Liver_BmalKO", "Kidney_SV129", "Liver_SV129", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 for (jmod in jmods){
   print(paste("Finding regulators for:", jmod))
   genes.mod <- unique(as.character(subset(fits.long.filt, model == jmod)$gene))
@@ -219,14 +219,15 @@ for (jmod in jmods){
   s.act <- SvdOnComplex(act.s.complex, value.var = "exprs.transformed")
   
   
+  jmod.label <- gsub(pattern = ",", replacement = "-", jmod)
+  pdf(file.path(plot.dir, paste0("clock_independent_", jmod.label, "_regulators.pdf")))
+  
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.mod), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Jun", "Egr1"))
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   
   eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 20, jtitle = "", peak.to.trough = TRUE)
   
-  jmod.label <- gsub(pattern = ",", replacement = "-", jmod)
-  pdf(file.path(plot.dir, paste0("clock_independent_", jmod.label, "_regulators.pdf")))
   # plot genes and regulators
   print(eigens$u.plot)
   multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
