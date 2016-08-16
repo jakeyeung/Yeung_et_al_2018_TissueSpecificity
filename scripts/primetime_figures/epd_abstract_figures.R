@@ -6,7 +6,7 @@ rm(list=ls())
 
 library(ggplot2)
 library(PMA)
-# detach("plyr", unload=TRUE)
+# detach("package:plyr", unload=TRUE)
 library(dplyr)
 
 setwd("/home/yeung/projects/tissue-specificity")
@@ -223,7 +223,7 @@ for (jmod in jmods){
   pdf(file.path(plot.dir, paste0("clock_independent_", jmod.label, "_regulators.pdf")))
   
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.mod), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Jun", "Egr1"))
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   
   eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 20, jtitle = "", peak.to.trough = TRUE)
