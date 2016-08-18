@@ -36,6 +36,14 @@ dat.long <- StaggeredTimepointsLivKid(dat.long)
 # filter NA changes
 dat.long <- subset(dat.long, !is.na(gene))
 
+# Annotate fits
+fits.long.filt$n.params <- sapply(fits.long.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
+fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
+# fits.long.filt$amp.avg <- mapply(GetAvgAmpFromParams, fits.long.filt$param.list, fits.long.filt$model)
+# fits.long.filt$phase.sd <- mapply(GetSdPhaseFromParams, fits.long.filt$param.list, fits.long.filt$model)
+# fits.long.filt$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.long.filt$param.list, fits.long.filt$model)
+# fits.long.filt$phase.avg <- mapply(GetPhaseFromParams, fits.long.filt$param.list, fits.long.filt$model)
+
 
 # Filter to common genes --------------------------------------------------
 
@@ -115,14 +123,26 @@ jmodel <- c("Liver_SV129,Kidney_SV129")
 # jmodel <- c("Kidney_SV129", "Kidney_SV129;Kidney_BmalKO", "Kidney_SV129;Liver_SV129,Liver_BmalKO", "Liver_SV129;Kidney_SV129")
 
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO")
+jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
+
+min.rhyth <- 1
+jmodel <- as.character(unique(subset(fits.long.filt, n.rhyth >= min.rhyth)$model))
+
+# for systems-driven module, all modules with >= 3 rhythmic conditions
+
 
 jmodel.lst <- c("all")
 for (jmodel in jmodel.lst){
   print(paste("Running model:", jmodel))
   
-  jmod <- paste(jmodel, collapse = "-")
-  jmod <- gsub(";", "\\.", jmod)
-  jmod <- paste0(jmod, ".", jmeth)
+  if (length(jmodel) <= 4){
+    jmod <- paste(jmodel, collapse = "-")
+    jmod <- gsub(";", "\\.", jmod)
+    jmod <- paste0(jmod, ".", jmeth)
+  } else {
+    print("Shortening name to:")
+    jmod <- paste0("many_modules_minrhyth.", min.rhyth, ".", jmeth)
+  }
   
   if (jmodel != "all"){
     genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% jmodel)$gene)

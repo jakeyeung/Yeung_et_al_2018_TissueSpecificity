@@ -21,6 +21,12 @@ dat.long <- StaggeredTimepointsLivKid(dat.long)
 
 # jmod <- "all"
 jmod <- "Kidney_SV129,Kidney_BmalKO"
+jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
+jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
+jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
+jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129,Liver_BmalKO-Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
+jmod <- "many_modules_minrhyth.1"
+jmod <- "Liver_BmalKO"
 # outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
 outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
 indir <- file.path(outmain, "atger_with_kidney.bugfixed")
