@@ -11,6 +11,8 @@ source("scripts/functions/GetTFs.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/LiverKidneyFunctions.R")
+source("scripts/functions/SvdFunctions.R")
+source("scripts/functions/PlotFunctions.R")
 
 # Load --------------------------------------------------------------------
 
@@ -22,17 +24,37 @@ dat.long <- StaggeredTimepointsLivKid(dat.long)
 # jmod <- "all"
 jmod <- "Kidney_SV129,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
-jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
-jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129,Liver_BmalKO-Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
-jmod <- "many_modules_minrhyth.1"
 jmod <- "Liver_BmalKO"
+jmod <- "Liver_SV129,Kidney_SV129"
+jmod <- "many_modules_minrhyth.4"
+jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 # outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
 outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
 indir <- file.path(outmain, "atger_with_kidney.bugfixed")
 source("scripts/functions/LoadActivitiesLong.R")
 act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = FALSE)
 
+
+# Plot module -------------------------------------------------------------
+
+omega <- 2 * pi / 24
+act.complex <- act.long %>%
+  group_by(gene, tissue) %>%
+  do(ProjectToFrequency2(., omega, add.tissue=TRUE))
+
+s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
+
+
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+# jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
+
+max.labs <- 30
+jtitle <- ""
+comp <- 1
+eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2"))
+print(eigens.act$u.plot + ggtitle(jmod))
+# multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 
 # Get mean ----------------------------------------------------------------
 

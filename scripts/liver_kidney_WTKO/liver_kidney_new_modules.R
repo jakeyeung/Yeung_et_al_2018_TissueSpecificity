@@ -123,15 +123,15 @@ jmodel <- c("Liver_SV129,Kidney_SV129")
 # jmodel <- c("Kidney_SV129", "Kidney_SV129;Kidney_BmalKO", "Kidney_SV129;Liver_SV129,Liver_BmalKO", "Liver_SV129;Kidney_SV129")
 
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO")
-jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
+# jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 
-min.rhyth <- 1
+min.rhyth <- 3
 jmodel <- as.character(unique(subset(fits.long.filt, n.rhyth >= min.rhyth)$model))
 
 # for systems-driven module, all modules with >= 3 rhythmic conditions
 
-
-jmodel.lst <- c("all")
+jmodel.lst <- list(jmodel)
+# jmodel.lst <- c("all")
 for (jmodel in jmodel.lst){
   print(paste("Running model:", jmodel))
   
