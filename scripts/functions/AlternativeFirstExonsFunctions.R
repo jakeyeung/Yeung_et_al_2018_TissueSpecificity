@@ -61,10 +61,13 @@ PromoterSpacePlots.nostics <- function(tpm.gauss.sigs, jgene, jtitle, draw.ellip
   }
 }
 
-PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg", draw.ellipse = TRUE, use.weights = TRUE){
-  tpm.test <- subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT")
-  
-  test.svd <- GetPromoterUsage(tpm.test, jvar = jvar, do.svd = T, append.tiss = TRUE, get.means = TRUE)
+PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg", draw.ellipse = TRUE, use.weights = TRUE, transcript_id = "transcript_id"){
+  tpm.test = tryCatch({
+    tpm.test <- subset(tpm.afe.avg, gene_name == jgene & tissue != "WFAT")
+  }, error = function(e) {
+    tpm.test <- subset(tpm.afe.avg, gene == jgene)
+  })
+  test.svd <- GetPromoterUsage(tpm.test, jvar = jvar, do.svd = T, append.tiss = TRUE, get.means = TRUE, transcript_id = transcript_id)
 
   proms <- subset(test.svd$dat.mat.trans, select = -c(amp, tissue))
   amp <- test.svd$dat.mat.trans$amp

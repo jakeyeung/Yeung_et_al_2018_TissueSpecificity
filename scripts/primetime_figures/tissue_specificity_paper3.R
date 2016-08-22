@@ -121,8 +121,7 @@ dev.off()
 # Hogenesch supplementary figures -----------------------------------------
 
 # PCA
-
-
+# TODO
 
 # F24 across periods 
 # Core clock genes
@@ -453,11 +452,6 @@ for (jmod in jmods){
 }
 plot.i <- plot.i + 1
 
-# Supplemental modules ----------------------------------------------------
-
-# Kidney SV129 module
-
-# Liver KO module
 
 
 # Cooperative TFs underlie clock-dependent tissue-specific diurnal --------
@@ -682,4 +676,4 @@ dev.off()
 
 # Alternative promoter ----------------------------------------------------
 
-
+# TODO

@@ -52,10 +52,12 @@ tpm.afe.avg <- dat.bytranscript %>%
             tpm.var = var(tpm))
 
 
+
+
+
 # Positive control --------------------------------------------------------
 
 jgene <- "Ddc"
-jgene <- "Slc45a3"
 
 jsub <- subset(dat.bytranscript, gene == jgene & geno == "SV129")
 
@@ -73,7 +75,7 @@ counts.dic <- hash(as.character(tpm.counts$gene), tpm.counts$counts)
 tpm.afe.avg$nprom <- sapply(as.character(tpm.afe.avg$gene), function(jgene) counts.dic[[jgene]])
 
 # hash it
-tiss <- c("Liver_SV129", "Kidney_SV129")
+tiss <- c("Liver_SV129", "Kidney_SV129", "Liver_BmalKO", "Kidney_BmalKO")
 keys.df <- fits.long.filt %>%
   group_by(gene) %>%
   do(GetGeneModelKeys(., tiss))
@@ -83,14 +85,40 @@ is.rhyth.dic <- hash(keys, vals)
 
 # annotate it
 tpm.afe.avg <- subset(tpm.afe.avg, gene %in% unique(fits.long.filt$gene) & geno == "SV129")
+
 # 1 or 0 to signify whether it is rhythmic
 tpm.afe.avg$amp <- mapply(function(jtiss, jgene) is.rhyth.dic[[paste(jtiss, jgene, sep = ",")]], as.character(tpm.afe.avg$tissue), as.character(tpm.afe.avg$gene))
 
-# do only for Liver or Kidney rhythmic genes??
-jmods <- c("Liver_SV129", "Kidney_SV129")
-jgenes <- unique(as.character(subset(fits.long.filt, model %in% jmods)$gene))
+# do only on subset of models??
+jgenes <- unique(as.character(subset(fits.long.filt, model != "")$gene))
+# jmods <- c("Liver_SV129", "Kidney_SV129")
+# jgenes <- unique(as.character(subset(fits.long.filt, model %in% jmods)$gene))
 
-tpm.gauss <- subset(tpm.afe.avg, nprom > 1 & gene %in% jgenes) %>%
+# BEGIN: ANALYZE ON EACH TIME
+tpm.afe.bysamp <- dat.bytranscript %>%
+  group_by(gene, tissue, time, geno) %>%
+  mutate(tpm_normalized = CalculateFractionIsoformUsage(tpm, pseudocount = 1)) %>%
+  group_by(gene, transcript, tissue, geno, time) %>%
+  summarise(tpm_norm.avg = mean(tpm_normalized),
+            tpm_norm.var = var(tpm_normalized),
+            tpm.avg = mean(tpm),
+            tpm.var = var(tpm))
+tpm.afe.bysamp <- subset(tpm.afe.bysamp, gene %in% unique(fits.long.filt$gene))
+tpm.afe.bysamp$nprom <- sapply(as.character(tpm.afe.bysamp$gene), function(jgene) counts.dic[[jgene]])
+tpm.afe.bysamp$amp <-  mapply(function(jtiss, jgene) is.rhyth.dic[[paste(jtiss, jgene, sep = ",")]], as.character(tpm.afe.bysamp$tissue), as.character(tpm.afe.bysamp$gene))
+
+# Rename to just tissue, ignoring genotype
+tpm.afe.bysamp$tissue.merge <- sapply(as.character(tpm.afe.bysamp$tissue), function(tiss) strsplit(tiss, "_")[[1]][[1]])
+
+# amps of same tissue should be same (take maximum, if tissue in any genotype is rhythmic, then label it as rhythmic)
+tpm.afe.bysamp <- tpm.afe.bysamp %>%
+  group_by(gene, transcript, tissue.merge) %>%
+  mutate(amp = max(amp))
+
+# make tissue indivudal factors by adding geno and time
+tpm.afe.bysamp$tissue <- paste(as.character(tpm.afe.bysamp$tissue), tpm.afe.bysamp$time, sep = "-")
+
+tpm.gauss <- subset(tpm.afe.bysamp, nprom > 1 & gene %in% jgenes) %>%
   group_by(gene) %>%
   do(sigs = CalculateGaussianCenters(., transcript_id = "transcript"))
 
@@ -98,12 +126,38 @@ tpm.gauss2 <- subset(tpm.gauss, !is.na(sigs)) %>%
   group_by(gene) %>%
   do(CalculateGaussianDists(.))
 
+# END: ANALYZE ON EACH TIME
+
 genelist <- tpm.gauss2$gene
 tpm.gauss <- cbind(as.data.frame(tpm.gauss2), as.data.frame(subset(tpm.gauss, gene %in% genelist, select = -gene)))
 
 tpm.gauss <- tpm.gauss[order(tpm.gauss$center.dists, decreasing = TRUE), ]
 
 head(data.frame(subset(tpm.gauss, select=-sigs)), n = 50)
+
+
+
+# Testing single gene, commented out
+# jgene <- "Mreg"
+# # tpm.afe.bysamp <- subset(tpm.afe.bysamp, gene %in% unique(fits.long.filt$gene) & geno == "SV129")
+# jtest <- subset(tpm.afe.bysamp, gene == jgene)
+# jtest$tissue <- paste(jtest$tissue, jtest$time, sep = "-")
+# out <- GetPromoterUsage(jtest, transcript_id = "transcript")
+# 
+# proms <- out$dat.mat.trans
+# jtitle <- jgene
+# plot(proms[, 2], proms[, 3], main = jtitle, xlab = "Promoter usage (1st component)", ylab = "Promoter usage (2nd component)")
+# par(cex.axis=1, cex.lab=2, cex.main=2, cex.sub=1)
+# 
+# jcols <- vector(length = nrow(proms))
+# jcols[which(proms$amp == 1)] <- "blue"
+# jcols[which(proms$amp == 0)] <- "red"
+# text(proms[, 2], proms[, 3], labels = proms$tissue, col = jcols)
+# draw ellipse
+# if (draw.ellipse){
+#   try(lines(ellipse(tpm.gauss.sigs$sig1$cov, level = 0.5, centre = tpm.gauss.sigs$sig1$center), type='l', col = "blue"), silent = T)
+#   try(lines(ellipse(tpm.gauss.sigs$sig2$cov, level = 0.5, centre = tpm.gauss.sigs$sig2$center), type='l', col = "red"), silent = T)
+# }
 
 # SANITY ------------------------------------------------------------------
 
@@ -116,9 +170,16 @@ dat.min <- subset(dat.long, geno == "SV129") %>%
   summarise(exprs.min = min(exprs.mean))
 
 jcutoff <- 2
-jgenes <- as.character(subset(dat.min, exprs.min >= 2)$gene)
+jgenes.min <- as.character(subset(dat.min, exprs.min >= jcutoff)$gene)
 
-head(data.frame(subset(tpm.gauss, gene %in% jgenes, select=-sigs)), n = 50)
+head(data.frame(subset(tpm.gauss, gene %in% jgenes.min, select=-sigs)), n = 50)
+
+# TESTING
+jgene <- "Slc45a3"
+jgene <- "Gm14327"
+jgene <- "Pnrc2"
+PromoterSpacePlots(tpm.afe.bysamp, jgene = jgene, transcript_id = "transcript", use.weights = FALSE)
+PlotGeneTissuesWTKO(subset(dat.long, gene == jgene), jtitle = jgene)
 
 jgene <- "Npnt"
 jgene <- "Osgin1"
@@ -143,13 +204,16 @@ jgene <- "Slc45a3"
 
 genes <- as.character(head(data.frame(subset(tpm.gauss, gene %in% jgenes, select=-sigs)), n = 50)$gene)
 
-pdf("plots/alternative_exon_usage/liver_kidney.atger_nestle.bugfixed.pdf")
+
+pdf("plots/alternative_exon_usage/liver_kidney.atger_nestle.bugfixed.bytime.pdf")
 for (jgene in genes){
   print(jgene)
-  tx <- GetPromoterUsage(subset(tpm.afe.avg, gene == jgene), transcript_id = "transcript", get.entropy=FALSE, return.transcripts=TRUE)[[1]]$transcript
-  print(PlotGeneTissuesWTKO(subset(dat.long, gene == jgene)) + ggtitle(jgene))
-  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & geno == "SV129" & transcript %in% tx), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
-  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & geno == "SV129"), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
+  jmodel <- as.character(subset(fits.long.filt, gene == jgene)$model[[1]])
+  tx <- GetPromoterUsage(subset(tpm.afe.bysamp, gene == jgene), transcript_id = "transcript", get.entropy=FALSE, return.transcripts=TRUE)[[1]]$transcript
+  print(PlotGeneTissuesWTKO(subset(dat.long, gene == jgene)) + ggtitle(paste(jgene, jmodel)))
+  PromoterSpacePlots(tpm.afe.bysamp, jgene = jgene, transcript_id = "transcript", use.weights = FALSE)
+  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & transcript %in% tx), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
+  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
 }
 dev.off()
 
