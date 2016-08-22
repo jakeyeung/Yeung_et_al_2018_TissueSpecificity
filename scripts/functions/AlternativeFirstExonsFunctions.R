@@ -138,7 +138,7 @@ CalculateGaussianCenters <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do
   mu2 <- sig2$center
   pi2 <- sum(weights2) / length(weights2)
   
-  return(list(sig1 = sig1, sig2 = sig2, proms = proms, amp = amp, tissue = as.character(proms.full$dat.mat.trans$tissue)))
+  return(list(mu1 = mu1, mu2 = mu2, sig1 = sig1, sig2 = sig2, proms = proms, amp = amp, tissue = as.character(proms.full$dat.mat.trans$tissue)))
 }
 
 CalculateGaussianDists <- function(dat){

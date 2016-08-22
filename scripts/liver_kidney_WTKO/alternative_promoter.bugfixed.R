@@ -4,6 +4,8 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(dplyr)
 library(ggplot2)
 library(hash)
@@ -17,6 +19,65 @@ source("scripts/functions/AlternativeFirstExonsFunctions.R")
 source("scripts/functions/NcondsFunctions.R")
 
 eps <- 1  # for log2 transform
+
+
+# Function ----------------------------------------------------------------
+
+comp <- function(x,mean1,sd1,mean2,sd2){
+  # http://stats.stackexchange.com/questions/148385/overlap-between-two-normal-pdfs
+  if (length(x)==1){ 
+    outcome=min(dnorm(x,mean1,sd1),dnorm(x,mean2,sd2))}else{
+      first=dnorm(x,mean1,sd1)
+      second=dnorm(x,mean2,sd2)
+      outcome=first*(first<second)+second*(first>=second)}
+  return(outcome)}
+
+
+PermutatePvalue <- function(tpm.test, n.perms, show.plot=FALSE){
+  # http://stats.stackexchange.com/questions/30687/how-do-test-whether-two-multivariate-distributions-are-sampled-from-the-same-und
+  set.seed(0)
+  # TODO
+  test.svd <- GetPromoterUsage(tpm.test, jvar = "tpm_norm.avg", do.svd = T, append.tiss = TRUE, get.means = TRUE, transcript_id = "transcript")
+  proms <- subset(test.svd$dat.mat.trans, select = -c(amp, tissue))
+  amp <- test.svd$dat.mat.trans$amp
+  weights1 <- (amp - min(amp)) / (max(amp) - min(amp))
+  weights2 <- 1 - weights1
+  
+  # calculate centers and dist
+  mu1 <- colSums(sweep(proms, MARGIN = 1, STATS = weights1, FUN = "*")) / sum(weights1)
+  mu2 <- colSums(sweep(proms, MARGIN = 1, STATS = weights2, FUN = "*")) / sum(weights2)
+  jdist <- sum((mu2 - mu1) ^ 2)
+  
+  # PERMUTE
+  jdists <- rep(NA, n.perms)
+  for (i in seq(n.perms)){
+    weights1.rand <- sample(weights1, size = length(weights1), replace = FALSE)
+    weights2.rand <- 1 - weights1.rand
+    mu1.rand <- colSums(sweep(proms, MARGIN = 1, STATS = weights1.rand, FUN = "*")) / sum(weights1.rand)
+    mu2.rand <- colSums(sweep(proms, MARGIN = 1, STATS = weights2.rand, FUN = "*")) / sum(weights2.rand)
+    jdist.rand <- sum((mu2.rand - mu1.rand) ^ 2)
+    jdists[i] <- jdist.rand
+  }
+  
+  if (show.plot){
+    if (max(jdists) < jdist){
+      plot(density(jdists), xlim=c(0, jdist * 1.2), main = jgene)
+      abline(v = jdist)
+    } else {
+      plot(density(jdists), main = jgene)
+      abline(v = jdist)
+    }
+  } 
+  # calculate p-value
+  N <- length(which(jdists > jdist))
+  jpval <- N / length(jdists)
+  return(jpval)
+}
+
+
+
+
+
 
 # Load --------------------------------------------------------------------
 
@@ -61,8 +122,8 @@ jgene <- "Ddc"
 
 jsub <- subset(dat.bytranscript, gene == jgene & geno == "SV129")
 
-PlotTpmAcrossTissues(jsub, jtitle = jgene, log2.transform = FALSE, transcript_id = "transcript")
-PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
+# PlotTpmAcrossTissues(jsub, jtitle = jgene, log2.transform = FALSE, transcript_id = "transcript")
+# PlotGeneTissuesWTKO(subset(dat.long, gene == jgene))
 
 
 # Count promoters ---------------------------------------------------------
@@ -173,49 +234,74 @@ jcutoff <- 2
 jgenes.min <- as.character(subset(dat.min, exprs.min >= jcutoff)$gene)
 
 head(data.frame(subset(tpm.gauss, gene %in% jgenes.min, select=-sigs)), n = 50)
-
-# TESTING
-jgene <- "Slc45a3"
-jgene <- "Gm14327"
-jgene <- "Pnrc2"
-PromoterSpacePlots(tpm.afe.bysamp, jgene = jgene, transcript_id = "transcript", use.weights = FALSE)
-PlotGeneTissuesWTKO(subset(dat.long, gene == jgene), jtitle = jgene)
-
-jgene <- "Npnt"
-jgene <- "Osgin1"
-jgene <- "Zranb1"
-jgene <- "Aox3"
-jgene <- "Upp2"
-jgene <- "9530068E07Rik"
-jgene <- "Prkd3"
-jgene <- "Sh3bgrl2"
-jgene <- "Por"
-jgene <- "Aqp9"
-jgene <- "Npnt"
-jgene <- "Wdtc1"
-jgene <- "Zranb1"
-jgene <- "Psen2"
-jgene <- "Prkd3"
-jgene <- "Insig2"
-jgene <- "Upp2"
-jgene <- "Ddc"
-jgene <- "Usp2"
-jgene <- "Slc45a3"
+# 
+# # TESTING
+# jgene <- "Slc45a3"
+# jgene <- "Gm14327"
+# jgene <- "Pnrc2"
+# PromoterSpacePlots(tpm.afe.bysamp, jgene = jgene, transcript_id = "transcript", use.weights = FALSE)
+# PlotGeneTissuesWTKO(subset(dat.long, gene == jgene), jtitle = jgene)
+# 
+# jgene <- "Npnt"
+# jgene <- "Osgin1"
+# jgene <- "Zranb1"
+# jgene <- "Aox3"
+# jgene <- "Upp2"
+# jgene <- "9530068E07Rik"
+# jgene <- "Prkd3"
+# jgene <- "Sh3bgrl2"
+# jgene <- "Por"
+# jgene <- "Aqp9"
+# jgene <- "Npnt"
+# jgene <- "Wdtc1"
+# jgene <- "Zranb1"
+# jgene <- "Psen2"
+# jgene <- "Prkd3"
+# jgene <- "Insig2"
+# jgene <- "Upp2"
+# jgene <- "Ddc"
+# jgene <- "Usp2"
+# jgene <- "Slc45a3"
 
 genes <- as.character(head(data.frame(subset(tpm.gauss, gene %in% jgenes, select=-sigs)), n = 50)$gene)
 
 
-pdf("plots/alternative_exon_usage/liver_kidney.atger_nestle.bugfixed.bytime.pdf")
-for (jgene in genes){
-  print(jgene)
-  jmodel <- as.character(subset(fits.long.filt, gene == jgene)$model[[1]])
-  tx <- GetPromoterUsage(subset(tpm.afe.bysamp, gene == jgene), transcript_id = "transcript", get.entropy=FALSE, return.transcripts=TRUE)[[1]]$transcript
-  print(PlotGeneTissuesWTKO(subset(dat.long, gene == jgene)) + ggtitle(paste(jgene, jmodel)))
-  PromoterSpacePlots(tpm.afe.bysamp, jgene = jgene, transcript_id = "transcript", use.weights = FALSE)
-  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & transcript %in% tx), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
-  print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
-}
-dev.off()
+# pdf("plots/alternative_exon_usage/liver_kidney.atger_nestle.bugfixed.bytime.pdf")
+# for (jgene in genes){
+#   print(jgene)
+#   jmodel <- as.character(subset(fits.long.filt, gene == jgene)$model[[1]])
+#   tx <- GetPromoterUsage(subset(tpm.afe.bysamp, gene == jgene), transcript_id = "transcript", get.entropy=FALSE, return.transcripts=TRUE)[[1]]$transcript
+#   print(PlotGeneTissuesWTKO(subset(dat.long, gene == jgene)) + ggtitle(paste(jgene, jmodel)))
+#   PromoterSpacePlots(tpm.afe.bysamp, jgene = jgene, transcript_id = "transcript", use.weights = FALSE)
+#   print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & transcript %in% tx), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
+#   print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript"))
+# }
+# dev.off()
 
 # PromoterSpacePlots.nostics(subset(tpm.gauss, gene == jgene)$sigs[[1]], jgene, draw.ellipse = F)
 # subset(fits.orig, gene == jgene)
+
+
+# Calculate p-value for each gene: genome wide ----------------------------
+
+genes.filt <- unique(as.character(subset(tpm.gauss, gene %in% jgenes)$gene))
+
+tpm.afe.bysamp <- subset(tpm.afe.bysamp, gene %in% genes.filt) %>%
+  group_by(gene) %>%
+  do(pval = PermutatePvalue(., 10000, show.plot=FALSE))
+
+save(tpm.gauss, tpm.afe.bysamp, file = "Robjs/liver_kidney_atger_nestle/alt_promoter_analysis_by_time.Robj")
+
+# Calculate p-value from each gene ----------------------------------------
+
+# jgene <- "Gm14327"
+# jgene <- "Spns2"  # 50th
+# jgene <- "Ube2g2"  # 5000th
+# jgene <- "Fbxw9"  # 1000th
+# jgene <- "Nasp"  # 500th
+# jgene <- "Srpk1"  # 250th
+# 
+# PromoterSpacePlots(tpm.afe.bysamp, jgene = jgene, transcript_id = "transcript", use.weights = FALSE)
+# tpm.test <- subset(tpm.afe.bysamp, gene == "Slc45a3")
+# PermutatePvalue(tpm.test, 10000, show.plot=FALSE)
+
