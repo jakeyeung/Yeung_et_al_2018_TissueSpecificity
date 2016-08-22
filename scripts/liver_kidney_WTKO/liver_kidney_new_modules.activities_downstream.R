@@ -13,11 +13,15 @@ source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/LiverKidneyFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/PlotFunctions.R")
+source("scripts/functions/NcondsFunctions.R")
 
 # Load --------------------------------------------------------------------
 
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
+fits.long.filt <- subset(fits.long.filt, method == "g=1001")
+fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/dat.freq.bugfixed.Robj", v=T)
 dat.orig <- dat.long
 dat.long <- StaggeredTimepointsLivKid(dat.long)
 
@@ -26,9 +30,9 @@ jmod <- "Kidney_SV129,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129,Liver_BmalKO-Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_BmalKO"
-jmod <- "Liver_SV129,Kidney_SV129"
-jmod <- "many_modules_minrhyth.4"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
+jmod <- "many_modules_minrhyth.4"
+jmod <- "Liver_SV129,Kidney_SV129"
 # outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
 outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
 indir <- file.path(outmain, "atger_with_kidney.bugfixed")
@@ -49,12 +53,29 @@ s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 # jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
 
+# plot motifs
 max.labs <- 30
 jtitle <- ""
 comp <- 1
 eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2"))
 print(eigens.act$u.plot + ggtitle(jmod))
-# multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
+multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
+
+# plot gene
+if (grepl("^many_modules", jmod)){
+  jn.rhyth <- as.numeric(strsplit(jmod, "\\.")[[1]][[2]])
+  jmodels <- unique(as.character(subset(fits.long.filt, n.rhyth >= jn.rhyth)$model))
+  jmodels <- jmodels[!jmodels %in% "Liver_SV129,Liver_BmalKO"]
+} else {
+  jmodels <- jmod
+}
+genes.tw <- as.character(subset(fits.long.filt, model %in% jmodels)$gene)
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = 1, label.n = 50, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+print(eigens$u.plot)
+
+multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
 # Get mean ----------------------------------------------------------------
 

@@ -35,6 +35,9 @@ dat.long <- StaggeredTimepointsLivKid(dat.long)
 
 # filter NA changes
 dat.long <- subset(dat.long, !is.na(gene))
+# # change Ciart to Gm129
+# dat.long$gene[which(dat.long$gene == "Ciart")] <- "Gm129"
+# print(head(dat.long))
 
 # Annotate fits
 fits.long.filt$n.params <- sapply(fits.long.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
@@ -97,7 +100,7 @@ if (!file.exists(outffreq)) save(dat.freq, file = outffreq)
 
 
 
-jmeth <- "BIC"
+# jmeth <- "BIC"
 jmeth <- "g=1001"
 i <- 1
 
@@ -125,7 +128,7 @@ jmodel <- c("Liver_SV129,Kidney_SV129")
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO")
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 
-min.rhyth <- 3
+min.rhyth <- 1
 jmodel <- as.character(unique(subset(fits.long.filt, n.rhyth >= min.rhyth)$model))
 
 # for systems-driven module, all modules with >= 3 rhythmic conditions
