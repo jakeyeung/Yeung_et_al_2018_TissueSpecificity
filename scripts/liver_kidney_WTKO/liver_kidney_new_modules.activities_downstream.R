@@ -20,6 +20,8 @@ source("scripts/functions/NcondsFunctions.R")
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
 fits.long.filt <- subset(fits.long.filt, method == "g=1001")
 fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
+fits.long.filt$amp.avg <- mapply(GetAvgAmpFromParams, fits.long.filt$param.list, fits.long.filt$model)
+
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/dat.freq.bugfixed.Robj", v=T)
 dat.orig <- dat.long
@@ -31,11 +33,15 @@ jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129,Liver_BmalKO-Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
-jmod <- "many_modules_minrhyth.4"
 jmod <- "Liver_SV129,Kidney_SV129"
-# outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
-outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.Gm129/promoters.", jmod, ".g=1001")
-outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
+jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
+jmod <- "many_modules_minrhyth.3"
+outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
+outmain <- file.path(outbase, paste0("promoters.", jmod, ".g=1001"))
+# outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.Gm129/promoters.", jmod, ".g=1001")
+# outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
+# outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.removehic1/promoters.", jmod, ".g=1001")
+# outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney./promoters.", jmod, ".g=1001")
 indir <- file.path(outmain, "atger_with_kidney.bugfixed")
 source("scripts/functions/LoadActivitiesLong.R")
 act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = FALSE)
@@ -62,19 +68,19 @@ eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constan
 print(eigens.act$u.plot + ggtitle(jmod))
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 
-# plot gene
-if (grepl("^many_modules", jmod)){
-  jn.rhyth <- as.numeric(strsplit(jmod, "\\.")[[1]][[2]])
-  jmodels <- unique(as.character(subset(fits.long.filt, n.rhyth >= jn.rhyth)$model))
-  jmodels <- jmodels[!jmodels %in% "Liver_SV129,Liver_BmalKO"]
-} else {
-  jmodels <- jmod
-}
-genes.tw <- as.character(subset(fits.long.filt, model %in% jmodels)$gene)
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = 1, label.n = 50, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-print(eigens$u.plot)
+  # plot gene
+  if (grepl("^many_modules", jmod)){
+    jn.rhyth <- as.numeric(strsplit(jmod, "\\.")[[1]][[2]])
+    jmodels <- unique(as.character(subset(fits.long.filt, n.rhyth >= jn.rhyth)$model))
+    jmodels <- jmodels[!jmodels %in% "Liver_SV129,Liver_BmalKO"]
+  } else {
+    jmodels <- jmod
+  }
+  genes.tw <- as.character(subset(fits.long.filt, model %in% jmodels)$gene)
+  s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+  eigens <- GetEigens(s, period = 24, comp = 1, label.n = 50, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  print(eigens$u.plot)
 
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 

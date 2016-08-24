@@ -65,6 +65,12 @@ colnames(prot.long)[which(colnames(prot.long) == "Gene.names")] <- "gene"
 
 jgene <- "Stat2"
 jgene <- "Srfbp1"
+jgene <- "Nfil3"
+jgene <- "Nr3c1"
+jgene <- "Nr3c2"
+jgene <- "Atf2"
+jgene <- "Tfdp1"
+jgene <- "Hmga2"
 PlotProteomics(subset(prot.long, gene == jgene)) + ggtitle(jgene)
 
 jgenes <- c("Stat2", "Mafb", "Jun", "E2f5", "Creb3", "Elf2", "Tgif1", "Egr1", "Pou2f1", "Hes6", "Tfdp1", "Crebbp")

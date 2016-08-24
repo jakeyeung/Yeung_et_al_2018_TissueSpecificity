@@ -88,7 +88,7 @@ pdf(file.path(plot.dir, "tissue_wide_genes_and_regulators.pdf"))
   print(eigens.tw$u.plot)
   multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
   
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 25, jtitle = "", peak.to.trough = TRUE)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 25, jtitle = "", peak.to.trough = TRUE, label.gene = c("DBP", "HLF", "HMGA1.2"))
   print(eigens.act$u.plot)
   multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
   
