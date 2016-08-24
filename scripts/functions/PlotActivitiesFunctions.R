@@ -100,7 +100,7 @@ ConvertArgToPhase <- function(phase.rads, omega){
   return(phase)
 }
 
-PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My title", ylab = "Amplitude of activity", xlab = "Phase of activity (CT)"){
+PlotComplex2.act <- function(vec.complex, labels, omega = 2 * pi / 24, title = "My title", ylab = "Amplitude of activity", xlab = "Phase of activity (CT)"){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave

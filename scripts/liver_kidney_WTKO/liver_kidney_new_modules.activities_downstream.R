@@ -34,6 +34,7 @@ jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "many_modules_minrhyth.4"
 jmod <- "Liver_SV129,Kidney_SV129"
 # outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
+outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.Gm129/promoters.", jmod, ".g=1001")
 outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
 indir <- file.path(outmain, "atger_with_kidney.bugfixed")
 source("scripts/functions/LoadActivitiesLong.R")

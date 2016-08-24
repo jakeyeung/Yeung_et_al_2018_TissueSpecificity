@@ -758,7 +758,7 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
     amp.step <- 1
   }
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
-    geom_point(size = 0.5) +
+    geom_point(size = 0.5, colour = "gray85") +
     coord_polar(theta = "y") + 
     xlab(xlab) +
     ylab(ylab) +

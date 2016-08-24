@@ -19,6 +19,7 @@ source("scripts/functions/BiomartFunctions.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/GetTFs.R")
 
+jmeth <- "g=1001"
 
 
 # Load --------------------------------------------------------------------
@@ -36,12 +37,17 @@ dat.long <- StaggeredTimepointsLivKid(dat.long)
 # filter NA changes
 dat.long <- subset(dat.long, !is.na(gene))
 # # change Ciart to Gm129
-# dat.long$gene[which(dat.long$gene == "Ciart")] <- "Gm129"
-# print(head(dat.long))
+dat.long$gene <- as.character(dat.long$gene)
+dat.long$gene[which(dat.long$gene == "Ciart")] <- "Gm129"
+print(head(dat.long))
 
 # Annotate fits
+fits.long.filt <- subset(fits.long.filt, method == jmeth)
 fits.long.filt$n.params <- sapply(fits.long.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
 fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
+fits.long.filt$gene <- as.character(fits.long.filt$gene)
+fits.long.filt$gene[which(fits.long.filt$gene == "Ciart")] <- "Gm129"
+
 # fits.long.filt$amp.avg <- mapply(GetAvgAmpFromParams, fits.long.filt$param.list, fits.long.filt$model)
 # fits.long.filt$phase.sd <- mapply(GetSdPhaseFromParams, fits.long.filt$param.list, fits.long.filt$model)
 # fits.long.filt$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.long.filt$param.list, fits.long.filt$model)
@@ -100,8 +106,7 @@ if (!file.exists(outffreq)) save(dat.freq, file = outffreq)
 
 
 
-# jmeth <- "BIC"
-jmeth <- "g=1001"
+
 i <- 1
 
 fits.count <- subset(fits.long.filt, method == jmeth & model != "") %>% group_by(model) %>% summarise(model.count = length(model))
@@ -128,8 +133,10 @@ jmodel <- c("Liver_SV129,Kidney_SV129")
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO")
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 
-min.rhyth <- 1
-jmodel <- as.character(unique(subset(fits.long.filt, n.rhyth >= min.rhyth)$model))
+# min.rhyth <- 1
+# jmodel <- as.character(unique(subset(fits.long.filt, n.rhyth >= min.rhyth)$model))
+
+jmodel <- c("Liver_SV129,Kidney_SV129")
 
 # for systems-driven module, all modules with >= 3 rhythmic conditions
 
@@ -161,7 +168,7 @@ for (jmodel in jmodel.lst){
   # Write sitecounts --------------------------------------------------------
   
   Npath <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids"
-  Npath.out <- paste0("/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/promoters_filtered_by_gene_liver_kidney_novel_modules/sitecount_matrix_geneids.", jmod, ".mat")
+  Npath.out <- paste0("/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/promoters_filtered_by_gene_liver_kidney_novel_modules.Gm129/sitecount_matrix_geneids.", jmod, ".mat")
   N <- read.table(Npath, header=TRUE)
   
   N.sub <- subset(N, Gene.ID %in% genes.tw)
@@ -176,7 +183,7 @@ for (jmodel in jmodel.lst){
   marascript <- "/home/yeung/projects/tissue-specificity/scripts/liver_kidney_WTKO/run_run_filter_mara_pipeline.promoters.bygenelist.singlemat.sh"
   nmat <- Npath.out
   
-  outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
+  outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.Gm129"
   outmain <- file.path(outbase, paste0("promoters.", jmod))
   # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod)
   
