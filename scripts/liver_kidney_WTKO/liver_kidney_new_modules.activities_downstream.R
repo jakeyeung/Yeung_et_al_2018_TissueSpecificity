@@ -37,10 +37,10 @@ jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_
 jmod <- "Liver_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129"
-jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
 jmod <- "many_modules_minrhyth.3"
 jmod <- "Kidney_SV129"
 jmod <- "Kidney_SV129,Kidney_BmalKO"
+jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
 outmain <- file.path(outbase, paste0("promoters.", jmod, ".g=1001"))
 # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.Gm129/promoters.", jmod, ".g=1001")

@@ -29,6 +29,26 @@ source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 
+
+# Functions ---------------------------------------------------------------
+
+ModelStrToModel <- function(jmod){
+  # Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129 - >
+  # c(Liver_SV129,Kidney_SV129, Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO)  # need some reordering magic
+  jmod.long <- gsub("-", ";", jmod)
+  jmod.long <- strsplit(jmod.long, "\\.")[[1]]
+  # rearrange each mod so that SV129 goes before BmalKO
+  jmod.long.sorted <- rep(NA, length(jmod.long))
+  i <- 1
+  for (j in jmod.long){
+    j.sorted <- paste(sort(strsplit(j, ";")[[1]], decreasing = TRUE), collapse = ";")
+    jmod.long.sorted[i] <- j.sorted
+    i <- i + 1
+  }
+  return(jmod.long.sorted)
+}
+
+
 # Inits -------------------------------------------------------------------
 
 remove.wfat <- TRUE
@@ -262,7 +282,8 @@ plot.i <- plot.i + 1
 
 omega <- 2 * pi / 24
 jmod1 <- "many_modules_minrhyth.4"
-jmod2 <- "Liver_SV129,Kidney_SV129"
+# jmod2 <- "Liver_SV129,Kidney_SV129"
+jmod2 <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
 jmods <- c(jmod1, jmod2)
 for (jmod in jmods){
   # outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
@@ -282,21 +303,26 @@ for (jmod in jmods){
   comp <- 1
   eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2"))
   print(eigens.act$u.plot + ggtitle(jmod))
+  print(eigens.act$v.plot + ggtitle(jmod))
   
   # plot gene exprs module
   if (grepl("^many_modules_minrhyth", jmod)){
     n.rhyth.min <- as.numeric(strsplit(jmod, "\\.")[[1]][[2]])
     genes.tw <- as.character(subset(fits.long.filt, n.rhyth >= n.rhyth.min)$gene)
   } else {
-    genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% jmod)$gene)
+    jmod.long <- ModelStrToModel(jmod)
+    genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% jmod.long)$gene)
   }
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = i, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  print(eigens$u.plot)
+  print(eigens$v.plot)
   multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 }
 
 dev.off()
+
 
 
 # Circadian flucutations in cellular heterogeneity ------------------------
