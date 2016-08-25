@@ -17,6 +17,9 @@ source("scripts/functions/NcondsFunctions.R")
 
 # Load --------------------------------------------------------------------
 
+plotdir <- "plots/mara_liver_kidney_modules"
+
+
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
 fits.long.filt <- subset(fits.long.filt, method == "g=1001")
 fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
@@ -36,6 +39,8 @@ jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129"
 jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
 jmod <- "many_modules_minrhyth.3"
+jmod <- "Kidney_SV129"
+jmod <- "Kidney_SV129,Kidney_BmalKO"
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
 outmain <- file.path(outbase, paste0("promoters.", jmod, ".g=1001"))
 # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.Gm129/promoters.", jmod, ".g=1001")
@@ -61,28 +66,50 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 # jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
 
 # plot motifs
-max.labs <- 30
+max.labs <- 15
 jtitle <- ""
 comp <- 1
-eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2"))
+eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2", "TFAP2B.p2"))
 print(eigens.act$u.plot + ggtitle(jmod))
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 
-  # plot gene
-  if (grepl("^many_modules", jmod)){
-    jn.rhyth <- as.numeric(strsplit(jmod, "\\.")[[1]][[2]])
-    jmodels <- unique(as.character(subset(fits.long.filt, n.rhyth >= jn.rhyth)$model))
-    jmodels <- jmodels[!jmodels %in% "Liver_SV129,Liver_BmalKO"]
-  } else {
-    jmodels <- jmod
-  }
-  genes.tw <- as.character(subset(fits.long.filt, model %in% jmodels)$gene)
-  s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = 1, label.n = 50, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  print(eigens$u.plot)
+# plot gene
+if (grepl("^many_modules", jmod)){
+  jn.rhyth <- as.numeric(strsplit(jmod, "\\.")[[1]][[2]])
+  jmodels <- unique(as.character(subset(fits.long.filt, n.rhyth >= jn.rhyth)$model))
+  jmodels <- jmodels[!jmodels %in% "Liver_SV129,Liver_BmalKO"]
+} else {
+  jmodels <- jmod
+}
+genes.tw <- as.character(subset(fits.long.filt, model %in% jmodels)$gene)
+s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = 1, label.n = 50, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+print(eigens$u.plot)
 
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+
+
+# Visualize top hits ------------------------------------------------------
+
+tops <- head(unique(act.complex[order(Mod(act.complex$exprs.transformed), decreasing = TRUE), ]$gene), n = 35)
+
+pdf(file.path(plotdir, paste0("top_hits_motifs.", jmod, ".pdf")))
+for (jmotif in tops){
+    print(PlotActivitiesWithSE.rnaseq(subset(act.long, gene == jmotif)))
+    tfs <- GetTFs(get.mat.only = TRUE)
+    for (g in GetGenesFromMotifs(jmotif, tfs)){
+      print(g)
+      jsub <- subset(dat.orig, gene == g)
+      if (nrow(jsub) > 0){
+        print(PlotGeneTissuesWTKO(jsub, jtitle = g))
+      } else {
+        print(paste("Could not find gene:", g))
+      }
+    }
+  }
+dev.off()
+
 
 # Get mean ----------------------------------------------------------------
 
@@ -106,8 +133,8 @@ act.tissdiff <- act.tissmean %>%  group_by(gene) %>%
   arrange(exprs.diff)
 
 print(head(act.tissdiff))  # MYBL2.p2 etc
-jmotifs <- head(as.character(act.tissdiff$gene), n = 35)
-plotdir <- "plots/mara_liver_kidney_modules"
+jmotifs <- head(as.character(act.tissdiff$gene), n = 70)
+
 pdf(file.path(plotdir, paste0("tissue_spec_motifs.", jmod, ".pdf")))
 # jmotif <- "HSF1.2.p2"
 for (jmotif in jmotifs){
@@ -124,7 +151,8 @@ for (jmotif in jmotifs){
   }
 }
 dev.off()
-
+# Tcfap4
+# Tcfe3
 
 # Find genes highly expressed in Kidney but not in Liver ------------------
 

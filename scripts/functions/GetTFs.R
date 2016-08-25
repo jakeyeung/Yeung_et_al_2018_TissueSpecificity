@@ -22,6 +22,8 @@ GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE
     tf.mat["ZNF238.p2", ] <- "Zbtb18"
     tf.mat["ZNF238.p2", ] <- "Zbtb18"
     tf.mat["TFCP2.p2", ] <- "Tfcp2"
+    tf.mat["TFAP4.p2", ] <- "Tfap4"
+    tf.mat["bHLH_family.p2", ] <- gsub("Tcfe3", "Tfe3", tf.mat["bHLH_family.p2", ])  # replace Tcfe3 to Tfe3
     return(tf.mat)
   }
   
