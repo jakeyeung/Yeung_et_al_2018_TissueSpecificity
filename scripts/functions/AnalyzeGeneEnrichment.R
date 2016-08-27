@@ -49,7 +49,8 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
                                   which.ontology = "BP", 
                                   write.path = FALSE,
                                   node.size = 5, 
-                                  FDR.cutoff = 0.05){
+                                  FDR.cutoff = 0.05,
+                                  return.GOdata = FALSE){
   # Analyze gene enrichment given background and hit genes.
   #
   # INPUT:
@@ -91,6 +92,7 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
                 nodeSize = node.size,
                 annot = annFUN.gene2GO,
                 gene2GO = entrez2GO)
+  # return(GOdata)
   
   # Run enrichment ----------------------------------------------------------
   
@@ -111,9 +113,15 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   # Filter table by pvalue --------------------------------------------------
   
   all.res <- all.res[all.res$FDRadj <= FDR.cutoff, ]
+  print(paste(nrow(all.res), "GO.terms found enriched."))
+  if (nrow(all.res) <= 1){
+    print("No enrichment found below cutoff")
+    return(all.res)  # just skip it and return an empty DF
+  }
   
   # Add all genes that were considered (can recapitulate contTable) ---------
   N.genes <- length(genes(GOdata))
+  
   
   all.res$N.genes <- N.genes
   
@@ -125,7 +133,24 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
                 row.names = FALSE, 
                 col.names = TRUE) 
   }
-  return(all.res)
+  if (!return.GOdata){
+    return(all.res)
+  } else {
+    # https://support.bioconductor.org/p/65856/#66677
+    # add gene names to all.res
+    all.res$genes <- sapply(all.res$GO.ID, function(x){
+      genes <- genesInTerm(GOdata, x) 
+      genes[[1]][genes[[1]] %in% genes.hit]
+    })
+    # convert to gene symbol
+    entrez2sym <- as.list(org.Mm.egSYMBOL)
+    entrez2sym <- entrez2sym[!is.na(entrez2sym)]
+    all.res$genes <- sapply(all.res$genes, function(g){
+      return(unlist(entrez2sym[g], use.names = FALSE))
+    })
+    return(all.res)
+    # return(list(res=all.res, godata=GOdata, genes=genes.hit))
+  }
 }
 
 

@@ -4,8 +4,7 @@
 
 
 rm(list=ls())
-
-
+start <- Sys.time()
 
 library(ggplot2)
 library(PMA)
@@ -35,8 +34,8 @@ source("scripts/functions/NcondsAnalysisFunctions.R")
 ModelStrToModel <- function(jmod){
   # Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129 - >
   # c(Liver_SV129,Kidney_SV129, Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO)  # need some reordering magic
-  jmod.long <- gsub("-", ";", jmod)
-  jmod.long <- strsplit(jmod.long, "\\.")[[1]]
+  jmod.long <- gsub("\\.", ";", jmod)
+  jmod.long <- strsplit(jmod.long, "-")[[1]]
   # rearrange each mod so that SV129 goes before BmalKO
   jmod.long.sorted <- rep(NA, length(jmod.long))
   i <- 1
@@ -281,7 +280,8 @@ pdf(file.path(plot.dir, paste0(plot.i, ".tissuewide_modules_liver_kidney_wtko.pd
 plot.i <- plot.i + 1
 
 omega <- 2 * pi / 24
-jmod1 <- "many_modules_minrhyth.4"
+# jmod1 <- "many_modules_minrhyth.4.exclude_clockdriven_model"
+jmod1 <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
 # jmod2 <- "Liver_SV129,Kidney_SV129"
 jmod2 <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
 jmods <- c(jmod1, jmod2)
@@ -478,7 +478,42 @@ for (jmod in jmods){
 }
 plot.i <- plot.i + 1
 
-
+# Do GO enrichment
+pdf(file.path(plot.dir, paste0(plot.i, ".go_analysis.pdf")))
+for (jtiss in c("Liver_SV129", "Liver_SV129,Liver_BmalKO", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Liver_BmalKO")){
+  print(jtiss)
+  genes.bg <- as.character(subset(fits.long.filt)$gene)
+  genes.fg <- as.character(subset(fits.long.filt, model == jtiss)$gene)
+  # genes.fg <- genes.fg[! genes.fg %in% go.genes]  # remove genes from one go.term to see if we can get others
+  # genes.filt <- c("Trdmt1", "Trmt5", "Mettl1", "Nsun2", "Trtm61a")  # tRNA methylation??
+  enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, return.GOdata = TRUE)
+  enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
+  enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
+  show.top.n.min <- min(nrow(enrichment), show.top.n)
+  if (show.top.n.min == 0) next
+  enrichment <- enrichment[1:show.top.n.min, ]   # prevent taking more than you have enrichment
+  m1 <- ggplot(enrichment, aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") + 
+    ylab("-log10(P-value), Fisher's exact test") + 
+    xlab("") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+    ggtitle(jtiss)
+  print(m1)
+  # plot genes in enrichment
+  i <- 1
+  max.genes <- 40
+  for (i in seq(show.top.n.min)){
+    go.genes <- enrichment$genes[[i]]
+    go.term <- enrichment$Term[[i]]
+    show.n.genes <- min(length(go.genes), max.genes)
+    s <- SvdOnComplex(subset(dat.freq, gene %in% enrichment$genes[[1]]), value.var = "exprs.transformed")
+    eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
+    print(eigens$u.plot + ggtitle(go.term))
+    # print(eigens$v.plot + ggtitle(go.term))
+  }
+}
+dev.off()
+plot.i <- plot.i + 1
 
 # Cooperative TFs underlie clock-dependent tissue-specific diurnal --------
 
@@ -512,8 +547,6 @@ limits <- aes(ymax = mean.frac + sd.frac, ymin=mean.frac - sd.frac)
 m.bar <- ggplot(df.out.lst.meanvar, aes(x = gene.type, y = mean.frac)) + geom_bar(stat = "identity", width = barwidth) + theme_bw() + 
   geom_errorbar(limits, width = barwidth / 2) + theme(aspect.ratio=1.5, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +  
   xlab("") + ylab("Fraction of Genes with Liver-specific DHS peaks")
-
-
 
 jmod <- "Liver_SV129,Liver_BmalKO"
 load("Robjs/penalized_lda_robjs/mat.pmd.RORA_bHLH_SRF.40000.g1001.Robj", v=T)
@@ -703,3 +736,5 @@ dev.off()
 # Alternative promoter ----------------------------------------------------
 
 # TODO
+
+print(Sys.time() - start)

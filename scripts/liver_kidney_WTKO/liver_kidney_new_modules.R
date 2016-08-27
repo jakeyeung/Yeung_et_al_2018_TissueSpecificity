@@ -4,6 +4,7 @@
 # Find some exotic modules: maybe use that to find Kidney factors?
 
 setwd("/home/yeung/projects/tissue-specificity")
+jmeth <- "g=1001"
 
 library(dplyr)
 library(ggplot2)
@@ -19,13 +20,7 @@ source("scripts/functions/BiomartFunctions.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/GetTFs.R")
 
-jmeth <- "g=1001"
-suffix <- ""
-if (suffix != ""){
-  suffix <- paste0(".", suffix)
-}
-# jmodel <- c("Liver_SV129,Kidney_SV129")
-jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129")
+
 
 
 # Load --------------------------------------------------------------------
@@ -62,6 +57,24 @@ fits.long.filt$amp.avg <- mapply(GetAvgAmpFromParams, fits.long.filt$param.list,
 fits.long.filt$gene <- as.character(fits.long.filt$gene)
 fits.long.filt$gene[which(fits.long.filt$gene == "Ciart")] <- "Gm129"
 
+
+# Init params -------------------------------------------------------------
+
+
+suffix <- ""
+if (suffix != ""){
+  suffix <- paste0(".", suffix)
+}
+# jmodel <- c("Liver_SV129,Kidney_SV129")
+# jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129")
+jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Liver_BmalKO;Kidney_SV129,Kidney_BmalKO")
+
+# # optionally using min rhyth
+# min.rhyth <- 4
+# jmodel <- as.character(unique(subset(fits.long.filt, n.rhyth >= min.rhyth)$model))
+# # exclude models that may be problematic
+# mod.excl <- "Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO"
+# jmodel <- jmodel[which(jmodel != mod.excl)]
 
 
 # Filter to common genes --------------------------------------------------
@@ -143,9 +156,7 @@ jmodel.lst <- as.character(fits.count$model)
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO")
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 
-# min.rhyth <- 1
-# jmodel <- as.character(unique(subset(fits.long.filt, n.rhyth >= min.rhyth)$model))
-# jmodel <- c("Liver_SV129,Kidney_SV129")
+
 
 # for systems-driven module, all modules with >= 3 rhythmic conditions
 

@@ -41,7 +41,11 @@ jmod <- "many_modules_minrhyth.3"
 jmod <- "Kidney_SV129"
 jmod <- "Kidney_SV129,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
+jmod <- "many_modules_minrhyth.4"
+jmod <- "many_modules_minrhyth.4.exclude_clockdriven_model"
+jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
+# outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.exclude_clockdriven_model"
 outmain <- file.path(outbase, paste0("promoters.", jmod, ".g=1001"))
 # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.Gm129/promoters.", jmod, ".g=1001")
 # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
@@ -77,7 +81,12 @@ multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 if (grepl("^many_modules", jmod)){
   jn.rhyth <- as.numeric(strsplit(jmod, "\\.")[[1]][[2]])
   jmodels <- unique(as.character(subset(fits.long.filt, n.rhyth >= jn.rhyth)$model))
-  jmodels <- jmodels[!jmodels %in% "Liver_SV129,Liver_BmalKO"]
+  if (jn.rhyth == 4){
+    # exclude this model which is actually a clock-driven module
+    excl.mod <- "Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO"
+    jmodels <- jmodels[! jmodels %in% excl.mod]
+  }
+  # jmodels <- jmodels[!jmodels %in% "Liver_SV129,Liver_BmalKO"]
 } else {
   jmodels <- jmod
 }
