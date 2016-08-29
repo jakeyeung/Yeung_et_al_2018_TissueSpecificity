@@ -93,7 +93,7 @@ s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 
 # plot motifs
-max.labs <- 25
+max.labs <- 20
 jtitle <- ""
 comp <- 1
 eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2", "TFAP2B.p2"))
