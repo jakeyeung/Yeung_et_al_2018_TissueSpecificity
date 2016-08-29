@@ -50,6 +50,23 @@ GetGenoFromSamp <- Vectorize(function(samp){
   return(geno)
 }, vectorize.args = "samp")
 
+AddColname <- function(dat, cname, cvalue){
+  if (nrow(dat) > 0){
+    dat[[cname]] <- cvalue
+    return(dat)
+  } else {
+    return(dat)
+  }
+}
+
+SubsetGenoSignalTimeType <- function(dat){
+  if (nrow(dat) > 0){
+    return(subset(dat, select = c(geno.std, signal, time, type)))
+  } else {
+    return(dat)
+  }
+}
+
 PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot){
   dat.sub <- subset(dat.long, gene == gene.dat & tissue == "Liver")
   act.sub <- subset(act.long, gene == gene.act & tissue %in% c("Liver_SV129", "Liver_BmalKO"))
@@ -65,24 +82,31 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   act.sub$geno.std <- as.factor(gsub("SV129", "WT", as.character(act.sub$geno)))
   prot.sub$geno.std <- as.factor(gsub("Bmal", "BmalKO", as.character(prot.sub$geno)))
   
-  dat.sub$type <- "mRNA_Accum"
-  act.sub$type <- "TF_Activity"
-  prot.sub$type <- "Nuclear_Prot_Accum"
-  
-  dat.sub2 <- subset(dat.sub, select = c(geno.std, signal, time, type))
-  act.sub2 <- subset(act.sub, select = c(geno.std, signal, time, type))
-  prot.sub2 <- subset(prot.sub, select = c(geno.std, signal, time, type))
+  dat.sub <- AddColname(dat.sub, "type", "mRNA_Accum")
+  act.sub <- AddColname(act.sub, "type", "TF_Activity")
+  prot.sub <- AddColname(prot.sub, "type", "Nuclear_Prot_Accum")
+ 
+  dat.sub2 <- SubsetGenoSignalTimeType(dat.sub)
+  act.sub2 <- SubsetGenoSignalTimeType(act.sub)
+  prot.sub2 <- SubsetGenoSignalTimeType(prot.sub)
   merged.dat <- rbind(dat.sub2,
                       act.sub2,
                       prot.sub2)
   merged.dat$geno.std <- factor(as.character(merged.dat$geno.std), levels = c("WT", "BmalKO"))
-  merged.dat$type <- as.factor(merged.dat$type)
-  m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type)) + 
+  merged.dat$type <- factor(merged.dat$type, levels = c("mRNA_Accum", "Nuclear_Prot_Accum", "TF_Activity"))
+  
+  jtitle <- paste(unique(c(gene.dat, gene.prot, gene.act)), collapse = " ")
+  m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type)) + 
     geom_line() +
-    geom_point(size = 3) + 
+    geom_point(size = 2) + 
     xlab("Time (ZT)") + ylab("Scaled Signal") + 
-    facet_wrap(~geno.std) + theme_bw(24) + 
-    theme(legend.position = "bottom", aspect.ratio = 1)
+    facet_wrap(~geno.std) + 
+    theme_bw(24) + 
+    # scale_linetype(drop=FALSE) +
+    scale_linetype_manual(values=c("solid", "twodash", "dotted"), drop=FALSE) +
+    scale_shape(drop=FALSE) +
+    theme(legend.position = "bottom", aspect.ratio = 1) + 
+    ggtitle(jtitle)
   return(m)
 }
 
