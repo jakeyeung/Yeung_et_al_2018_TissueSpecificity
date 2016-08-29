@@ -114,9 +114,14 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   
   all.res <- all.res[all.res$FDRadj <= FDR.cutoff, ]
   print(paste(nrow(all.res), "GO.terms found enriched."))
-  if (nrow(all.res) <= 1){
+  if (nrow(all.res) < 1){
     print("No enrichment found below cutoff")
     return(all.res)  # just skip it and return an empty DF
+  } else if (nrow(all.res) == 1){
+    # with just one row, we cannot add a vector of genes into a single
+    # column
+    all.res <- rbind(all.res, rep(NA, ncol(all.res)))
+    all.res <- as.tbl(all.res)
   }
   
   # Add all genes that were considered (can recapitulate contTable) ---------
@@ -138,15 +143,23 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   } else {
     # https://support.bioconductor.org/p/65856/#66677
     # add gene names to all.res
-    all.res$genes <- sapply(all.res$GO.ID, function(x){
-      genes <- genesInTerm(GOdata, x) 
-      genes[[1]][genes[[1]] %in% genes.hit]
+    my.genes <- sapply(all.res$GO.ID, function(x){
+      if (!is.na(x)){
+        genes <- genesInTerm(GOdata, x) 
+        genes[[1]][genes[[1]] %in% genes.hit]
+      } else {
+        return(NA)
+      }
     })
     # convert to gene symbol
     entrez2sym <- as.list(org.Mm.egSYMBOL)
     entrez2sym <- entrez2sym[!is.na(entrez2sym)]
-    all.res$genes <- sapply(all.res$genes, function(g){
-      return(unlist(entrez2sym[g], use.names = FALSE))
+    all.res$genes <- sapply(my.genes, function(g){
+      if (!is.na(g)){
+        return(unlist(entrez2sym[g], use.names = FALSE))
+      } else {
+        return(NA)
+      }
     })
     return(all.res)
     # return(list(res=all.res, godata=GOdata, genes=genes.hit))

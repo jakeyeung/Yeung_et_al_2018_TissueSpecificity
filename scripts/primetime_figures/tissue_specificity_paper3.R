@@ -10,6 +10,7 @@ library(ggplot2)
 library(PMA)
 # detach("package:plyr", unload=TRUE)
 library(dplyr)
+library(parallel)
 
 setwd("/home/yeung/projects/tissue-specificity")
 
@@ -19,7 +20,7 @@ source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
 source("scripts/functions/LiverKidneyFunctions.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
-source("scripts/functions/AnalyzeGeneEnrichment.R")
+# source("scripts/functions/AnalyzeGeneEnrichment.R")
 source("scripts/functions/FourierFunctions.R")
 source("scripts/functions/GetTFs.R")
 source("scripts/functions/LdaFunctions.R")
@@ -27,25 +28,11 @@ source("scripts/functions/HandleMotifNames.R")
 source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
+source("scripts/functions/ModelStrToModel.R")
 
 
 # Functions ---------------------------------------------------------------
 
-ModelStrToModel <- function(jmod){
-  # Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129 - >
-  # c(Liver_SV129,Kidney_SV129, Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO)  # need some reordering magic
-  jmod.long <- gsub("\\.", ";", jmod)
-  jmod.long <- strsplit(jmod.long, "-")[[1]]
-  # rearrange each mod so that SV129 goes before BmalKO
-  jmod.long.sorted <- rep(NA, length(jmod.long))
-  i <- 1
-  for (j in jmod.long){
-    j.sorted <- paste(sort(strsplit(j, ";")[[1]], decreasing = TRUE), collapse = ";")
-    jmod.long.sorted[i] <- j.sorted
-    i <- i + 1
-  }
-  return(jmod.long.sorted)
-}
 
 
 # Inits -------------------------------------------------------------------
@@ -372,7 +359,13 @@ for (jtiss in names(jmotifs.lst)){
 }
 
 # Do GO enrichment
-for (jtiss in c("BFAT", "Mus")){
+
+# for (jtiss in c("BFAT", "Mus")){
+# }
+
+bfatmus.lst <- list("BFAT", "Mus")
+mclapply(bfatmus.lst, function(jtiss){
+  source("scripts/functions/AnalyzeGeneEnrichment.R")
   genes.bg <- as.character(subset(dat.mean.rnaseq, exprs.mean > exprs.thres & tissue == jtiss)$gene)
   genes.fg <- as.character(subset(fits.long, model == jtiss)$gene)
   enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg)
@@ -385,7 +378,8 @@ for (jtiss in c("BFAT", "Mus")){
     theme_bw() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   print(m1)
-}
+  return(m1)
+}, mc.cores = 2)
 dev.off()
 
 
@@ -480,17 +474,32 @@ plot.i <- plot.i + 1
 
 # Do GO enrichment
 pdf(file.path(plot.dir, paste0(plot.i, ".go_analysis.pdf")))
-for (jtiss in c("Liver_SV129", "Liver_SV129,Liver_BmalKO", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Liver_BmalKO")){
+
+jtiss.lst <- list(ModelStrToModel(jmod1),
+                  ModelStrToModel(jmod2),
+                    "Liver_SV129", 
+                    "Liver_SV129,Liver_BmalKO", 
+                    "Kidney_SV129", 
+                    "Kidney_SV129,Kidney_BmalKO", 
+                    "Liver_BmalKO")
+
+# for (jtiss in c("Liver_SV129,", "Liver_SV129", "Liver_SV129,Liver_BmalKO", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Liver_BmalKO")){
+# }
+ 
+# jtiss.lst <- jtiss.lst[1] 
+mclapply(jtiss.lst, function(jtiss){
+  source("scripts/functions/AnalyzeGeneEnrichment.R")
+# lapply(jtiss.lst, function(jtiss){
   print(jtiss)
   genes.bg <- as.character(subset(fits.long.filt)$gene)
-  genes.fg <- as.character(subset(fits.long.filt, model == jtiss)$gene)
+  genes.fg <- as.character(subset(fits.long.filt, model %in% jtiss)$gene)
   # genes.fg <- genes.fg[! genes.fg %in% go.genes]  # remove genes from one go.term to see if we can get others
   # genes.filt <- c("Trdmt1", "Trmt5", "Mettl1", "Nsun2", "Trtm61a")  # tRNA methylation??
   enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, return.GOdata = TRUE)
   enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
   enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
   show.top.n.min <- min(nrow(enrichment), show.top.n)
-  if (show.top.n.min == 0) next
+  if (show.top.n.min == 0) return(NULL)
   enrichment <- enrichment[1:show.top.n.min, ]   # prevent taking more than you have enrichment
   m1 <- ggplot(enrichment, aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") + 
     ylab("-log10(P-value), Fisher's exact test") + 
@@ -502,18 +511,24 @@ for (jtiss in c("Liver_SV129", "Liver_SV129,Liver_BmalKO", "Kidney_SV129", "Kidn
   # plot genes in enrichment
   i <- 1
   max.genes <- 40
+  # print(show.top.n.min)
+  # print(enrichment)
   for (i in seq(show.top.n.min)){
     go.genes <- enrichment$genes[[i]]
     go.term <- enrichment$Term[[i]]
+    if (is.na(go.genes)) next
     show.n.genes <- min(length(go.genes), max.genes)
     s <- SvdOnComplex(subset(dat.freq, gene %in% enrichment$genes[[1]]), value.var = "exprs.transformed")
     eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
     print(eigens$u.plot + ggtitle(go.term))
     # print(eigens$v.plot + ggtitle(go.term))
   }
-}
+  return(NULL)
+# })
+}, mc.cores = length(jtiss.lst))
 dev.off()
-plot.i <- plot.i + 1
+plot.i <- plot.i + 1  
+
 
 # Cooperative TFs underlie clock-dependent tissue-specific diurnal --------
 
