@@ -114,6 +114,35 @@ PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg", draw.e
   #   interprob2 <- sum(weights1 * apply(proms, 1, function(x) mvtnorm::dmvnorm(x, mu2, sig1$cov))) / sum(weights1)
 }
 
+HellingerDistance <- function(dat){
+  # calculate distance betwene two rows of matrix
+  return(sqrt(sum(apply(dat, 2, function(colm) (sqrt(colm[1]) - sqrt(colm[2]))) ^ 2)))
+}
+
+
+CalculateDistance <- function(dat, dist.method = "hellinger", jvar = "tpm_norm.avg", transcript_id = "transcript", return.as.df=FALSE){
+  # simpler than GaussianCenters
+  # For Liver and Kidney, calculate distance (either euclidean or hellinger)
+  if (length(unique(dat$tissue)) <= 1){
+    return(NA)
+  }
+  proms <- GetPromoterUsage(dat, jvar = jvar, do.svd = FALSE, append.tiss = TRUE, get.means = FALSE, get.entropy = FALSE, transcript_id = transcript_id, get.prom.only = TRUE)
+  if (nrow(proms) != 2){
+    warning("Expecting only two rows in GetPromoterUsage() output")
+  }
+  if (dist.method == "euclidean"){
+    proms.dist <- as.numeric(dist(as.matrix(proms), method = "euclidean"))
+  } else if (dist.method == "hellinger"){
+    proms.dist <- HellingerDistance(proms)
+  }
+  if (!return.as.df){
+    return(proms.dist)
+  } else {
+    gene <- dat$gene[[1]]
+    return(data.frame(gene = gene, proms.dist = proms.dist))
+  }
+}
+
 CalculateGaussianCenters <- function(dat, jvar = "tpm_norm.avg", thres = 0.9, do.svd = TRUE, transcript_id = "transcript_id"){
   if (length(unique(dat$tissue)) <= 1){
     return(NA)
@@ -239,7 +268,8 @@ KeepUpToThres <- function(vec, thres, min.dim = 2){
   return(1:i)
 }
 
-GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE, transcript_id = "transcript_id", return.transcripts=FALSE){
+GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 0.9, append.tiss = TRUE, get.means=TRUE, get.entropy=TRUE, 
+                             transcript_id = "transcript_id", return.transcripts=FALSE, get.prom.only=FALSE){
   # get promoter usage
   if (!is.null(dat$mean)){
     jform <- paste0("tissue + amp + mean ~ ", transcript_id)
@@ -297,6 +327,9 @@ GetPromoterUsage <- function(dat, jvar = "tpm_norm.avg", do.svd = TRUE, thres = 
   if (get.entropy){
     dat.H <- apply(dat.mat.prom, 1, function(x) ShannonEntropy(x, normalize = FALSE))
     out$entropy <- dat.H
+  }
+  if (get.prom.only){
+    return(subset(out$dat.mat.trans, select = c(-amp, -tissue)))
   }
   return(out)
 }
