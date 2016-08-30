@@ -524,7 +524,7 @@ mclapply(jtiss.lst, function(jtiss){
     go.term <- enrichment$Term[[i]]
     if (is.na(go.genes)) next
     show.n.genes <- min(length(go.genes), max.genes)
-    s <- SvdOnComplex(subset(dat.freq, gene %in% enrichment$genes[[1]]), value.var = "exprs.transformed")
+    s <- SvdOnComplex(subset(dat.freq, gene %in% go.genes), value.var = "exprs.transformed")
     eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
     plot.lst$add(eigens$u.plot + ggtitle(go.term))
     # print(eigens$v.plot + ggtitle(go.term))

@@ -11,6 +11,7 @@ library(ggplot2)
 # detach("package:ggplot2", unload=TRUE)
 # detach("package:reshape2", unload=TRUE)
 library(dplyr)
+library(parallel)
 
 setwd("/home/yeung/projects/tissue-specificity")
 
@@ -28,40 +29,9 @@ source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
+source("scripts/functions/ListFunctions.R")
 
-GetGOEnrichment <- function(genes.bg, genes.fg, fdr.cutoff, show.top.n = Inf, ontology="BP", wd = "/home/yeung/projects/tissue-specificity"){
-  source(file.path(wd, "scripts/functions/AnalyzeGeneEnrichment.R"))
-  enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, which.ontology = ontology, return.GOdata = TRUE)
-  enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
-  enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
-  show.top.n.min <- min(nrow(enrichment), show.top.n)
-  if (show.top.n.min == 0) return(NULL)
-  enrichment <- enrichment[1:show.top.n.min, ]   # prevent taking more than you have enrichment
-  # unload packages
-  # sometimes topGO causes problems (unable to unload later), unload once you're done.
-  detach(name = "package:topGO", unload = TRUE)
-  detach(name = "package:org.Mm.eg.db", unload = TRUE)
-  return(enrichment)
-}
 
-PlotEnrichmentGenes <- function(dat.freq, enrichment, max.genes, row.i = "max"){
-  # take hit with most genes
-  # if row.i is max, get row with most genes
-  # otherwise use row.i as index for row
-  if (row.i == "max"){
-    row.i <- which(enrichment$Significant == max(enrichment$Significant, na.rm = TRUE))
-  } else if (is.numeric(row.i)){
-    row.i <- row.i
-  } else {
-    warning(paste("row.i is not max or numeric:", row.i))
-  }
-  go.genes <- enrichment$genes[[row.i]]
-  go.term <- enrichment$Term[[row.i]]
-  show.n.genes <- min(length(go.genes), max.genes)
-  s <- SvdOnComplex(subset(dat.freq, gene %in% go.genes), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = FALSE)
-  print(eigens$u.plot)
-}
 
 # Annotate each model with its major GO term ------------------------------
 
@@ -81,155 +51,176 @@ dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
 # Plot for all genes in module --------------------------------------------
 
+# from tissue_specificity_paper3.R
 jmod1 <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
 jmod2 <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
-jtiss.lst <- list(ModelStrToModel(jmod1),
-                  ModelStrToModel(jmod2),
-                  "Liver_SV129", 
-                  "Liver_SV129,Liver_BmalKO", 
-                  "Kidney_SV129", 
-                  "Kidney_SV129,Kidney_BmalKO", 
-                  "Liver_BmalKO")
+jtiss.lst <- list(c(ModelStrToModel(jmod1), "MF"),
+                  c(ModelStrToModel(jmod2), "BP"),
+                  c("Liver_SV129", "BP"), 
+                  c("Liver_SV129,Liver_BmalKO", "BP"), 
+                  c("Kidney_SV129", "MF"), 
+                  c("Kidney_SV129,Kidney_BmalKO", "MF"), 
+                  c("Liver_BmalKO", "BP"))
 
-jmod.long <- ModelStrToModel(jmod1)
-jmod.long <- ModelStrToModel(jmod2)
+# jmod.long <- ModelStrToModel(jmod1)
+# jmod.long <- ModelStrToModel(jmod2)
+# 
+# jonto <- "BP"
+# jonto <- "MF"
+# # jmod.long <- "Liver_SV129,Liver_BmalKO"
+# jmod.long <- "Kidney_SV129"
+# jmod.long <- "Kidney_SV129,Kidney_BmalKO"
+# jmod.long <- "Liver_BmalKO"
 
-jonto <- "BP"
-jcutoff <- 0.5  # fdr cutoff for enrichment
-# jmod.long <- "Liver_SV129,Liver_BmalKO"
-jmod.long <- "Kidney_SV129"
-jmod.long <- "Kidney_SV129,Kidney_BmalKO"
+pdf("/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO/liv_kid_with_GO.pdf")
+  mclapply(jtiss.lst, function(jtiss.onto){
+    # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
+    source("scripts/functions/AnalyzeGeneEnrichment.R")
+    jcutoff <- 0.5  # fdr cutoff for enrichment
+    comp <- 1
+    plots <- expandingList()
+    jmod.long <- jtiss.onto[-length(jtiss.onto)]
+    jonto <- jtiss.onto[length(jtiss.onto)]
+    
+    genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
+    dat.sub <- subset(dat.freq, gene %in% genes)
+    s <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
+    eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+    
+    plots$add(eigens$u.plot)
+    plots$add(eigens$v.plot)
+    
+    genes.bg <- as.character(subset(fits.long.filt)$gene)
+    genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
+    enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = jcutoff, ontology = jonto, show.top.n = 8)
+    
+    m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), dot.size = 4, comp = comp)
+    plots$add(m)
+    return(plots$as.list())
+  }, mc.cores = length(jtiss.lst))
+dev.off()
 
-comp <- 1
-genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
-s <- SvdOnComplex(subset(dat.freq, gene %in% genes), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-print(eigens$u.plot)
-
-
-# Highlight genes assigned to GO terms ------------------------------------
-
-genes.bg <- as.character(subset(fits.long.filt)$gene)
-genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
-
-enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = jcutff, ontology = jonto, show.top.n = 10)
-
-m1 <- ggplot(subset(enrichment, !is.na(Term)), aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") + 
-  ylab("-log10(P-value), Fisher's exact test") + 
-  xlab("") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-  ggtitle(jmod.long)
-print(m1)
-
-# annotate dat.freq with GO terms for each gene (take most significant enrichment)
-
-# label clocks to based on GOterm
-go.hash <- hash()
-for (i in seq(nrow(enrichment))){
-  genes.vec <- enrichment$genes[[i]]
-  term <- as.character(enrichment$Term[[i]])
-  for (g in genes.vec){
-    if (is.null(go.hash[[g]])){
-      go.hash[[g]] <- term
-    } 
-  }
-}
-
-dat.sub <- subset(dat.freq, gene %in% genes.fg)
-s.sub <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
-
-# label dat.freq with goterm
-dat.sub$term <- sapply(as.character(dat.sub$gene), function(g){
-  if (!is.null(go.hash[[g]])){
-    return(go.hash[[g]])
-  } else {
-    return(NA)
-  }
-})
-
-eig <- GetEigens(s.sub, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
-
-omega <- 2 * pi / 24
-ampscale <- 2
-vec.complex <- eig$eigensamp 
-labels <- names(vec.complex)
-
-dat <- data.frame(amp = Mod(vec.complex) * ampscale,
-                 phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
-                 label = labels)
-
-# add term BEFORE filtering out labels
-dat$term <- as.factor(sapply(as.character(dat$label), function(g){
-  if (g == ""){
-    return("")
-  }
-  if (!is.null(go.hash[[g]])){
-    return(go.hash[[g]])
-  } else {
-    return("")
-  }
-}))
-# make "" the first term for levels (so you get colours of dots wihtout the labels 
-if (any(dat$term == "")){
-  jterms <- as.character(enrichment$Term)
-  dat$term <- factor(as.character(dat$term), levels = c("", jterms))
-}
-
-top.hits <- 25
-top.amps <- as.character(head(dat[order(dat$amp, decreasing = TRUE), ], n = top.hits)$label)
-dat$label <- sapply(as.character(dat$label), function(l) ifelse(l %in% top.amps, yes = l, no = ""))
-# label only top genes
-
-
-
-
-amp.max <- ceiling(max(dat$amp) * 2) / 2
-if (amp.max <= 1){
-  amp.step <- 0.5
-} else {
-  amp.step <- 1
-}
-
-xlab <- ""
-ylab <- "Log2 Fold Change"
-constant.amp <- 6
-jtitle <- ""
-
-cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-cbPalette <- cbPalette[1:length(levels(dat$term))]
-# change "" term to light gray
-cbPalette[levels(dat$term) == ""] <- "gray85"
-
-m <- ggplot(data = dat, aes(x = amp, y = phase, label = label, colour = term)) + 
-  geom_point(size = 1) +
-  coord_polar(theta = "y") + 
-  xlab(xlab) +
-  ylab(ylab) +
-  ggtitle(jtitle) +
-  scale_y_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
-  scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, length.out = 2)) + 
-  theme_bw() + 
-  geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
-  geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
-  theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
-        panel.border = element_blank(),
-        legend.key = element_blank(),
-        axis.ticks = element_blank(),
-        panel.grid  = element_blank())
-# expand_limits(x = 0)  # we want center to be 0
-
-# add text
-df.txt <- subset(dat, label != "")
-if (constant.amp != FALSE){
-  # m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp, colour = "black")
-  m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp)
-} else {
-  # m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label), colour = "black")
-  m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label))
-}
-print(m + scale_colour_manual(values=cbPalette) + ggtitle(jonto))
-
-# PlotEnrichmentGenes(dat.freq, enrichment, max.genes = 40, row.i = "max")
-
+# 
+# 
+# # Highlight genes assigned to GO terms ------------------------------------
+# genes.bg <- as.character(subset(fits.long.filt)$gene)
+# genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
+# enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = jcutoff, ontology = jonto, show.top.n = 10)
+# 
+# m1 <- ggplot(subset(enrichment, !is.na(Term)), aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") + 
+#   ylab("-log10(P-value), Fisher's exact test") + 
+#   xlab("") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+#   ggtitle(jmod.long)
+# print(m1)
+# 
+# # annotate dat.freq with GO terms for each gene (take most significant enrichment)
+# 
+# # label clocks to based on GOterm
+# go.hash <- hash()
+# for (i in seq(nrow(enrichment))){
+#   genes.vec <- enrichment$genes[[i]]
+#   term <- as.character(enrichment$Term[[i]])
+#   for (g in genes.vec){
+#     if (is.null(go.hash[[g]])){
+#       go.hash[[g]] <- term
+#     } 
+#   }
+# }
+# 
+# dat.sub <- subset(dat.freq, gene %in% genes.fg)
+# s.sub <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
+# 
+# # label dat.freq with goterm
+# dat.sub$term <- sapply(as.character(dat.sub$gene), function(g){
+#   if (!is.null(go.hash[[g]])){
+#     return(go.hash[[g]])
+#   } else {
+#     return(NA)
+#   }
+# })
+# 
+# eig <- GetEigens(s.sub, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+# 
+# omega <- 2 * pi / 24
+# ampscale <- 2
+# vec.complex <- eig$eigensamp 
+# labels <- names(vec.complex)
+# 
+# dat <- data.frame(amp = Mod(vec.complex) * ampscale,
+#                  phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
+#                  label = labels)
+# 
+# # add term BEFORE filtering out labels
+# dat$term <- as.factor(sapply(as.character(dat$label), function(g){
+#   if (g == ""){
+#     return("")
+#   }
+#   if (!is.null(go.hash[[g]])){
+#     return(go.hash[[g]])
+#   } else {
+#     return("")
+#   }
+# }))
+# # make "" the first term for levels (so you get colours of dots wihtout the labels 
+# if (any(dat$term == "")){
+#   jterms <- as.character(enrichment$Term)
+#   dat$term <- factor(as.character(dat$term), levels = c("", jterms))
+# }
+# 
+# top.hits <- 25
+# top.amps <- as.character(head(dat[order(dat$amp, decreasing = TRUE), ], n = top.hits)$label)
+# dat$label <- sapply(as.character(dat$label), function(l) ifelse(l %in% top.amps, yes = l, no = ""))
+# # label only top genes
+# 
+# 
+# amp.max <- ceiling(max(dat$amp) * 2) / 2
+# if (amp.max <= 1){
+#   amp.step <- 0.5
+# } else {
+#   amp.step <- 1
+# }
+# 
+# xlab <- ""
+# ylab <- "Log2 Fold Change"
+# constant.amp <- 6
+# jtitle <- ""
+# 
+# cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+# cbPalette <- cbPalette[1:length(levels(dat$term))]
+# # change "" term to light gray
+# cbPalette[levels(dat$term) == ""] <- "gray85"
+# 
+# m <- ggplot(data = dat, aes(x = amp, y = phase, label = label, colour = term)) + 
+#   geom_point(size = 1) +
+#   coord_polar(theta = "y") + 
+#   xlab(xlab) +
+#   ylab(ylab) +
+#   ggtitle(jtitle) +
+#   scale_y_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
+#   scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, length.out = 2)) + 
+#   theme_bw() + 
+#   geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
+#   geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
+#   theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+#         panel.border = element_blank(),
+#         legend.key = element_blank(),
+#         axis.ticks = element_blank(),
+#         panel.grid  = element_blank())
+# # expand_limits(x = 0)  # we want center to be 0
+# 
+# # add text
+# df.txt <- subset(dat, label != "")
+# if (constant.amp != FALSE){
+#   # m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp, colour = "black")
+#   m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp)
+# } else {
+#   # m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label), colour = "black")
+#   m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label))
+# }
+# print(m + scale_colour_manual(values=cbPalette) + ggtitle(jonto))
+# 
+# # PlotEnrichmentGenes(dat.freq, enrichment, max.genes = 40, row.i = "max")
+# 

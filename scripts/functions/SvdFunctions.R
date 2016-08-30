@@ -389,7 +389,9 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
   return(dat.complex)
 }
 
-GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, peak.to.trough = FALSE, jtitle, label.gene=NA){
+GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, 
+                      eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, 
+                      peak.to.trough = FALSE, jtitle, label.gene=NA){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -467,12 +469,13 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   }
   v.plot <- PlotComplex2(eigengene, labels = rownames(s.complex$v), omega = omega, 
                          title = jtitle1, 
-                         xlab = xlab, ylab = "Loadings", ampscale = 1, constant.amp = constant.amp)
+                         xlab = xlab, ylab = "Loadings", ampscale = 1, constant.amp = constant.amp,
+                         dot.col = "black")
     
   # u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)
   u.plot <- PlotComplex2(eigensamp.sorted, labels = names(eigensamp.sorted), omega = omega, 
                          title = jtitle2, 
-                         xlab = xlab, ylab = ylab, ampscale = 2, constant.amp = constant.amp)
+                         xlab = xlab, ylab = ylab, ampscale = 2, constant.amp = constant.amp, dot.col = "gray85")
   return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
 }
 

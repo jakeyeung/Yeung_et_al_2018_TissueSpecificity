@@ -7,10 +7,150 @@
 # biocLite("topGO")
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("org.Mm.eg.db")
+# 
+# NOTE: if you run functions here in parallel (mclapply) you need to source these scripts INSIDE the loop:
+# https://support.bioconductor.org/p/38541/
 
 
 library(topGO)
 library(org.Mm.eg.db)
+
+GetGOEnrichment <- function(genes.bg, genes.fg, fdr.cutoff, show.top.n = 8, ontology="BP", wd = "/home/yeung/projects/tissue-specificity"){
+  source(file.path(wd, "scripts/functions/AnalyzeGeneEnrichment.R"))
+  enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, which.ontology = ontology, return.GOdata = TRUE)
+  enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
+  enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
+  show.top.n.min <- min(nrow(enrichment), show.top.n)
+  if (show.top.n.min == 0) return(NULL)
+  enrichment <- enrichment[1:show.top.n.min, ]   # prevent taking more than you have enrichment
+  # unload packages
+  # sometimes topGO causes problems (unable to unload later), unload once you're done.
+  detach(name = "package:topGO", unload = TRUE)
+  detach(name = "package:org.Mm.eg.db", unload = TRUE)
+  return(enrichment)
+}
+
+PlotEnrichmentGenes <- function(dat.freq, enrichment, max.genes, row.i = "max"){
+  # take hit with most genes
+  # if row.i is max, get row with most genes
+  # otherwise use row.i as index for row
+  if (row.i == "max"){
+    row.i <- which(enrichment$Significant == max(enrichment$Significant, na.rm = TRUE))
+  } else if (is.numeric(row.i)){
+    row.i <- row.i
+  } else {
+    warning(paste("row.i is not max or numeric:", row.i))
+  }
+  go.genes <- enrichment$genes[[row.i]]
+  go.term <- enrichment$Term[[row.i]]
+  show.n.genes <- min(length(go.genes), max.genes)
+  s <- SvdOnComplex(subset(dat.freq, gene %in% go.genes), value.var = "exprs.transformed")
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = FALSE)
+  print(eigens$u.plot)
+}
+
+PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6, comp = 1){
+  # show.top.n > 8 recycles colours
+  # enrichment from GetGOEnrichment()
+  # annotate dat.freq with GO terms for each gene (take most significant enrichment)
+  
+  constant.amp <- dot.size
+  ylab <- ""
+  xlab <- "Log2 Fold Change"
+  
+  # label clocks to based on GOterm
+  go.hash <- hash()
+  for (i in seq(nrow(enrichment))){
+    genes.vec <- enrichment$genes[[i]]
+    term <- as.character(enrichment$Term[[i]])
+    for (g in genes.vec){
+      if (is.null(go.hash[[g]])){
+        go.hash[[g]] <- term
+      } 
+    }
+  }
+  
+  # dat.sub <- subset(dat.freq, gene %in% genes.fg)
+  s.sub <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
+  
+  # label dat.freq with goterm
+  dat.sub$term <- sapply(as.character(dat.sub$gene), function(g){
+    if (!is.null(go.hash[[g]])){
+      return(go.hash[[g]])
+    } else {
+      return(NA)
+    }
+  })
+  
+  eig <- GetEigens(s.sub, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+  
+  omega <- 2 * pi / 24
+  ampscale <- 2
+  vec.complex <- eig$eigensamp 
+  labels <- names(vec.complex)
+  
+  dat <- data.frame(amp = Mod(vec.complex) * ampscale,
+                    phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
+                    label = labels)
+  
+  # add term BEFORE filtering out labels
+  dat$term <- as.factor(sapply(as.character(dat$label), function(g){
+    if (g == ""){
+      return("")
+    }
+    if (!is.null(go.hash[[g]])){
+      return(go.hash[[g]])
+    } else {
+      return("")
+    }
+  }))
+  # make "" the first term for levels (so you get colours of dots wihtout the labels 
+  if (any(dat$term == "")){
+    jterms <- as.character(enrichment$Term)
+    dat$term <- factor(as.character(dat$term), levels = c("", jterms))
+  }
+  
+  top.hits <- 25
+  top.amps <- as.character(head(dat[order(dat$amp, decreasing = TRUE), ], n = top.hits)$label)
+  dat$label <- sapply(as.character(dat$label), function(l) ifelse(l %in% top.amps, yes = l, no = ""))
+  # label only top genes
+  amp.max <- ceiling(max(dat$amp) * 2) / 2
+  if (amp.max <= 1){
+    amp.step <- 0.5
+  } else {
+    amp.step <- 1
+  }
+  cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  cbPalette <- cbPalette[1:length(levels(dat$term))]
+  # change "" term to light gray
+  cbPalette[levels(dat$term) == ""] <- "gray85"
+  
+  m <- ggplot(data = dat, aes(x = amp, y = phase, label = label, colour = term)) + 
+    geom_point(size = 1) +
+    coord_polar(theta = "y") + 
+    xlab(xlab) +
+    ylab(ylab) +
+    ggtitle(jtitle) +
+    scale_y_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
+    scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, length.out = 2)) + 
+    theme_bw() + 
+    geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
+    geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
+    theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+          panel.border = element_blank(),
+          legend.key = element_blank(),
+          axis.ticks = element_blank(),
+          panel.grid  = element_blank())
+  # add text
+  df.txt <- subset(dat, label != "")
+  if (constant.amp != FALSE){
+    m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp)
+  } else {
+    m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label))
+  }
+  return(m + scale_colour_manual(values=cbPalette) + ggtitle(jtitle))
+}
 
 CreateSym2Entrez <- function(){
   sym2entrez <- as.list(org.Mm.egALIAS2EG)
