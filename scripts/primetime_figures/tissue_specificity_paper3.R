@@ -472,6 +472,7 @@ for (jmod in jmods){
 }
 plot.i <- plot.i + 1
 
+# Go analysis on liver kidney WT KO modules -------------------------------
 # Do GO enrichment
 pdf(file.path(plot.dir, paste0(plot.i, ".go_analysis.pdf")))
 
@@ -485,7 +486,10 @@ jtiss.lst <- list(ModelStrToModel(jmod1),
 
 # for (jtiss in c("Liver_SV129,", "Liver_SV129", "Liver_SV129,Liver_BmalKO", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Liver_BmalKO")){
 # }
- 
+
+
+
+
 # jtiss.lst <- jtiss.lst[1] 
 mclapply(jtiss.lst, function(jtiss){
   source("scripts/functions/AnalyzeGeneEnrichment.R")
