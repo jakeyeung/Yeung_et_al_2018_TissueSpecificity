@@ -489,6 +489,8 @@ jtiss.lst <- list(ModelStrToModel(jmod1),
 # jtiss.lst <- jtiss.lst[1] 
 mclapply(jtiss.lst, function(jtiss){
   source("scripts/functions/AnalyzeGeneEnrichment.R")
+  source("/home/yeung/projects/tissue-specificity/scripts/functions/ListFunctions.R")
+  plot.lst <- expandingList()
 # lapply(jtiss.lst, function(jtiss){
   print(jtiss)
   genes.bg <- as.character(subset(fits.long.filt)$gene)
@@ -507,7 +509,7 @@ mclapply(jtiss.lst, function(jtiss){
     theme_bw() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
     ggtitle(jtiss)
-  print(m1)
+  plot.lst$add(m1)
   # plot genes in enrichment
   i <- 1
   max.genes <- 40
@@ -520,10 +522,10 @@ mclapply(jtiss.lst, function(jtiss){
     show.n.genes <- min(length(go.genes), max.genes)
     s <- SvdOnComplex(subset(dat.freq, gene %in% enrichment$genes[[1]]), value.var = "exprs.transformed")
     eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
-    print(eigens$u.plot + ggtitle(go.term))
+    plot.lst$add(eigens$u.plot + ggtitle(go.term))
     # print(eigens$v.plot + ggtitle(go.term))
   }
-  return(NULL)
+  return(plot.lst$as.list())
 # })
 }, mc.cores = length(jtiss.lst))
 dev.off()
