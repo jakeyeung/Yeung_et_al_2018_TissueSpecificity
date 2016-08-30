@@ -37,6 +37,7 @@ source("scripts/functions/ModelStrToModel.R")
 
 # Inits -------------------------------------------------------------------
 
+remove.kidney.outliers <- TRUE
 remove.wfat <- TRUE
 plot.i <- 1
 tissue.order <- c('Liver','BFAT','Kidney','Lung','Adr','Mus','Heart','Aorta','Hypo','Cere','BS')
@@ -67,6 +68,13 @@ fits.long.filt$n.params <- sapply(fits.long.filt$model, function(m) return(lengt
 fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
 
 
+# Remove kidney outliers (optional)
+if (remove.kidney.outliers){
+  # Kidney_SV129 genes contain some weird outliers, remove them
+  outliers <- c("Cox8b", "Ucp1", "Cidea", "Flg", "Nr4a2")
+  fits.long.filt <- subset(fits.long.filt, !gene %in% outliers)
+  dat.wtko <- subset(dat.wtko, !gene %in% outliers)
+}
 dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
@@ -181,7 +189,7 @@ ggplot(dat.fit.periods.sub, aes(x = period, y = ssq.residuals, colour = gene)) +
 dev.off()
 
 
-# Genome-wide amplitudes 
+# Genome-wide amplitudes: Hogenesch
 
 # from fourier directory total_variance.noise_floor.R
 pdf(file.path(plot.dir, paste0(plot.i, ".genomewide_amplitude.pdf")))
@@ -210,7 +218,31 @@ ggplot(subset(dat.fit.24.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = 
   theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
   xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 5)) + 
   scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
-  geom_vline(xintercept = 1, linetype = "dotted")
+  geom_vline(xintercept = 1, linetype = "dotted") + 
+  ggtitle(paste("pval cutoff", pval.cutoff))
+
+# Genome-wide amplitudes: Liver WT KO 
+fits.bytiss <- fits.bytiss[order(fits.bytiss$amp, decreasing = TRUE), ]
+amp.thres <- seq(from = 0, to = max(fits.bytiss$amp), by = 0.15)
+pval.cutoff <- 0.01
+fits.bytiss.ngenes.thres <- subset(fits.bytiss, pval < pval.cutoff) %>%
+  group_by(tissue) %>%
+  do(NGenesByAmp.long(., amp.thres))
+fits.bytiss.ngenes.thres$rhyth <- as.factor(24)
+
+# order by total genes
+ngenes.sum.livkidWTKO <- fits.bytiss.ngenes.thres %>%
+  group_by(tissue) %>%
+  summarise(total = sum(n.genes)) %>%
+  arrange(desc(total))
+fits.bytiss.ngenes.thres$tissue <- factor(as.character(fits.bytiss.ngenes.thres$tissue), levels = ngenes.sum.livkidWTKO$tissue)
+ggplot(subset(fits.bytiss.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + geom_line(size = 3) + 
+  theme_bw(24) +
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
+  xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 5)) + 
+  scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
+  geom_vline(xintercept = 1, linetype = "dotted") + 
+  ggtitle(paste("pval cutoff", pval.cutoff))
 
 dev.off()
 

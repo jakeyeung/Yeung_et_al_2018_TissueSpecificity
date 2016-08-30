@@ -37,7 +37,6 @@ dat.long <- StaggeredTimepointsLivKid(dat.long)
 # filter NA changes
 dat.long <- subset(dat.long, !is.na(gene))
 
-# Remove Ciart
 
 # # # change Ciart to Gm129
 dat.long$gene <- as.character(dat.long$gene)
@@ -61,13 +60,22 @@ fits.long.filt$gene[which(fits.long.filt$gene == "Ciart")] <- "Gm129"
 # Init params -------------------------------------------------------------
 
 
-suffix <- ""
+suffix <- "removeOutliers"
+# jmodel <- c("Liver_SV129,Kidney_SV129")
 if (suffix != ""){
   suffix <- paste0(".", suffix)
 }
 # jmodel <- c("Liver_SV129,Kidney_SV129")
 # jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129")
-jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Liver_BmalKO;Kidney_SV129,Kidney_BmalKO")
+# jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Liver_BmalKO;Kidney_SV129,Kidney_BmalKO")
+jmodel <- c("Kidney_SV129")
+
+if (jmodel == "Kidney_SV129"){
+  # remove some outliers
+  outliers <- c("Cox8b", "Ucp1", "Cidea", "Flg", "Nr4a2")
+  fits.long.filt <- subset(fits.long.filt, !gene %in% outliers)
+  dat.long <- subset(dat.long, !gene %in% outliers)
+}
 
 # # optionally using min rhyth
 # min.rhyth <- 4

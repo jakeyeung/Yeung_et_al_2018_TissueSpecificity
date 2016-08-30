@@ -31,7 +31,7 @@ source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
 source("scripts/functions/ListFunctions.R")
 
-
+load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
 
 # Annotate each model with its major GO term ------------------------------
 
@@ -72,7 +72,8 @@ jtiss.lst <- list(c(ModelStrToModel(jmod1), "MF"),
 # jmod.long <- "Kidney_SV129,Kidney_BmalKO"
 # jmod.long <- "Liver_BmalKO"
 
-pdf("/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO/liv_kid_with_GO.pdf")
+plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
+pdf(file.path(plotdir, "liv_kid_with_GO.pdf"))
   mclapply(jtiss.lst, function(jtiss.onto){
     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
     source("scripts/functions/AnalyzeGeneEnrichment.R")
@@ -98,6 +99,21 @@ pdf("/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO/
     plots$add(m)
     return(plots$as.list())
   }, mc.cores = length(jtiss.lst))
+dev.off()
+
+
+# Check Kidney_SV129 genes for false positives ----------------------------
+
+jmod <- "Kidney_SV129,Kidney_BmalKO"
+fits.sub <- subset(fits.long.filt, model == jmod)
+fits.sub <- fits.sub[order(fits.sub$amp.avg, decreasing = TRUE), ]
+# order from highest amp to lowest amp
+jgenes <- as.character(fits.sub$gene)
+
+pdf(file.path(plotdir, paste0(jmod, "_sanity_check.pdf")))
+for (g in jgenes){
+  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), jtitle = g))
+}
 dev.off()
 
 # 
