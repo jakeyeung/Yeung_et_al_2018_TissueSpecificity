@@ -24,6 +24,7 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
   
   # merge
   prot.long <- rbind(prot.long.wt, prot.long.bmalko)
+  prot.long$tissue <- "Liver"
   
   # change Gene.names to gene
   colnames(fit.prot.wt)[which(colnames(fit.prot.wt) == "Gene.names")] <- "gene"
@@ -61,82 +62,124 @@ AddColname <- function(dat, cname, cvalue){
 
 SubsetGenoSignalTimeType <- function(dat){
   if (nrow(dat) > 0){
-    return(subset(dat, select = c(geno.std, signal, time, type)))
+    return(as.data.frame(subset(dat, select = c(geno.std, signal, time, type, tissue))))
   } else {
-    return(dat)
+    return(as.data.frame(dat))
   }
 }
 
-PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot = "", jtiss = "Liver"){
+ScaleSignal <- function(dat, cname, jcenter = NA, jscale = NA){
+  if (is.na(jcenter) & is.na(jscale)){
+    return(scale(dat[[cname]], center = TRUE, scale = TRUE))
+  } else {
+    # make center jcenter, variance jscale
+    scaled.dat <- scale(dat[[cname]], center = TRUE, scale = TRUE) * sqrt(jscale)
+    scaled.dat <- scaled.dat + jcenter
+    return(scaled.dat)
+  }
+}
+
+
+PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot = "", jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1){
   # plotting protein optional: can use this to plot just dat and act if prot.long is missing and gene.prot is ""
+  act.long$tissue <- sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[1]])
   if (jtiss == "Liver"){
     dat.sub <- subset(dat.long, gene == gene.dat & tissue == "Liver")
-    act.sub <- subset(act.long, gene == gene.act & tissue %in% c("Liver_SV129", "Liver_BmalKO"))
+    act.sub <- subset(act.long, gene == gene.act & tissue %in% c("Liver"))
   } else if (jtiss == "Kidney"){
     dat.sub <- subset(dat.long, gene == gene.dat & tissue == "Kidney")
-    act.sub <- subset(act.long, gene == gene.act & tissue %in% c("Kidney_SV129", "Kidney_BmalKO"))
+    act.sub <- subset(act.long, gene == gene.act & tissue %in% c("Kidney"))
+  } else if (jtiss == "both"){
+    dat.sub <- subset(dat.long, gene == gene.dat)
+    act.sub <- subset(act.long, gene == gene.act)
   } else {
-    warning("jtiss must be Liver of Kidney")
+    warning("jtiss must be Liver or Kidney or both")
   }
-  if (!(missing(prot.long) | is.na(prot.long))){  # if not missing or not na
+  if (!(missing(prot.long) | all(is.na(prot.long)))){  # if not missing or not na
     prot.sub <- subset(prot.long, gene == gene.prot)
   }
   
   # scale data, merge together, then plot in one figure
   dat.sub$signal <- ScaleSignal(dat.sub, "exprs")
   act.sub$signal <- ScaleSignal(act.sub, "exprs")
-  if (!(missing(prot.long) | is.na(prot.long))){
-    prot.sub$signal <- ScaleSignal(prot.sub, "rel.abund")
+  if (!(missing(prot.long) | all(is.na(prot.long)))){
+    if (jtiss != "both"){
+      prot.sub$signal <- ScaleSignal(prot.sub, "rel.abund")
+    } else {
+      # center and scale based on mean and variance from Liver data of dat.sub
+      jcenter <- mean(subset(dat.sub, tissue == "Liver")$signal)
+      jscale <- var(subset(dat.sub, tissue == "Liver")$signal)
+      prot.sub$signal <- ScaleSignal(prot.sub, "rel.abund", jcenter, jscale)
+    }
   }
   
   # make two factors: WT and BmalKO
-  dat.sub$geno.std <- as.factor(gsub("SV129", "WT", as.character(dat.sub$geno)))
-  act.sub$geno.std <- as.factor(gsub("SV129", "WT", as.character(act.sub$geno)))
-  if (!(missing(prot.long) | is.na(prot.long))){
-    prot.sub$geno.std <- as.factor(gsub("Bmal", "BmalKO", as.character(prot.sub$geno)))
+  dat.sub$geno.std <- gsub("SV129", "WT", as.character(dat.sub$geno))
+  act.sub$geno.std <- gsub("SV129", "WT", as.character(act.sub$geno))
+  if (!(missing(prot.long) | all(is.na(prot.long)))){
+    prot.sub$geno.std <- gsub("Bmal", "BmalKO", as.character(prot.sub$geno))
   }
+  # add tissue info to geno.std
+  if (jtiss == "both"){
+    dat.sub$geno.std <- as.factor(paste(dat.sub$tissue, dat.sub$geno.std, sep = "_"))
+    act.sub$geno.std <- as.factor(paste(act.sub$tissue, act.sub$geno.std, sep = "_"))
+    if (!(missing(prot.long) | all(is.na(prot.long)))){
+      prot.sub$geno.std <- as.factor(paste(prot.sub$tissue, prot.sub$geno.std, sep = "_"))
+    }
+  } 
   
   dat.sub <- AddColname(dat.sub, "type", "mRNA_Accum")
   act.sub <- AddColname(act.sub, "type", "TF_Activity")
-  if (!(missing(prot.long) | is.na(prot.long))){
+  if (!(missing(prot.long) | all(is.na(prot.long)))){
     prot.sub <- AddColname(prot.sub, "type", "Nuclear_Prot_Accum")
   }
- 
+
   dat.sub2 <- SubsetGenoSignalTimeType(dat.sub)
   act.sub2 <- SubsetGenoSignalTimeType(act.sub)
-  if (!(missing(prot.long) | is.na(prot.long))){
+  # print(dat.sub)
+  # print(dat.sub2)
+  # print(act.sub)
+  # print(act.sub2)
+  if (!(missing(prot.long) | all(is.na(prot.long)))){
     prot.sub2 <- SubsetGenoSignalTimeType(prot.sub)
     factor.levels <- c("mRNA_Accum", "Nuclear_Prot_Accum", "TF_Activity")
     ltypes <- c("solid", "twodash", "dotted")
-    jshapes <- c(16, 17, 15)
+    jshapes <- c(17, 4, 15)
   } else {
     # can rbind a null dataframe no problem
     prot.sub2 <- data.frame(NULL)
     factor.levels <- c("mRNA_Accum", "TF_Activity")
     ltypes <- c("solid", "dotted")
-    jshapes <- c(16, 15)
+    jshapes <- c(17, 15)
   }
   merged.dat <- rbind(dat.sub2,
                       act.sub2,
                       prot.sub2)
-  merged.dat$geno.std <- factor(as.character(merged.dat$geno.std), levels = c("WT", "BmalKO"))
+  
+  if (jtiss != "both"){
+    merged.dat$geno.std <- factor(as.character(merged.dat$geno.std), levels = c("WT", "BmalKO"))
+  } else {
+    merged.dat$geno.std <- factor(as.character(merged.dat$geno.std), levels = c("Liver_WT", "Liver_BmalKO", "Kidney_WT", "Kidney_BmalKO"))
+  }
   merged.dat$type <- factor(merged.dat$type, levels = factor.levels)
   
   jtitle <- paste(unique(c(gene.dat, gene.prot, gene.act)), collapse = " ")
-  m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type)) + 
-    geom_line() +
-    geom_point(size = 3) + 
-    xlab("Time (ZT)") + ylab("Scaled Signal") + 
-    facet_wrap(~geno.std) + 
-    theme_bw(24) + 
-    # scale_linetype(drop=FALSE) +
+  if (jtiss != "both"){
+    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type))
+  } else {
+    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, colour = tissue))
+  }
+  m <- m + 
+    geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum")) +
+    geom_point(size = dotsize) + 
+    facet_wrap(~geno.std, nrow = n.facetrows) + 
+    theme_bw(themesize) + 
+    xlab("ZT") + ylab("Accumulation or Motif Activity\n(scaled)") +
     scale_linetype_manual(values = ltypes, drop=FALSE) +
     scale_shape_manual(values = jshapes, drop=FALSE) +
-    theme(legend.position = "bottom", aspect.ratio = 1) + 
-    ggtitle(jtitle)
+    theme(legend.position = "bottom", aspect.ratio = 1) +
+    ggtitle(jtitle) + 
+    scale_x_continuous(breaks = c(0, 12, 24, 36, 48))
   return(m)
 }
 
-ScaleSignal <- function(dat, cname){
-  return(scale(dat[[cname]], center = TRUE, scale = TRUE))
-}
