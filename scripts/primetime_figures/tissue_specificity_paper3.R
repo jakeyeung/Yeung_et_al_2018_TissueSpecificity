@@ -29,8 +29,9 @@ source("scripts/functions/RemoveP2Name.R")
 source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
+source("scripts/functions/ProteomicsFunctions.R")
 
-
+dotsize <- 6
 # Functions ---------------------------------------------------------------
 
 
@@ -78,6 +79,10 @@ if (remove.kidney.outliers){
 dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
+# load proteomics
+
+prot.long <- LoadProteomicsData()
+
 # Tissue-wide modules: hogenesch -----------------------------------------------------
 
 # get input genes
@@ -112,22 +117,27 @@ pdf(file.path(plot.dir, paste0(plot.i, ".tissue_wide_genes_and_regulators.pdf"))
 plot.i <- plot.i + 1
 
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.tw, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+eigens.tw <- GetEigens(s.tw, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 print(eigens.tw$u.plot)
+print(eigens.tw$v.plot)
 multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
 
-eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 25, jtitle = "", peak.to.trough = TRUE)
+eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE)
 print(eigens.act$u.plot)
+print(eigens.act$v.plot)
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 
 s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw.wtko), value.var = "exprs.transformed")
-eigens <- GetEigens(s, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+eigens <- GetEigens(s, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE)
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+print(eigens$u.plot)
+print(eigens$v.plot)
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
-eigens.act <- GetEigens(s.act.wtko, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 25, jtitle = "", peak.to.trough = TRUE)
+eigens.act <- GetEigens(s.act.wtko, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE)
 print(eigens.act$u.plot)
+print(eigens.act$v.plot)
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 dev.off()
 
@@ -309,7 +319,7 @@ for (jmod in jmods){
   outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
   indir <- file.path(outmain, "atger_with_kidney.bugfixed")
   source("scripts/functions/LoadActivitiesLong.R")
-  act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = FALSE)
+  act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = TRUE)
   
   act.complex <- act.long %>%
     group_by(gene, tissue) %>%
@@ -320,9 +330,10 @@ for (jmod in jmods){
   max.labs <- 20
   jtitle <- ""
   comp <- 1
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2"))
-  print(eigens.act$u.plot + ggtitle(jmod))
-  print(eigens.act$v.plot + ggtitle(jmod))
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, 
+                          label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family", "RORA", "SRF", "HSF1.2"), jsize = 16)
+  print(eigens.act$u.plot + ylab("ZT") + ggtitle(""))
+  print(eigens.act$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
   
   # plot gene exprs module
   if (grepl("^many_modules_minrhyth", jmod)){
@@ -333,11 +344,10 @@ for (jmod in jmods){
     genes.tw <- as.character(subset(fits.long.filt, method == jmeth & model %in% jmod.long)$gene)
   }
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.tw), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, jsize = 16)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  print(eigens$u.plot)
-  print(eigens$v.plot)
-  multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
+  print(eigens$u.plot + ylab("ZT") + ggtitle(""))
+  print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
 }
 
 dev.off()
@@ -462,6 +472,7 @@ dat.mean.wtko <- dat.wtko.collapsed %>%
 # jmod <- "Liver_SV129,Liver_BmalKO"
 jmods <- c("Liver_SV129,Liver_BmalKO", "Liver_BmalKO", "Kidney_SV129", "Liver_SV129", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
 for (jmod in jmods){
+  jtiss <- strsplit(jmod, "_")[[1]][[1]]
   print(paste("Finding regulators for:", jmod))
   genes.mod <- unique(as.character(subset(fits.long.filt, model == jmod)$gene))
   
@@ -478,94 +489,112 @@ for (jmod in jmods){
   # increment plot.i after the for loop
   
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.mod), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = 20, jtitle = "", peak.to.trough = TRUE)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE)
   
   # plot genes and regulators
-  print(eigens$u.plot)
+  print(eigens$u.plot + ylab("ZT") + ggtitle(""))
+  print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
   multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
-  print(eigens.act$u.plot)
+  print(eigens.act$u.plot + ylab("ZT") + ggtitle(""))
+  print(eigens.act$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
   multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
   # show mean exprs across tissues
   print(PlotMeanExprsOfModel(dat.mean.wtko, genes = genes.mod, jmodel = jmod, sorted = TRUE, avg.method = "mean"))
   
   # Print genes that match model
   jmotifs <- names(head(eigens.act$eigensamp[order(abs(eigens.act$eigensamp), decreasing = TRUE)], n = 20))
-  genes.all <- unlist(sapply(jmotifs, GetGenesFromMotifs, tfs))
-  genes.that.fit <- as.character(subset(fits.long.filt, gene %in% genes.all & model %in% jmod & method == jmeth)$gene)
-  if (length(genes.that.fit) > 0){
-    for (gene.hit in genes.that.fit){
-      print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == gene.hit), jtitle = gene.hit))
+  for (jmotif in jmotifs){
+    genes.all <- unlist(sapply(jmotif, GetGenesFromMotifs, tfs))
+    genes.that.fit <- as.character(subset(fits.long.filt, gene %in% genes.all & model %in% jmod & method == jmeth)$gene)
+    if (length(genes.that.fit) > 0){
+      for (gene.hit in genes.that.fit){
+        if (jmod %in% c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_BmalKO")){
+          gene.prot <- gene.hit
+          jprot.long <- prot.long
+        } else {
+          gene.prot <- ""
+          jprot.long <- NA
+        }
+        print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == gene.hit), jtitle = gene.hit))
+        print(PlotActivitiesWithSE(subset(act.s, gene == jmotif), jtitle = jmotif) + theme_bw())
+        print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss))
+      }
     }
   }
   dev.off()  
 }
 plot.i <- plot.i + 1
 
+
+
+
 # Go analysis on liver kidney WT KO modules -------------------------------
-# Do GO enrichment
-pdf(file.path(plot.dir, paste0(plot.i, ".go_analysis.pdf")))
+# Optional: go_terms_analysis_with_phase_amplitude.R provides a cooler picture
 
-jtiss.lst <- list(ModelStrToModel(jmod1),
-                  ModelStrToModel(jmod2),
-                    "Liver_SV129", 
-                    "Liver_SV129,Liver_BmalKO", 
-                    "Kidney_SV129", 
-                    "Kidney_SV129,Kidney_BmalKO", 
-                    "Liver_BmalKO")
-
-# for (jtiss in c("Liver_SV129,", "Liver_SV129", "Liver_SV129,Liver_BmalKO", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Liver_BmalKO")){
-# }
-
-
-
-
-# jtiss.lst <- jtiss.lst[1] 
-mclapply(jtiss.lst, function(jtiss){
-  source("scripts/functions/AnalyzeGeneEnrichment.R")
-  source("/home/yeung/projects/tissue-specificity/scripts/functions/ListFunctions.R")
-  plot.lst <- expandingList()
-# lapply(jtiss.lst, function(jtiss){
-  print(jtiss)
-  genes.bg <- as.character(subset(fits.long.filt)$gene)
-  genes.fg <- as.character(subset(fits.long.filt, model %in% jtiss)$gene)
-  # genes.fg <- genes.fg[! genes.fg %in% go.genes]  # remove genes from one go.term to see if we can get others
-  # genes.filt <- c("Trdmt1", "Trmt5", "Mettl1", "Nsun2", "Trtm61a")  # tRNA methylation??
-  enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, return.GOdata = TRUE)
-  enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
-  enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
-  show.top.n.min <- min(nrow(enrichment), show.top.n)
-  if (show.top.n.min == 0) return(NULL)
-  enrichment <- enrichment[1:show.top.n.min, ]   # prevent taking more than you have enrichment
-  m1 <- ggplot(enrichment, aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") + 
-    ylab("-log10(P-value), Fisher's exact test") + 
-    xlab("") +
-    theme_bw() + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-    ggtitle(jtiss)
-  plot.lst$add(m1)
-  # plot genes in enrichment
-  i <- 1
-  max.genes <- 40
-  # print(show.top.n.min)
-  # print(enrichment)
-  for (i in seq(show.top.n.min)){
-    go.genes <- enrichment$genes[[i]]
-    go.term <- enrichment$Term[[i]]
-    if (is.na(go.genes)) next
-    show.n.genes <- min(length(go.genes), max.genes)
-    s <- SvdOnComplex(subset(dat.freq, gene %in% go.genes), value.var = "exprs.transformed")
-    eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
-    plot.lst$add(eigens$u.plot + ggtitle(go.term))
-    # print(eigens$v.plot + ggtitle(go.term))
-  }
-  return(plot.lst$as.list())
-# })
-}, mc.cores = length(jtiss.lst))
-dev.off()
-plot.i <- plot.i + 1  
+# # Do GO enrichment
+# pdf(file.path(plot.dir, paste0(plot.i, ".go_analysis.pdf")))
+# 
+# jtiss.lst <- list(ModelStrToModel(jmod1),
+#                   ModelStrToModel(jmod2),
+#                     "Liver_SV129", 
+#                     "Liver_SV129,Liver_BmalKO", 
+#                     "Kidney_SV129", 
+#                     "Kidney_SV129,Kidney_BmalKO", 
+#                     "Liver_BmalKO")
+# 
+# # for (jtiss in c("Liver_SV129,", "Liver_SV129", "Liver_SV129,Liver_BmalKO", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Liver_BmalKO")){
+# # }
+# 
+# 
+# 
+# 
+# jtiss.lst <- jtiss.lst[1]
+# mclapply(jtiss.lst, function(jtiss){
+#   source("scripts/functions/AnalyzeGeneEnrichment.R")
+#   source("/home/yeung/projects/tissue-specificity/scripts/functions/ListFunctions.R")
+#   plot.lst <- expandingList()
+# # lapply(jtiss.lst, function(jtiss){
+#   print(jtiss)
+#   genes.bg <- as.character(subset(fits.long.filt)$gene)
+#   genes.fg <- as.character(subset(fits.long.filt, model %in% jtiss)$gene)
+#   # genes.fg <- genes.fg[! genes.fg %in% go.genes]  # remove genes from one go.term to see if we can get others
+#   # genes.filt <- c("Trdmt1", "Trmt5", "Mettl1", "Nsun2", "Trtm61a")  # tRNA methylation??
+#   enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, return.GOdata = TRUE)
+#   enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
+#   enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
+#   show.top.n.min <- min(nrow(enrichment), show.top.n)
+#   if (show.top.n.min == 0) return(NULL)
+#   enrichment <- enrichment[1:show.top.n.min, ]   # prevent taking more than you have enrichment
+#   m1 <- ggplot(enrichment, aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") +
+#     ylab("-log10(P-value), Fisher's exact test") +
+#     xlab("") +
+#     theme_bw() +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+#     ggtitle(jtiss)
+#   plot.lst$add(m1)
+#   # plot genes in enrichment
+#   i <- 1
+#   max.genes <- 40
+#   # print(show.top.n.min)
+#   # print(enrichment)
+#   for (i in seq(show.top.n.min)){
+#     go.genes <- enrichment$genes[[i]]
+#     go.term <- enrichment$Term[[i]]
+#     if (is.na(go.genes)) next
+#     show.n.genes <- min(length(go.genes), max.genes)
+#     s <- SvdOnComplex(subset(dat.freq, gene %in% go.genes), value.var = "exprs.transformed")
+#     eigens <- GetEigens(s, period = 24, comp = comp, label.n = show.n.genes, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
+#     plot.lst$add(eigens$u.plot + ggtitle(go.term))
+#     # print(eigens$v.plot + ggtitle(go.term))
+#   }
+#   return(plot.lst$as.list())
+# # })
+# }, mc.cores = length(jtiss.lst))
+# dev.off()
+# plot.i <- plot.i + 1
 
 
 # Cooperative TFs underlie clock-dependent tissue-specific diurnal --------
@@ -683,7 +712,7 @@ outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_ki
 inmain <- outmain
 indir <- file.path(inmain, "atger_with_kidney.bugfixed")
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/many_motifs_decorrelated.nofiltergenes.noabs/atger_with_kidney.bugfixed"
-act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = FALSE)
+act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = TRUE)
 # rename motifs based on the motifs with non-zero entries
 act.long$pc <- sapply(as.character(act.long$gene), function(g) as.numeric(strsplit(g, "_")[[1]][[3]]), USE.NAMES = FALSE)
 motif.decor <- sapply(act.long$pc, function(p) PcToMotif(mat.pmd$v, p), USE.NAMES = FALSE)
@@ -701,7 +730,7 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 
 max.labs <- 2
 jtitle <- ""
-eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 5, label.n = K, jtitle = jtitle, peak.to.trough = TRUE)
+eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = K, jtitle = jtitle, peak.to.trough = TRUE)
 
 pdf(file.path(plot.dir, paste0(plot.i, ".clock_dependent_liver_genes_cooperative_action.pdf")))
 plot.i <- plot.i + 1
