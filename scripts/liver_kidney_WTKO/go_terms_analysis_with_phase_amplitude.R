@@ -5,6 +5,9 @@
 rm(list=ls())
 start <- Sys.time()
 
+dotsize <- 6
+remove.kidney.outliers <- TRUE
+
 library(ggplot2)
 # detach("package:PMA", unload=TRUE)
 # detach("package:plyr", unload=TRUE)
@@ -31,6 +34,8 @@ source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
 source("scripts/functions/ListFunctions.R")
 
+
+
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
 
 # Annotate each model with its major GO term ------------------------------
@@ -45,9 +50,15 @@ load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
 fits.long.filt$n.params <- sapply(fits.long.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
 fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
 
+# Remove kidney outliers (optional)
+if (remove.kidney.outliers){
+  # Kidney_SV129 genes contain some weird outliers, remove them
+  outliers <- c("Cox8b", "Ucp1", "Cidea", "Flg", "Nr4a2")
+  fits.long.filt <- subset(fits.long.filt, !gene %in% outliers)
+  dat.wtko <- subset(dat.wtko, !gene %in% outliers)
+}
 dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
-
 
 # Plot for all genes in module --------------------------------------------
 
@@ -73,7 +84,7 @@ jtiss.lst <- list(c(ModelStrToModel(jmod1), "MF"),
 # jmod.long <- "Liver_BmalKO"
 
 plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
-pdf(file.path(plotdir, "liv_kid_with_GO.pdf"))
+pdf(file.path(plotdir, paste0("liv_kid_with_GO.rm_outliers.", remove.kidney.outliers, ".pdf")))
   mclapply(jtiss.lst, function(jtiss.onto){
     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
     source("scripts/functions/AnalyzeGeneEnrichment.R")
@@ -86,17 +97,19 @@ pdf(file.path(plotdir, "liv_kid_with_GO.pdf"))
     genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
     dat.sub <- subset(dat.freq, gene %in% genes)
     s <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
-    eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+    eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Egr1", "Mafb", "Tfcp2"))
     
-    plots$add(eigens$u.plot)
-    plots$add(eigens$v.plot)
+    plots$add(eigens$u.plot + ylab("ZT") + ggtitle(""))
+    plots$add(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
     
     genes.bg <- as.character(subset(fits.long.filt)$gene)
     genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
     enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = jcutoff, ontology = jonto, show.top.n = 8)
     
-    m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), dot.size = 4, comp = comp)
-    plots$add(m)
+    m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), dot.size = dotsize, comp = comp, legend.pos = "none", label.gene = c("Egr1", "Mafb", "Tfcp2"))
+    m2 <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), dot.size = dotsize, comp = comp, legend.pos = "right", label.gene = c("Egr1", "Mafb", "Tfcp2"))
+    plots$add(m + ylab("ZT") + ggtitle(""))
+    plots$add(m2 + ylab("ZT") + ggtitle(""))
     return(plots$as.list())
   }, mc.cores = length(jtiss.lst))
 dev.off()
@@ -104,17 +117,17 @@ dev.off()
 
 # Check Kidney_SV129 genes for false positives ----------------------------
 
-jmod <- "Kidney_SV129,Kidney_BmalKO"
-fits.sub <- subset(fits.long.filt, model == jmod)
-fits.sub <- fits.sub[order(fits.sub$amp.avg, decreasing = TRUE), ]
-# order from highest amp to lowest amp
-jgenes <- as.character(fits.sub$gene)
-
-pdf(file.path(plotdir, paste0(jmod, "_sanity_check.pdf")))
-for (g in jgenes){
-  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), jtitle = g))
-}
-dev.off()
+# jmod <- "Kidney_SV129,Kidney_BmalKO"
+# fits.sub <- subset(fits.long.filt, model == jmod)
+# fits.sub <- fits.sub[order(fits.sub$amp.avg, decreasing = TRUE), ]
+# # order from highest amp to lowest amp
+# jgenes <- as.character(fits.sub$gene)
+# 
+# pdf(file.path(plotdir, paste0(jmod, "_sanity_check.pdf")))
+# for (g in jgenes){
+#   print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), jtitle = g))
+# }
+# dev.off()
 
 # 
 # 

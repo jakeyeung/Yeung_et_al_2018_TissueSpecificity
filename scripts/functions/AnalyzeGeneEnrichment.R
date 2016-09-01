@@ -49,7 +49,7 @@ PlotEnrichmentGenes <- function(dat.freq, enrichment, max.genes, row.i = "max"){
   print(eigens$u.plot)
 }
 
-PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6, comp = 1){
+PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6, comp = 1, jsize = 22, legend.pos = "bottom", label.gene = c(), top.hits = 25){
   # show.top.n > 8 recycles colours
   # enrichment from GetGOEnrichment()
   # annotate dat.freq with GO terms for each gene (take most significant enrichment)
@@ -82,7 +82,7 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
     }
   })
   
-  eig <- GetEigens(s.sub, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = 4, peak.to.trough = TRUE)
+  eig <- GetEigens(s.sub, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dot.size, peak.to.trough = TRUE)
   
   omega <- 2 * pi / 24
   ampscale <- 2
@@ -110,9 +110,8 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
     dat$term <- factor(as.character(dat$term), levels = c("", jterms))
   }
   
-  top.hits <- 25
   top.amps <- as.character(head(dat[order(dat$amp, decreasing = TRUE), ], n = top.hits)$label)
-  dat$label <- sapply(as.character(dat$label), function(l) ifelse(l %in% top.amps, yes = l, no = ""))
+  dat$label <- sapply(as.character(dat$label), function(l) ifelse(l %in% top.amps | l %in% label.gene, yes = l, no = ""))
   # label only top genes
   amp.max <- ceiling(max(dat$amp) * 2) / 2
   if (amp.max <= 1){
@@ -120,7 +119,7 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
   } else {
     amp.step <- 1
   }
-  cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#D55E00", "#0072B2", "#9F1C34", "#CC79A7")
   cbPalette <- cbPalette[1:length(levels(dat$term))]
   # change "" term to light gray
   cbPalette[levels(dat$term) == ""] <- "gray85"
@@ -133,11 +132,11 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
     ggtitle(jtitle) +
     scale_y_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
     scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, length.out = 2)) + 
-    theme_bw() + 
+    theme_bw(jsize) + 
     geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
     geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
-          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position=legend.pos,
           panel.border = element_blank(),
           legend.key = element_blank(),
           axis.ticks = element_blank(),
