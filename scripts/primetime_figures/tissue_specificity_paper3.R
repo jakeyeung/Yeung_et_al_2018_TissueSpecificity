@@ -202,6 +202,7 @@ dev.off()
 # Genome-wide amplitudes: Hogenesch
 
 # from fourier directory total_variance.noise_floor.R
+linesize.gwide <- 2
 pdf(file.path(plot.dir, paste0(plot.i, ".genomewide_amplitude.pdf")))
 plot.i <- plot.i + 1
 
@@ -223,20 +224,32 @@ ngenes.sum <- dat.fit.24.ngenes.thres %>%
   summarise(total = sum(n.genes)) %>%
   arrange(desc(total))
 dat.fit.24.ngenes.thres$tissue <- factor(as.character(dat.fit.24.ngenes.thres$tissue), levels = ngenes.sum$tissue)
-ggplot(subset(dat.fit.24.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + geom_line() + 
+# make Liver and Kidney the first two
+jtisses <- c("Liver", "Kidney"); jlevs <- as.character(ngenes.sum$tissue)
+livkid.levels <- c(jlevs[jlevs %in% jtisses], jlevs[! jlevs %in% jtisses])
+dat.fit.24.ngenes.thres$tissue <- factor(as.character(dat.fit.24.ngenes.thres$tissue), levels = livkid.levels)
+
+cbPalette <- c(gg_color_hue(2), "#000000", "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+ggplot(subset(dat.fit.24.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + 
+  geom_line(size = linesize.gwide) + 
   theme_bw(24) +
   theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
   xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 5)) + 
   scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
-  geom_vline(xintercept = 1, linetype = "dotted") + 
+  geom_vline(xintercept = 1, linetype = "dotted") +  
+  scale_colour_manual(values = cbPalette) + 
   ggtitle(paste("pval cutoff", pval.cutoff))
 
 # Genome-wide amplitudes: Liver WT KO 
 fits.bytiss <- fits.bytiss[order(fits.bytiss$amp, decreasing = TRUE), ]
+fits.bytiss <- fits.bytiss  # [t]issues and [g]enotypes separate
+fits.bytiss$tiss <- sapply(as.character(fits.bytiss$tissue), function(tiss) strsplit(tiss, "_")[[1]][[1]])
+fits.bytiss$geno <- sapply(as.character(fits.bytiss$tissue), function(tiss) strsplit(tiss, "_")[[1]][[2]])
+
 amp.thres <- seq(from = 0, to = max(fits.bytiss$amp), by = 0.15)
 pval.cutoff <- 0.01
 fits.bytiss.ngenes.thres <- subset(fits.bytiss, pval < pval.cutoff) %>%
-  group_by(tissue) %>%
+  group_by(tiss, geno) %>%
   do(NGenesByAmp.long(., amp.thres))
 fits.bytiss.ngenes.thres$rhyth <- as.factor(24)
 
@@ -246,7 +259,13 @@ ngenes.sum.livkidWTKO <- fits.bytiss.ngenes.thres %>%
   summarise(total = sum(n.genes)) %>%
   arrange(desc(total))
 fits.bytiss.ngenes.thres$tissue <- factor(as.character(fits.bytiss.ngenes.thres$tissue), levels = ngenes.sum.livkidWTKO$tissue)
-ggplot(subset(fits.bytiss.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + geom_line(size = 3) + 
+# convert "SV129" to "WT"
+fits.bytiss.ngenes.thres$geno <- gsub("SV129", "WT", x = as.character(fits.bytiss.ngenes.thres$geno))
+fits.bytiss.ngenes.thres$geno <- factor(as.character(fits.bytiss.ngenes.thres$geno), levels = c("WT", "BmalKO"))
+
+ggplot(subset(fits.bytiss.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tiss, linetype = geno)) + 
+  scale_linetype_manual(values = c("solid", "dashed")) + 
+  geom_line(size = linesize.gwide) + 
   theme_bw(24) +
   theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
   xlab("Log2 Fold Change") + ylab("# Genes") + xlim(c(0, 5)) + 

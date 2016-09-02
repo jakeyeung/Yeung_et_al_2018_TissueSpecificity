@@ -2,6 +2,12 @@ library(ggplot2)
 library(ggrepel)
 library(grid)
 
+gg_color_hue <- function(n) {
+  # http://stackoverflow.com/questions/8197559/emulate-ggplot2-default-color-palette
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
 is_outlier <- function(x) {
   return(x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
 }

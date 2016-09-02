@@ -53,6 +53,7 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
   # show.top.n > 8 recycles colours
   # enrichment from GetGOEnrichment()
   # annotate dat.freq with GO terms for each gene (take most significant enrichment)
+  txtgray <- "gray70"
   
   constant.amp <- dot.size
   ylab <- ""
@@ -122,7 +123,7 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
   cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#D55E00", "#0072B2", "#9F1C34", "#CC79A7")
   cbPalette <- cbPalette[1:length(levels(dat$term))]
   # change "" term to light gray
-  cbPalette[levels(dat$term) == ""] <- "gray85"
+  cbPalette[levels(dat$term) == ""] <- txtgray
   
   m <- ggplot(data = dat, aes(x = amp, y = phase, label = label, colour = term)) + 
     geom_point(size = 1) +
