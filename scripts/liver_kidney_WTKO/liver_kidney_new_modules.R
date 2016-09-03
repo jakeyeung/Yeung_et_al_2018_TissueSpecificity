@@ -3,8 +3,23 @@
 # liver_kidney_new_modules.R
 # Find some exotic modules: maybe use that to find Kidney factors?
 
+
+args.to.numeric <- function(arg, default = FALSE){
+  # take command line argument and convert to numeric, if blank
+  # then return default
+  jarg <- as.numeric(arg)
+  if (is.na(jarg)){
+    return(default)
+  } else {
+    return(jarg)
+  }
+}
+
+
 setwd("/home/yeung/projects/tissue-specificity")
 jmeth <- "g=1001"
+args <- commandArgs(trailingOnly = TRUE)
+lambda <- args.to.numeric(args[1])
 
 library(dplyr)
 library(ggplot2)
@@ -20,6 +35,9 @@ source("scripts/functions/BiomartFunctions.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
 source("scripts/functions/GetTFs.R")
 
+
+
+# Functions ---------------------------------------------------------------
 
 
 
@@ -60,15 +78,18 @@ fits.long.filt$gene[which(fits.long.filt$gene == "Ciart")] <- "Gm129"
 # Init params -------------------------------------------------------------
 
 
-suffix <- "removeOutliers"
+suffix <- "globalLambda"
+# lambda <- 0.0242444713967604
+# lambda <- 0.0479929486250763  # tissue-wide clock-driven module
+# lambda <- FALSE
 # jmodel <- c("Liver_SV129,Kidney_SV129")
 if (suffix != ""){
   suffix <- paste0(".", suffix)
 }
 # jmodel <- c("Liver_SV129,Kidney_SV129")
-# jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129")
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Liver_BmalKO;Kidney_SV129,Kidney_BmalKO")
-jmodel <- c("Kidney_SV129")
+# jmodel <- c("Kidney_SV129")
+jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129")
 
 if (jmodel == "Kidney_SV129"){
   # remove some outliers
@@ -145,33 +166,14 @@ fits.count <- fits.count[order(fits.count$model.count, decreasing = TRUE), ]
 fits.count <- subset(fits.count, model.count > 190)  # no underdetermination
 jmodel.lst <- as.character(fits.count$model)
 
-# jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
-# jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO")
-# jmodel <- c("Liver_SV129,Kidney_SV129")
-# jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
-# jmodel <- c("Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Kidney_SV129;Kidney_BmalKO")
-# jmodel <- c("Liver_SV129,Liver_BmalKO", "Liver_SV129;Liver_BmalKO")
-# jmodel <- c("Liver_SV129")
-# jmodel <- c("Kidney_SV129")
-# jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
-# jmodel <- c("Kidney_SV129", "Kidney_SV129,Kidney_BmalKO", "Kidney_SV129;Kidney_BmalKO")
-# jmodel <- c("Liver_BmalKO", "Kidney_BmalKO")
-# jmodel <- c("Kidney_BmalKO")
-# jmodel <- c("Liver_BmalKO")
-
-# jmodel <- c("Kidney_SV129", "Kidney_SV129;Kidney_BmalKO", "Kidney_SV129;Liver_SV129,Liver_BmalKO", "Liver_SV129;Kidney_SV129")
-
-# jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO")
-# jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO", "Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
-
-
 
 # for systems-driven module, all modules with >= 3 rhythmic conditions
 
 jmodel.lst <- list(jmodel)
 # jmodel.lst <- c("all")
 for (jmodel in jmodel.lst){
-  print(paste("Running model:", jmodel))
+  print(paste("Running model:"))
+  print(jmodel)
   
   if (length(jmodel) <= 4){
     jmod <- paste(jmodel, collapse = "-")
@@ -216,11 +218,17 @@ for (jmodel in jmodel.lst){
   
   outbase <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney", suffix)
   dir.create(outbase)
-  outmain <- file.path(outbase, paste0("promoters.", jmod))
+  if (!is.numeric(lambda)){
+    outmain <- file.path(outbase, paste0("promoters.", jmod))
+  } else {
+    outmain <- file.path(outbase, paste0("promoters.", jmod, ".lambda.", lambda))
+  }
   # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod)
   
-  cmd <- paste("bash", marascript, nmat, outmain)
+  exprs.dir <- "/home/yeung/projects/tissue-specificity/data/gene_exprs/liver_v_kidney/atger_with_kidney.bugfixed"
+  cmd <- paste("bash", marascript, nmat, outmain, exprs.dir, lambda)
   if (!dir.exists(outmain)){
+    print(cmd)
     system(cmd)
   }
   
@@ -260,7 +268,11 @@ for (jmodel in jmodel.lst){
   dir.create(plotdir, showWarnings = FALSE)
   
   # BEGIN PLOT
-  pdf(file.path(plotdir, paste0("motif_activity.", jmod, ".pdf")))
+  if (!is.numeric(lambda)){
+    pdf(file.path(plotdir, paste0("motif_activity.", jmod, ".pdf")))
+  } else {
+    pdf(file.path(plotdir, paste0("motif_activity.", jmod, ".lambda.", lambda, ".pdf")))
+  }
   
   multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
   print(eigens.act$u.plot + ggtitle(jmod))
