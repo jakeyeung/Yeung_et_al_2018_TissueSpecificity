@@ -1,3 +1,69 @@
+# functions from UTR scripts
+setMethod("$", "GRanges", function(x, name) { # {{{
+  # http://grokbase.com/t/r/bioconductor/122mwahdhw/bioc-add-extra-columns-to-granges-metadata
+  elementMetadata(x)[, name]
+}) # }}}
+
+geneRanges <- 
+  function(db, column="ENTREZID")
+  {
+    g <- genes(db, columns=column)
+    col <- mcols(g)[[column]]
+    genes <- granges(g)[rep(seq_along(g), elementLengths(col))]
+    mcols(genes)[[column]] <- as.character(unlist(col))
+    genes
+  }
+
+splitColumnByOverlap <-
+  function(query, subject, column="ENTREZID", ...)
+  {
+    olaps <- findOverlaps(query, subject, ...)
+    f1 <- factor(subjectHits(olaps),
+                 levels=seq_len(subjectLength(olaps)))
+    splitAsList(mcols(query)[[column]][queryHits(olaps)], f1)
+  }
+
+geneRanges <- 
+  function(db, column="ENTREZID")
+  {
+    g <- genes(db, columns=column)
+    col <- mcols(g)[[column]]
+    genes <- granges(g)[rep(seq_along(g), elementLengths(col))]
+    mcols(genes)[[column]] <- as.character(unlist(col))
+    genes
+  }
+
+splitColumnByOverlap <-
+  function(query, subject, column="ENTREZID", ...)
+  {
+    olaps <- findOverlaps(query, subject, ...)
+    f1 <- factor(subjectHits(olaps),
+                 levels=seq_len(subjectLength(olaps)))
+    splitAsList(mcols(query)[[column]][queryHits(olaps)], f1)
+  }
+
+genomicRangesToBed <- function(gr, gene.name.col = "gene"){
+  bed <- data.frame(seqnames=gr$seqnames,
+                    starts=gr$start-1,
+                    ends=gr$end,
+                    genename=unlist(gr[[gene.name.col]]))
+  return(bed)
+}
+
+Vectorize(AnnotateFromHash <- function(x, hash.tbl){
+  x <- as.character(x)
+  out <- hash.tbl[[x]]
+  if (is.null(out)){
+    out <- NA
+  }
+  return(out)
+}, vectorize.args = "x")
+
+
+# Functions from promoter and enhancers scripts -----------------------------------------
+
+
+
 Transcript2Gene <- function(gene.list, return.original=TRUE) {
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
