@@ -15,6 +15,34 @@
 library(topGO)
 library(org.Mm.eg.db)
 
+
+MergeGOTerms <- function(enrichment, go.terms, new.go.term){
+  # After running GetGOEnrichment, merge some GO terms that may be "similar"
+  # after merging, does not recalculate pvalue, simply takes the worst p-value
+  enrichment.goterms <- subset(enrichment, GO.ID %in% go.terms)
+  enrichment.toappend <- subset(enrichment, !GO.ID %in% go.terms)
+  # merge go terms
+  enrichment.merged.base <- tbl_df(data.frame(GO.ID = NA, Term = NA, Annotated = NA, Significant = NA, Expected = NA, classicFisher = NA, FDRadj = NA, N.genes = NA, genes = NA, minuslogpval = NA))
+  enrichment.merged <- tbl_df(data.frame(GO.ID = paste(enrichment.goterms$GO.ID, collapse = ","),
+                                         Term = new.go.term,
+                                         Annotated = NA,
+                                         Signficiant = NA,
+                                         Expected = NA,
+                                         classicFisher = NA,
+                                         FDRadj = max(enrichment.goterms$FDRadj),
+                                         N.genes = unique(enrichment.goterms$N.genes),
+                                         genes = NA,  # add genes later
+                                         # genes = unique(do.call(c, enrichment.goterms$genes)),
+                                         minuslogpval = min(enrichment.goterms$minuslogpval)))
+  enrichment.merged <- bind_rows(enrichment.merged, enrichment.merged.base)  # dplyr doesnt handle single row tables well
+  # add genes
+  genes <- unique(do.call(c, enrichment.goterms$genes))
+  genes.lst <- list(genes, NA)
+  enrichment.merged$genes <- sapply(genes.lst, function(g) return(g))
+  enrichment.merged <- subset(bind_rows(enrichment.merged, enrichment.toappend), !is.na(GO.ID))
+  return(enrichment.merged)
+}
+
 GetGOEnrichment <- function(genes.bg, genes.fg, fdr.cutoff, show.top.n = 8, ontology="BP", wd = "/home/yeung/projects/tissue-specificity"){
   source(file.path(wd, "scripts/functions/AnalyzeGeneEnrichment.R"))
   enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, which.ontology = ontology, return.GOdata = TRUE)
@@ -49,13 +77,13 @@ PlotEnrichmentGenes <- function(dat.freq, enrichment, max.genes, row.i = "max"){
   print(eigens$u.plot)
 }
 
-PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6, comp = 1, jsize = 22, legend.pos = "bottom", label.gene = c(), top.hits = 25){
+PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", text.size = 6, dot.size = 6, comp = 1, jsize = 22, legend.pos = "bottom", label.gene = c(), top.hits = 25, label.GO.terms.only=FALSE, unlabeled.alpha = 0.3){
   # show.top.n > 8 recycles colours
   # enrichment from GetGOEnrichment()
   # annotate dat.freq with GO terms for each gene (take most significant enrichment)
   txtgray <- "gray70"
   
-  constant.amp <- dot.size
+  constant.amp <- text.size
   ylab <- ""
   xlab <- "Log2 Fold Change"
   
@@ -83,7 +111,7 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
     }
   })
   
-  eig <- GetEigens(s.sub, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dot.size, peak.to.trough = TRUE)
+  eig <- GetEigens(s.sub, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = constant.amp, peak.to.trough = TRUE)
   
   omega <- 2 * pi / 24
   ampscale <- 2
@@ -110,8 +138,21 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
     jterms <- as.character(enrichment$Term)
     dat$term <- factor(as.character(dat$term), levels = c("", jterms))
   }
+  # make points transparent if not labeled to a GO term, otherwise use a color
+  dat$jalpha <- sapply(as.character(dat$term), function(g){
+    if (g == ""){
+      return(unlabeled.alpha)
+    } else {
+      return(1)
+    }
+  })
   
-  top.amps <- as.character(head(dat[order(dat$amp, decreasing = TRUE), ], n = top.hits)$label)
+  if (!label.GO.terms.only){
+    top.amps <- as.character(head(dat[order(dat$amp, decreasing = TRUE), ], n = top.hits)$label)
+  } else {
+    dat.sub2 <- subset(dat, term != "")
+    top.amps <- as.character(head(dat.sub2[order(dat.sub2$amp, decreasing = TRUE), ], n = top.hits)$label)
+  }
   dat$label <- sapply(as.character(dat$label), function(l) ifelse(l %in% top.amps | l %in% label.gene, yes = l, no = ""))
   # label only top genes
   amp.max <- ceiling(max(dat$amp) * 2) / 2
@@ -125,8 +166,8 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
   # change "" term to light gray
   cbPalette[levels(dat$term) == ""] <- txtgray
   
-  m <- ggplot(data = dat, aes(x = amp, y = phase, label = label, colour = term)) + 
-    geom_point(size = 1) +
+  m <- ggplot(data = dat, aes(x = amp, y = phase, label = label, colour = term, alpha = jalpha)) + 
+    geom_point(size = dot.size, shape = 15) +
     coord_polar(theta = "y") + 
     xlab(xlab) +
     ylab(ylab) +
@@ -141,7 +182,8 @@ PlotGeneModuleWithGO <- function(dat.sub, enrichment, jtitle = "", dot.size = 6,
           panel.border = element_blank(),
           legend.key = element_blank(),
           axis.ticks = element_blank(),
-          panel.grid  = element_blank())
+          panel.grid  = element_blank()) + 
+    scale_alpha_identity()
   # add text
   df.txt <- subset(dat, label != "")
   if (constant.amp != FALSE){

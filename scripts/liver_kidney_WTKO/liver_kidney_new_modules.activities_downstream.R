@@ -38,12 +38,12 @@ jmod <- "Liver_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129"
 jmod <- "many_modules_minrhyth.3"
-jmod <- "Kidney_SV129"
 jmod <- "Kidney_SV129,Kidney_BmalKO"
-jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
 jmod <- "many_modules_minrhyth.4"
 jmod <- "many_modules_minrhyth.4.exclude_clockdriven_model"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
+jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
+jmod <- "Liver_SV129"
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
 # outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.exclude_clockdriven_model"
 outmain <- file.path(outbase, paste0("promoters.", jmod, ".g=1001"))
@@ -76,6 +76,23 @@ comp <- 1
 eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2", "TFAP2B.p2"))
 print(eigens.act$u.plot + ggtitle(jmod))
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
+
+jgene <- "HOXA9_MEIS1.p2"
+jgene <- "HIC1.p2"
+jgene <- "HLF.p2"
+jgene <- "bHLH_family.p2"
+jgene <- "HSF1.2.p2"
+jgene <- "SRF.p3"
+jgene <- "ONECUT1.2.p2"
+jgene <- "EGR1..3.p2"
+jgene <- "HIC1.p2"
+jgene <- "RORA.p2"
+PlotActivitiesWithSE(subset(act.long, gene == jgene), jtitle = "", showSE = TRUE) + ggtitle(jgene)
+
+# check if it is centered??
+act.sum <- act.long %>%
+  group_by(gene) %>%
+  summarise(exprs = sum(exprs))
 
 # plot gene
 if (grepl("^many_modules", jmod)){

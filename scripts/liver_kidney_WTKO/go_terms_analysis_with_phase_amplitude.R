@@ -5,7 +5,8 @@
 rm(list=ls())
 start <- Sys.time()
 
-dotsize <- 6
+textsize <- 7
+dotsize <- 2
 remove.kidney.outliers <- TRUE
 
 library(ggplot2)
@@ -97,7 +98,7 @@ pdf(file.path(plotdir, paste0("liv_kid_with_GO.rm_outliers.", remove.kidney.outl
     genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
     dat.sub <- subset(dat.freq, gene %in% genes)
     s <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
-    eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Egr1", "Mafb", "Tfcp2"))
+    eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = textsize, peak.to.trough = TRUE, label.gene = c("Egr1", "Mafb", "Tfcp2"))
     
     plots$add(eigens$u.plot + ylab("ZT") + ggtitle(""))
     plots$add(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
@@ -105,9 +106,14 @@ pdf(file.path(plotdir, paste0("liv_kid_with_GO.rm_outliers.", remove.kidney.outl
     genes.bg <- as.character(subset(fits.long.filt)$gene)
     genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
     enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = jcutoff, ontology = jonto, show.top.n = 8)
-    
-    m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), dot.size = dotsize, comp = comp, legend.pos = "none", label.gene = c("Egr1", "Mafb", "Tfcp2"))
-    m2 <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), dot.size = dotsize, comp = comp, legend.pos = "right", label.gene = c("Egr1", "Mafb", "Tfcp2"))
+    # merge GO terms (manual for the moment)
+    if (jtiss.onto[[1]] == "Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO"){
+      # merge circ reg and rhyth process into one term
+      go.terms <- c("GO:0032922", "GO:0048511")
+      enrichment <- MergeGOTerms(enrichment, go.terms, new.go.term = "circadian or rhythmic process")
+    }
+    m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "none", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
+    m2 <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "right", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
     plots$add(m + ylab("ZT") + ggtitle(""))
     plots$add(m2 + ylab("ZT") + ggtitle(""))
     return(plots$as.list())
