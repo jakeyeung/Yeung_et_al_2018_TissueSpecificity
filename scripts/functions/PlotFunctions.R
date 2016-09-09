@@ -744,7 +744,7 @@ ConvertArgToPhase <- function(phase.rads, omega){
 
 PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, 
                          title = "My title", xlab = "Amplitude of activity", ylab = "Phase of activity (CT)", 
-                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22){
+                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave
@@ -764,7 +764,7 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
     amp.step <- 1
   }
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
-    geom_point(size = 0.5, colour = dot.col) +
+    geom_point(size = dotsize, colour = dot.col, shape = dotshape) +
     coord_polar(theta = "y") + 
     xlab(xlab) +
     ylab(ylab) +

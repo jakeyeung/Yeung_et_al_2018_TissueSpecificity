@@ -18,29 +18,31 @@ PlotActivitiesWithSE.dhs <- function(dat, jtitle, sort.by.tissue = TRUE, by.var 
                          panel.grid.minor = element_blank())
 }
 
-PlotActivitiesWithSE <- function(dat, jtitle, showSE = TRUE){
+PlotActivitiesWithSE <- function(dat, jtitle, showSE = TRUE, jxlab = "ZT", jsize = 20){
+  nexpers <- length(unique(as.character(dat$experiment)))
   jgene <- unique(dat$gene)
   if (missing(jtitle)){
     jtitle <- jgene
   }
-  if (showSE){
-    ggplot(dat, 
-           aes(x = time, y = exprs, group = experiment, colour = experiment)) +
-      geom_line() +
-      geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se)) +
-      facet_wrap(~tissue) + 
-      xlab("CT") +
-      ylab("Activity") + 
-      ggtitle(jtitle)
+  if (nexpers == 1){
+    m <- ggplot(dat, aes(x = time, y = exprs))
   } else {
-    ggplot(dat, 
-           aes(x = time, y = exprs)) +
-      geom_line() +
-      facet_wrap(~tissue) + 
-      xlab("CT") +
-      ylab("Activity") + 
-      ggtitle(jtitle)
+    m <- ggplot(dat, aes(x = time, y = exprs, group = experiment, colour = experiment))
   }
+  if (showSE){
+    m <- m + geom_errorbar(aes(ymax = exprs + se, ymin = exprs - se))
+  }
+  m <- m + geom_line() + facet_wrap(~tissue, nrow = 1) + xlab(jxlab) + ylab("Activity") + ggtitle(jtitle) + theme_bw(jsize) + 
+    # theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme(aspect.ratio=1, strip.text = element_blank())
+  if (jxlab == "ZT"){
+    m <- m + scale_x_continuous(limits = c(0, 48), breaks = seq(0, 48, 12))
+  } else if (jxlab == "CT"){
+    m <- m + scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))
+  } else {
+    warning("jxlab should be ZT or CT")
+  }
+  return(m)
 }
 
 PlotActivitiesWithSE.rnaseq <- function(dat, jtitle, showSE = TRUE){

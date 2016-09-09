@@ -65,7 +65,6 @@ act.complex <- act.long %>%
 
 s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
 
-
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 # jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
 

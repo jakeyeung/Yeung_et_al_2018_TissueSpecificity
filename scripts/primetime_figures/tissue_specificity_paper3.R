@@ -123,7 +123,7 @@ print(eigens.tw$u.plot)
 print(eigens.tw$v.plot)
 multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
 
-eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE)
+eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18)
 print(eigens.act$u.plot)
 print(eigens.act$v.plot)
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
@@ -135,7 +135,7 @@ print(eigens$u.plot)
 print(eigens$v.plot)
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
-eigens.act <- GetEigens(s.act.wtko, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE)
+eigens.act <- GetEigens(s.act.wtko, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE, , dot.col = "black", dotsize = 2, dotshape = 18)
 print(eigens.act$u.plot)
 print(eigens.act$v.plot)
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
@@ -350,7 +350,8 @@ for (jmod in jmods){
   jtitle <- ""
   comp <- 1
   eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, 
-                          label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family", "RORA", "SRF", "HSF1.2"), jsize = 16)
+                          label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family", "RORA", "SRF", "HSF1.2"), jsize = 16, 
+                          dot.col = "black", dotsize = 2, dotshape = 18)
   print(eigens.act$u.plot + ylab("ZT") + ggtitle(""))
   print(eigens.act$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
   
@@ -367,6 +368,16 @@ for (jmod in jmods){
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   print(eigens$u.plot + ylab("ZT") + ggtitle(""))
   print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  # plot clock rhythms
+  if (jmod == jmod2){
+    jmotifs.clock <- c("RORA", "bHLH_family", "HIC1", "DBP", "NFIL3")
+  } else if (jmod == jmod1){
+    jmotifs.clock <- c("HSF1.2", "SRF", "HIF1A", "PITX1..3", "HNF4A_NR2F1.2", "EGR1..3")
+  }
+  # plot example motifs
+  for (m in jmotifs.clock){
+    print(PlotActivitiesWithSE(subset(act.long, gene == m), jtitle = "", showSE = TRUE, jxlab = "ZT", jsize = 16) + ggtitle(m) + theme(legend.position = "none"))
+  }
 }
 
 dev.off()
@@ -489,7 +500,8 @@ dat.mean.wtko <- dat.wtko.collapsed %>%
   summarise(exprs.mean = mean(exprs))
 
 # jmod <- "Liver_SV129,Liver_BmalKO"
-jmods <- c("Liver_SV129,Liver_BmalKO", "Liver_BmalKO", "Kidney_SV129", "Liver_SV129", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO")
+
+jmods <- c("Liver_SV129,Liver_BmalKO", "Liver_BmalKO", "Kidney_SV129", "Liver_SV129")
 for (jmod in jmods){
   jtiss <- strsplit(jmod, "_")[[1]][[1]]
   print(paste("Finding regulators for:", jmod))
@@ -505,13 +517,15 @@ for (jmod in jmods){
   
   jmod.label <- gsub(pattern = ",", replacement = "-", jmod)
   pdf(file.path(plot.dir, paste0(plot.i, ".clock_independent_", jmod.label, "_regulators.pdf")))
+  
+
   # increment plot.i after the for loop
   
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.mod), value.var = "exprs.transformed")
   eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18)
   
   # plot genes and regulators
   print(eigens$u.plot + ylab("ZT") + ggtitle(""))
@@ -544,6 +558,7 @@ for (jmod in jmods){
       }
     }
   }
+
   dev.off()  
 }
 plot.i <- plot.i + 1
@@ -750,7 +765,9 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 
 max.labs <- 2
 jtitle <- ""
-eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = K, jtitle = jtitle, peak.to.trough = TRUE)
+eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, 
+                        label.n = K, jtitle = jtitle, peak.to.trough = TRUE, dot.col = "black", 
+                        dotsize = 2, dotshape = 18, xlab = "Activity (arbitrary units)")
 
 pdf(file.path(plot.dir, paste0(plot.i, ".clock_dependent_liver_genes_cooperative_action.pdf")))
 plot.i <- plot.i + 1
