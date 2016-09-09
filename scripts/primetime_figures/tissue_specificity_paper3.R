@@ -824,6 +824,7 @@ for (jbait in jbaits){
   Zscores <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Zscore", jtitle = "", jxlab = "", jshow.legend = FALSE, flip.y.axis = TRUE)
   Pvalues <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Pvalue", jtitle = "", jshow.legend = TRUE, flip.y.axis = TRUE)
   PlotQuad(Signal, Signal08, Zscores, Pvalues, n.boxes = 2)
+  PlotTriple(Signal, Signal08, Zscores + theme(aspect.ratio = 0.25), n.boxes = 2)
 }
 
 ggplot(subset(counts.delt.lk.sub, bait == "Mreg"), aes(x = A.delta / log10(2), y = -log10(pval.row))) +
