@@ -1,4 +1,7 @@
 # functions from UTR scripts
+library(methods)
+library(IRanges)
+
 setMethod("$", "GRanges", function(x, name) { # {{{
   # http://grokbase.com/t/r/bioconductor/122mwahdhw/bioc-add-extra-columns-to-granges-metadata
   elementMetadata(x)[, name]
