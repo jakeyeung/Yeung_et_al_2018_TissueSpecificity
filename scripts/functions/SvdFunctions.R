@@ -7,7 +7,7 @@ library(reshape2)
 # library(PhaseHSV)
 library(ggplot2)
 
-ProjectToFrequency2 <- function(dat, omega, add.tissue=FALSE){
+ProjectToFrequency2 <- function(dat, omega, add.tissue=FALSE, propagate.errors=FALSE){
   # simpler than ProjectToFrequency().
   # expect dat to be gene i in tissue c with column names time and exprs
   exprs.transformed <- DoFourier(dat$exprs, dat$time, omega = omega)
@@ -16,6 +16,11 @@ ProjectToFrequency2 <- function(dat, omega, add.tissue=FALSE){
     dat.out <- data.frame(tissue = tissue, exprs.transformed = exprs.transformed)
   } else {
     dat.out <- data.frame(exprs.transformed = exprs.transformed)
+  }
+  if (propagate.errors){
+    se.xy <- DoFourier.se(dat$se, dat$time, omega = omega, normalize = TRUE)
+    dat.out$se.real <- se.xy$se.cospart
+    dat.out$se.im <- se.xy$se.sinpart
   }
   return(dat.out)
 }
@@ -144,24 +149,6 @@ IsRhythmic <- function(dat, my.omega, pval.cutoff = 5e-3, method = "ANOVA"){
   }
 }
 
-# fit.rhyth <- lm(exprs ~ sin(omega * time) + cos(omega * time), data = dat)
-# fit.flat <- lm(exprs ~ 1, data = dat)  # intercept only
-# # omega.noise <- 2 * pi / (GetInterval(dat$time) * 4)  # period of every two intervals is noise.
-# omega.noise <- 2 * pi / 12
-# fit.noise <- lm(exprs ~ sin(omega.noise * time) + cos(omega.noise * time), data = dat)
-# bic.test <- BIC(fit.rhyth, fit.flat, fit.noise)
-# (bic.test)
-# # extract rowname of minimum BIC
-# chosen.model <- rownames(bic.test)[which(bic.test$BIC == min(bic.test$BIC))]
-# if (chosen.model == "fit.rhyth"){
-#   dat.transformed <- Transform(dat, my.omega, normalize)
-# } else {
-#   # if not rhythmic, then do not do transform it.
-#   dat.transformed <- data.frame(exprs.transformed = 0)
-# }
-# } else {
-#   dat.transformed <- Transform(dat, my.omega, normalize)
-# }
 
 DoFourier <- function(exprs, time, omega, normalize = TRUE){
   p <- exprs %*% exp(1i * omega * time)
@@ -169,6 +156,40 @@ DoFourier <- function(exprs, time, omega, normalize = TRUE){
     p <- p / length(time)  # normalize by number of datapoints 
   }
   return(p)
+}
+
+DelFA.DelI <- function(x, omega = 2 * pi / 24){
+  # error propagation needs partial derivatives of Fourier with respect to I (A and B)  
+  # FA: cospart
+  # FB: sinepart
+  N <- length(x)
+  delFa.delI <- (1 / N) * cos(omega * x)
+  return(delFa.delI)
+}
+
+DelFB.DelI <- function(x, omega = 2 * pi / 24){
+  # error propagation needs partial derivatives of Fourier with respect to I (A and B)  
+  # FA: cospart
+  # FB: sinepart
+  N <- length(x)
+  delFb.delI <- (1 / N) * sin(omega * x)
+  return(delFb.delI)
+}
+
+DelF.DelI <- function(x, omega = 2 * pi / 24){
+  # error propagation using exponential form
+  N <- length(x)
+  delF.delI <- (1 / N) * exp(1i *omega * x)
+  return(delF.delI)
+}
+
+DoFourier.se <- function(se, jtime, omega = 2 * pi / 24, normalize = TRUE){
+  # http://www.tina-vision.net/teaching/cvmsc/docs/fourier.ps
+  # Error Propagation and the Fourier Transform􏰀
+  N <- length(se)
+  se.cospart <- sqrt(t(DelFA.DelI(jtime, omega)) %*% diag(se ^ 2) %*% DelFA.DelI(jtime, omega))
+  se.sinpart <- sqrt(t(DelFB.DelI(jtime, omega)) %*% diag(se ^ 2) %*% DelFB.DelI(jtime, omega))
+  return(list(se.cospart = se.cospart, se.sinpart = se.sinpart))
 }
 
 GetOmegas <- function(n.timepoints=24, interval=2, remove.zero=FALSE){
