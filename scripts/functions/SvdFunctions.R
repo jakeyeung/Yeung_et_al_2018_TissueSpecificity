@@ -7,6 +7,20 @@ library(reshape2)
 # library(PhaseHSV)
 library(ggplot2)
 
+ProjectWithZscore <- function(act.long, omega, n = 4){
+  act.complex <- act.long %>%
+    group_by(gene, tissue) %>%
+    do(ProjectToFrequency2(., omega, add.tissue=TRUE, propagate.errors = TRUE)) %>%
+    # zscore from 0
+    mutate(amp = GetAmp(a = Re(exprs.transformed), b = Im(exprs.transformed), n = n),  # peak to trough
+           phase = GetPhi(a = Re(exprs.transformed), b = Im(exprs.transformed), omega),  # in hours
+           amp.se = GetAmp.se(a = Re(exprs.transformed), b = Im(exprs.transformed), sig.a = se.real, sig.b = se.im, n = n),
+           phase.se = GetPhi.se(a = Re(exprs.transformed), b = Im(exprs.transformed), sig.a = se.real, sig.b = se.im, omega),
+           zscore = amp / amp.se) %>%
+    arrange(desc(zscore))
+  return(act.complex)
+}
+
 ProjectToFrequency2 <- function(dat, omega, add.tissue=FALSE, propagate.errors=FALSE){
   # simpler than ProjectToFrequency().
   # expect dat to be gene i in tissue c with column names time and exprs

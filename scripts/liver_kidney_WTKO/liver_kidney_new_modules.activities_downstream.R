@@ -14,6 +14,8 @@ source("scripts/functions/LiverKidneyFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/NcondsFunctions.R")
+source("scripts/functions/ModelStrToModel.R")
+source("/home/yeung/projects/posttranscriptional_regulation/functions/CosSineFunctions.R")
 
 # Load --------------------------------------------------------------------
 
@@ -41,9 +43,17 @@ jmod <- "many_modules_minrhyth.3"
 jmod <- "Kidney_SV129,Kidney_BmalKO"
 jmod <- "many_modules_minrhyth.4"
 jmod <- "many_modules_minrhyth.4.exclude_clockdriven_model"
-jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
 jmod <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
+jmod <- "Kidney_SV129"
+jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
+jtiss <- c("Liver_SV129", "Kidney_SV129", "Liver_BmalKO", "Kidney_BmalKO")
+
+jmod <- "Liver_SV129,Liver_BmalKO"
+jtiss <- c("Liver_SV129", "Liver_BmalKO")
+
 jmod <- "Liver_SV129"
+jtiss <- c("Liver_SV129")
+
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
 # outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.exclude_clockdriven_model"
 outmain <- file.path(outbase, paste0("promoters.", jmod, ".g=1001"))
@@ -53,17 +63,41 @@ outmain <- file.path(outbase, paste0("promoters.", jmod, ".g=1001"))
 # outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney./promoters.", jmod, ".g=1001")
 indir <- file.path(outmain, "atger_with_kidney.bugfixed")
 source("scripts/functions/LoadActivitiesLong.R")
-act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = FALSE)
+act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = TRUE)
 
 
 # Plot module -------------------------------------------------------------
 
 omega <- 2 * pi / 24
-act.complex <- act.long %>%
-  group_by(gene, tissue) %>%
-  do(ProjectToFrequency2(., omega, add.tissue=TRUE))
 
-s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
+n <- 4
+
+act.complex <- ProjectWithZscore(act.long, omega, n = 4)
+zscore.min <- 1.25
+rhyth.tiss <- strsplit(jmod, ",")[[1]]
+sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
+
+# act.complex <- act.long %>%
+#   group_by(gene, tissue) %>%
+#   do(ProjectWithZscore(., omega = omega, add.tissue = TRUE, propagate.errors = TRUE))
+# head(print(data.frame(act.complex[order(act.complex$zscore, decreasing = TRUE), ])), n = 100)
+
+
+# # Find z-score cutoff
+# x <- seq(0, 3, length.out = 1000)
+# y <- pnorm(x) - pnorm(-x)
+# plot(x, y, type = "l")
+# abline(h = 0.8)
+# abline(v = 1.25)
+
+zscore.min <- 1.25
+rhyth.tiss <- strsplit(jmod, ",")[[1]]
+# Filter out motifs whose amplitudes are smaller than amp.se 
+sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
+
+print(sig.motifs)
+
+s.act <- SvdOnComplex(subset(act.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
 
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 # jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
@@ -75,6 +109,8 @@ comp <- 1
 eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2", "TFAP2B.p2"))
 print(eigens.act$u.plot + ggtitle(jmod))
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
+
+
 
 jgene <- "HOXA9_MEIS1.p2"
 jgene <- "HIC1.p2"

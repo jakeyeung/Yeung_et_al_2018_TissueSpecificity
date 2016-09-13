@@ -35,5 +35,3 @@ act.complex <- subset(act.long, tissue != "WFAT") %>%
          phase.se = GetPhi.se(a = Re(exprs.transformed), b = Im(exprs.transformed), sig.a = se.real, sig.b = se.im, omega))
 
 s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
-
-
