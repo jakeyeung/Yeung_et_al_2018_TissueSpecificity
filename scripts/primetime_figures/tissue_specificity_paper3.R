@@ -15,6 +15,7 @@ library(parallel)
 setwd("/home/yeung/projects/tissue-specificity")
 
 source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/NcondsFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
@@ -30,8 +31,12 @@ source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
 source("scripts/functions/ProteomicsFunctions.R")
+source("scripts/functions/CosSineFunctions.R")
 
 dotsize <- 6
+zscore.min <- 1.25
+omega <- 2 * pi / 24
+n <- 4  # amplitude scaling 
 # Functions ---------------------------------------------------------------
 
 
@@ -94,22 +99,16 @@ outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.hogenesch"
 outmain <- file.path(outbase, paste0("promoters.tissuewide.filteramp.0.15.mat"))
 indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
 act.long <- LoadActivitiesLong(indir, shorten.motif.name = TRUE)
-# rename motifs based on the motifs with non-zero entries
-omega <- 2 * pi / 24
-act.complex <- subset(act.long, tissue != "WFAT") %>%
-  group_by(gene, tissue) %>%
-  do(ProjectToFrequency2(., omega, add.tissue=TRUE))
-s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
+act.complex <- ProjectWithZscore(act.long, omega, n = n)
+sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
+s.act <- SvdOnComplex(subset(act.complex, tissue != "WFAT" & gene %in% sig.motifs), value.var = "exprs.transformed")
 
 # get regulators: liver kidney WT
 indir <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Liver_SV129,Kidney_SV129.g=1001/atger_with_kidney.bugfixed"
 act.wtko <- LoadActivitiesLongKidneyLiver(indir, shorten.motif.name = TRUE)
-# rename motifs based on the motifs with non-zero entries
-omega <- 2 * pi / 24
-act.complex.wtko <- act.wtko %>%
-  group_by(gene, tissue) %>%
-  do(ProjectToFrequency2(., omega, add.tissue=TRUE))
-s.act.wtko <- SvdOnComplex(act.complex.wtko, value.var = "exprs.transformed")
+act.complex.wtko <- ProjectWithZscore(act.wtko, omega, n = n)
+sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
+s.act.wtko <- SvdOnComplex(subset(act.complex.wtko, gene %in% sig.motifs), value.var = "exprs.transformed")
 
 # plot 
 comp <- 1
@@ -327,7 +326,7 @@ dev.off()
 pdf(file.path(plot.dir, paste0(plot.i, ".tissuewide_modules_liver_kidney_wtko.pdf")))
 plot.i <- plot.i + 1
 
-omega <- 2 * pi / 24
+
 # jmod1 <- "many_modules_minrhyth.4.exclude_clockdriven_model"
 jmod1 <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
 # jmod2 <- "Liver_SV129,Kidney_SV129"
@@ -337,14 +336,10 @@ for (jmod in jmods){
   # outmain <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.Kidney_SV129,Kidney_BmalKO.g=1001"
   outmain <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001")
   indir <- file.path(outmain, "atger_with_kidney.bugfixed")
-  source("scripts/functions/LoadActivitiesLong.R")
   act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = TRUE)
-  
-  act.complex <- act.long %>%
-    group_by(gene, tissue) %>%
-    do(ProjectToFrequency2(., omega, add.tissue=TRUE))
-  
-  s.act <- SvdOnComplex(act.complex, value.var = "exprs.transformed")
+  act.complex <- ProjectWithZscore(act.long, omega, n)
+  sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
+  s.act <- SvdOnComplex(subset(act.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
   
   max.labs <- 20
   jtitle <- ""
@@ -459,10 +454,13 @@ dev.off()
 # Summarize modules -------------------------------------------------------
 
 # filter top models
-fits.count <- subset(fits.long.filt, method == jmeth & model != "") %>% group_by(model) %>% summarise(model.count = length(model))
-fits.count <- fits.count[order(fits.count$model.count, decreasing = TRUE), ]
-fits.count <- fits.count[1:10, ]
-top.models <- as.character(fits.count$model)
+# fits.count <- subset(fits.long.filt, method == jmeth & model != "") %>% group_by(model) %>% summarise(model.count = length(model))
+# fits.count <- fits.count[order(fits.count$model.count, decreasing = TRUE), ]
+# fits.count <- fits.count[1:10, ]
+# top.models <- as.character(fits.count$model)
+
+# filter by hard coding
+top.models <- c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129", "Kidney_SV129")
 
 fits.sub <- subset(fits.long.filt, model %in% top.models)
 # reorder factor by fits.count
@@ -509,10 +507,9 @@ for (jmod in jmods){
   
   maraoutdir <- paste0("/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/promoters.", jmod, ".g=1001/atger_with_kidney.bugfixed")
   act.s <- LoadActivitiesLongKidneyLiver(maraoutdir, shorten.motif.name = TRUE)
-  act.s.complex <- subset(act.s, tissue != "WFAT") %>%
-    group_by(gene, tissue) %>%
-    do(ProjectToFrequency2(., omega, add.tissue=TRUE))
-  s.act <- SvdOnComplex(act.s.complex, value.var = "exprs.transformed")
+  act.s.complex <- ProjectWithZscore(act.s, omega, n)
+  sig.motifs <- unique(as.character(subset(act.s.complex, zscore > zscore.min)$gene))
+  s.act <- SvdOnComplex(subset(act.s.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
   
   
   jmod.label <- gsub(pattern = ",", replacement = "-", jmod)
@@ -748,7 +745,6 @@ inmain <- outmain
 indir <- file.path(inmain, "atger_with_kidney.bugfixed")
 # indir <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney/many_motifs_decorrelated.nofiltergenes.noabs/atger_with_kidney.bugfixed"
 act.long <- LoadActivitiesLongKidneyLiver(indir, collapse.geno.tissue = TRUE, shorten.motif.name = TRUE)
-# rename motifs based on the motifs with non-zero entries
 act.long$pc <- sapply(as.character(act.long$gene), function(g) as.numeric(strsplit(g, "_")[[1]][[3]]), USE.NAMES = FALSE)
 motif.decor <- sapply(act.long$pc, function(p) PcToMotif(mat.pmd$v, p), USE.NAMES = FALSE)
 act.long$gene <- motif.decor

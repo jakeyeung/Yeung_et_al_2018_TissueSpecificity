@@ -48,11 +48,12 @@ jmod <- "Kidney_SV129"
 jmod <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
 jtiss <- c("Liver_SV129", "Kidney_SV129", "Liver_BmalKO", "Kidney_BmalKO")
 
-jmod <- "Liver_SV129,Liver_BmalKO"
-jtiss <- c("Liver_SV129", "Liver_BmalKO")
 
 jmod <- "Liver_SV129"
 jtiss <- c("Liver_SV129")
+
+jmod <- "Liver_SV129,Liver_BmalKO"
+jtiss <- c("Liver_SV129", "Liver_BmalKO")
 
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney"
 # outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.liver_kidney.exclude_clockdriven_model"
