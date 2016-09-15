@@ -120,8 +120,8 @@ HellingerDistance <- function(dat){
   if (nrow(dat) != 2){
     # print(paste("Number of columns:", ncol(dat)))
     warning("Hellinger Distance only computes distance between two rows.")
-    print("Dim:")
-    print(dim(dat))
+    # print("Dim:")
+    # print(dim(dat))
     return(NA)
   }
   return(sqrt(sum(apply(dat, 2, function(colm) (sqrt(colm[1]) - sqrt(colm[2]))) ^ 2)))

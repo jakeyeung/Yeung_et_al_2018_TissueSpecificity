@@ -24,8 +24,10 @@ eps <- 1  # for log2 transform
 
 # Load --------------------------------------------------------------------
 
-dataset <- "hogenesch"  # or liverWTKO
 dataset <- "liverWTKO"  # or hogenesch
+dataset <- "hogenesch"  # or liverWTKO
+
+do.filter <- FALSE
 
 if (dataset == "hogenesch"){
   load("Robjs/tpm.afe.avg.binary.Robj", verbose=T)
@@ -43,8 +45,12 @@ if (dataset == "hogenesch"){
   
   counts.dic <- hash(as.character(tpm.counts$gene), tpm.counts$counts)
   
-  # tiss.filt <- c("Liver", "Kidney")
-  # tpm.afe.avg <- subset(tpm.afe.avg, tissue %in% tiss.filt)
+  if (do.filter){
+    tiss.filt <- c("Liver", "Kidney")
+    tpm.afe.avg <- subset(tpm.afe.avg, tissue %in% tiss.filt)
+    genes.filt <- as.character(tpm.afe.avg$gene)
+    fits.long.filt <- subset(fits.long.filt, gene %in% genes.filt)
+  }
   
 } else if (dataset == "liverWTKO"){
   load("Robjs/liver_kidney_atger_nestle/tpm.afe.avg.binary.Robj", v=T)
@@ -108,7 +114,25 @@ tpm.model.count <- tpm.afe.dist %>%
 top.models <- tpm.model.count$model[1:top.n]
 jsub <- subset(tpm.afe.dist, model %in% top.models)
 ggplot(jsub, aes(x = model, y = proms.dist)) + geom_boxplot()
-  
+
+
+
+# Find the top hits -------------------------------------------------------
+
+# assigin prom dist to fits long filt
+proms.dist.tbl <- hash(as.character(tpm.afe.dist$gene), tpm.afe.dist$proms.dist)
+
+fits.long.filt$proms.dist <- sapply(as.character(fits.long.filt$gene), function(g){
+  pdist <- proms.dist.tbl[[g]]
+  if (is.null(pdist)){
+    pdist <- NA
+  } 
+  return(pdist)
+})
+
+ggplot(fits.long.filt, aes(x = amp.avg, y = proms.dist, label = gene)) + geom_point(alpha = 0.2) + geom_text()
+ 
+ 
 # 
 # # Compare rhythmic genes with flat genes ----------------------------------
 # 
