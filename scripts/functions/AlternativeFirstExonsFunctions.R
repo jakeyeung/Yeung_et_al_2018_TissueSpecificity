@@ -1,6 +1,7 @@
 GetGeneModelKeys <- function(dat, tiss){
   rhyth.tiss <- gsub(pattern = ";", replacement = ",", x = dat$model)
   rhyth.tiss <- strsplit(rhyth.tiss, ",")[[1]]
+  rhyth.tiss <- sapply(rhyth.tiss, function(tiss) strsplit(tiss, "_")[[1]][[1]], USE.NAMES = FALSE)
   
   is.rhyth <- tiss %in% rhyth.tiss
   return(data.frame(tissue = tiss, is.rhyth = is.rhyth))
@@ -116,6 +117,13 @@ PromoterSpacePlots <- function(tpm.afe.avg, jgene, jvar = "tpm_norm.avg", draw.e
 
 HellingerDistance <- function(dat){
   # calculate distance betwene two rows of matrix
+  if (nrow(dat) != 2){
+    # print(paste("Number of columns:", ncol(dat)))
+    warning("Hellinger Distance only computes distance between two rows.")
+    print("Dim:")
+    print(dim(dat))
+    return(NA)
+  }
   return(sqrt(sum(apply(dat, 2, function(colm) (sqrt(colm[1]) - sqrt(colm[2]))) ^ 2)))
 }
 
@@ -124,7 +132,7 @@ CalculateDistance <- function(dat, dist.method = "hellinger", jvar = "tpm_norm.a
   # simpler than GaussianCenters
   # For Liver and Kidney, calculate distance (either euclidean or hellinger)
   if (length(unique(dat$tissue)) <= 1){
-    return(NA)
+    ifelse(return.as.df, data.frame(NULL), NA)
   }
   proms <- GetPromoterUsage(dat, jvar = jvar, do.svd = FALSE, append.tiss = TRUE, get.means = FALSE, get.entropy = FALSE, transcript_id = transcript_id, get.prom.only = TRUE)
   if (nrow(proms) != 2){

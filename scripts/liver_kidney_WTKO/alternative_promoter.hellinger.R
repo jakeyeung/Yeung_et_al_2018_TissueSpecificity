@@ -25,95 +25,75 @@ eps <- 1  # for log2 transform
 load("Robjs/liver_kidney_atger_nestle/dat.bytranscript.bugfixed.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
+load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.annotated.Robj", v=T)
 
 fits.orig <- fits.long.filt
 fits.long.filt <- subset(fits.long.filt, method == "g=1001")
 
-# Annotate fits
-fits.long.filt$n.params <- sapply(fits.long.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
-fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
-fits.long.filt$amp.avg <- mapply(GetAvgAmpFromParams, fits.long.filt$param.list, fits.long.filt$model)
-fits.long.filt$phase.sd <- mapply(GetSdPhaseFromParams, fits.long.filt$param.list, fits.long.filt$model)
-fits.long.filt$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.long.filt$param.list, fits.long.filt$model)
-fits.long.filt$phase.avg <- mapply(GetPhaseFromParams, fits.long.filt$param.list, fits.long.filt$model)
-
+if (!is.null(fits.long.filt$n.params)){
+  # Annotate fits
+  fits.long.filt$n.params <- sapply(fits.long.filt$model, function(m) return(length(strsplit(as.character(m), ";")[[1]])))
+  fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
+  fits.long.filt$amp.avg <- mapply(GetAvgAmpFromParams, fits.long.filt$param.list, fits.long.filt$model)
+  fits.long.filt$phase.sd <- mapply(GetSdPhaseFromParams, fits.long.filt$param.list, fits.long.filt$model)
+  fits.long.filt$phase.maxdiff <- mapply(GetMaxPhaseDiffFromParams, fits.long.filt$param.list, fits.long.filt$model)
+  fits.long.filt$phase.avg <- mapply(GetPhaseFromParams, fits.long.filt$param.list, fits.long.filt$model)
+}
 
 dat.bytranscript <- StaggeredTimepointsLivKid(dat.bytranscript)
 dat.bytranscript <- CollapseTissueGeno(dat.bytranscript)  # match fits.long.filt
 
-
 dat.long <- StaggeredTimepointsLivKid(dat.long)
 
-tpm.afe.avg <- dat.bytranscript %>%
-  mutate(tiss.temp = strsplit(as.character(tissue), "_")[[1]][[1]]) %>%  # Liver_SV129 -> Liver
-  group_by(gene, transcript, tiss.temp) %>%
-  summarise(tpm = sum(tpm)) %>%
-  group_by(gene, tiss.temp) %>%
-  mutate(tpm_norm.avg = CalculateFractionIsoformUsage(tpm, pseudocount = 1))
-tpm.afe.avg$tissue <- tpm.afe.avg$tiss.temp
+# load("Robjs/liver_kidney_atger_nestle/tpm.afe.avg.binary.Robj", v=T)
 
-# tpm.afe.avg.int <- dat.bytranscript %>%
-  # group_by(gene, tissue, time, geno) %>%
-  # mutate(tpm_normalized = CalculateFractionIsoformUsage(tpm, pseudocount = 1))
-
-# tpm.afe.avg <- dat.bytranscript %>%
-#   group_by(gene, tissue, time, geno) %>%
-#   mutate(tpm_normalized = CalculateFractionIsoformUsage(tpm, pseudocount = 1)) %>%
-#   group_by(gene, transcript, tissue, geno) %>%
-#   summarise(tpm_norm.avg = mean(tpm_normalized),
-#             tpm_norm.var = var(tpm_normalized),
-#             tpm.avg = mean(tpm),
-#             tpm.var = var(tpm))
-
-
-# Count promoters ---------------------------------------------------------
-tpm.counts <- subset(tpm.afe.avg, tissue == "Liver") %>%
-  group_by(tissue, gene) %>%
-  summarise(counts = length(transcript))
-tpm.counts <- tpm.counts[order(tpm.counts$counts, decreasing = T), ]
-
-counts.dic <- hash(as.character(tpm.counts$gene), tpm.counts$counts)
-tpm.afe.avg$nprom <- sapply(as.character(tpm.afe.avg$gene), function(jgene) counts.dic[[jgene]])
-
-# hash it
-tiss <- c("Liver", "Kidney")
-keys.df <- fits.long.filt %>%
-  group_by(gene) %>%
-  do(GetGeneModelKeys(., tiss))
-keys <- paste(keys.df$tissue, keys.df$gene, sep = ",")
-vals <- as.numeric(keys.df$is.rhyth)
-is.rhyth.dic <- hash(keys, vals)
-
-# annotate it
-
-# 1 or 0 to signify whether it is rhythmic
-tpm.afe.avg$amp <- mapply(function(jtiss, jgene){
-  a <- is.rhyth.dic[[paste(jtiss, jgene, sep = ",")]]
-  if (is.null(a)){
-    a <- NA
-  } 
-  return(a)
+if (!exists("tpm.afe.avg")){
+  tpm.afe.avg <- dat.bytranscript %>%
+    mutate(tiss.temp = strsplit(as.character(tissue), "_")[[1]][[1]]) %>%  # Liver_SV129 -> Liver
+    group_by(gene, transcript, tiss.temp) %>%
+    summarise(tpm = sum(tpm)) %>%
+    group_by(gene, tiss.temp) %>%
+    mutate(tpm_norm.avg = CalculateFractionIsoformUsage(tpm, pseudocount = 1))
+  tpm.afe.avg$tissue <- tpm.afe.avg$tiss.temp
+  
+  # Count promoters ---------------------------------------------------------
+  tpm.counts <- subset(tpm.afe.avg, tissue == "Liver") %>%
+    group_by(tissue, gene) %>%
+    summarise(counts = length(transcript))
+  tpm.counts <- tpm.counts[order(tpm.counts$counts, decreasing = T), ]
+  
+  counts.dic <- hash(as.character(tpm.counts$gene), tpm.counts$counts)
+  tpm.afe.avg$nprom <- sapply(as.character(tpm.afe.avg$gene), function(jgene) counts.dic[[jgene]])
+  
+  # hash it
+  tiss <- c("Liver", "Kidney")
+  keys.df <- fits.long.filt %>%
+    group_by(gene) %>%
+    do(GetGeneModelKeys(., tiss))
+  keys <- paste(keys.df$tissue, keys.df$gene, sep = ",")
+  vals <- as.numeric(keys.df$is.rhyth)
+  is.rhyth.dic <- hash(keys, vals)
+  
+  # annotate it
+  
+  # 1 or 0 to signify whether it is rhythmic
+  tpm.afe.avg$amp <- mapply(function(jtiss, jgene){
+    a <- is.rhyth.dic[[paste(jtiss, jgene, sep = ",")]]
+    if (is.null(a)){
+      a <- NA
+    } 
+    return(a)
   }, as.character(tpm.afe.avg$tissue), as.character(tpm.afe.avg$gene))
+  outf <- "Robjs/liver_kidney_atger_nestle/tpm.afe.avg.binary.Robj"
+  if (!file.exists(outf)){
+    save(tpm.afe.avg, file = outf)
+  } else {
+    print("Skipping saving of Robj")
+  }
+}
 
 # do only on subset of models??
 jgenes <- unique(as.character(subset(fits.long.filt, model != "")$gene))
-# jmods <- c("Liver_SV129", "Kidney_SV129")
-# jgenes <- unique(as.character(subset(fits.long.filt, model %in% jmods)$gene))
-
-# # BEGIN: ANALYZE ON EACH TIME
-# tpm.afe.bysamp <- dat.bytranscript %>%
-#   group_by(gene, tissue, time, geno) %>%
-#   mutate(tpm_normalized = CalculateFractionIsoformUsage(tpm, pseudocount = 1)) %>%
-#   group_by(gene, transcript, tissue, geno, time) %>%
-#   summarise(tpm_norm.avg = mean(tpm_normalized),
-#             tpm_norm.var = var(tpm_normalized),
-#             tpm.avg = mean(tpm),
-#             tpm.var = var(tpm))
-# tpm.afe.bysamp <- subset(tpm.afe.bysamp, gene %in% unique(fits.long.filt$gene))
-# tpm.afe.bysamp$nprom <- sapply(as.character(tpm.afe.bysamp$gene), function(jgene) counts.dic[[jgene]])
-# tpm.afe.bysamp$amp <-  mapply(function(jtiss, jgene) is.rhyth.dic[[paste(jtiss, jgene, sep = ",")]], as.character(tpm.afe.bysamp$tissue), as.character(tpm.afe.bysamp$gene))
-# 
-
 
 # Calculate Hellinger distance  -------------------------------------------
 

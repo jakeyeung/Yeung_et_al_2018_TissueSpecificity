@@ -14,15 +14,17 @@ ModelStrToModel <- function(jmod){
   return(jmod.long.sorted)
 }
 
-ModelToTissue <- function(jmod, jsplit = "_"){
+ModelToTissue <- function(jmod, jsplit = "_", jsplit.diffparam = ";", jsplit.sameparam = ","){
   # Try to convert model name to tissue name (Liver, Kidney)
   # mod names: Liver_SV129, Kidney_BmalKO etc (so split by "_" by default)
-  tissue <- unique(sapply(jmod, function(m) strsplit(m, jsplit)[[1]][[1]], USE.NAMES = FALSE))
+  tissue <- gsub(pattern = jsplit.diffparam, replacement = jsplit.sameparam, x = jmod)
+  tissue <- strsplit(tissue, jsplit.sameparam)[[1]]
+  tissue <- sapply(tissue, function(tiss) strsplit(tiss, jsplit)[[1]][[1]], USE.NAMES = FALSE)
+  
+  # tissue <- unique(sapply(jmod, function(m) strsplit(m, jsplit)[[1]][[1]], USE.NAMES = FALSE))
   if (length(tissue) == 1){
     return(tissue)
   } else {
-    print(tissue)
-    warning("Tissue length should be 1:")
-    return(NA)
+    return(unique(tissue))
   }
 }
