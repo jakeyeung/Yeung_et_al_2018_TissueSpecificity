@@ -13,3 +13,16 @@ ModelStrToModel <- function(jmod){
   }
   return(jmod.long.sorted)
 }
+
+ModelToTissue <- function(jmod, jsplit = "_"){
+  # Try to convert model name to tissue name (Liver, Kidney)
+  # mod names: Liver_SV129, Kidney_BmalKO etc (so split by "_" by default)
+  tissue <- unique(sapply(jmod, function(m) strsplit(m, jsplit)[[1]][[1]], USE.NAMES = FALSE))
+  if (length(tissue) == 1){
+    return(tissue)
+  } else {
+    print(tissue)
+    warning("Tissue length should be 1:")
+    return(NA)
+  }
+}

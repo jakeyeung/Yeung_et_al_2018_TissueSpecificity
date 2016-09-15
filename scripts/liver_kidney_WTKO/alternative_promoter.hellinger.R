@@ -96,7 +96,7 @@ tpm.afe.avg$amp <- mapply(function(jtiss, jgene){
   }, as.character(tpm.afe.avg$tissue), as.character(tpm.afe.avg$gene))
 
 # do only on subset of models??
-jgenes <- unique(aÇs.character(subset(fits.long.filt, model != "")$gene))
+jgenes <- unique(as.character(subset(fits.long.filt, model != "")$gene))
 # jmods <- c("Liver_SV129", "Kidney_SV129")
 # jgenes <- unique(as.character(subset(fits.long.filt, model %in% jmods)$gene))
 
@@ -146,18 +146,21 @@ dat.diff <- subset(dat.long) %>%
 jcutoff <- Inf
 jgenes.similar <- as.character(subset(dat.diff, abs(exprs.diff) <= jcutoff)$gene)
 
-fg.model <- "Kidney_SV129,Kidney_BmalKO"
-# signif.models <- c("", "Liver_SV129", "Liver_SV129,Liver_BmalKO", "Liver_SV129,Kidney_SV129", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO")
+# signif.models <- c("", fg.model)
+signif.models <- c("", "Liver_SV129", "Liver_SV129,Liver_BmalKO", "Liver_SV129,Kidney_SV129", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO")
 # signif.models <- c("", "Liver_SV129")
 # signif.models <- c("", "Liver_SV129,Liver_BmalKO")
-signif.models <- c("", fg.model)
 jsub <- subset(tpm.afe.dist, model %in% signif.models & gene %in% jgenes.similar)
 ggplot(jsub, aes(x = model, y = proms.dist)) + geom_boxplot()
 
+fg.model <- "Liver_SV129"
+fg.model <- "Kidney_SV129,Kidney_BmalKO"
 bg.model <- ""
 jsub2.flat <- subset(jsub, model %in% c(bg.model))
 jsub2.fg <- subset(jsub, model %in% c(fg.model))
 ks.test(jsub2.flat$proms.dist, jsub2.fg$proms.dist)
+t.test(jsub2.flat$proms.dist, jsub2.fg$proms.dist)
+
 
 
 # Investigate why Flat genes have high alt promoter usage -----------------
@@ -175,7 +178,6 @@ proms.sub <- GetPromoterUsage(subset(tpm.afe.avg, gene == jgene), do.svd = FALSE
 # proms.sub.bysamp <- GetPromoterUsage(subset(tpm.afe.bysamp, gene == jgene & time == 22), do.svd = FALSE, transcript_id = "transcript", get.prom.only = TRUE)
 
 print(PlotTpmAcrossTissues(subset(dat.bytranscript, gene == jgene & geno == "SV129"), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript") + facet_wrap(~tissue))
-
 print(jgene)
 
 proms.sub <- GetPromoterUsage(subset(tpm.afe.avg, gene == jgene), do.svd = FALSE, transcript_id = "transcript", get.prom.only = TRUE)
