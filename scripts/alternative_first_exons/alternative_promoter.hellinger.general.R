@@ -6,7 +6,7 @@
 rm(list=ls())
 
 setwd("/home/yeung/projects/tissue-specificity")
-
+library(ggrepel)
 library(dplyr)
 library(ggplot2)
 library(hash)
@@ -130,8 +130,41 @@ fits.long.filt$proms.dist <- sapply(as.character(fits.long.filt$gene), function(
   return(pdist)
 })
 
-ggplot(fits.long.filt, aes(x = amp.avg, y = proms.dist, label = gene)) + geom_point(alpha = 0.2) + geom_text()
- 
+amp.thres <- 2.5 / 2
+dist.thres <- 0.55 * sqrt(2)
+dist.thres2 <- 0.3 * sqrt(2)
+fits.long.filt$label <- mapply(function(amp.avg, prom.dist, gene){
+  if (any(is.na(c(amp.avg, prom.dist)))) return(NA)
+  if ((amp.avg < amp.thres & prom.dist < dist.thres) | (prom.dist < dist.thres2)){
+    return(NA)
+  } else {
+    return(gene)
+  }
+}, fits.long.filt$amp.avg, fits.long.filt$proms.dist, as.character(fits.long.filt$gene))
+
+pdf("plots/primetime_plots_liver_kidney_wtko/alt_tss.pdf")
+m <- ggplot(fits.long.filt, aes(x = proms.dist / sqrt(2), y = amp.avg* 2, label = label)) + 
+  geom_point(alpha = 0.2) + 
+  geom_text_repel(size = 5) + 
+  # geom_text() + 
+  theme_bw(24) + 
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ylab("Average Log2 FC") + xlab("Hellinger Distance")
+  # ylim(0, 5)
+print(m)
+dev.off()
+
+# Save to output
+outdir <- "Robjs/alt_promoter_usage"
+dir.create(outdir)
+save(fits.long.filt, tpm.afe.dist, file = file.path(outdir, paste0("fits_long.proms_dist.", dataset, ".Robj")))
+
+
+# # Save to output
+# outdir <- "Robjs/alt_promoter_usage"
+# dir.create(outdir)
+# save(fits.long.filt, tpm.afe.dist, file = file.path(outdir, paste0("fits_long.proms_dist.", dataset, ".Robj")))
+
  
 # 
 # # Compare rhythmic genes with flat genes ----------------------------------
