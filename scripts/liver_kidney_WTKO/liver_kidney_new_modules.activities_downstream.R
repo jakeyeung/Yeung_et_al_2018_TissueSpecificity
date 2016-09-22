@@ -75,6 +75,7 @@ n <- 4
 
 act.complex <- ProjectWithZscore(act.long, omega, n = 4)
 zscore.min <- 1.25
+zscore.min <- 1
 rhyth.tiss <- strsplit(jmod, ",")[[1]]
 sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
 
@@ -91,7 +92,6 @@ sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene)
 # abline(h = 0.8)
 # abline(v = 1.25)
 
-zscore.min <- 1.25
 rhyth.tiss <- strsplit(jmod, ",")[[1]]
 # Filter out motifs whose amplitudes are smaller than amp.se 
 sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
@@ -104,7 +104,7 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 # jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
 
 # plot motifs
-max.labs <- 15
+max.labs <- 35
 jtitle <- ""
 comp <- 1
 eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2", "TFAP2B.p2"))
