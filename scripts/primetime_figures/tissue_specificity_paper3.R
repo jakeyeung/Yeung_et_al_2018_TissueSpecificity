@@ -519,10 +519,10 @@ for (jmod in jmods){
   # increment plot.i after the for loop
   
   s <- SvdOnComplex(subset(dat.freq, gene %in% genes.mod), value.var = "exprs.transformed")
-  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3"))
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3", "Elf2"))
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18)
+  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18, label.gene = c("ELF1.2.4"))
   
   # plot genes and regulators
   print(eigens$u.plot + ylab("ZT") + ggtitle(""))

@@ -8,11 +8,13 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
   }
   # Make long 
   wt.sampnames <- paste("ZT", sprintf("%02d", seq(0, 45, 3)), ".WT", sep = "")
-  ko.sampnames <- paste("ZT", sprintf("%02d", seq(0, 18, 6)), ".Bmal.WT", sep = "")
+  ko.sampnames <- paste("ZT", sprintf("%02d", seq(0, 18, 6)), ".Bmal.KO", sep = "")
+  bmalwt.sampnames <- paste("ZT", sprintf("%02d", seq(0, 18, 6)), ".Bmal.WT", sep = "")
   fit.sampnames <- c("mean", "amp", "relamp", "phase", "pval", "qv", "amp.12h", "relamp.12h", "phase.12h", "pval.12h", "qv.12h")
   
   prot.long.wt <- melt(prot, id.vars = "Gene.names", measure.vars = wt.sampnames, variable.name = "samp", value.name = "rel.abund")
   prot.long.bmalko <- melt(prot, id.vars = "Gene.names", measure.vars = ko.sampnames, variable.name = "samp", value.name = "rel.abund")
+  prot.long.bmalwt <- melt(prot, id.vars = "Gene.names", measure.vars = bmalwt.sampnames, variable.name = "samp", value.name = "rel.abund")
   fit.prot.wt <- subset(prot, select = c("Gene.names", fit.sampnames))
   # fit.prot.wt <- melt(prot, id.vars = "Gene.names", measure.vars = fit.sampnames)
   
@@ -22,8 +24,11 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
   prot.long.bmalko$time <- GetTimeFromSamp(as.character(prot.long.bmalko$samp))
   prot.long.bmalko$geno <- GetGenoFromSamp(as.character(prot.long.bmalko$samp))
   
+  prot.long.bmalwt$time <- GetTimeFromSamp(as.character(prot.long.bmalwt$samp))
+  prot.long.bmalwt$geno <- GetGenoFromSamp(as.character(prot.long.bmalwt$samp))
+  
   # merge
-  prot.long <- rbind(prot.long.wt, prot.long.bmalko)
+  prot.long <- rbind(prot.long.wt, prot.long.bmalko, prot.long.bmalwt)
   prot.long$tissue <- "Liver"
   
   # change Gene.names to gene
@@ -34,7 +39,8 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
 
 PlotProteomics <- function(prot.long, jtitle = ""){
   # plot proteomics
-  g <- ggplot(prot.long, aes(x = time, y = rel.abund, colour = geno, group = geno)) + geom_point() + geom_line() + theme_bw() 
+  cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  g <- ggplot(prot.long, aes(x = time, y = rel.abund, colour = geno, group = geno)) + geom_point() + geom_line() + theme_bw() + scale_color_manual(values = cbPalette)
   g <- g + ggtitle(jtitle)
   return(g)
 }
@@ -47,7 +53,12 @@ GetTimeFromSamp <- Vectorize(function(samp){
 }, vectorize.args = "samp")
 
 GetGenoFromSamp <- Vectorize(function(samp){
-  geno <- strsplit(samp, "\\.")[[1]][[2]]
+  samp.split <- strsplit(samp, "\\.")[[1]]
+  if (length(samp.split) == 2){
+    geno <- samp.split[[2]]
+  } else if (length(samp.split) == 3){
+    geno <- paste(samp.split[2:3], collapse = "")
+  }
   return(geno)
 }, vectorize.args = "samp")
 
@@ -80,7 +91,7 @@ ScaleSignal <- function(dat, cname, jcenter = NA, jscale = NA){
 }
 
 
-PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot = "", jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1){
+PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot = "", jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry"){
   # plotting protein optional: can use this to plot just dat and act if prot.long is missing and gene.prot is ""
   act.long$tissue <- sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[1]])
   if (jtiss == "Liver"){
@@ -96,7 +107,14 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     warning("jtiss must be Liver or Kidney or both")
   }
   if (!(missing(prot.long) | all(is.na(prot.long)))){  # if not missing or not na
-    prot.sub <- subset(prot.long, gene == gene.prot)
+    if (wt.prot == "Cry"){
+      prot.sub <- subset(prot.long, gene == gene.prot & geno %in% c("WT", "BmalKO"))
+    } else if (wt.prot == "Bmal"){
+      prot.sub <- subset(prot.long, gene == gene.prot & geno %in% c("BmalWT", "BmalKO"))
+      prot.sub$geno <- as.factor(gsub("BmalWT", "WT", prot.sub$geno))
+    } else {
+      warning("wt.prot should be Cry or Bmal")
+    }
   }
   
   # scale data, merge together, then plot in one figure
@@ -116,8 +134,11 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   # make two factors: WT and BmalKO
   dat.sub$geno.std <- gsub("SV129", "WT", as.character(dat.sub$geno))
   act.sub$geno.std <- gsub("SV129", "WT", as.character(act.sub$geno))
+  
+  # if geno is named Bmal rename to BmalKO. But we renamed to BmalWT and BmalKO
   if (!(missing(prot.long) | all(is.na(prot.long)))){
-    prot.sub$geno.std <- gsub("Bmal", "BmalKO", as.character(prot.sub$geno))
+    prot.sub$geno.std <- prot.sub$geno
+    # prot.sub$geno.std <- gsub("Bmal", "BmalKO", as.character(prot.sub$geno))
   }
   # add tissue info to geno.std
   if (jtiss == "both"){
