@@ -90,7 +90,7 @@ RunFisherOnPromoters <- function(N.promoter, foreground.models, background.model
       group_by(motif) %>%
       do(FisherTestSitecounts(., cutoff))
     N.ftest$cutoff <- cutoff
-    N.ftest.all <- rbind(N.ftest.all, N.ftest)
+    N.ftest.all <- rbind(N.ftest.all, as.data.frame(N.ftest))
   }
   N.ftest.sum <- N.ftest.all %>%
     group_by(motif) %>%
