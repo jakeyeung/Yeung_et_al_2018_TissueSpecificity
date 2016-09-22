@@ -2,7 +2,7 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
                                as.long = TRUE){
   require(reshape2)
   require(dplyr)
-  prot <- read.table(inf, header = TRUE, sep = "\t")
+  prot <- read.csv(inf, header = TRUE, sep = "\t")
   if (!as.long){
     return(prot)
   }
@@ -10,7 +10,8 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
   wt.sampnames <- paste("ZT", sprintf("%02d", seq(0, 45, 3)), ".WT", sep = "")
   ko.sampnames <- paste("ZT", sprintf("%02d", seq(0, 18, 6)), ".Bmal.KO", sep = "")
   bmalwt.sampnames <- paste("ZT", sprintf("%02d", seq(0, 18, 6)), ".Bmal.WT", sep = "")
-  fit.sampnames <- c("mean", "amp", "relamp", "phase", "pval", "qv", "amp.12h", "relamp.12h", "phase.12h", "pval.12h", "qv.12h")
+  # fit.sampnames <- c("mean", "amp", "relamp", "phase", "pval", "qv", "amp.12h", "relamp.12h", "phase.12h", "pval.12h", "qv.12h")
+  fit.sampnames <- c("mean", "amp", "relamp", "phase", "pval", "qv")
   
   prot.long.wt <- melt(prot, id.vars = "Gene.names", measure.vars = wt.sampnames, variable.name = "samp", value.name = "rel.abund")
   prot.long.bmalko <- melt(prot, id.vars = "Gene.names", measure.vars = ko.sampnames, variable.name = "samp", value.name = "rel.abund")
@@ -37,8 +38,20 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
   return(prot.long)
 }
 
+LoadPhosphoData <- function(inf = "/home/shared/nuclear_proteomics/Table_SXX_nuclear_phospho_all.OneGenePerLine.txt", as.long = TRUE){
+  require(reshape2)
+  require(dplyr)
+  if (!as.long){
+    prot <- read.csv(inf, header=TRUE, sep = "")
+    return(prot)
+  } else {
+    return(LoadProteomicsData(inf, as.long = TRUE))
+  }
+}
+
 PlotProteomics <- function(prot.long, jtitle = ""){
   # plot proteomics
+  if (all(is.na(prot.long$rel.abund))) return(NA)
   cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   g <- ggplot(prot.long, aes(x = time, y = rel.abund, colour = geno, group = geno)) + geom_point() + geom_line() + theme_bw() + scale_color_manual(values = cbPalette)
   g <- g + ggtitle(jtitle)

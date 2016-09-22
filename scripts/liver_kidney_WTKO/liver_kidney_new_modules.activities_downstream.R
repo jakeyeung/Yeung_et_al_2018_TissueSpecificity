@@ -74,8 +74,8 @@ omega <- 2 * pi / 24
 n <- 4
 
 act.complex <- ProjectWithZscore(act.long, omega, n = 4)
+# zscore.min <- 1
 zscore.min <- 1.25
-zscore.min <- 1
 rhyth.tiss <- strsplit(jmod, ",")[[1]]
 sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
 
@@ -104,13 +104,47 @@ jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 # jtitle <- gsub(pattern = "\\.", replacement = "\n", basename(indirmain))
 
 # plot motifs
-max.labs <- 35
+max.labs <- 25
 jtitle <- ""
 comp <- 1
 eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = 4, label.n = max.labs, jtitle = jtitle, peak.to.trough = TRUE, label.gene = c("bHLH_family.p2", "RORA.p2", "SRF.p3", "HSF1.2.p2", "TFAP2B.p2"))
 print(eigens.act$u.plot + ggtitle(jmod))
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 
+
+
+# See if any corresponding proteins have rhythms --------------------------
+
+source("scripts/functions/ProteomicsFunctions.R")
+source("scripts/functions/GetTFs.R")
+
+tfs <- GetTFs(split.commas = TRUE, get.motifs = TRUE, get.mat.only = TRUE)
+prot.long <- LoadProteomicsData()
+phospho.long <- LoadPhosphoData()
+
+pdf("plots/nuclear_proteomics_plots/liver_WT_KO_hits.pdf")
+for (jmotif in sig.motifs){
+  print(jmotif)
+  jgenes <- GetGenesFromMotifs(jmotif, tfs)
+  for (jgene in jgenes){
+    print(jgene)
+    jsub <- subset(prot.long, gene == jgene)
+    jsub.phospho <- subset(phospho.long, gene == jgene)
+    # track phospho only (optional)
+    if (nrow(jsub.phospho) == 0) next
+      m <- PlotProteomics(jsub, jtitle = paste0("Nuc:", jgene))
+      m.phos <- PlotProteomics(jsub.phospho, jtitle = paste0("Phos:", jgene))
+      print(m)
+      print(m.phos)
+      for (jwt.prot in c("Cry", "Bmal")){
+        nuc <- PlotmRNAActivityProtein(dat.long, act.long, prot.long, jgene, jmotif, jgene, jtiss = "Liver", dotsize = 3, themesize = 22, wt.prot = jwt.prot)
+        phos <- PlotmRNAActivityProtein(dat.long, act.long, phospho.long, jgene, jmotif, jgene, jtiss = "Liver", dotsize = 3, themesize = 22, wt.prot = jwt.prot)
+        print(nuc + ggtitle(paste0("Nuc:", jgene)))
+        print(phos + ggtitle(paste0("Phos:", jgene)))
+    }
+  }
+}
+dev.off()
 
 
 jgene <- "HOXA9_MEIS1.p2"
