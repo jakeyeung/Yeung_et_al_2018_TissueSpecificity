@@ -48,6 +48,7 @@ library(ggplot2)
 library(hash)
 library(penalizedLDA)
 
+source("/home/yeung/projects/sleep_deprivation/scripts/functions/DatabaseFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/ShannonEntropy.R")
@@ -72,27 +73,24 @@ colMax <- function(dat){
 
 # Load --------------------------------------------------------------------
 
-# save_N_on_posterior_cutoff_0.1.R saves Robj image. Here we laod it up
-# Do Penalized LDA as before  ---------------------------------------------
+# Load up sitecounts from sql database
+inf <- "/home/shared/sql_dbs/closestbed_multiple_genes.genomewide.merged.motifindexed.sqlite3"
+motevo.tbl <- LoadDatabase(inf)
 
 # from multigene_analysis.play_with_parameters.R 
 if (!exists("fits.best")){
-  load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.Robj", v=T)
+  load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.Robj", v=T)
   fits.best <- fits.long.filt; rm(fits.long.filt)
   fits.best <- subset(fits.best, method == jmethod)
 } 
 if (!exists("dat.long")){
-  load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.Robj", v=T)
+  load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T)
   dat.orig <- dat.long
   dat.long <- CollapseTissueGeno(dat.long, keep.tissue.col = TRUE)
   dat.long <- StaggeredTimepointsLivKid(dat.long)
 } 
 if (!exists("S.long")) load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
-if (!exists("N.long.filt")){
-#   load("Robjs/N.long.livertwflat.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
-  # load("Robjs/liver_kidney_atger_nestle/N.long.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
-  load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
-}
+# load N.long.filt after we defined thhe genes we're looking for 
 
 
 
@@ -107,9 +105,6 @@ print(paste("Rhythmic genes:", length(jgenes)))
 print(paste("Flat genes:", length(jgenes.flat)))
 
 
-# print(paste("Rhythmic genes:", length(jgenes)))
-# print(paste("Flat genes:", length(jgenes.flat)))
-
 # get peaks near gene
 S.sub <- subset(S.long, gene %in% jgenes & dist < distfilt)
 S.sub.flat <- subset(S.long, gene %in% jgenes.flat & dist < distfilt)
@@ -119,12 +114,18 @@ jpeaks.flat <- as.character(unique(S.sub.flat$peak))
 print(paste("number of peaks in liver-specific rhythmic genes", length(jpeaks)))
 print(paste("number of peaks in flat genes", length(jpeaks.flat)))
 
-N.sub <- subset(N.long.filt, gene %in% jgenes & peak %in% jpeaks)  # should not have any missing peaks
-N.sub.flat <- subset(N.long.filt, gene %in% jgenes.flat & peak %in% jpeaks.flat)
+
+N.long.filt.query <- filter(motevo.tbl, abs(dist) <= dist.filt & gene %in% jgenes & peak %in% jpeaks)
+N.sub <- collect(N.long.filt.query, n = Inf) 
+N.long.filt.query <- filter(motevo.tbl, abs(dist) <= dist.filt & gene %in% jgenes.flat & peak %in% jpeaks.flat)
+N.sub.flat <- collect(N.long.filt.query, n = Inf)
+
+# N.sub <- subset(N.long.filt, gene %in% jgenes & peak %in% jpeaks)  # should not have any missing peaks
+# N.sub.flat <- subset(N.long.filt, gene %in% jgenes.flat & peak %in% jpeaks.flat)
 
 # Clean up ram ------------------------------------------------------------
 if (cleanup){
-  rm(S.long, N.long.filt)
+  rm(S.long)
 }
 
 

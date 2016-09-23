@@ -22,22 +22,19 @@ fits.long.filt <- subset(fits.long.filt, method == "g=1001")
 
 # Load output from calculate_liver_specific_peaks -------------------------
 
-# load("/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.100.tissue.Liver.module.Liver_SV129.Robj", v=T)
-# wtmodulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.100.tissue.Liver.module.Liver_SV129random.flat.TRUE.Robj"
-wtmodulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.1000.tissue.Liver.module.Liver_SV129random.flat.TRUE.Robj"
+
+wtmodulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.20.tissue.Kidney.module.Kidney_SV129.random.flat.TRUE.Robj"
 load(wtmodulef, v=T)
-df.out.lst.merged.liverWT <- df.out.lst.merged
-df.out.lst.merged.liverWT$gene.type[1:3] <- c("Liver_SV129", "Flat_SV129", "Flat.filt_SV129")
+df.out.lst.merged.kidneyWT <- df.out.lst.merged
+df.out.lst.merged.kidneyWT$gene.type[1:3] <- c("Kidney_SV129", "Flat_SV129", "Flat.filt_SV129")
 
-# wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.100.tissue.Liver.module.Liver_SV129,Liver_BmalKO.Robj"
-# wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.100.tissue.Liver.module.Liver_SV129,Liver_BmalKOrandom.flat.TRUE.Robj"
-wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.1000.tissue.Liver.module.Liver_SV129,Liver_BmalKOrandom.flat.TRUE.Robj"
-# wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.14.tissue.Liver.module.Kidney_SV129.random.flat.TRUE.Robj"
+# wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.15.tissue.Kidney.module.Liver_SV129.random.flat.TRUE.Robj"
+wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.20.tissue.Kidney.module.Kidney_SV129,Kidney_BmalKO.random.flat.TRUE.Robj"
 load(wtko.modulef, v=T)
-df.out.lst.merged.liverWTKO <- df.out.lst.merged
-df.out.lst.merged.liverWTKO$gene.type[1:3] <- c("Liver_SV129.Liver_BmalKO", "Flat_SV129BmalKO", "Flat.filt_SV129BmalKO")
+df.out.lst.merged.kidneyWTKO <- df.out.lst.merged
+df.out.lst.merged.kidneyWTKO$gene.type[1:3] <- c("Kidney_SV129.Kidney_BmalKO", "Flat_SV129BmalKO", "Flat.filt_SV129BmalKO")
 
-df.out.lst.merged <- rbind(df.out.lst.merged.liverWT, df.out.lst.merged.liverWTKO)
+df.out.lst.merged <- rbind(df.out.lst.merged.kidneyWT, df.out.lst.merged.kidneyWTKO)
 
 df.out.lst.merged$xlabs <- make.names(df.out.lst.merged$gene.type, unique = TRUE)
 
@@ -68,4 +65,4 @@ ggplot(df.out.lst.meanvar, aes(x = gene.type, y = mean.frac)) + geom_bar(stat = 
   xlab("") + ylab("Fraction of Genes with Liver-specific DHS peaks")
 
 ggplot(df.out.lst.bg, aes(x = frac.n.spec.by.gene)) + geom_histogram(bins = 25) + 
-  theme_bw() + geom_vline(xintercept = c(0.318, 0.225))
+  theme_bw() + geom_vline(xintercept = c(0.282, 0.212))
