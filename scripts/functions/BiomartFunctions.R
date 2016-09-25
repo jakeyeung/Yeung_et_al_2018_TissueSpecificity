@@ -45,11 +45,12 @@ splitColumnByOverlap <-
     splitAsList(mcols(query)[[column]][queryHits(olaps)], f1)
   }
 
-genomicRangesToBed <- function(gr, gene.name.col = "gene"){
+genomicRangesToBed <- function(gr, gene.name.col = "gene", strand.col = "strand"){
   bed <- data.frame(seqnames=gr$seqnames,
                     starts=gr$start-1,
                     ends=gr$end,
-                    genename=unlist(gr[[gene.name.col]]))
+                    genename=unlist(gr[[gene.name.col]]),
+                    strand=gr[[strand.col]])
   return(bed)
 }
 
