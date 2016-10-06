@@ -88,6 +88,17 @@ dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
 prot.long <- LoadProteomicsData()
 
+
+# Plot examples -----------------------------------------------------------
+
+jgenes <- c("Slc45a3", "Insig2", "Slc44a1", "Pik3ap1", "Jun", "Mafb", "Egr1", "Nop56", "Gck", "Lipg", "Upp2", "Loxl4", "Lpin1", "Cebpb", "Pik3r1", "Hes6")
+
+pdf(file.path(plot.dir, paste0("0", ".gene_exprs_examples.pdf")))
+for (g in jgenes){
+  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g))
+}
+dev.off()
+
 # Tissue-wide modules: hogenesch -----------------------------------------------------
 
 # get input genes
@@ -314,6 +325,48 @@ fits.best$n.rhyth.fac <- as.factor(sapply(as.numeric(fits.best$n.rhyth), functio
 ggplot(subset(fits.best, n.rhyth != 0), aes(x = as.factor(n.rhyth.fac), y = 2 * amp.avg)) + geom_boxplot() + xlab("# rhythmic tissues") + ylab("Log fold change")  + theme_bw(16) + 
   theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
+# summarize number of rhyth tiss
+fits.rhyth <- subset(fits.best, n.params > 0)
+fits.rhyth$label <- apply(fits.rhyth, 1, function(row){
+  cutoff <- 1
+  if (row[8] > cutoff & row[6] > 0){  # amp.avg > cutoff only for n.rhyth > 1
+    return(as.character(row[1]))  # return gene
+  } else {
+    return("")
+  }
+})
+
+# count based on amp
+amp.thres <- seq(from = 0, to = max(dat.fit.24$amp), by = 0.15)
+
+fits.best$n.rhyth.lab <- sapply(fits.best$n.rhyth, function(n){
+  if (n >= 8){
+    return("8-11")
+  } else if (n == 1){
+    return("1")
+  } else if (n <= 3 & n >= 2){
+    return("2-3")
+  } else if (n <= 7 & n >- 4){
+    return("4-7")
+  } else {
+    print(n)
+    warning("Didnt fit any if statements")
+  }
+})
+fits.counts.by.amp <- subset(fits.best, n.rhyth > 0) %>%
+  group_by(n.rhyth.lab) %>%
+  do(NGenesByAmp.long(., amp.thres, labelid = "n.rhyth.lab", varid = "amp.avg", outlabel = "n.rhyth.lab"))
+ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = n.rhyth.lab, colour = as.factor(n.rhyth.lab))) + geom_line() + 
+  geom_line(size = 2) + 
+  theme_bw(20) +
+  labs(colour = "# Rhythmic\nTissues") + 
+  theme(aspect.ratio=1, 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) +
+  xlab("Avg Log2 Fold Change") + ylab("# Genes") + xlim(c(0.15, 6)) + 
+  scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
+  geom_vline(xintercept = 2.8, linetype = "dotted") + 
+  scale_colour_brewer(palette = "Spectral")
 dev.off()
 
 

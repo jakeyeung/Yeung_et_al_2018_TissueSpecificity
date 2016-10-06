@@ -145,11 +145,12 @@ dev.off()
 pdf(file.path(outdir, paste0(plot.i, ".gene_exprs_examps.pdf")))
 plot.i <- plot.i + 1
 
-load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+# load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+load("Robjs/nconds_g1000_11_tissues/fits_long.11_tiss_3_max.g1000.bestmodel.filteramp.0.15.Robj")
 
 library(hash)
 
-jgenes <- c("Dbp", "Ndrg1", "Pi4k2a", "Slc44a1")
+jgenes <- c("Nr1d1", "Dbp", "Ndrg1", "Pi4k2a", "Slc44a1")
 jgenes <- rev(jgenes)
 m.list <- list()
 i <- 1
