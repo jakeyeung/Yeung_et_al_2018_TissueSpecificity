@@ -104,7 +104,7 @@ ScaleSignal <- function(dat, cname, jcenter = NA, jscale = NA){
 }
 
 
-PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot = "", jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry"){
+PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry"){
   # plotting protein optional: can use this to plot just dat and act if prot.long is missing and gene.prot is ""
   act.long$tissue <- sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[1]])
   if (jtiss == "Liver"){

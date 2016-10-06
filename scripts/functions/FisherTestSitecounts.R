@@ -6,7 +6,7 @@ RunFisherDHS <- function(dat, S, jmodel.col = "peak.type", jshow.table = FALSE, 
   return(test)
 }
 
-FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.table=FALSE){
+FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.table=FALSE, by.rank = FALSE){
   # expects dat to have has.motif, sitecount
   if (missing(sitecount.col)){
     sitecount.col <- "sitecount"
@@ -14,13 +14,23 @@ FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.tab
   if (missing(model.col)){
     model.col <- "model"
   }
-  dat$has.motif <- sapply(dat[[sitecount.col]], function(s){
-    if (s > cutoff){
-      return(TRUE)
-    } else {
-      return(FALSE)
+  if (!by.rank){
+    dat$has.motif <- sapply(dat[[sitecount.col]], function(s){
+      if (s > cutoff){
+        return(TRUE)
+      } else {
+        return(FALSE)
+      }
+    })
+  } else {
+    # cutoff by top N genes
+    if (cutoff %% 1 != 0){
+      warning(paste("Cutoff must be integer in 'by.rank' mode:", cutoff))
     }
-  })
+    dat <- dat[order(dat[[sitecount.col]], decreasing = TRUE), ]
+    dat$rank.i <- seq(nrow(dat))
+    dat$has.motif <- sapply(dat$rank.i, function(i) ifelse(i < cutoff, TRUE, FALSE))
+  }
   N.table <- table(dat$has.motif, unlist(dat[[model.col]]))
   if (nrow(N.table) != 2 | ncol(N.table) != 2){
     return(data.frame(odds.ratio = NA, p.value = NA))
@@ -62,9 +72,14 @@ SubsetAndFishers <- function(dat, jmodel, cutoffs){
   return(N.ftest.sum)
 }
 
-RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models, cutoffs, show.plot = TRUE){
+RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models = NA, cutoffs, show.plot = TRUE, by.rank = FALSE){
   jtiss <- foreground.models
-  N.sub <- subset(N.promoter, model %in% c(foreground.models, background.models))
+  if (is.na(background.models)){
+    # if NA, use all genes in N.promoter as your universe
+    N.sub <- N.promoter
+  } else {
+    N.sub <- subset(N.promoter, model %in% c(foreground.models, background.models))
+  }
   if (length(background.models) == 1){
     N.sub$model <- sapply(N.sub$model, function(m){
       if (!m %in% jtiss){
@@ -88,7 +103,7 @@ RunFisherOnPromoters <- function(N.promoter, foreground.models, background.model
   for (cutoff in cutoffs){
     N.ftest <- N.sub %>%
       group_by(motif) %>%
-      do(FisherTestSitecounts(., cutoff))
+      do(FisherTestSitecounts(., cutoff, by.rank = by.rank))
     N.ftest$cutoff <- cutoff
     N.ftest.all <- rbind(N.ftest.all, as.data.frame(N.ftest))
   }

@@ -41,13 +41,22 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
   return(m)
 }
 
-PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle=""){
+PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno"){
+  # split by geno or tissue
   m <- ggplot(dat, aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
     geom_point() + geom_line() + xlab(timelabel) + ylab("log2 expression") + 
     theme_bw(24) + ggtitle(jtitle) + 
-    facet_wrap(~geno) + theme(aspect.ratio = 1, legend.position = "bottom")
+    theme(aspect.ratio = 1, legend.position = "bottom")
+  if (split.by == "geno"){
+    m <- m + facet_wrap(~geno)
+  } else if (split.by == "tissue"){
+    m <- m + facet_wrap(~tissue)
+  } else {
+    warning("Split by must be geno or tissue")
+  }
   return(m)
 }
+
 
 PlotGeneAcrossTissuesRnaseq <- function(dat, jtitle, convert.linear = FALSE){
   library(ggplot2)
