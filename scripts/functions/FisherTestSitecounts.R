@@ -37,6 +37,7 @@ FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.tab
   }
   test <- fisher.test(N.table)
   if (show.table){
+    print(dat)
     print(N.table)
     print(test)
   }
