@@ -44,8 +44,11 @@ fits.sub$has.ROR <- sapply(fits.sub$pair, function(p) grepl("RORA", p))
 fits.sub$pair <- factor(fits.sub$pair, levels = fits.sub$pair)
 m <- ggplot(subset(fits.sub, pval < 0.05), aes(x = pair, y = -log10(pval), fill = has.ROR)) + geom_bar(stat = "identity") +  
   theme_bw() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ggtitle("Top motif pairs between\nFOXA2, ONECUT, or CUX2") + 
+  xlab("")
+m 
+
 # how many pairs with FOXA, ONECUT, or CUX2??
 fits.sub$partner <- sapply(as.character(fits.sub$pair), function(p){
   pvec <- strsplit(p, ";")[[1]]

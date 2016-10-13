@@ -152,7 +152,7 @@ print(eigens$u.plot)
 print(eigens$v.plot)
 multiplot(eigens$u.plot, eigens$v.plot, layout = jlayout)
 
-eigens.act <- GetEigens(s.act.wtko, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE, , dot.col = "black", dotsize = 2, dotshape = 18)
+eigens.act <- GetEigens(s.act.wtko, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 25, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18)
 print(eigens.act$u.plot)
 print(eigens.act$v.plot)
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
@@ -432,6 +432,18 @@ m <- ggplot(dat.plot, aes(x = discrim.floor, y = discrim, label = motif)) +
   xlab("") + ylab("Motif loadings") + 
   theme(aspect.ratio = 1)
 print(m)
+
+m.index <- ggplot(dat.plot, aes(x = Index, y = discrim, label = motif)) + 
+  geom_point(size = 0.01) + 
+  geom_text_repel(size = 7) + 
+  theme_bw(24) + 
+  theme(aspect.ratio = 0.33, legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  xlab("") + ylab("Motif loadings") + 
+  theme(aspect.ratio = 1, 
+        axis.ticks.x = element_blank(), 
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank())
+print(m.index)
 
 gene.plot <- data.frame(proj = plda.out$xproj, 
                         gene = rownames(plda.out$x),
@@ -888,11 +900,33 @@ eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constan
                         label.n = K, jtitle = jtitle, peak.to.trough = TRUE, dot.col = "black", 
                         dotsize = 2, dotshape = 18, xlab = "Activity (arbitrary units)")
 
+
+## Do motif cooperativity using contingency
+K <- 300
+prefix <- "Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K."
+inf <- paste0(prefix, K, ".Robj")
+load(inf, v=T)
+
+jmotifs <- c("FOXA2", "ONECUT1.2", "CUX2")
+grepstr <- paste(jmotifs, collapse = "|")
+(fits.sub <- subset(fits, grepl(grepstr, pair)) %>% arrange(pval))
+
+fits.sub$has.ROR <- sapply(fits.sub$pair, function(p) grepl("RORA", p))
+
+fits.sub$pair <- factor(fits.sub$pair, levels = fits.sub$pair)
+m.loglin <- ggplot(subset(fits.sub, pval < 0.05), aes(x = pair, y = -log10(pval), fill = has.ROR)) + geom_bar(stat = "identity") +  
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ggtitle("Top motif pairs between\nFOXA2, ONECUT, or CUX2") + 
+  xlab("")
+
+
 pdf(file.path(plot.dir, paste0(plot.i, ".clock_dependent_liver_genes_cooperative_action.pdf")))
 plot.i <- plot.i + 1
 print(m.bar)
 print(m)
 print(eigens.act$u.plot)
+print(m.loglin)
 multiplot(eigens.act$u.plot, eigens.act$v.plot, cols = 2)
 dev.off()
 
