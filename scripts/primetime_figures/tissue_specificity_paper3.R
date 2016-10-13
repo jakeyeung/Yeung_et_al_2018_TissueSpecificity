@@ -937,6 +937,9 @@ projdir <- "/home/yeung/projects/4c_seq"
 load(file.path(projdir, "Robjs/counts.long.delt.lk.LR.Robj"), v=T)
 load(file.path(projdir, "Robjs/counts.hits.ignore5frags.normInf.with_assay_signal.Robj"), v=T)
 
+# reorganize factors: ZT20, ZT08
+
+
 source(file.path(projdir, "scripts/functions/GetBaitLocations.R"))
 source(file.path(projdir, "scripts/functions/PlotFunctions.R"))
 source(file.path(projdir, "scripts/functions/TrackHubFunctions.R"))
@@ -944,7 +947,7 @@ source(file.path(projdir, "scripts/functions/AssayFunctions.R"))
 source(file.path(projdir, "scripts/functions/FindPeaks.R"))
 source(file.path(projdir, "scripts/functions/MergeCounts.R"))
 
-bait.locs <- GetBaitLocations()
+bait.locs <- GetBaitLocations2()
 
 zt <- "ZT20"
 zt08 <- "ZT08"
