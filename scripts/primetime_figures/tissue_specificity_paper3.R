@@ -968,7 +968,8 @@ plot.i <- plot.i + 1
 for (jbait in jbaits){
   jbait.new <- baits.hash[[jbait]]
   jbait.genename.new <- baits.genename.hash[[jbait]]
-  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == jbait.genename.new), jtitle = jbait.genename.new))
+  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == jbait.genename.new), jtitle = jbait.genename.new, split.by = "tissue", ncols = 1))
+  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == jbait.genename.new), jtitle = jbait.genename.new, split.by = "tissue", ncols = 2))
   
   jsub.sig <- subset(counts.long, genotype == "WT" & time == zt)
   jsub.sig08 <- subset(counts.long, genotype == "WT" & time == zt08)

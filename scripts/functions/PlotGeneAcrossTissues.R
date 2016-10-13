@@ -41,16 +41,16 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
   return(m)
 }
 
-PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno"){
+PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno", ncols = 2){
   # split by geno or tissue
   m <- ggplot(dat, aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
-    geom_point() + geom_line() + xlab(timelabel) + ylab("log2 expression") + 
+    geom_point() + geom_line() + xlab(timelabel) + ylab("log2 mRNA accumulation") + 
     theme_bw(24) + ggtitle(jtitle) + 
     theme(aspect.ratio = 1, legend.position = "bottom")
   if (split.by == "geno"){
-    m <- m + facet_wrap(~geno)
+    m <- m + facet_wrap(~geno, ncol = ncols)
   } else if (split.by == "tissue"){
-    m <- m + facet_wrap(~tissue)
+    m <- m + facet_wrap(~tissue, ncol = ncols)
   } else {
     warning("Split by must be geno or tissue")
   }
