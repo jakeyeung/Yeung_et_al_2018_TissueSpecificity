@@ -937,8 +937,6 @@ projdir <- "/home/yeung/projects/4c_seq"
 load(file.path(projdir, "Robjs/counts.long.delt.lk.LR.Robj"), v=T)
 load(file.path(projdir, "Robjs/counts.hits.ignore5frags.normInf.with_assay_signal.Robj"), v=T)
 
-# reorganize factors: ZT20, ZT08
-
 
 source(file.path(projdir, "scripts/functions/GetBaitLocations.R"))
 source(file.path(projdir, "scripts/functions/PlotFunctions.R"))
@@ -969,6 +967,11 @@ pdf(file.path(plot.dir, paste0(plot.i, ".4cseq_tissue_plots.nogys2.pdf")))
 plot.i <- plot.i + 1
 
 for (jbait in jbaits){
+  if (jbait != "Pi3kap1"){
+    zt20vzt08 <- TRUE
+  } else {
+    zt20vzt08 <- FALSE
+  }
   jbait.new <- baits.hash[[jbait]]
   jbait.genename.new <- baits.genename.hash[[jbait]]
   print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == jbait.genename.new), jtitle = jbait.genename.new, split.by = "tissue", ncols = 1))
@@ -978,8 +981,8 @@ for (jbait in jbaits){
   jsub.sig08 <- subset(counts.long, genotype == "WT" & time == zt08)
   Signal <- PlotSignalLivVsKidLR(jbait, jsub.sig, pseudo.low = 500, jtitle = paste(jbait.new, zt), mindist = jdist, do.facet = FALSE)
   Signal08 <- PlotSignalLivVsKidLR(jbait, jsub.sig08, pseudo.low = 500, jtitle = paste(jbait.new, zt08), mindist = jdist, do.facet = FALSE, show.legend = FALSE)
-  Zscores <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Zscore", jtitle = "", jxlab = "", jshow.legend = FALSE, flip.y.axis = TRUE)
-  Pvalues <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Pvalue", jtitle = "", jshow.legend = TRUE, flip.y.axis = TRUE)
+  Zscores <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Zscore", jtitle = "", jxlab = "", jshow.legend = FALSE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08)
+  Pvalues <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Pvalue", jtitle = "", jshow.legend = TRUE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08)
   PlotQuad(Signal, Signal08, Zscores, Pvalues, n.boxes = 2)
   PlotTriple(Signal, Signal08, Zscores + theme(aspect.ratio = 0.25), n.boxes = 2)
 }
