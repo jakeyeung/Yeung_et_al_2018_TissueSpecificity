@@ -14,6 +14,8 @@ FisherTestSitecounts <- function(dat, cutoff, sitecount.col, model.col, show.tab
   if (missing(model.col)){
     model.col <- "model"
   }
+  # add zeros to genes that do not contain motif
+  
   if (!by.rank){
     dat$has.motif <- sapply(dat[[sitecount.col]], function(s){
       if (s > cutoff){
@@ -73,7 +75,7 @@ SubsetAndFishers <- function(dat, jmodel, cutoffs){
   return(N.ftest.sum)
 }
 
-RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models = NA, cutoffs, show.plot = TRUE, by.rank = FALSE){
+RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models = NA, cutoffs, show.plot = TRUE, by.rank = FALSE, jtitle = ""){
   jtiss <- foreground.models
   if (is.na(background.models)){
     # if NA, use all genes in N.promoter as your universe
@@ -117,7 +119,7 @@ RunFisherOnPromoters <- function(N.promoter, foreground.models, background.model
   if(show.plot){
     print(ggplot(N.ftest.sum, aes(y = -log10(p.value), x = odds.ratio, label = motif)) + geom_point() + geom_text() + theme_bw(24) + 
             theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                  panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom"))
+                  panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom") + ggtitle(jtitle))
   }
   return(N.ftest.sum)
 }

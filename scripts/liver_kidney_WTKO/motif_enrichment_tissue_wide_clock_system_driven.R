@@ -8,6 +8,8 @@ rm(list=ls())
 library(dplyr)
 library(hash)
 library(reshape2)
+library(ggplot2)
+library(ggrepel)
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/HandleMotifNames.R")
 
@@ -68,9 +70,10 @@ motifs.hash <- hash(motifs.tmp, sapply(motifs.tmp, RemoveP2Name))
 
 N.long$motif2 <- sapply(as.character(N.long$motif), function(m) motifs.hash[[m]])
 
-# motifs <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "ATF2", "NFIL3", "HSF1.2",
-#             "TFDP1", "NRF1", "SRY", "IRF1.2.7", "EP300", "SPZ1", "NFE2L2", "NFIX", "TEAD1")
-motifs <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "NFIL3", "HSF1.2")
+motifs <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "ATF2", "NFIL3", "HSF1.2",
+            "TFDP1", "NRF1", "SRY", "IRF1.2.7", "EP300", "SPZ1", "NFE2L2", "NFIX", "TEAD1")
+# motifs <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "NFIL3", "HSF1.2")
+# motifs <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "NFIL3", "HSF1.2", "ATF2", "NFIX", "TEAD1", "NFE2L2")
 genes <- as.character(fits.sub$gene)
 clksys <- as.character(fits.sub$clksys)
 
@@ -140,12 +143,15 @@ print(m.index)
 
 gene.plot <- data.frame(proj = plda.out$xproj, 
                         gene = rownames(plda.out$x),
-                        jlabel = plda.out$y)
+                        jlabel = ifelse(plda.out$y == 1, "Clock", "Systems"))
 
 mm <- ggplot(gene.plot, aes(y = proj, x = as.factor(jlabel), label = gene)) + 
   geom_boxplot() +
   geom_text() + 
-  theme_bw()
+  theme_bw() + 
+  xlab("") + 
+  ylab("Projection") + 
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 print(mm)
 
 
@@ -161,3 +167,9 @@ for (jmotif in jmotifs){
   print(paste("T test for motif:", jmotif))
   print(t.test(sitecount ~ clksys, M.motif))
 }
+
+
+# Save for reproducibility  -----------------------------------------------
+
+save(M, M.labs, plda.out, file = "Robjs/liver_kidney_atger_nestle/systems_clockdriven_tissuewide_genes.Robj")
+

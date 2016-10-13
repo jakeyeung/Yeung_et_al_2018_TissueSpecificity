@@ -88,6 +88,13 @@ dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
 prot.long <- LoadProteomicsData()
 
+jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2")
+pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.pdf")))
+for (jgene in jgenes){
+  PlotProteomics(subset(prot.long, gene == jgene), jtitle = jgene)
+}
+dev.off()
+
 
 # Plot examples -----------------------------------------------------------
 
@@ -378,6 +385,69 @@ dev.off()
 
 pdf(file.path(plot.dir, paste0(plot.i, ".tissuewide_modules_liver_kidney_wtko.pdf")))
 plot.i <- plot.i + 1
+
+# BEGIN: Penalized LDA to separate between candidate TFs 
+load("Robjs/liver_kidney_atger_nestle/systems_clockdriven_tissuewide_genes.Robj", v=T)
+
+
+jlambda <- 0.035  # liv only
+plda.out <- PenalizedLDA(M, M.labs, lambda = jlambda, K = 1, standardized = FALSE)
+
+# plot pretty
+vec.length <- sqrt(plda.out$discrim[, 1]^2)
+
+jsize.cutoff <- 0
+jsize.pairs.cut <- sapply(vec.length, function(jsize){
+  if (jsize > jsize.cutoff){
+    return(jsize)
+  } else {
+    return(0)
+  }
+})
+
+labels <- names(plda.out$x)
+labels.cut <- mapply(function(jlab, jsize){
+  if (jsize <= 0){
+    return("")
+  } else {
+    return(jlab)
+  }
+}, labels, jsize.pairs.cut)
+
+dat.plot <- data.frame(discrim = plda.out$discrim[, 1],
+                       motif = labels.cut,
+                       vec.length = vec.length,
+                       vec.length.cut = jsize.pairs.cut) %>% 
+  mutate(discrim.floor = ifelse(discrim > 0, "Systemic", "Clock")) %>%
+  arrange(discrim) %>%
+  mutate(Index = seq(length(discrim)))
+
+dat.labs <- subset(dat.plot, vec.length.cut > 0)
+
+m <- ggplot(dat.plot, aes(x = discrim.floor, y = discrim, label = motif)) + 
+  geom_point(size = 0.01) + 
+  geom_text_repel(size = 7) + 
+  theme_bw(24) + 
+  theme(aspect.ratio = 0.33, legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  xlab("") + ylab("Motif loadings") + 
+  theme(aspect.ratio = 1)
+print(m)
+
+gene.plot <- data.frame(proj = plda.out$xproj, 
+                        gene = rownames(plda.out$x),
+                        jlabel = ifelse(plda.out$y == 1, "Clock", "Systems"))
+
+mm <- ggplot(gene.plot, aes(y = proj, x = as.factor(jlabel), label = gene)) + 
+  geom_boxplot() +
+  geom_text() + 
+  theme_bw(24) + 
+  xlab("") + 
+  ylab("Projection") + 
+  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+print(mm)
+
+
+# END: PLDA 
 
 
 # jmod1 <- "many_modules_minrhyth.4.exclude_clockdriven_model"
