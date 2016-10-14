@@ -744,7 +744,7 @@ ConvertArgToPhase <- function(phase.rads, omega){
 
 PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, 
                          title = "My title", xlab = "Amplitude of activity", ylab = "Phase of activity (CT)", 
-                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18){
+                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, disable.text=FALSE){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave
@@ -763,6 +763,15 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
   } else {
     amp.step <- 1
   }
+  if (!is.character(dot.col)){
+    # create vector of colors by matching label to colour name
+    print("Assuming dot.col is a hash table... with keys as labels")
+    dot.col <- sapply(labels, function(l) dot.col[[l]])
+  }
+  if (!is.numeric(dotshape)){
+    print("Assuming dotshape is a hash table... with keys as labels")
+    dotshape <- sapply(labels, function(l) dotshape[[l]])
+  }
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
     geom_point(size = dotsize, colour = dot.col, shape = dotshape) +
     coord_polar(theta = "y") + 
@@ -780,13 +789,15 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
           legend.key = element_blank(),
           axis.ticks = element_blank(),
           panel.grid  = element_blank())
-    
-  # add text
-  df.txt <- subset(df, label != "")
-  if (constant.amp != FALSE){
-    m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp)
-  } else {
-    m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label))
+  
+  if (!disable.text){
+    # add text
+    df.txt <- subset(df, label != "")
+    if (constant.amp != FALSE){
+      m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp)
+    } else {
+      m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label))
+    }
   }
   return(m)
 }

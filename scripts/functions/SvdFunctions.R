@@ -426,7 +426,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
 
 GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, 
                       eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, 
-                      peak.to.trough = FALSE, jtitle, label.gene=NA, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18){
+                      peak.to.trough = FALSE, jtitle, label.gene=NA, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, disable.text = disable.text){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -510,7 +510,7 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   # u.plot <- PlotComplex2(eigensamp, labels = rownames(s.complex$u), omega = omega, title = paste0("Gene Module ", comp, " (", signif(var.explained[comp], 2), " of total circadian variance)"), xlab = xlab, ylab = ylab)
   u.plot <- PlotComplex2(eigensamp.sorted, labels = names(eigensamp.sorted), omega = omega, 
                          title = jtitle2, 
-                         xlab = xlab, ylab = ylab, ampscale = 2, constant.amp = constant.amp, dot.col = dot.col, jsize = jsize, dotsize = dotsize, dotshape = dotshape)
+                         xlab = xlab, ylab = ylab, ampscale = 2, constant.amp = constant.amp, dot.col = dot.col, jsize = jsize, dotsize = dotsize, dotshape = dotshape, disable.text = disable.text)
   return(list(v.plot = v.plot, u.plot = u.plot, eigengene = eigengene, eigensamp = eigensamp))
 }
 
