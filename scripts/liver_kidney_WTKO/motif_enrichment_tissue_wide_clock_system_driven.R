@@ -200,15 +200,18 @@ col.hash <- hash(dat.plot$motif.orig, sapply(dat.plot$discrim, function(d){
 }))
 
 eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
-                        constant.amp = dotsize, 
+                        constant.amp = 5, 
                         label.n = Inf, jtitle = "", 
                         peak.to.trough = TRUE, 
                         # dot.col = "black", 
                         dot.col = col.hash, 
-                        dotsize = 4, 
+                        dotsize = 6, 
                         dotshape = 18,
-                        disable.text = TRUE)
+                        disable.text = FALSE, 
+                        add.arrow = TRUE,
+                        disable.repel = TRUE)
 print(eigens.act$u.plot)
+print(eigens.act$v.plot)
 
 # Do enrichment on a single motif -----------------------------------------
 

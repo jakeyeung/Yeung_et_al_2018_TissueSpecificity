@@ -744,7 +744,8 @@ ConvertArgToPhase <- function(phase.rads, omega){
 
 PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, 
                          title = "My title", xlab = "Amplitude of activity", ylab = "Phase of activity (CT)", 
-                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, disable.text=FALSE){
+                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, disable.text=FALSE,
+                         add.arrow=FALSE, disable.repel=FALSE){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave
@@ -794,10 +795,17 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
     # add text
     df.txt <- subset(df, label != "")
     if (constant.amp != FALSE){
-      m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp)
+      if (!disable.repel){
+        m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, label = label), size = constant.amp)
+      } else {
+        m <- m + geom_text(data = df.txt, aes(x = max(amp), y = phase, label = label), size = constant.amp)
+      }
     } else {
       m <- m + geom_text_repel(data = df.txt, aes(x = amp, y = phase, size = amp, label = label))
     }
+  }
+  if (add.arrow){
+    m <- m + geom_segment(aes(x=0, xend=amp, yend=phase), color = "gray85")
   }
   return(m)
 }
