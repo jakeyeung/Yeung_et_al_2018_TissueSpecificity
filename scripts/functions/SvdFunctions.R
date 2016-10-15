@@ -427,7 +427,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
 GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, 
                       eigenval = FALSE, adj.mag = FALSE, pretty.names = FALSE, constant.amp = FALSE, 
                       peak.to.trough = FALSE, jtitle, label.gene=NA, dot.col = "gray85", jsize = 22, dotsize = 1.5,
-                      dotshape = 18, disable.text = disable.text, add.arrow = FALSE, disable.repel = FALSE){
+                      dotshape = 18, disable.text = FALSE, add.arrow = FALSE, disable.repel = FALSE){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24

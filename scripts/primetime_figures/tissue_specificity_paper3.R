@@ -387,7 +387,59 @@ pdf(file.path(plot.dir, paste0(plot.i, ".tissuewide_modules_liver_kidney_wtko.pd
 plot.i <- plot.i + 1
 
 # BEGIN: Penalized LDA to separate between candidate TFs 
-load("Robjs/liver_kidney_atger_nestle/systems_clockdriven_tissuewide_genes.Robj", v=T)
+# LOAD 
+fits.sub <- subset(fits.long.filt, gene %in% genes.tw & model != "" & amp.avg > 0) 
+
+fits.sum <- fits.sub %>% 
+  group_by(model) %>% 
+  summarise(count = length(gene)) %>%
+  arrange(desc(count))
+
+
+# Identify clock and system driven models ---------------------------------
+
+clock.or.system <- sapply(fits.sum$model, function(m){
+  # if model is Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO, consider
+  # it clock
+  if (m == "Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO"){
+    return("clock")
+  }
+  
+  if (grepl("KO", m)){
+    return("system")
+  } else if (grepl("SV129", m)){
+    return("clock")
+  } else {
+    warning("Neither KO or SV129")
+    return(NA)
+  }
+})
+clock.sys.hash <- hash(as.character(fits.sum$model), clock.or.system)
+
+fits.sub$clksys <- sapply(as.character(fits.sub$model), function(m) clock.sys.hash[[m]])
+clock.sys.gene.hash <- hash(as.character(fits.sub$gene), fits.sub$clksys)
+
+# Penalized LDA between clock and system driven ----------------------------
+
+load("Robjs/N.long.promoters_500.Robj", v=T)
+motifs.tmp <- as.character(unique(N.long$motif))
+motifs.hash <- hash(motifs.tmp, sapply(motifs.tmp, RemoveP2Name))
+
+N.long$motif2 <- sapply(as.character(N.long$motif), function(m) motifs.hash[[m]])
+motifs <- sig.motifs
+genes <- as.character(fits.sub$gene)
+clksys <- as.character(fits.sub$clksys)
+
+N.sub <- subset(N.long, motif2 %in% motifs & gene %in% genes)
+N.sub$clksys <- sapply(as.character(N.sub$gene), function(g) clock.sys.gene.hash[[g]])
+
+M.full <- dcast(N.sub, formula = gene + clksys ~ motif2, value.var = "sitecount", fun.aggregate = sum)
+
+M <- subset(M.full, select = c(-gene, -clksys)); rownames(M) <- M.full$gene
+M.labs <- as.numeric(as.factor(M.full$clksys))
+
+# END LOAD
+# load("Robjs/liver_kidney_atger_nestle/systems_clockdriven_tissuewide_genes.Robj", v=T)
 
 
 jlambda <- 0.035  # liv only
@@ -416,6 +468,7 @@ labels.cut <- mapply(function(jlab, jsize){
 
 dat.plot <- data.frame(discrim = plda.out$discrim[, 1],
                        motif = labels.cut,
+                       motif.orig = labels,
                        vec.length = vec.length,
                        vec.length.cut = jsize.pairs.cut) %>% 
   mutate(discrim.floor = ifelse(discrim > 0, "Systemic", "Clock")) %>%
@@ -461,6 +514,38 @@ print(mm)
 
 # END: PLDA 
 
+## BEGIN: circle plot annotated by clock and systems
+
+# label colours by systems-driven, clock-driven, or "gray"
+
+d.pos <- "red"
+d.neg <- "blue"
+d.zero <- "gray85"
+
+s.pos <- "8"
+s.neg <- "18"
+s.zero <- "46"
+col.hash <- hash(dat.plot$motif.orig, sapply(dat.plot$discrim, function(d){
+  if (d > 0) return(d.pos)
+  if (d < 0) return(d.neg)
+  if (d == 0) return(d.zero)
+}))
+
+eigens.act.fancy <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
+                        constant.amp = 5, 
+                        label.n = Inf, jtitle = "", 
+                        peak.to.trough = TRUE, 
+                        # dot.col = "black", 
+                        dot.col = col.hash, 
+                        dotsize = 6, 
+                        dotshape = 18,
+                        disable.text = FALSE, 
+                        add.arrow = TRUE,
+                        disable.repel = TRUE)
+print(eigens.act.fancy$v.plot)
+print(eigens.act.fancy$u.plot)
+
+## END: circle plot annotated by clock and systems
 
 # jmod1 <- "many_modules_minrhyth.4.exclude_clockdriven_model"
 jmod1 <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
@@ -658,6 +743,19 @@ for (jmod in jmods){
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   
   eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18, label.gene = c("ELF1.2.4"))
+  eigens.act.fancy.LivWTKO <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
+                                  constant.amp = 5, 
+                                  label.n = Inf, jtitle = "", 
+                                  peak.to.trough = TRUE, 
+                                  dot.col = "black", 
+                                  # dot.col = col.hash, 
+                                  dotsize = 6, 
+                                  dotshape = 18,
+                                  disable.text = FALSE, 
+                                  add.arrow = TRUE,
+                                  disable.repel = TRUE)
+  print(eigens.act.fancy.LivWTKO$v.plot)
+  print(eigens.act.fancy.LivWTKO$u.plot)
   
   # plot genes and regulators
   print(eigens$u.plot + ylab("ZT") + ggtitle(""))
