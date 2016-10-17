@@ -744,7 +744,8 @@ ConvertArgToPhase <- function(phase.rads, omega){
 
 PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24, 
                          title = "My title", xlab = "Amplitude of activity", ylab = "Phase of activity (CT)", 
-                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, disable.text=FALSE,
+                         ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, 
+                         disable.text=FALSE,
                          add.arrow=FALSE, disable.repel=FALSE){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates

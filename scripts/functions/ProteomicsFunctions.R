@@ -179,12 +179,14 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     factor.levels <- c("mRNA_Accum", "Nuclear_Prot_Accum", "TF_Activity")
     ltypes <- c("solid", "twodash", "dotted")
     jshapes <- c(17, 4, 15)
+    jsizes <- c(2, 5, 2)
   } else {
     # can rbind a null dataframe no problem
     prot.sub2 <- data.frame(NULL)
     factor.levels <- c("mRNA_Accum", "TF_Activity")
     ltypes <- c("solid", "dotted")
     jshapes <- c(17, 15)
+    jsizes <- c(2, 2)
   }
   merged.dat <- rbind(dat.sub2,
                       act.sub2,
@@ -199,18 +201,20 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   
   jtitle <- paste(unique(c(gene.dat, gene.prot, gene.act)), collapse = " ")
   if (jtiss != "both"){
-    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type))
+    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, size = type))
   } else {
-    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, colour = tissue))
+    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, colour = tissue, size = type))
   }
   m <- m + 
-    geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum")) +
-    geom_point(size = dotsize) + 
+    geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum"), size = 1) +
+    # geom_point(size = dotsize) + 
+    geom_point() + 
     facet_wrap(~geno.std, nrow = n.facetrows) + 
     theme_bw(themesize) + 
     xlab("ZT") + ylab("Accumulation or Motif Activity\n(scaled)") +
     scale_linetype_manual(values = ltypes, drop=FALSE) +
     scale_shape_manual(values = jshapes, drop=FALSE) +
+    scale_size_manual(values = jsizes, drop=FALSE) + 
     theme(legend.position = "bottom", aspect.ratio = 1) +
     ggtitle(jtitle) + 
     scale_x_continuous(breaks = c(0, 12, 24, 36, 48))

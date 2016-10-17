@@ -39,6 +39,58 @@ omega <- 2 * pi / 24
 n <- 4  # amplitude scaling 
 # Functions ---------------------------------------------------------------
 
+RunPldaSystemsClock <- function(motifs, genes, clock.sys.gene.hash, N.long, jlambda = 0.035){
+  N.sub <- subset(N.long, motif2 %in% motifs & gene %in% genes)
+  N.sub$clksys <- sapply(as.character(N.sub$gene), function(g) clock.sys.gene.hash[[g]])
+  
+  M.full <- dcast(N.sub, formula = gene + clksys ~ motif2, value.var = "sitecount", fun.aggregate = sum)
+  
+  M <- subset(M.full, select = c(-gene, -clksys)); rownames(M) <- M.full$gene
+  M.labs <- as.numeric(as.factor(M.full$clksys))
+  
+  # END LOAD
+  # load("Robjs/liver_kidney_atger_nestle/systems_clockdriven_tissuewide_genes.Robj", v=T)
+  
+  # jlambda <- 0.035  # liv only
+  plda.out <- PenalizedLDA(M, M.labs, lambda = jlambda, K = 1, standardized = FALSE)
+  
+  # plot pretty
+  vec.length <- sqrt(plda.out$discrim[, 1]^2)
+  
+  jsize.cutoff <- 0
+  jsize.pairs.cut <- sapply(vec.length, function(jsize){
+    if (jsize > jsize.cutoff){
+      return(jsize)
+    } else {
+      return(0)
+    }
+  })
+  
+  labels <- names(plda.out$x)
+  labels.cut <- mapply(function(jlab, jsize){
+    if (jsize <= 0){
+      return("")
+    } else {
+      return(jlab)
+    }
+  }, labels, jsize.pairs.cut)
+  
+  dat.plot <- data.frame(discrim = plda.out$discrim[, 1],
+                         motif = labels.cut,
+                         motif.orig = labels,
+                         vec.length = vec.length,
+                         vec.length.cut = jsize.pairs.cut) %>% 
+    mutate(discrim.floor = ifelse(discrim > 0, "Systemic", "Clock")) %>%
+    arrange(discrim) %>%
+    mutate(Index = seq(length(discrim)))
+  
+  dat.labs <- subset(dat.plot, vec.length.cut > 0)
+  
+  gene.plot <- data.frame(proj = plda.out$xproj, 
+                          gene = rownames(plda.out$x),
+                          jlabel = ifelse(plda.out$y == 1, "Clock", "Systems"))
+  return(list(dat.plot = dat.plot, gene.plot = gene.plot))
+}
 
 
 # Inits -------------------------------------------------------------------
@@ -426,90 +478,60 @@ motifs.tmp <- as.character(unique(N.long$motif))
 motifs.hash <- hash(motifs.tmp, sapply(motifs.tmp, RemoveP2Name))
 
 N.long$motif2 <- sapply(as.character(N.long$motif), function(m) motifs.hash[[m]])
-motifs <- sig.motifs
 genes <- as.character(fits.sub$gene)
 clksys <- as.character(fits.sub$clksys)
 
-N.sub <- subset(N.long, motif2 %in% motifs & gene %in% genes)
-N.sub$clksys <- sapply(as.character(N.sub$gene), function(g) clock.sys.gene.hash[[g]])
+motifs.lst <- list()
+motifs.lst[[1]] <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "NFIL3", "HSF1.2")
+motifs.lst[[2]] <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "NFIL3", "HSF1.2", "ATF2", "NFIX", "NFE2L2")
+motifs.lst[[3]] <- sig.motifs  # set as third, we reference this later
 
-M.full <- dcast(N.sub, formula = gene + clksys ~ motif2, value.var = "sitecount", fun.aggregate = sum)
-
-M <- subset(M.full, select = c(-gene, -clksys)); rownames(M) <- M.full$gene
-M.labs <- as.numeric(as.factor(M.full$clksys))
-
-# END LOAD
-# load("Robjs/liver_kidney_atger_nestle/systems_clockdriven_tissuewide_genes.Robj", v=T)
-
-
-jlambda <- 0.035  # liv only
-plda.out <- PenalizedLDA(M, M.labs, lambda = jlambda, K = 1, standardized = FALSE)
-
-# plot pretty
-vec.length <- sqrt(plda.out$discrim[, 1]^2)
-
-jsize.cutoff <- 0
-jsize.pairs.cut <- sapply(vec.length, function(jsize){
-  if (jsize > jsize.cutoff){
-    return(jsize)
-  } else {
-    return(0)
-  }
+dat.plot.lst <- lapply(motifs.lst, function(motifs){
+  dat.gene.plots <- RunPldaSystemsClock(motifs, genes, clock.sys.gene.hash, N.long, jlambda = 0.035)
+  dat.plot <- dat.gene.plots$dat.plot
+  gene.plot <- dat.gene.plots$gene.plot
+  
+  dat.plot$motif.cut <- sapply(as.character(dat.plot$motif), function(m){
+    if (m %in% motifs.lst[[1]]){
+      return(m)
+    } else {
+      return(NA)
+    }
+  })
+  m <- ggplot(dat.plot, aes(x = discrim.floor, y = discrim, label = motif.cut)) + 
+    geom_point(size = 0.01) + 
+    geom_text_repel(size = 7) + 
+    theme_bw(24) + 
+    theme(aspect.ratio = 0.33, legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+    xlab("") + ylab("Motif loadings") + 
+    theme(aspect.ratio = 1)
+  print(m)
+  
+  m.index <- ggplot(dat.plot, aes(x = Index, y = discrim, label = motif.cut)) + 
+    geom_point(size = 0.01) + 
+    geom_text_repel(size = 7) + 
+    theme_bw(24) + 
+    theme(aspect.ratio = 0.33, legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+    xlab("") + ylab("Motif loadings") + 
+    theme(aspect.ratio = 1, 
+          axis.ticks.x = element_blank(), 
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank())
+  print(m.index)
+  
+  mm <- ggplot(gene.plot, aes(y = proj, x = as.factor(jlabel), label = gene)) + 
+    geom_boxplot() +
+    geom_text() + 
+    theme_bw(24) + 
+    xlab("") + 
+    ylab("Projection") + 
+    theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  print(mm)
+  return(dat.plot)
 })
 
-labels <- names(plda.out$x)
-labels.cut <- mapply(function(jlab, jsize){
-  if (jsize <= 0){
-    return("")
-  } else {
-    return(jlab)
-  }
-}, labels, jsize.pairs.cut)
+dat.plot <- dat.plot.lst[[3]]  # get dat.plot for all motifs
 
-dat.plot <- data.frame(discrim = plda.out$discrim[, 1],
-                       motif = labels.cut,
-                       motif.orig = labels,
-                       vec.length = vec.length,
-                       vec.length.cut = jsize.pairs.cut) %>% 
-  mutate(discrim.floor = ifelse(discrim > 0, "Systemic", "Clock")) %>%
-  arrange(discrim) %>%
-  mutate(Index = seq(length(discrim)))
-
-dat.labs <- subset(dat.plot, vec.length.cut > 0)
-
-m <- ggplot(dat.plot, aes(x = discrim.floor, y = discrim, label = motif)) + 
-  geom_point(size = 0.01) + 
-  geom_text_repel(size = 7) + 
-  theme_bw(24) + 
-  theme(aspect.ratio = 0.33, legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-  xlab("") + ylab("Motif loadings") + 
-  theme(aspect.ratio = 1)
-print(m)
-
-m.index <- ggplot(dat.plot, aes(x = Index, y = discrim, label = motif)) + 
-  geom_point(size = 0.01) + 
-  geom_text_repel(size = 7) + 
-  theme_bw(24) + 
-  theme(aspect.ratio = 0.33, legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-  xlab("") + ylab("Motif loadings") + 
-  theme(aspect.ratio = 1, 
-        axis.ticks.x = element_blank(), 
-        axis.title.x=element_blank(),
-        axis.text.x=element_blank())
-print(m.index)
-
-gene.plot <- data.frame(proj = plda.out$xproj, 
-                        gene = rownames(plda.out$x),
-                        jlabel = ifelse(plda.out$y == 1, "Clock", "Systems"))
-
-mm <- ggplot(gene.plot, aes(y = proj, x = as.factor(jlabel), label = gene)) + 
-  geom_boxplot() +
-  geom_text() + 
-  theme_bw(24) + 
-  xlab("") + 
-  ylab("Projection") + 
-  theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-print(mm)
 
 
 # END: PLDA 
