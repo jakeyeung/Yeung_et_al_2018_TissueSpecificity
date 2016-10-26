@@ -66,7 +66,7 @@ if (remove.kidney.outliers){
 # Plot for all genes in module --------------------------------------------
 
 # from tissue_specificity_paper3.R
-jmod.long <- "Liver_SV129,Liver_BmalKO"
+jmod.long <- "Liver_SV129"
 jonto <- "BP"
 comp <- 1
 jcutoff <- 0.5
@@ -79,8 +79,28 @@ genedir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis"
 
 # GO terms for Liver WTKO module
 start <- Sys.time()
+
+# Identify GO IDs manually using DAVID
 # DNA rep, response to insulin, ribosome biogenesis, glucose import ... 
-GOterms <- c("GO:0006260", "GO:0042254", "GO:0032868", "GO:0043434", "GO:0046326")
+# plot in 6 hour intervals
+# tstarts <- seq(0, 18, by = 6)
+# lapply(tstarts, function(tstart){
+#   tend <- tstart + 6
+#   if (tend > 24){
+#     tend <- tend - 24
+#   }
+#   print(paste(tstart, tend))
+#   genes <- as.character(subset(fits.long.filt, model %in% jmod.long & IsBtwnTimes(phase.avg, tstart, tend))$gene)
+#   print(paste("Ngenes", length(genes)))
+#   genes.ensembl <- Gene2Ensembl(genes)
+#   WriteListToFile(genes.ensembl, outf = paste0("/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis/", gsub(",", "-", jmod.long), ".", tstart, "to", tend, ".txt"))
+#   return(NA)
+# })
+
+start <- Sys.time()
+# DNA rep, response to insulin, ribosome biogenesis, glucose import ... 
+# GOterms <- c("GO:0006260", "GO:0042254", "GO:0032868", "GO:0043434", "GO:0046326")
+GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056")
 # plot in 6 hour intervals
 tstarts <- seq(0, 23)
 enrichment <- mclapply(tstarts, function(tstart){
@@ -106,4 +126,3 @@ print(Sys.time() - start)
 fout <- paste0("/home/yeung/projects/tissue-specificity/Robjs/GO_analysis/model", jmod.long, ".Robj")
 save(enrichment, file = fout)
 
-# ggplot(subset(enrichment, GO.ID == "GO:0032868"), aes(x = tstart, y = minuslogpval)) + geom_line()
