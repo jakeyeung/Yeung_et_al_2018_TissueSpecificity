@@ -746,7 +746,7 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
                          title = "My title", xlab = "Amplitude of activity", ylab = "Phase of activity (CT)", 
                          ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, 
                          disable.text=FALSE,
-                         add.arrow=FALSE, disable.repel=FALSE){
+                         add.arrow=FALSE, disable.repel=FALSE, amp.max="auto"){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave
@@ -758,12 +758,12 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
   df <- data.frame(amp = Mod(vec.complex) * ampscale,
                    phase = ConvertArgToPhase(Arg(vec.complex), omega = omega),
                    label = labels)
-  
-  amp.max <- ceiling(max(df$amp) * 2) / 2
-  if (amp.max <= 1){
-    amp.step <- 0.5
+
+  if (amp.max == "auto"){
+    amp.max <- ceiling(max(df$amp) * 2) / 2
   } else {
-    amp.step <- 1
+    amp.max <- as.numeric(amp.max)
+    if (is.na(amp.max)) warning("Amp max must be numeric or 'auto'")
   }
   if (!is.character(dot.col)){
     # create vector of colors by matching label to colour name
