@@ -15,6 +15,19 @@
 library(topGO)
 library(org.Mm.eg.db)
 
+Vectorize(IsBtwnTimes <- function(phase, tstart, tend){
+  # check if phase (between 0 to 24, is between tstart and tend, considering the modulo)
+  if (tend > tstart){
+    # easy case
+    is.btwn <- phase >= tstart & phase <= tend
+  } else {
+    # harder case, must consider the modulo
+    is.btwn <- phase >= tstart | phase <= tend
+  }
+  # replace NAs with FALSE
+  is.btwn[which(is.na(is.btwn))] <- FALSE
+  return(is.btwn)
+}, vectorize.args="phase")
 
 MergeGOTerms <- function(enrichment, go.terms, new.go.term){
   # After running GetGOEnrichment, merge some GO terms that may be "similar"
@@ -258,9 +271,9 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   if (missing(entrez2GO)){
     entrez2GO <- CreateEntrez2GO()
   }
-  if (filter.GO.terms != FALSE){
-    entrez2GO <- lapply(entrez2GO, function(GOlist) GOlist[which(GOlist %in% filter.GO.terms)])
-  }
+  # if (all(filter.GO.terms != FALSE)){
+  #   entrez2GO <- lapply(entrez2GO, function(GOlist) GOlist[which(GOlist %in% filter.GO.terms)])
+  # }
   
   if (convert.sym.to.entrez){
     genes.bg <- ConvertSym2Entrez(genes.bg, sym2entrez)
@@ -306,7 +319,7 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   print(paste(nrow(all.res), "GO.terms found enriched."))
   
   # optionally filter by GO term
-  if (filter.GO.terms != FALSE){
+  if (all(filter.GO.terms != FALSE)){
     all.res <- subset(all.res, GO.ID %in% filter.GO.terms)
   }
   if (nrow(all.res) < 1){
