@@ -1,6 +1,8 @@
-# 2016-08-30
+# 2016-10-26
 # Jake YEung
 # go_terms_analysis_with_phase_amplitude.R
+# copied from liver kidney WT KO analysis
+# Create a phase-specific annotation (sliding window?) of functional enrichment. 
 
 rm(list=ls())
 start <- Sys.time()
@@ -34,8 +36,34 @@ source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
 source("scripts/functions/ListFunctions.R")
+source("scripts/functions/AnalyzeGeneEnrichment.R")
+source("scripts/functions/BiomartFunctions.R")
 
 
+WriteListToFile <- function(lst, outf){
+  sink(file = outf)
+  for (g in lst){
+    cat(g)
+    cat("\n")
+  }
+  sink()
+  return(NA)
+}
+
+
+Vectorize(IsBtwnTimes <- function(phase, tstart, tend){
+  # check if phase (between 0 to 24, is between tstart and tend, considering the modulo)
+  if (tend > tstart){
+    # easy case
+    is.btwn <- phase >= tstart & phase <= tend
+  } else {
+    # harder case, must consider the modulo
+    is.btwn <- phase >= tstart | phase <= tend
+  }
+  # replace NAs with FALSE
+  is.btwn[which(is.na(is.btwn))] <- FALSE
+  return(is.btwn)
+}, vectorize.args="phase")
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
 
@@ -74,59 +102,114 @@ jtiss.lst <- list(c(ModelStrToModel(jmod1), "MF"),
                   c("Kidney_SV129,Kidney_BmalKO", "MF"), 
                   c("Liver_BmalKO", "BP"))
 
-# jmod.long <- ModelStrToModel(jmod1)
-# jmod.long <- ModelStrToModel(jmod2)
-# 
-# jonto <- "BP"
-# jonto <- "MF"
-# # jmod.long <- "Liver_SV129,Liver_BmalKO"
-# jmod.long <- "Kidney_SV129"
-# jmod.long <- "Kidney_SV129,Kidney_BmalKO"
-# jmod.long <- "Liver_BmalKO"
+plots <- expandingList()
+jmod.long <- "Liver_SV129,Liver_BmalKO"
+jonto <- "BP"
+comp <- 1
+jcutoff <- 0.5
+jtiss.onto <- paste(jmod.long, jonto)
 
-plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
-pdf(file.path(plotdir, paste0("liv_kid_with_GO.rm_outliers.", remove.kidney.outliers, ".pdf")))
-  mclapply(jtiss.lst, function(jtiss.onto){
-    # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
-    source("scripts/functions/AnalyzeGeneEnrichment.R")
-    jcutoff <- 0.5  # fdr cutoff for enrichment
-    comp <- 1
-    plots <- expandingList()
-    jmod.long <- jtiss.onto[-length(jtiss.onto)]
-    jonto <- jtiss.onto[length(jtiss.onto)]
-    
-    genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
-    dat.sub <- subset(dat.freq, gene %in% genes)
-    s <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
-    eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = textsize, peak.to.trough = TRUE, label.gene = c("Egr1", "Mafb", "Tfcp2"))
-    
-    plots$add(eigens$u.plot + ylab("ZT") + ggtitle(""))
-    plots$add(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
-    
-    genes.bg <- as.character(subset(fits.long.filt)$gene)
-    genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
-    enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = jcutoff, ontology = jonto, show.top.n = 8)
-    # merge GO terms (manual for the moment)
-    if (jtiss.onto[[1]] == "Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO"){
-      # merge circ reg and rhyth process into one term
-      go.terms <- c("GO:0032922", "GO:0048511")
-      enrichment <- MergeGOTerms(enrichment, go.terms, new.go.term = "circadian or rhythmic process")
-    }
-    # plot enrichment GO terms
-    m.go <- ggplot(enrichment, aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") +
-      ylab("-log10(P-value), Fisher's exact test") +
-      xlab("") +
-      theme_bw() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-      ggtitle(jtiss.onto)
-    m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "none", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
-    m2 <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "right", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
-    plots$add(m.go)
-    plots$add(m + ylab("ZT") + ggtitle(""))
-    plots$add(m2 + ylab("ZT") + ggtitle(""))
-    return(plots$as.list())
-  }, mc.cores = length(jtiss.lst))
-dev.off()
+genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
+dat.sub <- subset(dat.freq, gene %in% genes)
+s <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = textsize, peak.to.trough = TRUE, label.gene = c("Egr1", "Mafb", "Tfcp2"))
+
+plots$add(eigens$u.plot + ylab("ZT") + ggtitle(""))
+plots$add(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+
+# genes.bg <- as.character(subset(fits.long.filt, model == "")$gene)
+genes.bg <- as.character(fits.long.filt$gene)
+# genes.bg <- as.character(subset(fits.long.filt, model %in% jmod.long & phase.avg > 12 & phase.avg < 24)$gene)
+# genes.bg.ensembl <- Gene2Ensembl(genes.bg)
+# genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long & phase.avg > 0 & phase.avg < 12)$gene)
+# genes.fg.ensembl <- Gene2Ensembl(genes.fg)
+
+# write fg and bg to separate file to load into David:
+genedir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis"
+
+# GO terms for Liver WTKO module
+GOterms <- c("GO:0006260", "GO:0042254", "GO:0032868", "GO:0043434", "GO:0046326")
+# plot in 6 hour intervals
+for (tstart in c(3, 9, 21)){
+  tend <- tstart + 6
+  if (tend > 24){
+    tend <- tend - 24
+  }
+  print(paste(tstart, tend))
+  genes <- as.character(subset(fits.long.filt, model %in% jmod.long & IsBtwnTimes(phase.avg, tstart, tend))$gene)
+  print(paste("Ngenes", length(genes)))
+  genes.ensembl <- Gene2Ensembl(genes)
+  enrichment <- GetGOEnrichment(genes.bg, genes, fdr.cutoff = 1, ontology = jonto, show.top.n = Inf)
+  # outf <- file.path(genedir, paste0(gsub(",", "-", jmod.long), ".", tstart, "to", tend, ".txt"))
+  # WriteListToFile(genes.ensembl, outf)
+}
+# 
+# sink(file = file.path(genedir, paste0(gsub(",", "-", jmod.long), ".12to24.bg.txt")))
+# for (g in genes.bg.ensembl){
+#   cat(g)
+#   cat("\n")
+# }
+# sink()
+# 
+# enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = 1, ontology = jonto, show.top.n = 8)
+# 
+# m.go <- ggplot(enrichment, aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") +
+#   ylab("-log10(P-value), Fisher's exact test") +
+#   xlab("") +
+#   theme_bw() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+#   ggtitle(jtiss.onto)
+# m.go
+# 
+# m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "none", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
+# m2 <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "right", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
+# plots$add(m.go)
+# plots$add(m + ylab("ZT") + ggtitle(""))
+# plots$add(m2 + ylab("ZT") + ggtitle(""))
+# 
+# plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
+# pdf(file.path(plotdir, paste0("liv_kid_with_GO.rm_outliers.", remove.kidney.outliers, ".pdf")))
+#   mclapply(jtiss.lst, function(jtiss.onto){
+#     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
+#     source("scripts/functions/AnalyzeGeneEnrichment.R")
+#     jcutoff <- 0.5  # fdr cutoff for enrichment
+#     comp <- 1
+#     plots <- expandingList()
+#     jmod.long <- jtiss.onto[-length(jtiss.onto)]
+#     jonto <- jtiss.onto[length(jtiss.onto)]
+#     
+#     genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
+#     dat.sub <- subset(dat.freq, gene %in% genes)
+#     s <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
+#     eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = textsize, peak.to.trough = TRUE, label.gene = c("Egr1", "Mafb", "Tfcp2"))
+#     
+#     plots$add(eigens$u.plot + ylab("ZT") + ggtitle(""))
+#     plots$add(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+#     
+#     genes.bg <- as.character(subset(fits.long.filt)$gene)
+#     genes.fg <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
+#     enrichment <- GetGOEnrichment(genes.bg, genes.fg, fdr.cutoff = jcutoff, ontology = jonto, show.top.n = 8)
+#     # merge GO terms (manual for the moment)
+#     if (jtiss.onto[[1]] == "Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO"){
+#       # merge circ reg and rhyth process into one term
+#       go.terms <- c("GO:0032922", "GO:0048511")
+#       enrichment <- MergeGOTerms(enrichment, go.terms, new.go.term = "circadian or rhythmic process")
+#     }
+#     # plot enrichment GO terms
+#     m.go <- ggplot(enrichment, aes(x = Term, y = minuslogpval)) + geom_bar(stat = "identity") +
+#       ylab("-log10(P-value), Fisher's exact test") +
+#       xlab("") +
+#       theme_bw() +
+#       theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+#       ggtitle(jtiss.onto)
+#     m <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "none", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
+#     m2 <- PlotGeneModuleWithGO(dat.sub, enrichment, jtitle = paste(jtiss.onto, collapse = "\n"), text.size = textsize, dot.size = dotsize, comp = comp, legend.pos = "right", label.gene = c("Egr1", "Mafb", "Tfcp2"), label.GO.terms.only = TRUE, unlabeled.alpha = 0.3)
+#     plots$add(m.go)
+#     plots$add(m + ylab("ZT") + ggtitle(""))
+#     plots$add(m2 + ylab("ZT") + ggtitle(""))
+#     return(plots$as.list())
+#   }, mc.cores = length(jtiss.lst))
+# dev.off()
 
 
 # Check Kidney_SV129 genes for false positives ----------------------------

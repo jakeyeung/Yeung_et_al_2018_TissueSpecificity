@@ -43,9 +43,9 @@ MergeGOTerms <- function(enrichment, go.terms, new.go.term){
   return(enrichment.merged)
 }
 
-GetGOEnrichment <- function(genes.bg, genes.fg, fdr.cutoff, show.top.n = 8, ontology="BP", wd = "/home/yeung/projects/tissue-specificity"){
+GetGOEnrichment <- function(genes.bg, genes.fg, fdr.cutoff, show.top.n = 8, ontology="BP", wd = "/home/yeung/projects/tissue-specificity", filter.GO.terms=FALSE){
   source(file.path(wd, "scripts/functions/AnalyzeGeneEnrichment.R"))
-  enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = 0.5, which.ontology = ontology, return.GOdata = TRUE)
+  enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = fdr.cutoff, which.ontology = ontology, return.GOdata = TRUE, filter.GO.terms = filter.GO.terms)
   enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
   enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
   show.top.n.min <- min(nrow(enrichment), show.top.n)
@@ -232,7 +232,9 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
                                   write.path = FALSE,
                                   node.size = 5, 
                                   FDR.cutoff = 0.05,
-                                  return.GOdata = FALSE){
+                                  return.GOdata = FALSE,
+                                  debug=FALSE,
+                                  filter.GO.terms=FALSE){
   # Analyze gene enrichment given background and hit genes.
   #
   # INPUT:
@@ -256,6 +258,9 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   if (missing(entrez2GO)){
     entrez2GO <- CreateEntrez2GO()
   }
+  if (filter.GO.terms != FALSE){
+    entrez2GO <- lapply(entrez2GO, function(GOlist) GOlist[which(GOlist %in% filter.GO.terms)])
+  }
   
   if (convert.sym.to.entrez){
     genes.bg <- ConvertSym2Entrez(genes.bg, sym2entrez)
@@ -274,7 +279,9 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
                 nodeSize = node.size,
                 annot = annFUN.gene2GO,
                 gene2GO = entrez2GO)
-  # return(GOdata)
+  if (debug){
+    return(GOdata)
+  }
   
   # Run enrichment ----------------------------------------------------------
   
@@ -294,8 +301,14 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
   
   # Filter table by pvalue --------------------------------------------------
   
+  print(paste(nrow(all.res), "GO.terms found enriched before filtering by pval"))
   all.res <- all.res[all.res$FDRadj <= FDR.cutoff, ]
   print(paste(nrow(all.res), "GO.terms found enriched."))
+  
+  # optionally filter by GO term
+  if (filter.GO.terms != FALSE){
+    all.res <- subset(all.res, GO.ID %in% filter.GO.terms)
+  }
   if (nrow(all.res) < 1){
     print("No enrichment found below cutoff")
     return(all.res)  # just skip it and return an empty DF
@@ -337,6 +350,9 @@ AnalyzeGeneEnrichment <- function(genes.bg, genes.hit,
     entrez2sym <- as.list(org.Mm.egSYMBOL)
     entrez2sym <- entrez2sym[!is.na(entrez2sym)]
     all.res$genes <- sapply(my.genes, function(g){
+      if (length(g) == 0){
+        return(NA)
+      }
       if (!is.na(g)){
         return(unlist(entrez2sym[g], use.names = FALSE))
       } else {
