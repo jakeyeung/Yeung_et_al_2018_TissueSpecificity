@@ -15,19 +15,7 @@
 library(topGO)
 library(org.Mm.eg.db)
 
-Vectorize(IsBtwnTimes <- function(phase, tstart, tend){
-  # check if phase (between 0 to 24, is between tstart and tend, considering the modulo)
-  if (tend > tstart){
-    # easy case
-    is.btwn <- phase >= tstart & phase <= tend
-  } else {
-    # harder case, must consider the modulo
-    is.btwn <- phase >= tstart | phase <= tend
-  }
-  # replace NAs with FALSE
-  is.btwn[which(is.na(is.btwn))] <- FALSE
-  return(is.btwn)
-}, vectorize.args="phase")
+source("scripts/functions/DataHandlingFunctions.R")
 
 MergeGOTerms <- function(enrichment, go.terms, new.go.term){
   # After running GetGOEnrichment, merge some GO terms that may be "similar"

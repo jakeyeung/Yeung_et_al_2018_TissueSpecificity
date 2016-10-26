@@ -3,6 +3,20 @@
 # November 10 2014
 # Simple functions for easier manipulating of data
 
+Vectorize(IsBtwnTimes <- function(phase, tstart, tend){
+  # check if phase (between 0 to 24, is between tstart and tend, considering the modulo)
+  if (tend > tstart){
+    # easy case
+    is.btwn <- phase >= tstart & phase <= tend
+  } else {
+    # harder case, must consider the modulo
+    is.btwn <- phase >= tstart | phase <= tend
+  }
+  # replace NAs with FALSE
+  is.btwn[which(is.na(is.btwn))] <- FALSE
+  return(is.btwn)
+}, vectorize.args="phase")
+
 Peek <- function(dat, N=5){
   # Peek at first N rows and N columns of data
   # 

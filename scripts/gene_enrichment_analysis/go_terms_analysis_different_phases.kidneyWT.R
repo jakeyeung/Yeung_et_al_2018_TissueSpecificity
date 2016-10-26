@@ -37,6 +37,7 @@ source("scripts/functions/GetTopMotifs.R")
 source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
 source("scripts/functions/ListFunctions.R")
+source("scripts/functions/DataHandlingFunctions.R")
 
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
@@ -45,6 +46,7 @@ load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
 
 jmeth <- "g=1001"
 # load("Robjs/liver_kidney_atger_nestle/dat.freq.bugfixed.Robj", v=T)  # LivKid
+# load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.annotated.Robj", v=T)
 fits.long.filt <- subset(fits.long.filt, method == jmeth)
 # load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T); dat.wtko <- dat.long; rm(dat.long)
@@ -66,7 +68,7 @@ if (remove.kidney.outliers){
 # Plot for all genes in module --------------------------------------------
 
 # from tissue_specificity_paper3.R
-jmod.long <- "Liver_SV129"
+jmod.long <- "Kidney_SV129"
 jonto <- "BP"
 comp <- 1
 jcutoff <- 0.5
@@ -77,13 +79,15 @@ genes.bg <- as.character(fits.long.filt$gene)
 # write fg and bg to separate file to load into David:
 genedir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis"
 
+# GO terms for Liver WTKO module
 start <- Sys.time()
 
 # Identify GO IDs manually using DAVID
-# DNA rep, response to insulin, ribosome biogenesis, glucose import ... 
-# plot in 6 hour intervals
 # tstarts <- seq(0, 21, by = 3)
 # lapply(tstarts, function(tstart){
+#   source("scripts/functions/AnalyzeGeneEnrichment.R")
+#   source("scripts/functions/BiomartFunctions.R")
+#   source("scripts/functions/WriteListToFile.R")
 #   tend <- tstart + 6
 #   if (tend > 24){
 #     tend <- tend - 24
@@ -96,11 +100,9 @@ start <- Sys.time()
 #   return(NA)
 # })
 
-start <- Sys.time()
-# DNA rep, response to insulin, ribosome biogenesis, glucose import ... 
-# GOterms <- c("GO:0006260", "GO:0042254", "GO:0032868", "GO:0043434", "GO:0046326")
-GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056")
-# plot in 6 hour intervals
+# start <- Sys.time()
+# GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056")
+GOterms <- c("GO:0055085", "GO:0000188", "GO:0007171", "GO:0015171", "GO:0006812", "GO:0048015", "GO:0006811", "GO:0071280")
 tstarts <- seq(0, 23)
 enrichment <- mclapply(tstarts, function(tstart){
   source("scripts/functions/AnalyzeGeneEnrichment.R")
@@ -117,8 +119,11 @@ enrichment <- mclapply(tstarts, function(tstart){
   enrichment$tstart <- tstart
   return(as.data.frame(subset(enrichment, !is.na(GO.ID))))
 }, mc.cores = 12)
-print(enrichment)
-enrichment <- bind_rows(enrichment)
+print("out of loop")
+fout <- paste0("/home/yeung/projects/tissue-specificity/Robjs/GO_analysis/model", jmod.long, ".Robj")
+save(enrichment, file = fout)
+# enrichment <- bind_rows(enrichment)  # NAs in genes is problematic???
+enrichment <- do.call(rbind, enrichment)
 print(Sys.time() - start)
 
 # save to output
