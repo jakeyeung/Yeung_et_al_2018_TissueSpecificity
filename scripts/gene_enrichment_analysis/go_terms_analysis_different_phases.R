@@ -80,7 +80,7 @@ genedir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis"
 # GO terms for Liver WTKO module
 start <- Sys.time()
 # DNA rep, response to insulin, ribosome biogenesis, glucose import ... 
-GOterms <- c("GO:0006260", "GO:0042254", "GO:0032868", "GO:0043434", "GO:0046326")
+GOterms <- c("GO:0006260", "GO:0042254", "GO:0032868", "GO:0043434", "GO:0046326", "GO:0090526", "GO:0006111")
 # plot in 6 hour intervals
 tstarts <- seq(0, 23)
 enrichment <- mclapply(tstarts, function(tstart){
