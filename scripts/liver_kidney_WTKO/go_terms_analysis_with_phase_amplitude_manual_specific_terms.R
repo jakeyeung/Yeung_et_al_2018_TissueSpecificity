@@ -77,12 +77,10 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                   list("a"=c("Liver_SV129"),
                        "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0006739"),
                        "c"=5,
-                       # "d"=c("Hsd3b7", "Elovl3", "Cpt1b", "Cyp8b1", "Fabp2", "Lipc", "Lrp5", "Mtm1", "Pld1", "Ald5a1", "Gpat2", "Acsf3", "Adh4")))
                        "d"=c("Elovl3", "Insig2", "Adh4", "Hsd3b7", "Lrp5", "Sdr42e1", "Cyp8b1",
                              "Gck", "Pklr", "Ppp1r3b", 
-                             # "B4gal5", "Ugt1a8", "Pgm2l1",
-                             # "Agxt", "Cdo1", "Hmgb1", "Rxra", "Agl", "Tat",
-                             "Upp2", "Rgs16", "Abcg5", "Por", "Lipg", "Tff3", "Fkbp4", "Nrg4")),
+                             "Upp2", "Rgs16", "Abcg5", "Por", "Lipg", "Tff3", "Fkbp4", "Nrg4",
+                             "Slc45a3", "Pik3ap1", "Mreg", "Slc44a1")),
                   list("a"=c("Kidney_SV129"),
                        "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0000188", "GO:0048015", "GO:0006811", "GO:0006812"),
                        "c"=2.5,
@@ -91,7 +89,7 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                              "Clcn2", "Spred3", "Dusp9",
                              "Slc16a1", "Slc7a8", "Slc39a5", "Clcn2", "Slc22a4", "Slc41a1", "Slc9a3", "Rhobtb1", "Trib2", "Slc6a4")),
                   list("a"=c("Liver_BmalKO"),
-                       "b"=c("GO:0016126", "GO:0006699", "GO:0015721", "GO:0015031"),
+                       "b"=c("GO:0016126", "GO:0006699", "GO:0015721", "GO:0015031", "GO:0045834"),
                        "c"=5.5,
                        "d"=c("Akr1b7", "Gpam",
                              "Dhcr24", "Mvk",
@@ -124,7 +122,7 @@ pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.", remove
     eigentiss <- eigens$u.plot + ylab("ZT") + ggtitle("")
     eigengene <- eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle("")
     
-    cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+    cbPalette <- c("#E69F00", "#56B4E9", "#CC79A7", "#D55E00", "#009E73", "#0072B2", "#999999", "#F0E442")
     plots$add(eigentiss)
     plots$add(eigengene)
     plots$add(PlotGOTermsPhase(enrichment, "", cbPalette, to.append = eigentiss, phasestr = "phase", ampstr = "amp", amp.max = max.amp))
