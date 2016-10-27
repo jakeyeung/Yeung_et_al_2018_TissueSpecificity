@@ -3,6 +3,23 @@
 # November 10 2014
 # Simple functions for easier manipulating of data
 
+CopyZT0ToZT24 <- function(enrichment, twindow = 6, jorder = TRUE, convert.cname=FALSE){
+  # complete the circle
+  enrichment$tmid <- enrichment$tstart + twindow / 2
+  enrichment$tmid <- sapply(enrichment$tmid, function(tmid) ifelse(tmid >= 24, tmid - 24, tmid))
+  
+  enrichment.24 <- subset(enrichment, tmid == 0)
+  enrichment.24$tmid <- 24
+  enrichment <- bind_rows(enrichment, enrichment.24)
+  enrichment <- enrichment %>% arrange(Term, tmid)
+  if (convert.cname){
+    enrichment <- dplyr::rename_(enrichment, phase = "tmid")
+    enrichment <- dplyr::rename_(enrichment, amp = "minuslogpval")
+  }
+  return(enrichment)
+}
+
+
 Vectorize(IsBtwnTimes <- function(phase, tstart, tend){
   # check if phase (between 0 to 24, is between tstart and tend, considering the modulo)
   if (tend > tstart){

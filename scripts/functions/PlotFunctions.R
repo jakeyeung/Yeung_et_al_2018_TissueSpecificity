@@ -2,6 +2,47 @@ library(ggplot2)
 library(ggrepel)
 library(grid)
 
+PlotGOTermsPhase <- function(dat, jtitle, cbPalette, to.append=FALSE, phasestr = "tmid", ampstr = "minuslogpval", amp.max=NULL){
+  if (is.null(amp.max)){
+    amp.max <- ceiling(max(dat[[ampstr]]))
+  } else {
+    dat[[ampstr]] <- sapply(dat[[ampstr]], function(a) ifelse(a > amp.max, amp.max, a))
+  }
+  
+  if (is.logical(to.append)){
+    m <- ggplot(dat,
+                aes_string(x = phasestr, y = ampstr, fill = "Term")) + 
+      geom_polygon(alpha = 0.3) + 
+      coord_polar(theta = "x") + 
+      scale_x_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
+      theme_bw() +
+      ggtitle(jtitle) + 
+      geom_hline(yintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
+      geom_vline(xintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
+      theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+            panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+            panel.border = element_blank(),
+            legend.key = element_blank(),
+            axis.ticks = element_blank(),
+            panel.grid  = element_blank())
+  } else {
+    m <- to.append + geom_polygon(mapping = aes_string(y = phasestr, x = ampstr, fill = "Term", label = NULL), data = dat, alpha = 0.3)
+      # coord_polar(theta = "y") + 
+      # theme_bw() +
+      # theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+      #       panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+      #       panel.border = element_blank(),
+      #       legend.key = element_blank(),
+      #       axis.ticks = element_blank(),
+      #       panel.grid  = element_blank())
+  }
+
+  if (!missing(cbPalette)){
+    m <- m + scale_fill_manual(values = cbPalette)
+  }
+  return(m)
+}
+
 gg_color_hue <- function(n) {
   # http://stackoverflow.com/questions/8197559/emulate-ggplot2-default-color-palette
   hues = seq(15, 375, length = n + 1)

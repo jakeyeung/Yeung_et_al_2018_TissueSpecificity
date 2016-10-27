@@ -4,17 +4,7 @@
 library(ggplot2)
 
 
-CopyZT0ToZT24 <- function(enrichment, twindow = 6){
-  # complete the circle
-  enrichment$tmid <- enrichment$tstart + twindow / 2
-  enrichment$tmid <- sapply(enrichment$tmid, function(tmid) ifelse(tmid >= 24, tmid - 24, tmid))
-  
-  enrichment.24 <- subset(enrichment, tmid == 0)
-  enrichment.24$tmid <- 24
-  enrichment <- bind_rows(enrichment, enrichment.24)
-  return(enrichment)
-}
-
+source("scripts/functions/DataHandlingFunctions.R")
 
 dir.create("plots/GO_analysis")
 pdf("plots/GO_analysis/tissue_modules.pdf")
@@ -30,6 +20,9 @@ load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZ
 ignore.GOs <- c("GO:0042254")  # ribi
 ignore.GOs <- c("GO:0043434")  # peptide hrmone
 liverWTKOsub <- subset(enrichment, !GO.ID %in% ignore.GOs)
+
+
+
 amp.max <- ceiling(max(liverWTKOsub$minuslogpval))
 ggplot(liverWTKOsub %>% arrange(Term, tmid), 
        aes(x = tmid, y = minuslogpval, fill = Term)) + 
