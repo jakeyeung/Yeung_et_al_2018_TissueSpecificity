@@ -177,16 +177,21 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   if (!(missing(prot.long) | all(is.na(prot.long)))){
     prot.sub2 <- SubsetGenoSignalTimeType(prot.sub)
     factor.levels <- c("mRNA_Accum", "Nuclear_Prot_Accum", "TF_Activity")
-    ltypes <- c("solid", "twodash", "dotted")
-    jshapes <- c(17, 4, 15)
-    jsizes <- c(2, 5, 2)
+    # ltypes <- c("solid", "twodash", "dotted")
+    ltypes <- c("dotted", "twodash", "solid")
+    # jshapes <- c(17, 4, 15)
+    jshapes <- c(32, 17, 32)
+    jsizes <- c(3, 5, 5)
   } else {
     # can rbind a null dataframe no problem
     prot.sub2 <- data.frame(NULL)
     factor.levels <- c("mRNA_Accum", "TF_Activity")
-    ltypes <- c("solid", "dotted")
-    jshapes <- c(17, 15)
-    jsizes <- c(2, 2)
+    # ltypes <- c("solid", "dotted")
+    ltypes <- c("dotted", "solid")
+    # jshapes <- c(17, 15)
+    # jshapes <- c(1, 17)
+    jshapes <- c(32, 32)
+    jsizes <- c(2, 5)
   }
   merged.dat <- rbind(dat.sub2,
                       act.sub2,
