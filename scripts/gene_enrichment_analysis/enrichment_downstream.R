@@ -116,7 +116,7 @@ ggplot(kidneysub,
   scale_fill_manual(values = cbPalette) +
   theme_bw()  + 
   theme(legend.position = "bottom") + 
-  ggtitle("Kidney WT")
+  ggtitle(jmod)
 
 ggplot(kidneysub, aes(x = tmid, y = minuslogpval, colour = Term)) + 
   geom_line() + 
@@ -125,6 +125,32 @@ ggplot(kidneysub, aes(x = tmid, y = minuslogpval, colour = Term)) +
   theme_bw()  + 
   theme(legend.position = "bottom") + 
   facet_wrap(~Term) + 
-  ggtitle("Kidney WT")
+  ggtitle(jmod)
+
+
+# Liver WTKO and Liver WT -------------------------------------------------
+
+jmod <- "Liver_SV129,Liver_BmalKO-Liver_SV129"
+load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment)
+kidneysub <- subset(enrichment, !GO.ID %in% c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056"))
+ampmax <- max(kidneysub$minuslogpval)
+ggplot(kidneysub, 
+       aes(x = tmid, y = minuslogpval, fill = Term)) + 
+  geom_polygon(alpha = 0.3) + 
+  coord_polar(theta = "x") + scale_x_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) +
+  # scale_fill_manual(values = cbPalette) +
+  theme_bw()  + 
+  theme(legend.position = "bottom") + 
+  ggtitle(jmod)
+
+ggplot(kidneysub, aes(x = tmid, y = minuslogpval, colour = Term)) + 
+  geom_line() + 
+  coord_polar(theta = "x") + scale_x_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
+  # scale_colour_manual(values = cbPalette) + 
+  theme_bw()  + 
+  theme(legend.position = "bottom") + 
+  facet_wrap(~Term) + 
+  ggtitle(jmod)
+
 
 dev.off()
