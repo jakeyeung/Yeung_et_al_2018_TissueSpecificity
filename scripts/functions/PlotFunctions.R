@@ -787,7 +787,7 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
                          title = "My title", xlab = "Amplitude of activity", ylab = "Phase of activity (CT)", 
                          ampscale = 2, constant.amp = FALSE, dot.col = "gray85", jsize = 22, dotsize = 1.5, dotshape = 18, 
                          disable.text=FALSE,
-                         add.arrow=FALSE, disable.repel=FALSE, amp.max="auto"){
+                         add.arrow=FALSE, disable.repel=FALSE, amp.max="auto", axis.line.col = "black"){
   # Convert complex to amplitude (2 * fourier amplitude) and phase, given omega.
   # then plot in polar coordinates
   # fourier amplitudes are half-amplitudes of the sine-wave
@@ -824,8 +824,8 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
     scale_y_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
     scale_x_continuous(limits = c(0, amp.max), breaks = seq(0, amp.max, length.out = 2)) + 
     theme_bw(jsize) + 
-    geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
-    geom_hline(yintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
+    geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = axis.line.col, size = 0.2, linetype = "dashed") +
+    geom_hline(yintercept = seq(6, 24, by = 6), colour = axis.line.col, size = 0.2, linetype = "solid") +
     theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
           panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
           panel.border = element_blank(),

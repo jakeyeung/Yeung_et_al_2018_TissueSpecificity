@@ -99,7 +99,7 @@ start <- Sys.time()
 start <- Sys.time()
 # DNA rep, response to insulin, ribosome biogenesis, glucose import ... 
 # GOterms <- c("GO:0006260", "GO:0042254", "GO:0032868", "GO:0043434", "GO:0046326")
-GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056")
+GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056", "GO:0006793")
 # plot in 6 hour intervals
 tstarts <- seq(0, 23)
 enrichment <- mclapply(tstarts, function(tstart){
