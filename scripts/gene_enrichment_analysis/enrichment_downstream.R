@@ -15,7 +15,7 @@ cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
 
 
 jmod <- "Liver_SV129,Liver_BmalKO"
-load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment)
+load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, convert.cname=FALSE)
 
 ignore.GOs <- c("GO:0042254")  # ribi
 ignore.GOs <- c("GO:0043434")  # peptide hrmone
@@ -61,7 +61,7 @@ ggplot(liverWTKOsub,
 # Liver WT ----------------------------------------------------------------
 
 jmod <- "Liver_SV129"
-load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment)
+load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, convert.cname=FALSE)
 liverWTsub <- subset(enrichment, !GO.ID %in% c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056"))
 amp.max <- ceiling(max(liverWTsub$minuslogpval))
 ggplot(liverWTsub %>% arrange(Term, tmid), 
@@ -101,7 +101,7 @@ ggplot(liverWTsub,
 # Kidney WT ---------------------------------------------------------------
 
 jmod <- "Kidney_SV129"
-load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment)
+load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, convert.cname=FALSE)
 kidneysub <- subset(enrichment, !GO.ID %in% c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0055085"))
 amp.max <- ceiling(max(kidneysub$minuslogpval))
 ggplot(kidneysub %>% arrange(Term, tmid), 
@@ -140,7 +140,7 @@ ggplot(kidneysub, aes(x = tmid, y = minuslogpval, colour = Term)) +
 # Liver WTKO and Liver WT -------------------------------------------------
 
 jmod <- "Liver_SV129,Liver_BmalKO-Liver_SV129"
-load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment)
+load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, convert.cname=FALSE)
 liverWTKOandWT <- subset(enrichment, !GO.ID %in% c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056"))
 amp.max <- ceiling(max(liverWTKOandWT$minuslogpval))
 ggplot(liverWTKOandWT %>% arrange(Term, tmid), 
@@ -175,5 +175,44 @@ ggplot(liverWTKOandWT, aes(x = tmid, y = minuslogpval, colour = Term)) +
   facet_wrap(~Term) + 
   ggtitle(jmod)
 
+
+# Liver KO ----------------------------------------------------------------
+
+jmod <- "Liver_BmalKO"
+load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, convert.cname = FALSE)
+
+liverKO <- subset(enrichment, !GO.ID %in% c("GO:0016126", "GO:0006699", "GO:0015721", "GO:0015031"))
+amp.max <- ceiling(max(liverKO$minuslogpval))
+ggplot(liverKO %>% arrange(Term, tmid), 
+       aes(x = tmid, y = minuslogpval, fill = Term)) + 
+  geom_polygon(alpha = 0.3) + 
+  coord_polar(theta = "x") + scale_x_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) +
+  # scale_fill_manual(values = cbPalette) +
+  theme_bw()  + 
+  geom_hline(yintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
+  geom_vline(xintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
+  theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+        panel.border = element_blank(),
+        legend.key = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank()) + 
+  ggtitle(jmod)
+
+ggplot(liverKO, aes(x = tmid, y = minuslogpval, colour = Term)) + 
+  geom_line() + 
+  coord_polar(theta = "x") + scale_x_continuous(limits = c(0, 24), breaks = seq(6, 24, 6)) + 
+  # scale_colour_manual(values = cbPalette) + 
+  theme_bw()  + 
+  geom_hline(yintercept = seq(0, amp.max, length.out = 2), colour = "grey50", size = 0.2, linetype = "dashed") +
+  geom_vline(xintercept = seq(6, 24, by = 6), colour = "grey50", size = 0.2, linetype = "solid") +
+  theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+        panel.border = element_blank(),
+        legend.key = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank()) + 
+  facet_wrap(~Term) + 
+  ggtitle(jmod)
 
 dev.off()

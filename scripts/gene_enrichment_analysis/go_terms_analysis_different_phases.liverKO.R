@@ -82,30 +82,12 @@ genedir <- "/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis"
 # GO terms for Liver WTKO module
 start <- Sys.time()
 
-# Identify GO IDs manually using DAVID
-tstarts <- seq(0, 21, by = 3)
-lapply(tstarts, function(tstart){
-  source("scripts/functions/AnalyzeGeneEnrichment.R")
-  source("scripts/functions/BiomartFunctions.R")
-  source("scripts/functions/WriteListToFile.R")
-  tend <- tstart + 6
-  if (tend > 24){
-    tend <- tend - 24
-  }
-  print(paste(tstart, tend))
-  genes <- as.character(subset(fits.long.filt, model %in% jmod.long & IsBtwnTimes(phase.avg, tstart, tend))$gene)
-  print(paste("Ngenes", length(genes)))
-  genes.ensembl <- Gene2Ensembl(genes)
-  WriteListToFile(genes.ensembl, outf = paste0("/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis/", gsub(",", "-", jmod.long), ".", tstart, "to", tend, ".txt"))
-  return(NA)
-})
-
-# # start <- Sys.time()
-# # GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056")
-# GOterms <- c("GO:0055085", "GO:0000188", "GO:0007171", "GO:0015171", "GO:0006812", "GO:0048015", "GO:0006811", "GO:0071280")
-# tstarts <- seq(0, 23)
-# enrichment <- mclapply(tstarts, function(tstart){
+# # Identify GO IDs manually using DAVID
+# tstarts <- seq(0, 21, by = 3)
+# lapply(tstarts, function(tstart){
 #   source("scripts/functions/AnalyzeGeneEnrichment.R")
+#   source("scripts/functions/BiomartFunctions.R")
+#   source("scripts/functions/WriteListToFile.R")
 #   tend <- tstart + 6
 #   if (tend > 24){
 #     tend <- tend - 24
@@ -113,20 +95,39 @@ lapply(tstarts, function(tstart){
 #   print(paste(tstart, tend))
 #   genes <- as.character(subset(fits.long.filt, model %in% jmod.long & IsBtwnTimes(phase.avg, tstart, tend))$gene)
 #   print(paste("Ngenes", length(genes)))
-#   # genes.ensembl <- Gene2Ensembl(genes)
-#   enrichment <- GetGOEnrichment(genes.bg, genes, fdr.cutoff = 1, ontology = jonto, show.top.n = Inf, filter.GO.terms = GOterms)
-#   enrichment <- subset(enrichment, !is.na(GO.ID))
-#   enrichment$tstart <- tstart
-#   return(as.data.frame(subset(enrichment, !is.na(GO.ID))))
-# }, mc.cores = 12)
-# print("out of loop")
-# fout <- paste0("/home/yeung/projects/tissue-specificity/Robjs/GO_analysis/model", jmod.long, ".Robj")
-# save(enrichment, file = fout)
-# # enrichment <- bind_rows(enrichment)  # NAs in genes is problematic???
-# enrichment <- do.call(rbind, enrichment)
-# print(Sys.time() - start)
-# 
-# # save to output
-# fout <- paste0("/home/yeung/projects/tissue-specificity/Robjs/GO_analysis/model", jmod.long, ".Robj")
-# save(enrichment, file = fout)
+#   genes.ensembl <- Gene2Ensembl(genes)
+#   WriteListToFile(genes.ensembl, outf = paste0("/home/yeung/projects/tissue-specificity/data/gene_lists/GO_analysis/", gsub(",", "-", jmod.long), ".", tstart, "to", tend, ".txt"))
+#   return(NA)
+# })
+
+# # start <- Sys.time()
+# # GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056")
+# GOterms <- c("GO:0055085", "GO:0000188", "GO:0007171", "GO:0015171", "GO:0006812", "GO:0048015", "GO:0006811", "GO:0071280")
+GOterms <- c("GO:0016126", "GO:0006695", "GO:0006629", "GO:0071396", "GO:0045834", "GO:0016192", "GO:0006699", "GO:0015721", "GO:0015031")
+tstarts <- seq(0, 23)
+enrichment <- mclapply(tstarts, function(tstart){
+  source("scripts/functions/AnalyzeGeneEnrichment.R")
+  tend <- tstart + 6
+  if (tend > 24){
+    tend <- tend - 24
+  }
+  print(paste(tstart, tend))
+  genes <- as.character(subset(fits.long.filt, model %in% jmod.long & IsBtwnTimes(phase.avg, tstart, tend))$gene)
+  print(paste("Ngenes", length(genes)))
+  # genes.ensembl <- Gene2Ensembl(genes)
+  enrichment <- GetGOEnrichment(genes.bg, genes, fdr.cutoff = 1, ontology = jonto, show.top.n = Inf, filter.GO.terms = GOterms)
+  enrichment <- subset(enrichment, !is.na(GO.ID))
+  enrichment$tstart <- tstart
+  return(as.data.frame(subset(enrichment, !is.na(GO.ID))))
+}, mc.cores = 12)
+print("out of loop")
+fout <- paste0("/home/yeung/projects/tissue-specificity/Robjs/GO_analysis/model", jmod.long, ".Robj")
+save(enrichment, file = fout)
+# enrichment <- bind_rows(enrichment)  # NAs in genes is problematic???
+enrichment <- do.call(rbind, enrichment)
+print(Sys.time() - start)
+
+# save to output
+fout <- paste0("/home/yeung/projects/tissue-specificity/Robjs/GO_analysis/model", jmod.long, ".Robj")
+save(enrichment, file = fout)
 
