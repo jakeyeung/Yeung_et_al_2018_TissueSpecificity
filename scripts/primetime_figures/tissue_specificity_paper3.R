@@ -140,10 +140,31 @@ dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
 prot.long <- LoadProteomicsData()
 
+outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.hogenesch"
+outmain <- file.path(outbase, paste0("promoters.tissuewide.filteramp.0.15.mat"))
+indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
+act.l <- LoadActivitiesLong(indir, shorten.motif.name = TRUE)
+act.l <- subset(act.l, experiment == "rnaseq" & tissue == "Liver")
+act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
+act.l$time <- act.l$time - 24
+act.l$geno <- "WT"
+prot.long.wt <- subset(prot.long, geno == "WT")
+dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
+
 jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2")
+jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7")
+print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
 pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.pdf")))
-for (jgene in jgenes){
-  PlotProteomics(subset(prot.long, gene == jgene), jtitle = jgene)
+for (i in seq(length(jgenes))){
+  jgene <- jgenes[i]
+  jmotif <- jmotifs[i]
+  print(paste(jgene, jmotif))
+  print(PlotProteomics(subset(prot.long, gene == jgene), jtitle = jgene))
+  if (!is.na(jmotif)){
+    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.act = jmotif, gene.prot = jgene, jtiss = "Liver", dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+  } else {
+    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+  }
 }
 dev.off()
 
