@@ -207,7 +207,7 @@ pdf(file.path(plot.dir, paste0(plot.i, ".tissue_wide_genes_and_regulators.pdf"))
 plot.i <- plot.i + 1
 
 s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
-eigens.tw <- GetEigens(s.tw, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE)
+eigens.tw <- GetEigens(s.tw, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Hspa8", "Cirbp"))
 jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
 print(eigens.tw$u.plot)
 print(eigens.tw$v.plot)
