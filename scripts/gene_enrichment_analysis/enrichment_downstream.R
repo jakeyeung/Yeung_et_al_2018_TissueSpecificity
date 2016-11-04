@@ -102,7 +102,7 @@ ggplot(liverWTsub,
 
 jmod <- "Kidney_SV129"
 load(paste0("Robjs/GO_analysis/model", jmod, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, convert.cname=FALSE)
-kidneysub <- subset(enrichment, !GO.ID %in% c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0055085"))
+kidneysub <- subset(enrichment, !GO.ID %in% c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056"))
 amp.max <- ceiling(max(kidneysub$minuslogpval))
 ggplot(kidneysub %>% arrange(Term, tmid), 
        aes(x = tmid, y = minuslogpval, fill = Term)) + 

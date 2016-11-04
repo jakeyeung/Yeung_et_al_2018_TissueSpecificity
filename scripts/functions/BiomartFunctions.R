@@ -2,6 +2,40 @@
 library(methods)
 library(IRanges)
 
+CapitalizeFirstLetter <- function(gene){
+  # CRY1 -> Cry1
+  return(paste(toupper(substr(gene, 1, 1)), tolower(substr(gene, 2, nchar(gene))), sep = ""))
+}
+
+Gene2StartEnd <- function(gene.list, return.original=TRUE, mm9=TRUE) {
+  # make gene.list begin with Upper, end with Lower
+  gene.list <- CapitalizeFirstLetter(gene.list)	
+  # library("biomaRt")
+  # https://support.bioconductor.org/p/74322/  need to use host and biomart
+  if (mm9){
+    jhost="may2012.archive.ensembl.org"
+    gene.list <- Gene2Ensembl(gene.list, return.original=TRUE)
+    gene.attr <- "ensembl_gene_id"
+    gene.filtr <- "ensembl_gene_id"
+  } else {
+    jhost="www.ensembl.org"
+    gene.attr <- "external_gene_name"
+    gene.filtr <- gene.attr
+  }
+  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host=jhost)
+    gos <- getBM(gene.list,
+                 attributes=c(gene.attr, "start_position", "end_position"),
+                 filters=c(gene.filtr),
+                 mart=mart.obj)
+    gl <- gos[match(gene.list, gos[,1]), c(2, 3)]
+      ## if not found, then keep ENSEMBL name
+      print(paste0("Could not match ", length(gl[is.na(gl)]), " genes."))
+      if (return.original){
+	          gl[is.na(gl)] <- gene.list[is.na(gl)]
+        }
+        return(gl)
+}
+
 setMethod("$", "GRanges", function(x, name) { # {{{
   # http://grokbase.com/t/r/bioconductor/122mwahdhw/bioc-add-extra-columns-to-granges-metadata
   elementMetadata(x)[, name]

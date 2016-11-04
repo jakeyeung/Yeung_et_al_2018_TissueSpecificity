@@ -75,19 +75,20 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                              "Kat2b", "Sesn2", "Foxo1",  # Gluconeo
                              "Mafb", "Lpin1", "Jun", "Ddit3", "Cebpb", "Pik3r1", "Nop58", "Nop56", "Rpp38")),  # RiBi and misc
                   list("a"=c("Liver_SV129"),
-                       "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0006739"),
+                       "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0006739", "GO:0006793", "GO:0051384"),
                        "c"=5,
                        "d"=c("Elovl3", "Insig2", "Adh4", "Hsd3b7", "Lrp5", "Sdr42e1", "Cyp8b1",
                              "Gck", "Pklr", "Ppp1r3b", 
                              "Upp2", "Rgs16", "Abcg5", "Por", "Lipg", "Tff3", "Fkbp4", "Nrg4",
                              "Slc45a3", "Pik3ap1", "Mreg", "Slc44a1")),
                   list("a"=c("Kidney_SV129"),
-                       "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0000188", "GO:0048015", "GO:0006811", "GO:0006812"),
+                       "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0000188", "GO:0048015", "GO:0006811", "GO:0055085"),
                        "c"=2.5,
                        "d"=c("Angpt1", "Igf1r",
                              "Slc12a6", "Prnp", "Lrrc52",
                              "Clcn2", "Spred3", "Dusp9",
-                             "Slc16a1", "Slc7a8", "Slc39a5", "Clcn2", "Slc22a4", "Slc41a1", "Slc9a3", "Rhobtb1", "Trib2", "Slc6a4")),
+                             "Slc16a1", "Slc7a8", "Slc39a5", "Clcn2", "Slc22a4", "Slc41a1", "Slc9a3", "Rhobtb1", "Trib2", "Slc6a4",
+			                       "Slc7a8")),
                   list("a"=c("Liver_BmalKO"),
                        "b"=c("GO:0016126", "GO:0006699", "GO:0015721", "GO:0015031", "GO:0045834"),
                        "c"=5.5,
@@ -99,7 +100,7 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
 jtiss.onto <- jtiss.lst[[4]]
 
 plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
-pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.", remove.kidney.outliers, ".pdf")))
+pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".pdf")))
   mclapply(jtiss.lst, function(jtiss.onto){
     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
     source("scripts/functions/AnalyzeGeneEnrichment.R")

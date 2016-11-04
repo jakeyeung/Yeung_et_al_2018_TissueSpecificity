@@ -27,6 +27,17 @@ eps <- 1  # for log2 transform
 dataset <- "liverWTKO"  # or hogenesch
 dataset <- "hogenesch"  # or liverWTKO
 
+distmeth <- "hellinger"
+distmeth <- "euclidean"
+
+if (distmeth == "euclidean"){
+  jxlab <- "Euclidean Distance"
+} else if (distmeth == "hellinger"){
+  jxlab <- "Hellinger Distance"
+} else {
+  stop("distmeth must be Euclidean or Hellinger")
+}
+
 do.filter <- FALSE
 
 if (dataset == "hogenesch"){
@@ -100,7 +111,7 @@ print(subset(tpm.afe.avg, gene == "Insig2"))
 
 tpm.afe.dist <- subset(tpm.afe.avg, nprom > 1 & !is.na(amp) & gene %in% genes.to.check) %>%
   group_by(gene) %>%
-  do(CalculateDistance(., dist.method = "hellinger", jvar = "tpm_norm.avg", transcript_id = "transcript", return.as.df = TRUE))
+  do(CalculateDistance(., dist.method = distmeth, jvar = "tpm_norm.avg", transcript_id = "transcript", return.as.df = TRUE))
 print(Sys.time() - start)
 
 gene.models <- hash(as.character(fits.long.filt$gene), as.character(fits.long.filt$model))
@@ -142,14 +153,14 @@ fits.long.filt$label <- mapply(function(amp.avg, prom.dist, gene){
   }
 }, fits.long.filt$amp.avg, fits.long.filt$proms.dist, as.character(fits.long.filt$gene))
 
-pdf("plots/primetime_plots_liver_kidney_wtko/alt_tss.pdf")
+pdf(paste0("plots/primetime_plots_liver_kidney_wtko/alt_tss.", dataset, ".", distmeth, ".pdf"))
 m <- ggplot(fits.long.filt, aes(x = proms.dist / sqrt(2), y = amp.avg* 2, label = label)) + 
   geom_point(alpha = 0.2) + 
   geom_text_repel(size = 5) + 
   # geom_text() + 
   theme_bw(24) + 
   theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-  ylab("Average Log2 FC") + xlab("Hellinger Distance")
+  ylab("Average Log2 FC") + xlab(jxlab)
   # ylim(0, 5)
 print(m)
 dev.off()
@@ -157,7 +168,7 @@ dev.off()
 # Save to output
 outdir <- "Robjs/alt_promoter_usage"
 dir.create(outdir)
-save(fits.long.filt, tpm.afe.dist, file = file.path(outdir, paste0("fits_long.proms_dist.", dataset, ".Robj")))
+save(fits.long.filt, tpm.afe.dist, file = file.path(outdir, paste0("fits_long.proms_dist.", dataset, ",", distmeth, ".Robj")))
 
 
 # # Save to output

@@ -102,7 +102,9 @@ start <- Sys.time()
 
 # start <- Sys.time()
 # GOterms <- c("GO:008152", "GO:0006633", "GO:0055114", "GO:46856", "GO:0070542", "GO:0006629", "GO:0006511", "GO:0051384", "GO:0007584", "GO:0005975", "GO:0006739", "GO:0009056")
-GOterms <- c("GO:0055085", "GO:0000188", "GO:0007171", "GO:0015171", "GO:0006812", "GO:0048015", "GO:0006811", "GO:0071280")
+GOterms <- c("GO:0055085", "GO:0000188", "GO:0007171", "GO:0015171", "GO:0006812", "GO:0048015", "GO:0006811", "GO:0071280", "GO:00015804", 
+             "GO:0006865", "GO:0015718")
+# GOterms <- c("GO:0007171", "GO:0015171", "GO:0071280", "GO:00015804")
 tstarts <- seq(0, 23)
 enrichment <- mclapply(tstarts, function(tstart){
   source("scripts/functions/AnalyzeGeneEnrichment.R")
@@ -115,6 +117,7 @@ enrichment <- mclapply(tstarts, function(tstart){
   print(paste("Ngenes", length(genes)))
   # genes.ensembl <- Gene2Ensembl(genes)
   enrichment <- GetGOEnrichment(genes.bg, genes, fdr.cutoff = 1, ontology = jonto, show.top.n = Inf, filter.GO.terms = GOterms)
+  # enrichment <- GetGOEnrichment(genes.bg, genes, fdr.cutoff = 1, ontology = jonto, show.top.n = Inf, filter.GO.terms = FALSE)
   enrichment <- subset(enrichment, !is.na(GO.ID))
   enrichment$tstart <- tstart
   return(as.data.frame(subset(enrichment, !is.na(GO.ID))))

@@ -561,6 +561,10 @@ dat.plot <- dat.plot.lst[[3]]  # get dat.plot for all motifs
 
 # label colours by systems-driven, clock-driven, or "gray"
 
+# my.palette <- colorRampPalette(c("blue", "red"))(n = 300)
+my.palette <- rev(colorRampPalette(brewer.pal(6, "RdYlBu"))(n = 300))
+
+
 d.pos <- "red"
 d.neg <- "blue"
 d.zero <- "gray85"
@@ -574,12 +578,22 @@ col.hash <- hash(dat.plot$motif.orig, sapply(dat.plot$discrim, function(d){
   if (d == 0) return(d.zero)
 }))
 
+interp <- approx(x = seq(from = min(dat.plot$discrim), to = max(dat.plot$discrim), length.out = nrow(dat.plot)), 
+                          y = seq(1, 300, length.out = nrow(dat.plot)), 
+                          xout = dat.plot$discrim)
+interp$y <- round(interp$y)
+
+col.hash.interp <- hash(dat.plot$motif.orig, sapply(interp$y, function(i){
+  return(my.palette[[i]])
+}))
+
+# binary colors
 eigens.act.fancy <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
                         constant.amp = 5, 
                         label.n = Inf, jtitle = "", 
                         peak.to.trough = TRUE, 
-                        # dot.col = "black", 
                         dot.col = col.hash, 
+                        # dot.col = col.hash.interp, 
                         dotsize = 6, 
                         dotshape = 18,
                         disable.text = FALSE, 
@@ -587,6 +601,38 @@ eigens.act.fancy <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE,
                         disable.repel = TRUE)
 print(eigens.act.fancy$v.plot)
 print(eigens.act.fancy$u.plot)
+# gradient colors
+eigens.act.fancy.grad <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
+                              constant.amp = 5, 
+                              label.n = Inf, jtitle = "", 
+                              peak.to.trough = TRUE, 
+                              dot.col = col.hash.interp, 
+                              dotsize = 6, 
+                              dotshape = 18,
+                              disable.text = FALSE, 
+                              add.arrow = TRUE,
+                              disable.repel = TRUE)
+print(eigens.act.fancy.grad$u.plot)
+
+# shaded colors
+
+# Plot clkcsys discriminant loadings with color
+dat.plot$clr <- sapply(as.character(dat.plot$motif.orig), function(m) col.hash.interp[[m]])
+
+ggplot(dat.plot, aes(x = Index, y = discrim, label = motif.cut, colour = clr)) + 
+  geom_point(size = 8, shape = 18) + geom_text_repel(colour = "black", size = 12) + 
+  scale_colour_identity() + theme_bw(24) + 
+  xlab("") + ylab("Motif Loading") + 
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), 
+        aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+# plot legend
+ggplot(dat.plot, aes(x = Index, y = 1, colour = clr)) + 
+  geom_point(shape = 15, size = 10) + 
+  scale_colour_identity() + 
+  theme_bw() + xlab("") + ylab("") + 
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), 
+        aspect.ratio = 0.1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 ## END: circle plot annotated by clock and systems
 
