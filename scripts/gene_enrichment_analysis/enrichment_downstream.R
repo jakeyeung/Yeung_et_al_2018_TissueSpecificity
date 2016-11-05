@@ -2,7 +2,9 @@
 # after doing sliding window GO analysis: plot data
 
 library(ggplot2)
+library(dplyr)
 
+setwd("/home/yeung/projects/tissue-specificity")
 
 source("scripts/functions/DataHandlingFunctions.R")
 
