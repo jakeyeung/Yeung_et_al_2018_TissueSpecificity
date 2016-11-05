@@ -1,21 +1,14 @@
 # 2016-11-04
 # Explore GO terms that plots trees
 
-# source("http://www.bioconductor.org/biocLite.R")
-# biocLite()
-# biocLite("graph")
-# biocLite("Rgraphviz") #before installing this package, the user has to install the graphviz 
-# biocLite("SparseM")
-# biocLite("GOFunction")
-
-# Load --------------------------------------------------------------------
-
 library("Rgraphviz")
 library("GOFunction")
 library(org.Hs.eg.db)
 library(org.Mm.eg.db)
 library(GO.db)
 library(graph)
+library(ggplot2)
+library(dplyr)
 
 library(devtools)
 # devtools::install_github("jakeyeung/GOFunction")
@@ -23,7 +16,46 @@ devtools::install_local("/home/yeung/projects/GOFunction")
 
 source("scripts/functions/GraphFunctions.R")
 source("scripts/functions/AnalyzeGeneEnrichment.R")
+source("scripts/functions/FitRhythmic.R")
+source("scripts/functions/PlotFunctions.R")
 
+
+# Load GO output ----------------------------------------------------------
+
+inf <- "/home/yeung/projects/tissue-specificity/Robjs/GO_analysis/modelLiver_SV129,Liver_BmalKO.all.Robj"
+load(inf, v=T)
+
+
+# FInd oscillating  -------------------------------------------------------
+
+enrichment.sum <- enrichment %>%
+  mutate(experiment = "GO", tissue = "Liver", exprs = minuslogpval, time = tstart + 3) %>%   # define cols needed for FitRhythmic
+  group_by(GO.ID, Term) %>%
+  do(FitRhythmic(.))
+
+# show top 50
+head(subset(data.frame(enrichment.sum %>% arrange(desc(amp))), select = c(GO.ID, Term, amp, phase, pval)), n = 50)
+
+# jtest <- subset(enrichment, Term == "ribosome biogenesis")
+jGOID <- "GO:0009057"
+jGOID <- "GO:0043434"
+jGOID <- "GO:0031328"
+jGOID <- "GO:0044260"
+jGOID <- "GO:0006270"
+jGOID <- "GO:0032868"
+jtest <- subset(enrichment, GO.ID == jGOID)
+jname <- jtest$Term
+ggplot(jtest, aes(x = tstart + 3, y = minuslogpval)) + geom_point() + geom_line() + ggtitle(jname)
+
+enrichment.sum$jlab <- apply(enrichment.sum, 1, function(row) ifelse(row[3] > 1, row[2], NA))
+
+print(PlotAmpPhase(subset(enrichment.sum, amp > 1.25), lab_str = "jlab", textsize = 5) + xlim(c(0, 2)))
+
+# Query DBs ---------------------------------------------------------------
+
+.sql <- paste("select distinct go_id goid,term name from go_term where ontology='",
+              toupper(ontology), "'", sep="")
+allTermName <-  dbGetQuery(conn,.sql)
 
 # Get relevant genes ------------------------------------------------------
 

@@ -210,16 +210,21 @@ PlotFirstNComponents <- function(svd.complex, comps = c(1), period = 24){
   }
 }
 
-PlotAmpPhase <- function(dat, amp_str = "amp", phase_str = "phase", lab_str = "gene"){
+PlotAmpPhase <- function(dat, amp_str = "amp", phase_str = "phase", lab_str = "gene", textsize = "auto"){
   # Expect amp and phase in data frame column names.
   # label as gene names
-  ggplot(data = dat, aes_string(x = amp_str, y = phase_str, label = lab_str)) + 
+  m <- ggplot(data = dat, aes_string(x = amp_str, y = phase_str, label = lab_str)) + 
     geom_point() + 
-    geom_text(aes_string(x = amp_str, y = phase_str, size = amp_str)) + 
     coord_polar(theta = "y") +
     ylab("Phase") +
     xlab("Amp") +
     scale_y_continuous(limits = c(0, 24), breaks = seq(2, 24, 2))
+  if (textsize == "auto"){
+    m <- m + geom_text(aes_string(x = amp_str, y = phase_str, size = amp_str))
+  } else {
+    m <- m + geom_text(aes_string(x = amp_str, y = phase_str), size = textsize)
+  }
+  return(m)
 }
 
 PlotAmpPhaseTissue <- function(dat, ampsize = 5){
