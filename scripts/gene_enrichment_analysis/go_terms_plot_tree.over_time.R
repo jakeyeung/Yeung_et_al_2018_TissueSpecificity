@@ -20,6 +20,7 @@ source("scripts/functions/AnalyzeGeneEnrichment.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/HashFunctions.R")
+source("scripts/functions/PhaseColorFunctions.R")
 
 
 # Load GO output ----------------------------------------------------------
@@ -94,12 +95,16 @@ cat("Visualizing the GO DAG...\n")
 # take top 10 hits 
 pvalcutoff <- 1
 sigDAG <- createGODAG(top.terms, ontology)
+
+
+
 allDAGTerm <- allTermName$goid[allTermName$goid %in% nodes(sigDAG)]
 
 dagTermName <- allTermName$goid[allTermName$goid %in% allDAGTerm]
 dagTermName <- dagTermName[order(dagTermName)]
 allDAGTerm <- allDAGTerm[order(allDAGTerm)]
 allDAGTerm.name <- allTermName$name[allTermName$goid %in% allDAGTerm]
+
 # allDAGTerm <- allDAGTerm[,c(1,6,2,3,4,5)]
 sigTermID <- as.character(top.terms)
 
@@ -115,7 +120,7 @@ edgeAttrs <- list()
 
 allTerm <- as.character(allDAGTerm)
 GO.names <- as.character(allDAGTerm.name)
-nodeAttrs$label[allTerm] <- allTerm
+nodeAttrs$label <- nodes(sigDAG)
 
 weightsList <- edgeWeights(sigDAG)
 to <- lapply(weightsList, names)
@@ -129,10 +134,9 @@ edgeAttrs$color <- ifelse(edge.weights == 0, 'black', 'red')
 # nodeAttrs$label <- seq(length(nodeAttrs$label))
 nodeAttrs$label[allTerm] <- GO.names
 nodeAttrs$fixedsize[allTerm] <- TRUE
-nodeAttrs$fontsize[allTerm] <- 200
+nodeAttrs$fontsize[allTerm] <- 300
 # nodeAttrs$cex[allTerm] <- 50
 # add node colors based on HSV
-source("scripts/functions/PhaseColorFunctions.R")
 allTerm.df <- data.frame(goid = allDAGTerm, name = allDAGTerm.name, stringsAsFactors = FALSE)
 pval.hash <- hash(enrichment.sum$GO.ID, enrichment.sum$pval)
 amp.hash <- hash(enrichment.sum$GO.ID, enrichment.sum$amp)
@@ -140,7 +144,8 @@ phase.hash <- hash(enrichment.sum$GO.ID, enrichment.sum$phase)
 allTerm.df$pval <- sapply(allTerm.df$goid, function(g) AssignHash(g, pval.hash, null.fill = NA))
 allTerm.df$amp <- sapply(allTerm.df$goid, function(g) AssignHash(g, amp.hash, null.fill = NA))
 allTerm.df$phase <- sapply(allTerm.df$goid, function(g) AssignHash(g, phase.hash, null.fill = NA))
-allTerm.df$Color <- PhaseAmpPvalToColor(phase = allTerm.df$phase, amp = allTerm.df$amp, pval = allTerm.df$pval, rotate.hr = -8, amp.k = 1, pval.k = Inf, method = "cutoff")
+allTerm.df$Color <- PhaseAmpPvalToColor(phase = allTerm.df$phase, amp = allTerm.df$amp, pval = allTerm.df$pval, 
+                                        rotate.hr = -8, amp.k = 1, pval.k = Inf, method = "cutoff", black.to.white = TRUE)
 color.hash <- hash(allTerm.df$goid, allTerm.df$Color)
 nodeAttrs$fillcolor <- sapply(names(nodeAttrs$label), function(l) AssignHash(l, color.hash, null.fill = NA))
 plot(sigDAG, attrs = graphAttrs, nodeAttrs = nodeAttrs, edgeAttrs = edgeAttrs, main = "Testing")

@@ -45,7 +45,8 @@ HexToHsv <- Vectorize(function(hex){
   rgb2hsv(R, G, B)  
 }, "hex")
 
-PhaseAmpPvalToColor <- function(phase, amp, pval, rotate.hr=-8, amp.k = 2, pval.k = 0.25, method = "smooth"){
+PhaseAmpPvalToColor <- function(phase, amp, pval, rotate.hr=-8, amp.k = 2, pval.k = 0.25, method = "smooth",
+                                black.to.white = TRUE){
   # method: "smooth" or "step"
   # rotate.phase: rotate phase by some hours
   phase <- RotatePhase(phase, rotate.hr)
@@ -69,6 +70,11 @@ PhaseAmpPvalToColor <- function(phase, amp, pval, rotate.hr=-8, amp.k = 2, pval.
     phase.col[bad.i] <- 0; amp.col[bad.i] <- 0; pval.col[bad.i] <- 0  
   }
   hsv.col <- hsv(phase.col, amp.col, pval.col)
+  # convert black to white optionally
+  if (black.to.white){
+    hsv.col <- gsub(pattern = "#000000", replacement = "#FFFFFF", x = hsv.col)
+    
+  }
   return(hsv.col)
 }
 
