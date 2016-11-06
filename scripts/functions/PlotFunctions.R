@@ -2,6 +2,33 @@ library(ggplot2)
 library(ggrepel)
 library(grid)
 
+PhaseAmpPvalToColor <- function(phase, amp, pval, rotate.hr=-8, amp.k = 2, pval.k = 0.25, method = "smooth"){
+  # method: "smooth" or "step"
+  # rotate.phase: rotate phase by some hours
+  phase <- RotatePhase(phase, rotate.hr)
+  phase.col <- PhaseToHsv(phase, min.phase = 0, max.phase = 24)
+  if (method == "smooth"){
+    amp.col <- SaturationCurve(amp, Vmax = 1, k = amp.k, x0 = 0)
+    pval.col <- SaturationCurve(-log10(pval), Vmax = 1, k = pval.k, x0 = 0)
+  } else if (method == "step"){
+    warning("Function not optimized. Some white spots may occur")
+    amp.col <- StepCurve(amp, x.step = amp.k)
+    pval.col <- StepCurve(-log10(pval), x.step = pval.k)
+  } else if (method == "cutoff"){
+    amp.col <- mapply(function(amp, pval) CutoffMap(amp, pval, amp.k, pval.k), amp, pval)
+    pval.col <- amp.col
+  }
+  # convert bad phase amp pvals to 0,0,0
+  bad.i <- which(is.na(phase.col) | is.na(amp.col) | is.na(pval.col))
+  # make it 0 0 0
+  if (length(bad.i) > 0){
+    warning(paste0("Converting to 0,0,0 for:", paste0(bad.i, collapse = ",")))
+    phase.col[bad.i] <- 0; amp.col[bad.i] <- 0; pval.col[bad.i] <- 0
+  }
+  hsv.col <- hsv(phase.col, amp.col, pval.col)
+  return(hsv.col)
+}
+
 PlotGOTermsPhase <- function(dat, jtitle, cbPalette, to.append=FALSE, phasestr = "tmid", ampstr = "minuslogpval", amp.max=NULL){
   if (is.null(amp.max)){
     amp.max <- ceiling(max(dat[[ampstr]]))

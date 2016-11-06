@@ -9,6 +9,7 @@ library(GO.db)
 library(graph)
 library(ggplot2)
 library(dplyr)
+library(hash)
 
 library(devtools)
 # devtools::install_github("jakeyeung/GOFunction")
@@ -18,6 +19,7 @@ source("scripts/functions/GraphFunctions.R")
 source("scripts/functions/AnalyzeGeneEnrichment.R")
 source("scripts/functions/FitRhythmic.R")
 source("scripts/functions/PlotFunctions.R")
+source("scripts/functions/HashFunctions.R")
 
 
 # Load GO output ----------------------------------------------------------
@@ -129,4 +131,16 @@ nodeAttrs$label[allTerm] <- GO.names
 nodeAttrs$fixedsize[allTerm] <- TRUE
 nodeAttrs$fontsize[allTerm] <- 200
 # nodeAttrs$cex[allTerm] <- 50
+# add node colors based on HSV
+source("scripts/functions/PhaseColorFunctions.R")
+allTerm.df <- data.frame(goid = allDAGTerm, name = allDAGTerm.name, stringsAsFactors = FALSE)
+pval.hash <- hash(enrichment.sum$GO.ID, enrichment.sum$pval)
+amp.hash <- hash(enrichment.sum$GO.ID, enrichment.sum$amp)
+phase.hash <- hash(enrichment.sum$GO.ID, enrichment.sum$phase)
+allTerm.df$pval <- sapply(allTerm.df$goid, function(g) AssignHash(g, pval.hash, null.fill = NA))
+allTerm.df$amp <- sapply(allTerm.df$goid, function(g) AssignHash(g, amp.hash, null.fill = NA))
+allTerm.df$phase <- sapply(allTerm.df$goid, function(g) AssignHash(g, phase.hash, null.fill = NA))
+allTerm.df$Color <- PhaseAmpPvalToColor(phase = allTerm.df$phase, amp = allTerm.df$amp, pval = allTerm.df$pval, rotate.hr = -8, amp.k = 1, pval.k = Inf, method = "cutoff")
+color.hash <- hash(allTerm.df$goid, allTerm.df$Color)
+nodeAttrs$fillcolor <- sapply(names(nodeAttrs$label), function(l) AssignHash(l, color.hash, null.fill = NA))
 plot(sigDAG, attrs = graphAttrs, nodeAttrs = nodeAttrs, edgeAttrs = edgeAttrs, main = "Testing")
