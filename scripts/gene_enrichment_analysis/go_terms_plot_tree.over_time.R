@@ -96,14 +96,7 @@ cat("Visualizing the GO DAG...\n")
 pvalcutoff <- 1
 sigDAG <- createGODAG(top.terms, ontology)
 
-
-
-allDAGTerm <- allTermName$goid[allTermName$goid %in% nodes(sigDAG)]
-
-dagTermName <- allTermName$goid[allTermName$goid %in% allDAGTerm]
-dagTermName <- dagTermName[order(dagTermName)]
-allDAGTerm <- allDAGTerm[order(allDAGTerm)]
-allDAGTerm.name <- allTermName$name[allTermName$goid %in% allDAGTerm]
+goid.to.name <- hash(allTermName$goid, allTermName$name)
 
 # allDAGTerm <- allDAGTerm[,c(1,6,2,3,4,5)]
 sigTermID <- as.character(top.terms)
@@ -118,9 +111,7 @@ graphAttrs$node$fontsize <- '20'
 nodeAttrs <- list()
 edgeAttrs <- list()
 
-allTerm <- as.character(allDAGTerm)
-GO.names <- as.character(allDAGTerm.name)
-nodeAttrs$label <- nodes(sigDAG)
+nodeAttrs$label <- sapply(nodes(sigDAG), function(goid) AssignHash(goid, goid.to.name, null.fill = NA))
 
 weightsList <- edgeWeights(sigDAG)
 to <- lapply(weightsList, names)
@@ -132,9 +123,8 @@ names(edge.weights) <- edge.names
 edgeAttrs$color <- ifelse(edge.weights == 0, 'black', 'red')
 
 # nodeAttrs$label <- seq(length(nodeAttrs$label))
-nodeAttrs$label[allTerm] <- GO.names
 nodeAttrs$fixedsize[allTerm] <- TRUE
-nodeAttrs$fontsize[allTerm] <- 300
+nodeAttrs$fontsize[allTerm] <- 75
 # nodeAttrs$cex[allTerm] <- 50
 # add node colors based on HSV
 allTerm.df <- data.frame(goid = allDAGTerm, name = allDAGTerm.name, stringsAsFactors = FALSE)
@@ -148,4 +138,4 @@ allTerm.df$Color <- PhaseAmpPvalToColor(phase = allTerm.df$phase, amp = allTerm.
                                         rotate.hr = -8, amp.k = 1, pval.k = Inf, method = "cutoff", black.to.white = TRUE)
 color.hash <- hash(allTerm.df$goid, allTerm.df$Color)
 nodeAttrs$fillcolor <- sapply(names(nodeAttrs$label), function(l) AssignHash(l, color.hash, null.fill = NA))
-plot(sigDAG, attrs = graphAttrs, nodeAttrs = nodeAttrs, edgeAttrs = edgeAttrs, main = "Testing")
+plot(sigDAG, attrs = graphAttrs, nodeAttrs = nodeAttrs, edgeAttrs = edgeAttrs, main = "Liver WT KO module")
