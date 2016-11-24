@@ -468,6 +468,8 @@ fits.sum <- fits.sub %>%
   summarise(count = length(gene)) %>%
   arrange(desc(count))
 
+# OPTIONALLY filter only a set of models?
+# tw.rhyth.models <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129", "Liver_")
 
 # Identify clock and system driven models ---------------------------------
 
@@ -769,7 +771,7 @@ dev.off()
 # top.models <- as.character(fits.count$model)
 
 # filter by hard coding
-top.models <- c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_BmalKO", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129", "Kidney_SV129")
+top.models <- c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129", "Kidney_SV129", "Kidney_SV129,Kidney_BmalKO")
 
 fits.sub <- subset(fits.long.filt, model %in% top.models)
 # reorder factor by fits.count
@@ -808,7 +810,7 @@ dat.mean.wtko <- dat.wtko.collapsed %>%
 
 # jmod <- "Liver_SV129,Liver_BmalKO"
 
-jmods <- c("Liver_SV129,Liver_BmalKO", "Liver_BmalKO", "Kidney_SV129", "Liver_SV129")
+jmods <- c("Liver_SV129,Liver_BmalKO", "Liver_BmalKO", "Kidney_SV129", "Liver_SV129", "Kidney_BmalKO", "Kidney_SV129,Kidney_BmalKO")
 for (jmod in jmods){
   jtiss <- strsplit(jmod, "_")[[1]][[1]]
   print(paste("Finding regulators for:", jmod))
