@@ -271,7 +271,7 @@ mclapply(Ks, function(K){
     group_by(pair) %>%
     do(RunPoissonModel(.))
   
-  save(fits, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".Robj"))
+  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".withNmatall.Robj"))
 }, mc.cores = 2)
 
 # tf <- "RORA"
