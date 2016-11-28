@@ -94,6 +94,7 @@ if (!manual.terms){
     jamp.cutoff <- 0.3
   } else if (jmod == "Liver_SV129,Liver_BmalKO"){
     jterms <- enrichment.sum[grepl("ribosome biogenesis|DNA replication initiation|response to insulin|regulation of fibrinolysis|positive regulation of glucose import", enrichment.sum$Term), ]$GO.ID
+    # jterms <- enrichment.sum[grepl("ribosome biogenesis|DNA replication initiation|response to insulin|regulation of fibrinolysis|regulation of fibrinolysis", enrichment.sum$Term), ]$GO.ID
     top.terms <- jterms
     jamp.cutoff <- 0.7
     jfontsize <- 100

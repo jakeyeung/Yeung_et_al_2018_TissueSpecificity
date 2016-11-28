@@ -1,6 +1,7 @@
 # 2016-08-30
 # Jake YEung
 # go_terms_analysis_with_phase_amplitude.R
+# redo but load ALL terms over time, then not by "removing IDs" but by "choosing IDs"
 
 rm(list=ls())
 start <- Sys.time()
@@ -67,23 +68,29 @@ dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 jmod1 <- "Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Liver_BmalKO.Kidney_SV129,Kidney_BmalKO"
 jmod2 <- "Liver_SV129,Kidney_SV129.Liver_BmalKO,Kidney_BmalKO-Liver_SV129,Kidney_SV129"
 jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"), 
-                       "b"=c("GO:0043434", "GO:0032868", "GO:0006111"), 
+                       # "b"=c("GO:0006270", "GO:0042254", "GO:0051917"),  # DNA rep, ribi, fibrinolysis
+                       # "b"=c("GO:0006270", "GO:0042254", "GO:0032869"),  # DNA rep, ribi, response to insulin
+                       "b"=c("GO:0006270", "GO:0042254", "GO:1900077"),  # DNA rep, ribi, neg response to insulin
+                       # "b"=c("GO:0043434", "GO:0032868", "GO:0006111"), 
                        # "b"=c("GO:0051917", "GO:0006270"), 
                        "c"=4, 
                        "d"=c("Mcm2", "Mcm3", "Mcm4", "Mcm5", "Pml",   # DNA
                              "Egr1", "Kat2b", "Prkcd", "Pparg", "Cpeb2", "Ptprf", "Sorbs1",  # Response to insulin
                              "Erbb4", "Prkcd", "Fgf21",  # Positive reg
                              "Kat2b", "Sesn2", "Foxo1",  # Gluconeo
-                             "Mafb", "Lpin1", "Jun", "Ddit3", "Cebpb", "Pik3r1", "Nop58", "Nop56", "Rpp38")),  # RiBi and misc
+                             "Mafb", "Lpin1", "Jun", "Ddit3", "Cebpb", "Pik3r1", "Nop58", "Nop56", "Rpp38",  # ribi and misc
+                             "Kank1", "Rps6kb1", "Grb10")),  # neg of insulin 
                   list("a"=c("Liver_SV129"),
-                       "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0006739", "GO:0006793", "GO:0051384"),
+                       "b"=c("GO:0044262", "GO:0044255"),
+                        #"b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0006739", "GO:0006793", "GO:0051384"),
                        "c"=5,
                        "d"=c("Elovl3", "Insig2", "Adh4", "Hsd3b7", "Lrp5", "Sdr42e1", "Cyp8b1",
                              "Gck", "Pklr", "Ppp1r3b", 
                              "Upp2", "Rgs16", "Abcg5", "Por", "Lipg", "Tff3", "Fkbp4", "Nrg4",
                              "Slc45a3", "Pik3ap1", "Mreg", "Slc44a1")),
                   list("a"=c("Kidney_SV129"),
-                       "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0000188", "GO:0048015", "GO:0006811", "GO:0055085"),
+                       "b"=c("GO:0071804", "GO:0090317"),
+                       # "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0000188", "GO:0048015", "GO:0006811", "GO:0055085"),
                        "c"=2.5,
                        "d"=c("Angpt1", "Igf1r",
                              "Slc12a6", "Prnp", "Lrrc52",
@@ -91,34 +98,35 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                              "Slc16a1", "Slc7a8", "Slc39a5", "Clcn2", "Slc22a4", "Slc41a1", "Slc9a3", "Rhobtb1", "Trib2", "Slc6a4",
 			                       "Slc7a8")),
                   list("a"=c("Liver_BmalKO"),
-                       "b"=c("GO:0016126", "GO:0006699", "GO:0015721", "GO:0015031", "GO:0045834"),
+                       "b"=c("GO:0006695", "GO:0006695"),
                        "c"=5.5,
                        "d"=c("Akr1b7", "Gpam",
                              "Dhcr24", "Mvk",
                              "Ar", "Egfr", "Gstp1", "Traf6",
                              "Onecut1", "Uso1", "Rsg1", "Sec24d", "Gm9493", "Iars")))
 
-jtiss.onto <- jtiss.lst[[4]]
+jtiss.onto <- jtiss.lst[[1]]
 
 plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
-pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney2.", remove.kidney.outliers, ".pdf")))
+pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".keepGOterms.pdf")))
   mclapply(jtiss.lst, function(jtiss.onto){
     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
     source("scripts/functions/AnalyzeGeneEnrichment.R")
     comp <- 1
     plots <- expandingList()
     jmod.long <- jtiss.onto[1][[1]]
-    GO.ignore <- jtiss.onto[2][[1]]
+    GO.keep <- jtiss.onto[2][[1]]
     max.amp <- jtiss.onto[3][[1]]
     show.genes <- jtiss.onto[4][[1]]
     # Load GOenrichment results
-    load(paste0("Robjs/GO_analysis/model", jmod.long, ".Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, jorder = TRUE, convert.cname = TRUE)
-    enrichment <- subset(enrichment, !GO.ID %in% GO.ignore)
+    load(paste0("Robjs/GO_analysis/model", jmod.long, ".all.Robj"), v=T); enrichment <- CopyZT0ToZT24(enrichment, jorder = TRUE, convert.cname = TRUE)
+    enrichment <- subset(enrichment, GO.ID %in% GO.keep)
     
     genes <- as.character(subset(fits.long.filt, model %in% jmod.long)$gene)
     dat.sub <- subset(dat.freq, gene %in% genes)
     s <- SvdOnComplex(dat.sub, value.var = "exprs.transformed")
     eigens <- GetEigens(s, period = 24, comp = comp, label.n = 0, eigenval = TRUE, adj.mag = TRUE, constant.amp = textsize, peak.to.trough = TRUE, label.gene = show.genes, dotsize = 3, dot.col = "gray85")
+    # eigens <- GetEigens(s, period = 24, comp = comp, label.n = 50, eigenval = TRUE, adj.mag = TRUE, constant.amp = textsize, peak.to.trough = TRUE, label.gene = NA, dotsize = 3, dot.col = "gray85")
     
    
     eigentiss <- eigens$u.plot + ylab("ZT") + ggtitle("")

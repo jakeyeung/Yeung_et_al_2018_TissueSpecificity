@@ -8,7 +8,7 @@ start <- Sys.time()
 
 library(ggplot2)
 library(PMA)
-# detach("package:plyr", unload=TRUE)
+detach("package:dplyr", unload=TRUE)
 library(dplyr)
 library(parallel)
 
@@ -151,8 +151,8 @@ act.l$geno <- "WT"
 prot.long.wt <- subset(prot.long, geno == "WT")
 dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
 
-jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2")
-jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7")
+jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1")
+jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1")
 print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
 pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.pdf")))
 for (i in seq(length(jgenes))){
