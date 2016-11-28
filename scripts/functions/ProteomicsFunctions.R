@@ -13,10 +13,12 @@ LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_pr
   # fit.sampnames <- c("mean", "amp", "relamp", "phase", "pval", "qv", "amp.12h", "relamp.12h", "phase.12h", "pval.12h", "qv.12h")
   fit.sampnames <- c("mean", "amp", "relamp", "phase", "pval", "qv")
   
-  prot.long.wt <- melt(prot, id.vars = "Gene.names", measure.vars = wt.sampnames, variable.name = "samp", value.name = "rel.abund")
-  prot.long.bmalko <- melt(prot, id.vars = "Gene.names", measure.vars = ko.sampnames, variable.name = "samp", value.name = "rel.abund")
-  prot.long.bmalwt <- melt(prot, id.vars = "Gene.names", measure.vars = bmalwt.sampnames, variable.name = "samp", value.name = "rel.abund")
-  fit.prot.wt <- subset(prot, select = c("Gene.names", fit.sampnames))
+  idvars <- c("Gene.names", "Protein.IDs")
+  
+  prot.long.wt <- melt(prot, id.vars = idvars, measure.vars = wt.sampnames, variable.name = "samp", value.name = "rel.abund")
+  prot.long.bmalko <- melt(prot, id.vars = idvars, measure.vars = ko.sampnames, variable.name = "samp", value.name = "rel.abund")
+  prot.long.bmalwt <- melt(prot, id.vars = idvars, measure.vars = bmalwt.sampnames, variable.name = "samp", value.name = "rel.abund")
+  fit.prot.wt <- subset(prot, select = c(idvars, fit.sampnames))
   # fit.prot.wt <- melt(prot, id.vars = "Gene.names", measure.vars = fit.sampnames)
   
   prot.long.wt$time <- GetTimeFromSamp(as.character(prot.long.wt$samp))
