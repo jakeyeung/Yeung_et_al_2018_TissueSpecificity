@@ -171,13 +171,15 @@ dev.off()
 
 # Plot examples -----------------------------------------------------------
 
-jgenes <- c("Slc45a3", "Insig2", "Slc44a1", "Pik3ap1", "Jun", "Mafb", "Egr1", "Nop56", "Gck", "Lipg", "Upp2", "Loxl4", "Lpin1", "Cebpb", "Pik3r1", "Hes6")
+jgenes <- c("Slc45a3", "Insig2", "Slc44a1", "Pik3ap1", "Jun", "Mafb", "Egr1", "Nop56", "Gck", "Lipg", "Upp2", "Loxl4", "Lpin1", "Cebpb", "Pik3r1", "Hes6",
+            "Per2", "Cry1", "Dbp", "Arntl", "Npas2", "Hic1", "Srebf1", "Per1", "Cry2", "Nr1d1", "Nr1d2", "Tef", "Hlf", "Hspa8", "Cirbp", "Sgk2", "Wee1")
 
 pdf(file.path(plot.dir, paste0("0", ".gene_exprs_examples.pdf")))
 for (g in jgenes){
   print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g))
 }
 dev.off()
+
 
 # Tissue-wide modules: hogenesch -----------------------------------------------------
 
@@ -375,7 +377,7 @@ load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_av
 
 library(hash)
 
-jgenes <- c("Dbp", "Ndrg1", "Pi4k2a", "Slc44a1")
+jgenes <- c("Dbp", "Ndrg1", "Pi4k2a", "Slc44a1", "Mef2c")
 jgenes <- rev(jgenes)
 m.list <- list()
 i <- 1
@@ -394,6 +396,16 @@ for (jgene in jgenes){
 do.call(multiplot, m.list)
 # }
 # multiplot(m.list[[1]], m.list[[2]], m.list[[3]], m.list[[4]], cols = 2)
+
+# Run for "RNA-Seq"
+jexp <- "rnaseq"
+jgenes <- c("Mef2c", "Icam1")
+for (jgene in jgenes){
+  m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
+                                    jgene, amp.filt = 0.25, jtitle=jgene, facet.rows = 1, jcex = 8,
+                                    pointsize = 0)
+  print(m)
+}
 dev.off()
 
 
@@ -1172,8 +1184,18 @@ for (jbait in jbaits){
   Signal08 <- PlotSignalLivVsKidLR(jbait, jsub.sig08, pseudo.low = 500, jtitle = paste(jbait.new, zt08), mindist = jdist, do.facet = FALSE, show.legend = FALSE)
   Zscores <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Zscore", jtitle = "", jxlab = "", jshow.legend = FALSE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08)
   Pvalues <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Pvalue", jtitle = "", jshow.legend = TRUE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08)
+  if (jbait == "Slc45a3short" | jbait == "Slc45a3long"){
+    # set zscore and pval y limits so it is comparable with Slc45a3long
+    zscoremax <- 7.5
+    zscoremin <- -3.75
+    pvalmax <- 10.5
+    pvalmin <- -3.5
+    Zscores <- Zscores + ylim(c(zscoremin, zscoremax))
+    Pvalues <- Pvalues + ylim(c(pvalmin, pvalmax))
+  }
   PlotQuad(Signal, Signal08, Zscores, Pvalues, n.boxes = 2)
   PlotTriple(Signal, Signal08, Zscores + theme(aspect.ratio = 0.25), n.boxes = 2)
+  PlotTriple(Signal, Signal08, Pvalues + theme(aspect.ratio = 0.25), n.boxes = 2)
 }
 
 ggplot(subset(counts.delt.lk.sub, bait == "Mreg"), aes(x = A.delta / log10(2), y = -log10(pval.row))) +
