@@ -71,6 +71,7 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                        # "b"=c("GO:0006270", "GO:0042254", "GO:0051917"),  # DNA rep, ribi, fibrinolysis
                        # "b"=c("GO:0006270", "GO:0042254", "GO:0032869"),  # DNA rep, ribi, response to insulin
                        "b"=c("GO:0006270", "GO:0042254", "GO:1900077"),  # DNA rep, ribi, neg response to insulin
+                       # "b"=c("GO:1900077", strsplit("GO:0038014,GO:0043569,GO:0046627,GO:0046676,GO:0061179,GO:1900077,GO:1903105,GO:2001274", ",")[[1]]),  # neg response to insulin all 
                        # "b"=c("GO:0043434", "GO:0032868", "GO:0006111"), 
                        # "b"=c("GO:0051917", "GO:0006270"), 
                        "c"=4, 
@@ -81,18 +82,28 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                              "Mafb", "Lpin1", "Jun", "Ddit3", "Cebpb", "Pik3r1", "Nop58", "Nop56", "Rpp38",  # ribi and misc
                              "Kank1", "Rps6kb1", "Grb10")),  # neg of insulin 
                   list("a"=c("Liver_SV129"),
-                       "b"=c("GO:0044262", "GO:0044255"),
+                       # "b"=c("GO:0044262", "GO:0044255"),
+                       # "b"=c("GO:0006793", "GO:0034637", "GO:0044255"),  # carbo, phospho, lipid,
+                       "b"=c("GO:0034637", "GO:0009117", "GO:0044255"),  # replace phospho with puridine
+                       # "b"=c("GO:0034637", "GO:0030301", "GO:0044255"),  # cholestrol
+                       # "b"=c("GO:0071229","GO:0034637","GO:0006796","GO:0006793","GO:0000271","GO:0051865"),  # top guys
                         #"b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0006739", "GO:0006793", "GO:0051384"),
                        "c"=5,
                        "d"=c("Elovl3", "Insig2", "Adh4", "Hsd3b7", "Lrp5", "Sdr42e1", "Cyp8b1",
-                             "Gck", "Pklr", "Ppp1r3b", 
+                             "Gck", "Pklr", "Ppp1r3b", "Colgalt2", 
                              "Upp2", "Rgs16", "Abcg5", "Por", "Lipg", "Tff3", "Fkbp4", "Nrg4",
-                             "Slc45a3", "Pik3ap1", "Mreg", "Slc44a1")),
+                             "Slc45a3", "Pik3ap1", "Mreg", "Slc44a1", "Slc4a4")),
                   list("a"=c("Kidney_SV129"),
-                       "b"=c("GO:0071804", "GO:0090317"),
+                       # "b"=c("GO:0071804", "GO:0090317"),
+                       # "b"=c("GO:0098656", "GO:0006814"),
+                       # "b"=c("GO:0098656","GO:0015727","GO:0035873","GO:0035879","GO:0015701"),
+                       # "b"=c("GO:0051224","GO:0015711", "GO:0006814"),  # organic anion, neg reg of protein transport (DMNT not studied in kidney, ignore), sodium
+                       "b"=c("GO:0015711", "GO:0006814"),  # organic anion,  sodium
+                       # "b"=c("GO:0098656","GO:0034220","GO:0051224","GO:0055085","GO:0015711"),
+                       # "b"=c("GO:0015727","GO:0035873","GO:0035879","GO:0015701"),
                        # "b"=c("GO:0006633", "GO:0006511", "GO:0055114", "GO:0070542", "GO:0007584", "GO:0009056", "GO:0000188", "GO:0048015", "GO:0006811", "GO:0055085"),
                        "c"=2.5,
-                       "d"=c("Angpt1", "Igf1r",
+                       "d"=c("Tfcp2", "Angpt1", "Igf1r",
                              "Slc12a6", "Prnp", "Lrrc52",
                              "Clcn2", "Spred3", "Dusp9",
                              "Slc16a1", "Slc7a8", "Slc39a5", "Clcn2", "Slc22a4", "Slc41a1", "Slc9a3", "Rhobtb1", "Trib2", "Slc6a4",
@@ -105,10 +116,10 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                              "Ar", "Egfr", "Gstp1", "Traf6",
                              "Onecut1", "Uso1", "Rsg1", "Sec24d", "Gm9493", "Iars")))
 
-jtiss.onto <- jtiss.lst[[1]]
+jtiss.onto <- jtiss.lst[[3]]
 
 plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
-pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".keepGOterms.pdf")))
+pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".keepGOterms.neginsulin.pdf")))
   mclapply(jtiss.lst, function(jtiss.onto){
     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
     source("scripts/functions/AnalyzeGeneEnrichment.R")
