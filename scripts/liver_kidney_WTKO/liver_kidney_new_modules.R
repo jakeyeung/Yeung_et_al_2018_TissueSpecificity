@@ -78,7 +78,9 @@ fits.long.filt$gene[which(fits.long.filt$gene == "Ciart")] <- "Gm129"
 # Init params -------------------------------------------------------------
 
 
-suffix <- "globalLambda"
+suffix <- "globalLambda"  # playing
+suffix <- ""  # normal
+
 # lambda <- 0.0242444713967604
 # lambda <- 0.0479929486250763  # tissue-wide clock-driven module
 # lambda <- FALSE
@@ -89,7 +91,8 @@ if (suffix != ""){
 # jmodel <- c("Liver_SV129,Kidney_SV129")
 # jmodel <- c("Liver_SV129,Kidney_SV129,Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Liver_BmalKO;Kidney_SV129,Kidney_BmalKO")
 # jmodel <- c("Kidney_SV129")
-jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129")
+# jmodel <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129,Kidney_SV129")
+jmodel <- c("Liver_SV129;Liver_BmalKO")
 
 if (jmodel == "Kidney_SV129"){
   # remove some outliers
