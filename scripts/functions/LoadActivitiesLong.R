@@ -40,8 +40,18 @@ GetTimesTissuesGenoKL <- function(cnames){
     } else {
       warning("Neither BmalKO or SV129")
     }
-    time <- as.numeric(strsplit(cname, geno)[[1]][[2]])
-    tissue <- strsplit(cname, paste0("_", geno))[[1]][[1]]
+    # Cnames can be Kidney_BmalKO12 or Kidney_BmalKO_12, I dont know why??
+    n.divs <- length(strsplit(cname, "_")[[1]])
+    if (n.divs == 2){
+      time <- as.numeric(strsplit(cname, geno)[[1]][[2]])
+      tissue <- strsplit(cname, paste0("_", geno))[[1]][[1]]
+    } else if (n.divs == 3){
+      tissue <- strsplit(cname, "_")[[1]][[1]]
+      time <- strsplit(cname, "_")[[1]][[3]]
+    } else {
+      print(cname)
+      warning("N divs should be 2 or 3")
+    }
     return(list(time = time, geno = geno, tissue = tissue))
   })
 }
@@ -62,7 +72,6 @@ LoadActivitiesLongKidneyLiver <- function(indir, act.file="activities.all", se.f
   tissues <- sapply(time.geno.tissue, function(ll) ll[["tissue"]])
   genos <- sapply(time.geno.tissue, function(ll) ll[["geno"]])
   times <- sapply(time.geno.tissue, function(ll) ll[["time"]])
-  
   act.long <- data.frame(gene = rep(rownames(merged.act), ncol(merged.act)),
                          geno = rep(genos, each = nrow(merged.act)),
                          tissue = rep(tissues, each = nrow(merged.act)),
