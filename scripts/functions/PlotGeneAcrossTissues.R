@@ -105,6 +105,35 @@ PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE, transcript_i
   return(m)
 }
 
+PlotTpmAcrossTissuesWTKO <- function(dat, jtitle, log2.transform=FALSE, transcript_id = "transcript_id", geno_id = "geno", tissue_id = "tissue", tstart = 0, tend = 48, jsize = 3){
+  library(ggplot2)
+  
+  if (missing(jtitle)){
+    jgene <- unique(dat$gene_name)
+    jtranscript <- unique(dat$transcript_id)
+    jtitle = paste(jgene, jtranscript)
+  }
+  if (log2.transform == FALSE){
+    m <- ggplot(dat, aes_string(x = "time", y = "tpm", group = geno_id, linetype = geno_id, colour = tissue_id, shape = transcript_id)) 
+    jylab <- "TPM expression"
+  } else {
+    dat$log2tpm <- log2(dat$tpm + 0.01)
+    m <- ggplot(dat, aes_string(x = "time", y = "log2tpm", group = geno_id, linetype = geno_id, colour = tissue_id, shape = transcript_id))
+    jylab <- "log2 TPM expression"
+  }
+  m <- m + theme(legend.position="bottom") +
+    geom_point(size = jsize) + 
+    geom_line() + 
+    facet_grid(transcript ~ tissue) +
+    ggtitle(jtitle) + 
+    ylab(label = jylab) + 
+    theme_bw() + 
+    scale_x_continuous(limits = c(tstart, tend), breaks = seq(tstart, tend, 12)) + 
+    theme(legend.position = "bottom", aspect.ratio = 1) + 
+    scale_shape_manual(values=c(15, 17, seq(0, 14)))
+  return(m)
+}
+
 PlotRnaseqAcrossTissues <- function(dat, jtitle){
   p <- ggplot(dat, aes(x = time, y = exprs)) + 
     geom_line() + 
