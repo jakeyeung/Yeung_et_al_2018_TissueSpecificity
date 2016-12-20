@@ -151,8 +151,8 @@ act.l$geno <- "WT"
 prot.long.wt <- subset(prot.long, geno == "WT")
 dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
 
-jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1")
-jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1")
+jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
+jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", NA, NA, NA, NA)
 print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
 pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.pdf")))
 for (i in seq(length(jgenes))){
@@ -163,7 +163,7 @@ for (i in seq(length(jgenes))){
   if (!is.na(jmotif)){
     print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.act = jmotif, gene.prot = jgene, jtiss = "Liver", dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
   } else {
-    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
   }
 }
 dev.off()
@@ -471,7 +471,18 @@ dev.off()
 pdf(file.path(plot.dir, paste0(plot.i, ".tissuewide_modules_liver_kidney_wtko.pdf")))
 plot.i <- plot.i + 1
 
+
 # BEGIN: Penalized LDA to separate between candidate TFs 
+
+# get input genes (if necessary, this is copy from above if you only run this chunk of code by)
+# genes.tw <- as.character(subset(fits.long, n.rhyth >= 8)$gene)
+# outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.hogenesch"
+# outmain <- file.path(outbase, paste0("promoters.tissuewide.filteramp.0.15.mat"))
+# indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
+# act.long <- LoadActivitiesLong(indir, shorten.motif.name = TRUE)
+# act.complex <- ProjectWithZscore(act.long, omega, n = n)
+# sig.motifs <- unique(as.character(subset(act.complex, zscore > zscore.min)$gene))
+
 # LOAD 
 fits.sub <- subset(fits.long.filt, gene %in% genes.tw & model != "" & amp.avg > 0) 
 
@@ -1180,10 +1191,10 @@ for (jbait in jbaits){
   
   jsub.sig <- subset(counts.long, genotype == "WT" & time == zt)
   jsub.sig08 <- subset(counts.long, genotype == "WT" & time == zt08)
-  Signal <- PlotSignalLivVsKidLR(jbait, jsub.sig, pseudo.low = 500, jtitle = paste(jbait.new, zt), mindist = jdist, do.facet = FALSE)
-  Signal08 <- PlotSignalLivVsKidLR(jbait, jsub.sig08, pseudo.low = 500, jtitle = paste(jbait.new, zt08), mindist = jdist, do.facet = FALSE, show.legend = FALSE)
-  Zscores <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Zscore", jtitle = "", jxlab = "", jshow.legend = FALSE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08)
-  Pvalues <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Pvalue", jtitle = "", jshow.legend = TRUE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08)
+  Signal <- PlotSignalLivVsKidLR(jbait, jsub.sig, pseudo.low = 500, jtitle = paste(jbait.new, zt), mindist = jdist, do.facet = FALSE, in.kb = TRUE)
+  Signal08 <- PlotSignalLivVsKidLR(jbait, jsub.sig08, pseudo.low = 500, jtitle = paste(jbait.new, zt08), mindist = jdist, do.facet = FALSE, show.legend = FALSE, in.kb = TRUE)
+  Zscores <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Zscore", jtitle = "", jxlab = "", jshow.legend = FALSE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08, in.kb=TRUE)
+  Pvalues <- MergeCountsLivKid(jbait, counts.delt.lk, bait.locs, max.dist = jdist, show.plot = "Pvalue", jtitle = "", jxlab = "Position Relative to Bait (kb)", jshow.legend = TRUE, flip.y.axis = TRUE, reorder.zt20vzt08 = zt20vzt08, in.kb=TRUE)
   if (jbait == "Slc45a3short" | jbait == "Slc45a3long"){
     # set zscore and pval y limits so it is comparable with Slc45a3long
     zscoremax <- 7.5
