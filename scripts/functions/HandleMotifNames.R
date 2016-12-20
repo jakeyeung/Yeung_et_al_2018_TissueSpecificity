@@ -1,4 +1,4 @@
-source("scripts/functions/RemoveP2Name.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/RemoveP2Name.R")
 
 RemoveCommasBraces <- function(m){
   return(gsub("\\{|\\}|\\,", replacement = "\\.", m))
