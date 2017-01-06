@@ -1,4 +1,4 @@
-GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE){
+GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE, dash_to_underscore = FALSE){
   # Vector containing gene names (may be comma separated), get gene list
   # 
   # Args:
@@ -12,8 +12,12 @@ GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE
   
   tf.mat <- read.table(tf.path, header=FALSE, row.names = 1, sep='\t')
 
-  # convert to _
-  rownames(tfs)[grep("EWSR1-FLI1.p2", rownames(tfs))] <- "EWSR1_FLI1.p2"
+  # convert to dash to underscores (my motifs often are like that)
+  if (dash_to_underscore){
+    rownames(tf.mat) <- gsub("-", "_", rownames(tf.mat))
+  }
+
+  # rownames(tf.mat)[grep("EWSR1-FLI1.p2", rownames(tf.mat))] <- "EWSR1_FLI1.p2"
   # change gene names that are not well named
   # tf.mat$V2[grepl("Zfp161", tf.mat$V2)] <- "Zbtb14"
   # tf.mat$V2[grepl("Tcfap2b", tf.mat$V2)] <- "Tfap2b"

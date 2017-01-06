@@ -9,7 +9,7 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
     dat$exprs <- (2 ^ dat$exprs) - 1 
     jylab <- "mRNA expression (linear scale)"
   } else {
-    jylab <- "mRNA expression (log2 scale)"
+    jylab <- "Log2 mRNA Abundance"
   }
   n.exper = length(as.character(unique(dat$experiment)))
   
@@ -44,7 +44,7 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
 PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno", ncols = 2){
   # split by geno or tissue
   m <- ggplot(dat, aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
-    geom_point() + geom_line() + xlab(timelabel) + ylab("log2 mRNA accumulation") + 
+    geom_point() + geom_line() + xlab(timelabel) + ylab("Log2 mRNA Abundance") + 
     theme_bw(24) + ggtitle(jtitle) + 
     theme(aspect.ratio = 1, legend.position = "bottom")
   if (split.by == "geno"){
@@ -67,7 +67,7 @@ PlotGeneAcrossTissuesRnaseq <- function(dat, jtitle, convert.linear = FALSE){
     dat$exprs <- (2 ^ dat$exprs) - 1 
     jylab <- "mRNA expression (linear scale)"
   } else {
-    jylab <- "mRNA expression (log2 scale)"
+    jylab <- "Log2 mRNA Abundance"
   }
   
   m <- ggplot(dat, aes(x = time, y = exprs)) + 
@@ -90,11 +90,11 @@ PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE, transcript_i
   }
   if (log2.transform == FALSE){
     m <- ggplot(dat, aes_string(x = "time", y = "tpm", group = transcript_id, colour = transcript_id, shape = transcript_id)) 
-    jylab <- "TPM expression"
+    jylab <- "mRNA Abundance (normal scale)"
   } else {
     dat$log2tpm <- log2(dat$tpm + 0.01)
     m <- ggplot(dat, aes_string(x = "time", y = "log2tpm", group = transcript_id, colour = transcript_id, shape = transcript_id))
-    jylab <- "log2 TPM expression"
+    jylab <- "Log2 mRNA Abundance"
   }
   m <- m + theme(legend.position="bottom") +
     geom_point() + 
@@ -115,11 +115,11 @@ PlotTpmAcrossTissuesWTKO <- function(dat, jtitle, log2.transform=FALSE, transcri
   }
   if (log2.transform == FALSE){
     m <- ggplot(dat, aes_string(x = "time", y = "tpm", group = geno_id, linetype = geno_id, colour = tissue_id, shape = transcript_id)) 
-    jylab <- "TPM expression"
+    jylab <- "mRNA Abundance (normal scale)"
   } else {
     dat$log2tpm <- log2(dat$tpm + 0.01)
     m <- ggplot(dat, aes_string(x = "time", y = "log2tpm", group = geno_id, linetype = geno_id, colour = tissue_id, shape = transcript_id))
-    jylab <- "log2 TPM expression"
+    jylab <- "Log2 mRNA Abundance"
   }
   m <- m + theme(legend.position="bottom") +
     geom_point(size = jsize) + 
@@ -139,7 +139,7 @@ PlotRnaseqAcrossTissues <- function(dat, jtitle){
     geom_line() + 
     facet_wrap(~tissue) +
     ggtitle(jtitle) + 
-    ylab(label = "log2 mRNA expression") +
+    ylab(label = "Log2 mRNA Abundance") +
     xlab("CT") +
     scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))  +
     theme_bw(24) + 

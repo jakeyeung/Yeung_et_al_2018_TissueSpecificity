@@ -218,7 +218,7 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     geom_point() + 
     facet_wrap(~geno.std, nrow = n.facetrows) + 
     theme_bw(themesize) + 
-    xlab("ZT") + ylab("Accumulation or Motif Activity\n(scaled)") +
+    xlab("ZT") + ylab("Abundance or Motif Activity\n(scaled)") +
     scale_linetype_manual(values = ltypes, drop=FALSE) +
     scale_shape_manual(values = jshapes, drop=FALSE) +
     scale_size_manual(values = jsizes, drop=FALSE) + 

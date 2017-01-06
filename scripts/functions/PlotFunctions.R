@@ -84,7 +84,7 @@ PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 
   # order by amplitude
   dat.sub$grp <- factor(sapply(as.character(dat.sub$tissue), function(tiss) rhyth.hash[[tiss]], USE.NAMES = FALSE), levels = c(rhyths, "Flat"))
   m <- ggplot(dat.sub, aes(x = time, y = exprs, group = tissue, colour = grp)) + facet_wrap(~grp, nrow = facet.rows) + geom_point(size = pointsize) + geom_line() + 
-    theme_bw(jcex) + theme(aspect.ratio = 1, legend.position = "none") + xlab("Time (CT)") + ylab("Log2 Expression") + ggtitle(jtitle)
+    theme_bw(jcex) + theme(aspect.ratio = 1, legend.position = "none") + xlab("Time (CT)") + ylab("Log2 mRNA Abundance") + ggtitle(jtitle)
   return(m)
 }
 
@@ -159,7 +159,7 @@ PlotMeanExprsOfModel <- function(dat.mean, genes, jmodel, sorted = TRUE, avg.met
     theme(aspect.ratio=1,
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank()) +
-    xlab("") + ylab("Log2 Exprs") +
+    xlab("") + ylab("Log2 mRNA Abundance") +
     ggtitle(paste0("Mean exprs of ", length(genes), " genes in ", jmodel, " module"))
   return(m)
 }

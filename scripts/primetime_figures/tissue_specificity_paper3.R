@@ -8,7 +8,7 @@ start <- Sys.time()
 
 library(ggplot2)
 library(PMA)
-detach("package:dplyr", unload=TRUE)
+# detach("package:dplyr", unload=TRUE)  # sometimes necessary to solve some strange issues with PMA and dplyr
 library(dplyr)
 library(parallel)
 
