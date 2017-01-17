@@ -59,11 +59,16 @@ is_top_N <- function(x, N){
   return(x >= top.n)
 }
 
-PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle="", facet.rows = 1, jcex=24, pointsize=1){  
+PlotGeneByRhythmicParameters <- function(fits.best, dat.long, jgene, amp.filt = 0.15, jtitle="", facet.rows = 1, jcex=24, pointsize=1, center=TRUE){  
   source('~/projects/tissue-specificity/scripts/functions/DataHandlingFunctions.R')
   tissue <- as.character(unique(dat.long$tissue))
   # plot expression, but collapse into rhythmic parameters
   dat.sub <- subset(dat.long, gene == jgene)
+  if (center){
+    dat.sub <- dat.sub %>%
+      group_by(tissue) %>%
+      mutate(exprs = scale(exprs, center = TRUE, scale = FALSE))
+  }
   
   fits.sub <- subset(fits.best, gene == jgene)
   params.lst <- fits.sub$param.list[[1]]
@@ -965,7 +970,9 @@ PlotExprsHeatmap <- function(M, jtitle = "Plot Title", blackend = 0.3, minval = 
 }
 
 
-PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", blueend = -0.5, blackend = 0.5, min.n = -3, max.n = 3, remove.gene.labels=FALSE, jlabRow = NULL, jlabCol = NULL){
+PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = "array", 
+                              blueend = -0.5, blackend = 0.5, min.n = -3, max.n = 3, remove.gene.labels=FALSE, jlabRow = NULL, jlabCol = NULL,
+                              jmin.col = "blue", jmax.col = "yellow", jscale=FALSE){
   
   # fits.best.sub <- subset(fits.best, model == jmodel)
   # fits.best.sub <- subset(fits.best, gene %in% genes.tw )
@@ -974,13 +981,15 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
   
   jmodel <- as.character(fits.best.sub$model[[1]])
   
-  # dat.sub <- subset(dat.long, gene %in% genes & experiment == jexperiment & !tissue %in% filt.tiss)
-  dat.sub <- dat.long
+  dat.sub <- subset(dat.long, gene %in% genes & experiment == jexperiment & !tissue %in% filt.tiss)
+  # dat.sub <- dat.long
   
   # center and scale
   dat.sub <- dat.sub %>%
     group_by(gene, tissue) %>%
-    mutate(exprs.scaled = scale(exprs, center = TRUE, scale = FALSE))
+    mutate(exprs.scaled = scale(exprs, center = TRUE, scale = jscale))
+  
+
   
   
   mat <- dcast(dat.sub, gene ~ tissue + time, value.var = "exprs.scaled")
@@ -1021,8 +1030,9 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
   
   # heatmap
   n.co <- length(unique(dat.sub$tissue))
-  time <- rep(unique(dat.sub$time), n.co)
-  condi_name <- as.character(unique(dat.sub$tissue))
+  time <- rep(unique(subset(dat.sub, tissue == unique(dat.sub$tissue)[[1]])$time), n.co)
+  # condi_name <- as.character(unique(dat.sub$tissue))
+  condi_name <- unique(sapply(colnames(mat), function(m) strsplit(m, "_")[[1]][[1]]))  # match from mat
   cond_begins <- seq(1, length(time), length(time) / n.co)# represent index start of next condition. 
   cond_mid <- mean(c(1, length(time) / n.co))  # mid distance between first sample in cond1 and last sample in cond1.
   VLINE_X_LOC <<- cond_begins - 0.5  # Subtract 0.5 to get it between two samples.
@@ -1036,7 +1046,8 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
     
     #   min.n <- -3
     #   max.n <- 3
-    my.palette <- colorRampPalette(c("blue", "black", "yellow"))(n = 300)
+  
+  my.palette <- colorRampPalette(c(jmin.col, "black", jmax.col))(n = 300)
   # # (optional) defines the color breaks manually for a "skewed" color transition
   blackstart <- blueend + 0.01;
   redstart <- blackend + 0.01;
@@ -1086,6 +1097,7 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
              
              # Row/Column Labeling
              margins = c(5, 5),
+             # margins = jmargins,
              labRow = jlabRow,
              labCol = jlabCol,
              srtRow = NULL,
@@ -1109,6 +1121,10 @@ PlotHeatmapNconds <- function(fits.best.sub, dat.long, filt.tiss, jexperiment = 
              lmat = NULL,
              lhei = NULL,
              lwid = NULL,
+             
+             # row size col size
+             # cexRow = nrow(mat),
+             # cexCol = 2 * ncol(mat)
   )
   rownames(phases.dat) <- phases.dat$gene; phases.dat$gene <- NULL
   #   phases.dat$range <- apply(phases.dat, 1, function(row){
