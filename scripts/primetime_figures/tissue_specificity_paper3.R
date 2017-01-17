@@ -115,7 +115,7 @@ load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
 # model selection with g1000
-load("Robjs/nconds_g1000_11_tissues/fits_long.11_tiss_3_max.g1000.bestmodel.filteramp.0.15.Robj", v=T)
+# load("Robjs/nconds_g1000_11_tissues/fits_long.11_tiss_3_max.g1000.bestmodel.filteramp.0.15.Robj", v=T)  # dont use that
 load("Robjs/dat.complex.fixed_rik_genes.Robj", v=T)
 if (remove.wfat){
   dat.complex <- subset(dat.complex, tissue != "WFAT")
@@ -176,7 +176,7 @@ jgenes <- c("Slc45a3", "Insig2", "Slc44a1", "Pik3ap1", "Jun", "Mafb", "Egr1", "N
 
 pdf(file.path(plot.dir, paste0("0", ".gene_exprs_examples.pdf")))
 for (g in jgenes){
-  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g))
+  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g, center = TRUE))
 }
 dev.off()
 
@@ -354,6 +354,9 @@ fits.bytiss.ngenes.thres$tissue <- factor(as.character(fits.bytiss.ngenes.thres$
 # convert "SV129" to "WT"
 fits.bytiss.ngenes.thres$geno <- gsub("SV129", "WT", x = as.character(fits.bytiss.ngenes.thres$geno))
 fits.bytiss.ngenes.thres$geno <- factor(as.character(fits.bytiss.ngenes.thres$geno), levels = c("WT", "BmalKO"))
+fits.bytiss.ngenes.thres$tiss <- factor(as.character(fits.bytiss.ngenes.thres$tiss), levels = c("Liver", "Kidney"))
+# make Liver before Kidney
+
 
 ggplot(subset(fits.bytiss.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tiss, linetype = geno)) + 
   scale_linetype_manual(values = c("solid", "dashed")) + 
@@ -374,6 +377,7 @@ pdf(file.path(plot.dir, paste0(plot.i, ".gene_exprs_examps.pdf")))
 plot.i <- plot.i + 1
 
 load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
+# load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj", v=T)
 
 library(hash)
 
@@ -394,6 +398,60 @@ for (jgene in jgenes){
   i <- i + 1
 }
 do.call(multiplot, m.list)
+
+# plot additional guys 
+jgenes <- c("Nr1d1", "Arntl", "Per3", "Cirbp", "Per1", "Npas2", "Nr1d2", "Rora", "Rorc", "Dbp", "Nfil3", "Tef")
+for (jgene in jgenes){
+  m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
+                                    jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8,
+                                    pointsize = 0)
+  print(m)
+}
+
+jgenes <- c("Slc45a3", "Pi4k2a", "Slc44a1", "Per1")
+m.list <- list()
+i <- 1
+jexp <- "array"
+for (jgene in jgenes){
+  m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
+                                    jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8,
+                                    pointsize = 0)
+  m <- m + scale_color_manual(values = c("black", "grey70"))
+  m.list[[i]] <- m
+  i <- i + 1
+}
+do.call(multiplot, m.list)
+
+jgenes <- c("Arntl", "Cry2", "Cirbp", "Capn11", "Nr1d1")
+m.list <- list()
+i <- 1
+jexp <- "array"
+for (jgene in jgenes){
+  m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
+                                    jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8,
+                                    pointsize = 0)
+  # m <- m + scale_color_manual(values = c("black", "grey70"))
+  m.list[[i]] <- m
+  i <- i + 1
+}
+do.call(multiplot, m.list)
+
+jgenes <- c("Slc45a3", "Lipg", "Lpin1", "Cirbp")
+m.list <- list()
+i <- 1
+jexp <- "array"
+for (jgene in jgenes){
+  m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
+                                    jgene, amp.filt = 0.3, jtitle=jgene, facet.rows = 1, jcex = 8,
+                                    pointsize = 0)
+  if (jgene != "Cirbp"){
+    m <- m + scale_color_manual(values = c("red", "grey70"))
+  }
+  m.list[[i]] <- m
+  i <- i + 1
+}
+do.call(multiplot, m.list)
+
 # }
 # multiplot(m.list[[1]], m.list[[2]], m.list[[3]], m.list[[4]], cols = 2)
 
@@ -411,7 +469,8 @@ dev.off()
 
 pdf(file.path(plot.dir, paste0(plot.i, ".model_selection_summary.pdf")))
 plot.i <- plot.i + 1
-load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
+# load("Robjs/fits.best.max_3.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
+# load("Robjs/fits.best.max_11.collapsed_models.amp_cutoff_0.15.phase_sd_maxdiff_avg.Robj")
 
 fits.best$n.rhyth.fac <- as.factor(sapply(as.numeric(fits.best$n.rhyth), function(n) NrhythToStr(n)))
 ggplot(subset(fits.best, n.rhyth != 0), aes(x = as.factor(n.rhyth.fac), y = 2 * amp.avg)) + geom_boxplot() + xlab("# rhythmic tissues") + ylab("Log fold change")  + theme_bw(16) + 
