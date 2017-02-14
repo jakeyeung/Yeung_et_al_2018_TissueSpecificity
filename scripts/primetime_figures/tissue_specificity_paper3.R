@@ -5,6 +5,7 @@
 # Other links to scripts not shown here:
 # /home/yeung/projects/tissue-specificity/scripts/pca/pca_adjusted_microarray.label_variance.for_paper.R
 # /home/yeung/projects/tissue-specificity/scripts/fourier/total_variance.noise_floor.hogenesch_and_liverWTKO.R
+# /home/yeung/projects/tissue-specificity/scripts/three_way_contingency_tables/downstream.three_way_contingency.R
 
 
 rm(list=ls())
@@ -1191,10 +1192,13 @@ grepstr <- paste(jmotifs, collapse = "|")
 fits.sub$has.ROR <- sapply(fits.sub$pair, function(p) grepl("RORA", p))
 
 fits.sub$pair <- factor(fits.sub$pair, levels = fits.sub$pair)
+
+barcols <- c("black", "grey50")
 m.loglin <- ggplot(subset(fits.sub, pval < 0.05), aes(x = pair, y = -log10(pval), fill = has.ROR)) + geom_bar(stat = "identity") +  
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
   ggtitle("Top motif pairs between\nFOXA2, ONECUT, or CUX2") + 
+  scale_fill_manual(values = barcols)
   xlab("")
 
 
