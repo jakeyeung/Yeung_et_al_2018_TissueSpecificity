@@ -42,8 +42,7 @@ BinVector <- function(x, ...){
 }
 
 library(scales)
-mylog_trans <- function(base=exp(1), from=0) llu
-{
+mylog_trans <- function(base=exp(1), from=0){
   # from
   # http://stackoverflow.com/questions/22295253/force-bars-to-start-from-a-lower-value-than-0-in-ggplot-geom-bar-in-r
   trans <- function(x) log(x, base)-from
@@ -215,33 +214,49 @@ pca.global.long <- do.call(rbind, pca.global.long.lst)
 
 pca.global.long$ds <- factor(pca.global.long$ds, levels = c("all", "NoNeuralTissues", "LiverKidney"))
 
+cols <- c("grey10", "grey50", "grey60")
 
 print(ggplot(pca.global.long, aes(x = Fourier, fill = ds, y = Fraction)) + 
         geom_bar(stat = "identity", position="dodge") +
         theme_bw(24) + 
         theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="none") + 
-        scale_y_continuous(trans = mylog_trans(base=10, from=-3), breaks = c(0.001, 0.01, 0.1, 1)))
+        scale_y_continuous(trans = mylog_trans(base=10, from=-3), breaks = c(0.001, 0.01, 0.1, 1)) + 
+        scale_fill_manual(values = cols))
 print(ggplot(subset(pca.global.long, Fourier != "T.12.global"), aes(x = Fourier, fill = ds, y = Fraction)) + 
         geom_bar(stat = "identity", position="dodge") +
         theme_bw(24) + 
         theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="none") + 
-        scale_y_continuous(trans = mylog_trans(base=10, from=-2), breaks = c(0.01, 0.1, 1)))
+        scale_y_continuous(trans = mylog_trans(base=10, from=-2), breaks = c(0.01, 0.1, 1)) + 
+        scale_x_discrete(labels=c("T.inf.global" = "Intertissue", "T.24.global" = "Intratissue\n(24h Period)")) +  
+        xlab("") +  ylab("Fraction of Total Variance") + 
+        scale_fill_manual(values = cols))
+print(ggplot(subset(pca.global.long, Fourier != "T.12.global"), aes(x = Fourier, fill = ds, y = Fraction)) + 
+        geom_bar(stat = "identity", position="dodge") +
+        theme_bw(24) + 
+        theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+        scale_y_continuous(trans = mylog_trans(base=10, from=-2), breaks = c(0.01, 0.1, 1)) + 
+        scale_x_discrete(labels=c("T.inf.global" = "Intertissue", "T.24.global" = "Intratissue\n(24h Period)")) +  
+        xlab("") +  ylab("Fraction of Total Variance") + 
+        scale_fill_manual(values = cols))
 
 print(ggplot(pca.global.long, aes(x = Fourier, fill = ds, y = Fraction)) + 
         geom_bar(stat = "identity", position="dodge") +
         theme_bw(24) + 
         theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="none") + 
-        ylim(c(0, 1)))
+        ylim(c(0, 1)) + 
+        scale_fill_manual(values = cols))
 print(ggplot(pca.global.long, aes(x = Fourier, fill = ds, y = Fraction)) + 
         geom_bar(stat = "identity", position="dodge") +
         theme_bw(24) + 
         theme(aspect.ratio = 0.5, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="none") + 
-        ylim(c(0, 1)))
+        ylim(c(0, 1)) + 
+        scale_fill_manual(values = cols))
 print(ggplot(pca.global.long, aes(x = Fourier, fill = ds, y = Fraction)) + 
         geom_bar(stat = "identity", position="dodge") +
         theme_bw(24) + 
         theme(aspect.ratio = 0.5, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-        ylim(c(0, 1)))
+        ylim(c(0, 1)) + 
+        scale_fill_manual(values = cols))
 dev.off()
 
 
