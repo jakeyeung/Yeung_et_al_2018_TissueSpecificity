@@ -106,7 +106,7 @@ ScaleSignal <- function(dat, cname, jcenter = NA, jscale = NA){
 }
 
 
-PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry"){
+PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry", line.for.protein=FALSE){
   # plotting protein optional: can use this to plot just dat and act if prot.long is missing and gene.prot is ""
   act.long$tissue <- sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[1]])
   if (jtiss == "Liver"){
@@ -212,8 +212,13 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   } else {
     m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, colour = tissue, size = type))
   }
+  if (line.for.protein){
+    m <- m + geom_line(data = merged.dat, size = 1)
+  } else {
+    m <- m + geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum"), size = 1)
+  }
   m <- m + 
-    geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum"), size = 1) +
+    # geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum"), size = 1) +
     # geom_point(size = dotsize) + 
     geom_point() + 
     facet_wrap(~geno.std, nrow = n.facetrows) + 

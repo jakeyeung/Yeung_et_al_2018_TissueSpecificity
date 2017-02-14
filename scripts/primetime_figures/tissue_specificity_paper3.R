@@ -1,6 +1,10 @@
 # 2016-08-16
 # Figures for paper: include hogenesch, liver kidney WTKO, nuclear proteomics, 4c-seq
 # Jake Yeung
+# 
+# Other links to scripts not shown here:
+# /home/yeung/projects/tissue-specificity/scripts/pca/pca_adjusted_microarray.label_variance.for_paper.R
+# /home/yeung/projects/tissue-specificity/scripts/fourier/total_variance.noise_floor.hogenesch_and_liverWTKO.R
 
 
 rm(list=ls())
@@ -161,9 +165,11 @@ for (i in seq(length(jgenes))){
   print(paste(jgene, jmotif))
   print(PlotProteomics(subset(prot.long, gene == jgene), jtitle = jgene))
   if (!is.na(jmotif)){
-    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.act = jmotif, gene.prot = jgene, jtiss = "Liver", dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
+    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
   } else {
-    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
+    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
   }
 }
 dev.off()
