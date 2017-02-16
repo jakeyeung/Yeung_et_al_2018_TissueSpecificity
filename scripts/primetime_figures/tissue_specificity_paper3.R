@@ -120,7 +120,7 @@ load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
 
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
 # model selection with g1000
-# load("Robjs/nconds_g1000_11_tissues/fits_long.11_tiss_3_max.g1000.bestmodel.filteramp.0.15.Robj", v=T)  # dont use that
+load("Robjs/nconds_g1000_11_tissues/fits_long.11_tiss_3_max.g1000.bestmodel.filteramp.0.15.Robj", v=T)  # use this, looks same as fits.best should be OK?
 load("Robjs/dat.complex.fixed_rik_genes.Robj", v=T)
 if (remove.wfat){
   dat.complex <- subset(dat.complex, tissue != "WFAT")
@@ -156,8 +156,8 @@ act.l$geno <- "WT"
 prot.long.wt <- subset(prot.long, geno == "WT")
 dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
 
-jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
-jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", NA, NA, NA, NA)
+jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Hlf", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
+jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", "NFIL3", NA, NA, NA, NA)
 print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
 pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.pdf")))
 for (i in seq(length(jgenes))){
@@ -1193,7 +1193,7 @@ fits.sub$has.ROR <- sapply(fits.sub$pair, function(p) grepl("RORA", p))
 
 fits.sub$pair <- factor(fits.sub$pair, levels = fits.sub$pair)
 
-barcols <- c("black", "grey50")
+barcols <- c("grey50", "black")
 m.loglin <- ggplot(subset(fits.sub, pval < 0.05), aes(x = pair, y = -log10(pval), fill = has.ROR)) + geom_bar(stat = "identity") +  
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
