@@ -179,7 +179,7 @@ dev.off()
 # Plot examples -----------------------------------------------------------
 
 jgenes <- c("Slc45a3", "Insig2", "Slc44a1", "Pik3ap1", "Jun", "Mafb", "Egr1", "Nop56", "Gck", "Lipg", "Upp2", "Loxl4", "Lpin1", "Cebpb", "Pik3r1", "Hes6",
-            "Per2", "Cry1", "Dbp", "Arntl", "Npas2", "Hic1", "Srebf1", "Per1", "Cry2", "Nr1d1", "Nr1d2", "Tef", "Hlf", "Hspa8", "Cirbp", "Sgk2", "Wee1")
+            "Per2", "Cry1", "Dbp", "Arntl", "Npas2", "Hic1", "Srebf1", "Per1", "Cry2", "Nr1d1", "Nr1d2", "Tef", "Hlf", "Hspa8", "Cirbp", "Sgk2", "Wee1", "Pi4k2a", "Per3")
 
 pdf(file.path(plot.dir, paste0("0", ".gene_exprs_examples.pdf")))
 for (g in jgenes){
@@ -415,7 +415,7 @@ for (jgene in jgenes){
   print(m)
 }
 
-jgenes <- c("Slc45a3", "Pi4k2a", "Slc44a1", "Per1")
+jgenes <- c("Arntl", "Per1", "Dbp", "Per3")
 m.list <- list()
 i <- 1
 jexp <- "array"
@@ -423,7 +423,7 @@ for (jgene in jgenes){
   m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
                                     jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8,
                                     pointsize = 0)
-  m <- m + scale_color_manual(values = c("black", "grey70"))
+  # m <- m + scale_color_manual(values = c("red", "grey70"))
   m.list[[i]] <- m
   i <- i + 1
 }
