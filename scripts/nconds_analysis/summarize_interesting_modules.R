@@ -13,8 +13,13 @@ source("scripts/functions/PlotFunctions.R")
 # source("/home/yeung/projects/tissue-specificity/scripts/functions/PhaseColorFunctions.R")
 source("/home/yeung/projects/tissue-specificity/scripts/functions/ColorFunctions.R")
 source("scripts/functions/LiverKidneyFunctions.R")
+source("scripts/functions/SvdFunctions.R")
+
 
 # Load --------------------------------------------------------------------
+
+# load("Robjs/liver_kidney_atger_nestle/dat.freq.bugfixed.Robj", v=T)  # LivKid
+load("Robjs/dat.complex.fixed_rik_genes.Robj", v=T); dat.complex <- subset(dat.complex, tissue != "WFAT")
 
 jmeth <- "g=1001"
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.annotated.Robj", v=T)
@@ -77,9 +82,37 @@ lapply(fits.lst, function(fits){
   if (min(fits$n.rhyth) > 7){
     print(PlotHeatmapNconds(subset(fits, amp.avg > 0.4), dat.long, filt.tiss, jexperiment="array", blueend = -0.15, blackend = 0.15, min.n = jmin.n, max.n = jmax.n, jmin.col = "red", jmax.col = "green", jscale=FALSE))
   }
+  # plot SVD
+  comp <- 1; dotsize <- 5
+  genes <- as.character(unique(fits$gene))
+  s <- SvdOnComplex(subset(dat.complex, gene %in% genes), value.var = "exprs.transformed")
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, jsize = 16)
+  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  print(eigens$u.plot + ylab("ZT") + ggtitle(""))
+  print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  
+  eigens.arrow <- GetEigens(s, period = 24, comp = comp, adj.mag = TRUE, 
+                            constant.amp = 5, 
+                            label.n = Inf, jtitle = "", 
+                            peak.to.trough = TRUE, 
+                            dotsize = 6, 
+                            dotshape = 18,
+                            disable.text = FALSE, 
+                            add.arrow = TRUE,
+                            disable.repel = TRUE)
+  eigens.arrow2 <- GetEigens(s, period = 24, comp = comp, adj.mag = TRUE, 
+                             constant.amp = 5, 
+                             label.n = 5, jtitle = "", 
+                             peak.to.trough = TRUE, 
+                             dotsize = 1, 
+                             dotshape = 18,
+                             disable.text = FALSE, 
+                             add.arrow = TRUE,
+                             disable.repel = TRUE)
+  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  print(eigens.arrow$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
 })
 dev.off()
-
 
 # Heatmaps on Liver Kidney WTKO -------------------------------------------
 

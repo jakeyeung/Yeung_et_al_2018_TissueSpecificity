@@ -44,6 +44,12 @@ omega <- 2 * pi / 24
 n <- 4  # amplitude scaling 
 # Functions ---------------------------------------------------------------
 
+ggplotColours <- function(n = 6, h = c(0, 360) + 15){
+  # http://stackoverflow.com/questions/8197559/emulate-ggplot2-default-color-palette
+  if ((diff(h) %% 360) < 1) h[2] <- h[2] - 360/n
+  hcl(h = (seq(h[1], h[2], length = n)), c = 100, l = 65)
+}
+
 RunPldaSystemsClock <- function(motifs, genes, clock.sys.gene.hash, N.long, jlambda = 0.035){
   N.sub <- subset(N.long, motif2 %in% motifs & gene %in% genes)
   N.sub$clksys <- sapply(as.character(N.sub$gene), function(g) clock.sys.gene.hash[[g]])
@@ -328,8 +334,14 @@ jtisses <- c("Liver", "Kidney"); jlevs <- as.character(ngenes.sum$tissue)
 livkid.levels <- c(jlevs[jlevs %in% jtisses], jlevs[! jlevs %in% jtisses])
 dat.fit.24.ngenes.thres$tissue <- factor(as.character(dat.fit.24.ngenes.thres$tissue), levels = livkid.levels)
 
-cbPalette <- c(gg_color_hue(2), "#000000", "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-ggplot(subset(dat.fit.24.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) + 
+# joranges <- brewer.pal(2, "Reds")
+# jgreens <- brewer.pal(4, "Greens")
+jgreys <- brewer.pal(3, "Greys")
+jspectrals <- brewer.pal(6, "Spectral")
+# cbPalette <- c(gg_color_hue(2), "#000000", "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+# cbPalette <- c(gg_color_hue(2), "#000000", "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "grey90", "grey80", "grey70")
+cbPalette <- c(gg_color_hue(2), jspectrals, jgreys)
+ggplot(subset(dat.fit.24.ngenes.thres, rhyth == 24), aes(x = 2 * amp.thres, y = n.genes, colour = tissue)) +
   geom_line(size = linesize.gwide) + 
   theme_bw(24) +
   theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.title = element_blank()) +
@@ -514,7 +526,9 @@ fits.best$n.rhyth.lab <- sapply(fits.best$n.rhyth, function(n){
 fits.counts.by.amp <- subset(fits.best, n.rhyth > 0) %>%
   group_by(n.rhyth.lab) %>%
   do(NGenesByAmp.long(., amp.thres, labelid = "n.rhyth.lab", varid = "amp.avg", outlabel = "n.rhyth.lab"))
-ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = n.rhyth.lab, colour = as.factor(n.rhyth.lab))) + geom_line() + 
+
+jcolors <- c("purple", "green", "orange", "grey")
+m.new <- ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = n.rhyth.lab, colour = as.factor(n.rhyth.lab))) + geom_line() + 
   geom_line(size = 2) + 
   theme_bw(20) +
   labs(colour = "# Rhythmic\nTissues") + 
@@ -524,7 +538,10 @@ ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = n.rhyth.l
   xlab("Avg Log2 Fold Change") + ylab("# Genes") + xlim(c(0.15, 6)) + 
   scale_y_log10(breaks = c(1, 10, 100, 1000)) + 
   geom_vline(xintercept = 2.8, linetype = "dotted") + 
-  scale_colour_brewer(palette = "Spectral")
+  scale_color_manual(values=jcolors)
+  # scale_colour_brewer(palette = "Spectral")
+print(m.new)
+print(m.new + theme(legend.position = "none"))
 dev.off()
 
 
@@ -874,6 +891,8 @@ fits.counts.by.amp <- fits.sub %>%
 
 pdf(file.path(plot.dir, paste0(plot.i, ".summarize_livkid_modules.pdf")))
 plot.i <- plot.i + 1
+
+# jcolors <- c(ggplotColours(2), c("grey90", "grey80", "grey70"))
 mm <- ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = model, colour = as.factor(model))) + geom_line() +
   geom_line(size = 2) +
   theme_bw(20) +
@@ -881,14 +900,55 @@ mm <- ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = mod
   theme(aspect.ratio=1,
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank()) +
-  xlab("Avg Amplitude of Rhythmic Tissues") + ylab("# Genes") + xlim(c(0.15, 6)) +
+  xlab("Avg Log2 Fold Change") + ylab("# Genes") + xlim(c(0.15, 6)) +
   scale_y_log10(breaks = c(1, 10, 100, 1000)) +
   geom_vline(xintercept = 2.8, linetype = "dotted") +
+  # scale_color_manual(values = jcolors)
   scale_colour_brewer(palette = "Spectral")
 print(mm)
 print(mm + theme(legend.position = "none"))
-dev.off()
 
+# replot with line and dotted for clock-driven and system-driven
+# color by Liver, Kidney, Systems (red, blue, gray?)
+fits.counts.by.amp$tissue <- sapply(as.character(fits.counts.by.amp$model), function(m){
+  tiss.vec <- unique(sapply(strsplit(m, ",")[[1]], function(msplit) strsplit(msplit, "_")[[1]][[1]]))
+  tiss.vec <- paste(tiss.vec, collapse=",")
+  return(tiss.vec)
+})
+fits.counts.by.amp$tissue <- factor(fits.counts.by.amp$tissue, levels = c("Liver", "Kidney", "Liver,Kidney"))
+
+fits.counts.by.amp$geno <- sapply(as.character(fits.counts.by.amp$model), function(m){
+  geno.vec <- unique(sapply(strsplit(m, ",")[[1]], function(msplit) strsplit(msplit, "_")[[1]][[2]]))
+  geno.vec <- paste(geno.vec, collapse=",")
+  if (geno.vec == "SV129"){
+    geno.vec <- "Clock-Driven"
+  } else if (geno.vec == "SV129,BmalKO"){
+    geno.vec <- "System-Driven"
+  } else {
+    warning(paste(geno.vec, "should be SV129 or SV129,BmalKO"))
+  }
+  return(geno.vec)
+})
+fits.counts.by.amp$geno <- factor(fits.counts.by.amp$geno, levels = c("Clock-Driven", "System-Driven"))
+
+
+jcolors <- c(ggplotColours(2), "grey")
+
+mm <- ggplot(fits.counts.by.amp, aes(x = 2 * amp.thres, y = n.genes, group = model, colour = tissue, linetype = geno)) + 
+  geom_line(size = 2) +
+  theme_bw(20) +
+  labs(colour = "Rhythmic Module") +
+  theme(aspect.ratio=1,
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  xlab("Avg Amplitude of Rhythmic Tissues") + ylab("# Genes") + xlim(c(0.15, 6)) +
+  scale_y_log10(breaks = c(1, 10, 100, 1000)) +
+  geom_vline(xintercept = 2.8, linetype = "dotted") + 
+  scale_color_manual(values=jcolors)
+print(mm)
+print(mm + theme(legend.position = "none"))
+
+dev.off()
 
 
 # Single TFs underlie clock-independent liver-specific diurnal gen --------
