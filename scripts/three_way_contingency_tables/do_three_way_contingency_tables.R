@@ -260,7 +260,11 @@ mclapply(Ks, function(K){
       group_by_(.dots = c("model", motif.pair)) %>%
       summarise(freq = length(gene)) %>%
       mutate(pair = motif.pair.str)
-    return(N.mat.freq)
+    if (nrow(N.mat.freq) == 8){
+      return(N.mat.freq)
+    } else {
+      return(data.frame())
+    }
   })
   print(Sys.time() - start)
   

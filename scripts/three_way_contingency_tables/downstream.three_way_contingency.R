@@ -106,6 +106,14 @@ m.fixed
 
 
 
+# Document this change ----------------------------------------------------
+
+save(fits, N.mat.freqs.rbind, N.mat.all, file = "three.way.cooccurrence.bugfixed.nmodels.2.K.300.withNmatallandNmatfreqs.Robj")
+
+
+# Further exploration -----------------------------------------------------
+
+
 
 # how many pairs with FOXA, ONECUT, or CUX2??
 fits.sub$partner <- sapply(as.character(fits.sub$pair), function(p){
