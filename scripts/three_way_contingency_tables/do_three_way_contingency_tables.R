@@ -260,6 +260,7 @@ mclapply(Ks, function(K){
       group_by_(.dots = c("model", motif.pair)) %>%
       summarise(freq = length(gene)) %>%
       mutate(pair = motif.pair.str)
+    # expect 8 rows: atop/zbottom, zbottom/atop, atop/atop/ zbottom/zbottom for rhyth and flat
     if (nrow(N.mat.freq) == 8){
       return(N.mat.freq)
     } else {
@@ -275,7 +276,7 @@ mclapply(Ks, function(K){
     group_by(pair) %>%
     do(RunPoissonModel(.))
   
-  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".withNmatall.Robj"))
+  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
 }, mc.cores = 2)
 
 # tf <- "RORA"
