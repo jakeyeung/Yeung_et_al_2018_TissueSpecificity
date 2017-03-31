@@ -73,7 +73,7 @@ jmax.n <- 1.5
 # reorder dat.long tissues
 dat.long$tissue <- factor(as.character(dat.long$tissue), levels = c("Liver", "Kidney", "BFAT", "Lung", "Adr", "Aorta", "Heart", "Mus", "Cere", "BS", "Hypo", "WFAT"))
 
-pdf(paste0("plots/heatmaps/heatmaps_hogenesch_model_selection.blacklims", jblueend, jblackend, ".minmax.", jmin.n, jmax.n, ".pdf"))
+pdf(paste0("plots/heatmaps/polarplots_heatmaps_hogenesch_model_selection.blacklims", jblueend, jblackend, ".minmax.", jmin.n, jmax.n, ".pdf"))
 lapply(fits.lst, function(fits){
   print(PlotHeatmapNconds(fits, dat.long, filt.tiss, jexperiment="array", blueend = jblueend, blackend = jblackend, min.n = jmin.n, max.n = jmax.n, jmin.col = "red", jmax.col = "green", jscale=FALSE))
   if (all(fits$model == "Liver")){
@@ -91,15 +91,6 @@ lapply(fits.lst, function(fits){
   print(eigens$u.plot + ylab("ZT") + ggtitle(""))
   print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
   
-  eigens.arrow <- GetEigens(s, period = 24, comp = comp, adj.mag = TRUE, 
-                            constant.amp = 5, 
-                            label.n = Inf, jtitle = "", 
-                            peak.to.trough = TRUE, 
-                            dotsize = 6, 
-                            dotshape = 18,
-                            disable.text = FALSE, 
-                            add.arrow = TRUE,
-                            disable.repel = TRUE)
   eigens.arrow2 <- GetEigens(s, period = 24, comp = comp, adj.mag = TRUE, 
                              constant.amp = 5, 
                              label.n = 5, jtitle = "", 
@@ -109,8 +100,8 @@ lapply(fits.lst, function(fits){
                              disable.text = FALSE, 
                              add.arrow = TRUE,
                              disable.repel = TRUE)
-  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
-  print(eigens.arrow$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Log2 Fold Change") + ggtitle(""))
+  print(eigens.arrow2$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
 })
 dev.off()
 
@@ -121,7 +112,7 @@ top.models <- c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_SV129,Kidney_S
 
 dat.wtko$tissue <- factor(dat.wtko$tissue, levels = c("Liver", "LiverBmalKO", "Kidney", "KidneyBmalKO"))
 
-pdf(paste0("plots/heatmaps/heatmaps_wtko_model_selection.blacklims", jblueend, jblackend, ".minmax.", jmin.n, jmax.n, ".pdf"))
+pdf(paste0("plots/heatmaps/polarplots_heatmaps_wtko_model_selection.blacklims", jblueend, jblackend, ".minmax.", jmin.n, jmax.n, ".pdf"))
 for (jmod in top.models){
   out <- PlotHeatmapNconds(subset(fits.long.filt, model == jmod), dat.wtko, filt.tiss=c(), jexperiment="RNASeq", 
                            blueend = jblueend, blackend = jblackend, min.n = jmin.n, max.n = jmax.n,
