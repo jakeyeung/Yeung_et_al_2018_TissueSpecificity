@@ -820,11 +820,25 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
   if (!is.character(dot.col)){
     # create vector of colors by matching label to colour name
     print("Assuming dot.col is a hash table... with keys as labels")
-    dot.col <- sapply(labels, function(l) dot.col[[l]])
+    dot.col <- sapply(labels, function(l) ifelse(!is.null(dot.col[[l]]), dot.col[[l]], "gray"))
   }
   if (!is.numeric(dotshape)){
     print("Assuming dotshape is a hash table... with keys as labels")
     dotshape <- sapply(labels, function(l) dotshape[[l]])
+  }
+  if (!is.numeric(dotsize)){
+    print("Assuming dotsize is a hash table... with keys as labels")
+    dotsize <- sapply(labels, function(l){
+		      if (l == ""){
+		        return(0.1)
+		      } else {
+			if (!is.null(dotsize[[l]])){
+			  return(dotsize[[l]])
+			} else {
+			  return(0.1)
+			}
+		      }
+    })
   }
   m <- ggplot(data = df, aes(x = amp, y = phase, label = label)) + 
     geom_point(size = dotsize, colour = dot.col, shape = dotshape) +

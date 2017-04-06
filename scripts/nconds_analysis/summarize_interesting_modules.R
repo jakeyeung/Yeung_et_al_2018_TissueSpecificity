@@ -31,6 +31,7 @@ dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 dat.wtko$tissue <- paste(dat.wtko$tissue, as.character(dat.wtko$geno), sep = "")
 dat.wtko$tissue <- gsub("SV129", "", dat.wtko$tissue)
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)  # hogenesch
+load("Robjs/N.long.promoters_500.Robj", v=T)
 
 load("Robjs/fits.relamp.Robj", v=T)
 
@@ -73,6 +74,37 @@ jmax.n <- 1.5
 # reorder dat.long tissues
 dat.long$tissue <- factor(as.character(dat.long$tissue), levels = c("Liver", "Kidney", "BFAT", "Lung", "Adr", "Aorta", "Heart", "Mus", "Cere", "BS", "Hypo", "WFAT"))
 
+
+# Check HIC1 sitecounts ---------------------------------------------------
+
+pdf(paste0("plots/heatmaps/polarplots_tissuewide_hic1_sitecounts.pdf"))
+N.hic <- subset(N.long, motif == "HIC1.p2")
+size.hash <- hash(as.character(N.hic$gene), 2 * N.hic$sitecount)
+
+fits <- fits.lst[[9]]  # tissuewide
+
+# color if greater than some threshold
+jbins <- 300
+jcolors <- colorRampPalette(brewer.pal(9, "Greys"))(jbins)
+site.min <- 0
+site.max <- 1.5
+x <- seq(from = site.min, to = site.max, length.out = jbins)
+# assign sitecount to hash by assigning to nearest value
+jcolors.i <- sapply(N.hic$sitecount, function(s) which.min(abs(s - x)))
+col.hash <- hash(as.character(N.hic$gene), jcolors[jcolors.i])
+# size.hash <- hash(as.character(N.hic$gene), 2*x[jcolors.i])
+# col.hash <- hash(as.character(N.hic$gene), ifelse(N.hic$sitecount > 1.5, "blue", "gray"))
+
+s <- SvdOnComplex(subset(dat.complex, gene %in% genes), value.var = "exprs.transformed")
+eigens <- GetEigens(s, period = 24, comp = comp, label.n = Inf, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, jsize = 16, dotsize=size.hash, dot.col = col.hash, disable.repel = TRUE, disable.text = TRUE)
+eigens.genenames <- GetEigens(s, period = 24, comp = comp, label.n = 50, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, jsize = 16, dotsize=size.hash , disable.repel = FALSE, disable.text = FALSE)
+print(eigens$u.plot + ylab("ZT") + ggtitle(paste0("MinAndMax:", paste(signif(range(N.hic$sitecount), digits = 2), collapse = ","))))
+dev.off()
+
+# Plot modules ------------------------------------------------------------
+
+
+  
 pdf(paste0("plots/heatmaps/polarplots_heatmaps_hogenesch_model_selection.blacklims", jblueend, jblackend, ".minmax.", jmin.n, jmax.n, ".pdf"))
 lapply(fits.lst, function(fits){
   print(PlotHeatmapNconds(fits, dat.long, filt.tiss, jexperiment="array", blueend = jblueend, blackend = jblackend, min.n = jmin.n, max.n = jmax.n, jmin.col = "red", jmax.col = "green", jscale=FALSE))
