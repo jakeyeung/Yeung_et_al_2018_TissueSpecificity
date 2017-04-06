@@ -102,8 +102,16 @@ plot(x = 1:npcs,
 # PCA1 and PCA2 -----------------------------------------------------------
 
 library(wordcloud)
-# plot(dat_pca$x[, "PC1"], dat_pca$x[, "PC2"])
-textplot(x = dat_pca$x[, "PC1"], y = dat_pca$x[, "PC2"], words = rownames(dat_pca$x))
+
+jpc1 <- "PC1"
+jpc2 <- "PC2"
+plot(dat_pca$x[, jpc1], dat_pca$x[, jpc2])
+
+jpc1 <- "PC13"
+jpc2 <- "PC17"
+plot(dat_pca$x[, jpc1], dat_pca$x[, jpc2])
+# text(dat_pca$x[, jpc1], dat_pca$x[, jpc2], labels = rownames(dat_pca$x))
+# wordcloud::textplot(x = dat_pca$x[, "PC1"], y = dat_pca$x[, "PC2"], words = rownames(dat_pca$x))
 # textplot(x = dat_pca$rotation[, "PC17"], y = dat_pca$rotation[, "PC18"], words = rownames(dat_pca$rotation))
 
 
@@ -300,7 +308,7 @@ timelab <- subset(pca.long, pc == jpc1)$time
 cols <- as.numeric(tisslab)
 tisstimelab <- paste(as.character(tisslab), as.character(timelab))
 plot(x, y, cex = 0.01, main = paste0(jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2)
-text(x, y, labels = tisstimelab, col = cols)  
+# text(x, y, labels = tisstimelab, col = cols)  
 
 # # Summarize each PCA by its median T.max? ---------------------------------
 # 

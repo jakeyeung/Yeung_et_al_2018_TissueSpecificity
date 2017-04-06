@@ -50,10 +50,10 @@ source("scripts/functions/LoadActivitiesLong.R")
 # Load data, log transform
 
 log2.transform <- TRUE
-load("Robjs/dat.array.adj.primetime.Robj", verbose=T)  # no -Infs
+# load("Robjs/dat.array.adj.primetime.Robj", verbose=T)  # no -Infs
 
-# dat <- LoadNormalizedArray(normalized.array.path = "data/array.adj.0.07.txt", 
-#                            remove.negs = TRUE, fix.rik.xgene = TRUE)
+dat <- LoadNormalizedArray(normalized.array.path = "data/array.adj.0.07.txt",
+                           remove.negs = TRUE, fix.rik.xgene = TRUE)
 # dat <- LoadArray(form = "wide")  # not adjusted, set log2.transform = FALSE
 # dat <- LoadRnaSeq(handle.duplicates = FALSE)  # do RNA-Seq instead, log2.transform = TRUE
 
@@ -71,7 +71,7 @@ if (remove.wfat){
 # PCA center by ROW
 dat.centered <- dat - apply(dat, 1, mean)
 dat_pca <- prcomp(t(dat.centered), center=FALSE, scale.=FALSE)
-
+sdev.norm <- sapply(dat_pca$sdev, function(x) x ^ 2 / sum(dat_pca$sdev ^ 2))
 
 
 # Consolidate PCA into long
@@ -85,7 +85,7 @@ head(pca.long)
 n.samps <- length(jtissues)
 
 plot.i <- 1
-pdf(file.path(outdir, paste0(plot.i, ".component_vs_component.pdf")))
+pdf(file.path(outdir, paste0(plot.i, ".component_vs_component.pdf")), useDingbats=FALSE)
 plot.i <- plot.i + 1
 # Plot PC1 vs PC2
 jpc1 <- "PC1"
@@ -105,7 +105,7 @@ tisstimelab <- paste(as.character(tisslab), as.character(timelab))
 # plot(x, y, cex = 0.01, xlab = jpc1, ylab = jpc2)
 # text(x, y, labels = tisstimelab, col = cols)  
 # no labels
-plot(x, y, cex = 1, main = paste0(jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2, pch = jpch.vec)
+plot(x, y, cex = 2.5, main = paste0(jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2, pch = jpch.vec)
 # legend("bottomright", as.character(unique(tisslab)), pch = 19, title = "Tissue", col = cols.uniq, horiz = F)
 legend("bottomright", as.character(unique(tisslab)), title = "Tissue", pch = jpch, horiz = F)
 
