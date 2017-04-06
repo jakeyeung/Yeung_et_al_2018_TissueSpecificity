@@ -20,7 +20,7 @@ library(parallel)
 setwd("/home/yeung/projects/tissue-specificity")
 
 source("scripts/functions/PlotGeneAcrossTissues.R")
-source("scripts/functions/PlotGeneAcrossTissues.R")
+source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/NcondsFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
@@ -419,7 +419,7 @@ for (jgene in jgenes){
 do.call(multiplot, m.list)
 
 # plot additional guys 
-jgenes <- c("Nr1d1", "Arntl", "Per3", "Cirbp", "Per1", "Npas2", "Nr1d2", "Rora", "Rorc", "Dbp", "Nfil3", "Tef")
+jgenes <- c("Nr1d1", "Arntl", "Per3", "Cirbp", "Per1", "Npas2", "Nr1d2", "Rora", "Rorc", "Dbp", "Nfil3", "Tef", "Tnnt1", "Myl3")
 for (jgene in jgenes){
   m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
                                     jgene, amp.filt = 0.2, jtitle=jgene, facet.rows = 1, jcex = 8,
@@ -476,7 +476,7 @@ do.call(multiplot, m.list)
 
 # Run for "RNA-Seq"
 jexp <- "rnaseq"
-jgenes <- c("Mef2c", "Icam1")
+jgenes <- c("Mef2c", "Icam1", "Tnnt1", "Myl3")
 for (jgene in jgenes){
   m <- PlotGeneByRhythmicParameters(fits.best, subset(dat.long, experiment == jexp), 
                                     jgene, amp.filt = 0.25, jtitle=jgene, facet.rows = 1, jcex = 8,
@@ -609,6 +609,33 @@ motifs.hash <- hash(motifs.tmp, sapply(motifs.tmp, RemoveP2Name))
 N.long$motif2 <- sapply(as.character(N.long$motif), function(m) motifs.hash[[m]])
 genes <- as.character(fits.sub$gene)
 clksys <- as.character(fits.sub$clksys)
+
+n.clock <- length(which(clksys == "clock"))
+n.system <- length(which(clksys == "system"))
+
+# genes not assigned
+genes.notassigned <- genes.tw[!genes.tw %in% genes] 
+
+# check amplitudes of genes versus genes.notassigned
+fits.Ass <- subset(fits.bytiss, gene %in% genes)
+fits.NotAss <- subset(fits.bytiss, gene %in% genes.notassigned)
+fits.Ass$lab <- "Assigned"
+fits.NotAss$lab <- "NotAssigned"
+fits.AssNotAss <- rbind(fits.Ass, fits.NotAss)
+
+ggplot(fits.AssNotAss, aes(x = amp, fill = lab)) + geom_histogram(bins = 30) + facet_grid(lab ~ tissue) 
+ggplot(fits.AssNotAss, aes(x = int, fill = lab)) + geom_histogram(bins = 30) + facet_grid(lab ~ tissue) 
+
+# check SVD of Ass, NotAss, and all
+
+for (gene.lst in list(genes.tw, genes, genes.notassigned)){
+  s.tw <- SvdOnComplex(subset(dat.complex, gene %in% gene.lst), value.var = "exprs.transformed")
+  eigens.tw <- GetEigens(s.tw, period = 24, comp = comp, label.n = 15, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Hspa8", "Cirbp"))
+  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  print(eigens.tw$u.plot)
+  print(eigens.tw$v.plot)
+  multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
+}
 
 motifs.lst <- list()
 motifs.lst[[1]] <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "NFIL3", "HSF1.2")

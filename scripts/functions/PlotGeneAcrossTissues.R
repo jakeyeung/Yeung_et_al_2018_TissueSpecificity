@@ -41,7 +41,13 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
   return(m)
 }
 
-PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno", ncols = 2, center = FALSE){
+PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno", ncols = 2, center = FALSE, convert.linear = FALSE, jsize = 24){
+  if (convert.linear){
+    dat$exprs <- (2 ^ dat$exprs) - 1
+    jylab <- "TPM"
+  } else {
+    jylab <- "Log2 mRNA Abundance"
+  }
   # split by geno or tissue
   if (center){
     dat <- dat %>%
@@ -49,8 +55,8 @@ PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno",
       mutate(exprs = scale(exprs, center = TRUE, scale = FALSE))
   }
   m <- ggplot(dat, aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
-    geom_point() + geom_line() + xlab(timelabel) + ylab("Log2 mRNA Abundance") + 
-    theme_bw(24) + ggtitle(jtitle) + 
+    geom_point() + geom_line() + xlab(timelabel) + ylab(jylab) + 
+    theme_bw(jsize) + ggtitle(jtitle) + 
     theme(aspect.ratio = 1, legend.position = "bottom")
   if (split.by == "geno"){
     m <- m + facet_wrap(~geno, ncol = ncols)
