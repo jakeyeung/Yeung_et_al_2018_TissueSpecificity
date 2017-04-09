@@ -337,6 +337,8 @@ dat.fit.24.ngenes.thres$tissue <- factor(as.character(dat.fit.24.ngenes.thres$ti
 # joranges <- brewer.pal(2, "Reds")
 # jgreens <- brewer.pal(4, "Greens")
 jgreys <- brewer.pal(3, "Greys")
+jgreys[[1]] <- "#CCCCCC"  # make darker
+jgreys <- rev(jgreys)  # cerebellum darkest, hypothalamus lightest
 jspectrals <- brewer.pal(6, "Spectral")
 # cbPalette <- c(gg_color_hue(2), "#000000", "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 # cbPalette <- c(gg_color_hue(2), "#000000", "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "grey90", "grey80", "grey70")
