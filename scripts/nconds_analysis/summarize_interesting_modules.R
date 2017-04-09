@@ -35,6 +35,8 @@ load("Robjs/N.long.promoters_500.Robj", v=T)
 
 load("Robjs/fits.relamp.Robj", v=T)
 
+load("Robjs/liver_kidney_atger_nestle/dat.freq.bugfixed.Robj", v=T)  # LivKid
+
 # Summarize top hogenesch -------------------------------------------------
 
 subset(fits.best, n.rhyth > 1 & n.rhyth < 8) %>% group_by(model) %>% summarise(n.models = length(gene)) %>% arrange(desc(n.models))
@@ -82,6 +84,8 @@ N.hic <- subset(N.long, motif == "HIC1.p2")
 size.hash <- hash(as.character(N.hic$gene), 2 * N.hic$sitecount)
 
 fits <- fits.lst[[9]]  # tissuewide
+genes <- as.character(unique(fits$gene))
+comp <- 1; dotsize <- 5
 
 # color if greater than some threshold
 jbins <- 300
@@ -120,8 +124,8 @@ lapply(fits.lst, function(fits){
   s <- SvdOnComplex(subset(dat.complex, gene %in% genes), value.var = "exprs.transformed")
   eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, jsize = 16)
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
-  print(eigens$u.plot + ylab("ZT") + ggtitle(""))
-  print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  print(eigens$u.plot + ylab("ZT"))
+  print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights"))
   
   eigens.arrow2 <- GetEigens(s, period = 24, comp = comp, adj.mag = TRUE, 
                              constant.amp = 5, 
@@ -149,6 +153,26 @@ for (jmod in top.models){
   out <- PlotHeatmapNconds(subset(fits.long.filt, model == jmod), dat.wtko, filt.tiss=c(), jexperiment="RNASeq", 
                            blueend = jblueend, blackend = jblackend, min.n = jmin.n, max.n = jmax.n,
                            jmin.col = "red", jmax.col = "green", jscale=FALSE)
+  
+  comp <- 1; dotsize <- 5
+  genes <- as.character(unique(subset(fits.long.filt, model == jmod)$gene))
+  s <- SvdOnComplex(subset(dat.freq, gene %in% genes), value.var = "exprs.transformed")
+  eigens <- GetEigens(s, period = 24, comp = comp, label.n = 25, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, jsize = 16)
+  jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+  print(eigens$u.plot + ylab("ZT"))
+  print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights"))
+  eigens.arrow2 <- GetEigens(s, period = 24, comp = comp, adj.mag = TRUE, 
+                             constant.amp = 5, 
+                             label.n = 5, jtitle = "", 
+                             peak.to.trough = TRUE, 
+                             dotsize = 1, 
+                             dotshape = 18,
+                             disable.text = FALSE, 
+                             add.arrow = TRUE,
+                             disable.repel = TRUE)
+  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Log2 Fold Change") + ggtitle(""))
+  print(eigens.arrow2$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  
 }
 dev.off()
 
