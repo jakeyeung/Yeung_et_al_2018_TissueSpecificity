@@ -97,6 +97,9 @@ timelab <- subset(pca.long, pc == jpc1)$time
 cols.uniq <- rainbow(length(unique(tisslab)))
 jpch <- as.numeric(seq(length(unique(tisslab))))
 jpch[which(jpch == 11)] <- 20
+jpch[4] <- 44
+jpch[5] <- 96
+jpch[7] <- 46
 jpch.vec <- rep(jpch, each = length(unique(timelab)))
 
 cols <- rep(cols.uniq, each = length(unique(timelab)))
@@ -105,7 +108,7 @@ tisstimelab <- paste(as.character(tisslab), as.character(timelab))
 # plot(x, y, cex = 0.01, xlab = jpc1, ylab = jpc2)
 # text(x, y, labels = tisstimelab, col = cols)  
 # no labels
-plot(x, y, cex = 2.5, main = paste0(jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2, pch = jpch.vec)
+plot(x, y, cex = 1.7, main = paste0(jpc1, " vs. ", jpc2), xlab = jpc1, ylab = jpc2, pch = jpch.vec, bg = "white")
 # legend("bottomright", as.character(unique(tisslab)), pch = 19, title = "Tissue", col = cols.uniq, horiz = F)
 legend("bottomright", as.character(unique(tisslab)), title = "Tissue", pch = jpch, horiz = F)
 
