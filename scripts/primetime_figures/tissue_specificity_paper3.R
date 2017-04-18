@@ -149,13 +149,25 @@ dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
 # load proteomics
 
+mrna.hl <- 3  # shift TF activity by half-life
+
 prot.long <- LoadProteomicsData()
+
+s.act <- SvdOnComplex(subset(act.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
 
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.hogenesch"
 outmain <- file.path(outbase, paste0("promoters.tissuewide.filteramp.0.15.mat"))
 indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
 act.l <- LoadActivitiesLong(indir, shorten.motif.name = TRUE)
+act.l.complex <- ProjectWithZscore(act.l, omega, n = n)
+s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
+vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
+s.df <- data.frame(gene = names(s.l.eigs$eigensamp), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = "Liver", geno = "WT")
+# shift by half-life
+s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
+
 act.l <- subset(act.l, experiment == "rnaseq" & tissue == "Liver")
+# act.l <- subset(act.l, experiment == "array" & tissue == "Liver")
 act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
 act.l$time <- act.l$time - 24
 act.l$geno <- "WT"
@@ -165,7 +177,7 @@ dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
 jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Hlf", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
 jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", "NFIL3", NA, NA, NA, NA)
 print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
-pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.pdf")))
+pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.mrnahl.", mrna.hl, ".pdf")))
 for (i in seq(length(jgenes))){
   jgene <- jgenes[i]
   jmotif <- jmotifs[i]
@@ -174,6 +186,9 @@ for (i in seq(length(jgenes))){
   if (!is.na(jmotif)){
     print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
     print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
+    if (nrow(subset(s.df, gene == jmotif)) > 0){
+      print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
+    }
   } else {
     print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
     print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))

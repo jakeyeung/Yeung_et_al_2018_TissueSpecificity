@@ -106,7 +106,7 @@ ScaleSignal <- function(dat, cname, jcenter = NA, jscale = NA){
 }
 
 
-PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry", line.for.protein=FALSE){
+PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry", line.for.protein=FALSE, act.in.sine.cos=FALSE){
   # plotting protein optional: can use this to plot just dat and act if prot.long is missing and gene.prot is ""
   act.long$tissue <- sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[1]])
   if (jtiss == "Liver"){
@@ -130,6 +130,19 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     } else {
       warning("wt.prot should be Cry or Bmal")
     }
+  }
+  # if (any(c(nrow(dat.sub) == 0, nrow(act.sub) == 0))){
+  #   warning("Warning, empty dataframe. Returning empty")
+  #   return(NULL)
+  # }
+  if (act.in.sine.cos){
+    # Generate based on amplitude and phase
+    x <- seq(0, 48)
+    w <- 2 * pi / 24
+    phase <- unique(act.sub$phase)
+    geno.act <- unique(act.sub$geno)
+    tissue.act <- unique(act.sub$tissue)
+    act.sub <- data.frame(time = x, exprs = cos(w * x - w * phase), tissue = tissue.act, geno = geno.act)
   }
   
   # scale data, merge together, then plot in one figure
