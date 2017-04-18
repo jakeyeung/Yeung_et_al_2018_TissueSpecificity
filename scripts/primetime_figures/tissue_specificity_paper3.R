@@ -727,6 +727,7 @@ col.hash.interp <- hash(dat.plot$motif.orig, sapply(interp$y, function(i){
 
 # binary colors
 eigens.act.fancy <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
+                        eigenval = FALSE,
                         constant.amp = 5, 
                         label.n = Inf, jtitle = "", 
                         peak.to.trough = TRUE, 
@@ -736,11 +737,33 @@ eigens.act.fancy <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE,
                         dotshape = 18,
                         disable.text = FALSE, 
                         add.arrow = TRUE,
-                        disable.repel = TRUE)
+                        disable.repel = TRUE,
+                        half.life = 0)
 print(eigens.act.fancy$v.plot)
 print(eigens.act.fancy$u.plot)
+
+# binary colors
+for (hl in seq(0, 6)){
+  eigens.act.fancy <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
+                                eigenval = FALSE,
+                                constant.amp = 5, 
+                                label.n = Inf, jtitle = paste0("Shift: Half-Life ", hl, "hr"), 
+                                peak.to.trough = TRUE, 
+                                dot.col = col.hash, 
+                                # dot.col = col.hash.interp, 
+                                dotsize = 6, 
+                                dotshape = 18,
+                                disable.text = FALSE, 
+                                add.arrow = TRUE,
+                                disable.repel = TRUE,
+                                half.life = hl)
+  print(eigens.act.fancy$v.plot)
+  print(eigens.act.fancy$u.plot)
+}
+
 # gradient colors
 eigens.act.fancy.grad <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
+                              eigenval = FALSE, 
                               constant.amp = 5, 
                               label.n = Inf, jtitle = "", 
                               peak.to.trough = TRUE, 

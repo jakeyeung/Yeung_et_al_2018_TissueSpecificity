@@ -428,7 +428,7 @@ TemporalToFrequencyDatLong <- function(dat.long, period = 24, n = 8, interval = 
 GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase", label.n=30, 
                       eigenval = TRUE, adj.mag = TRUE, pretty.names = FALSE, constant.amp = FALSE, 
                       peak.to.trough = TRUE, jtitle, label.gene=NA, dot.col = "gray85", jsize = 22, dotsize = 1.5,
-                      dotshape = 18, disable.text = FALSE, add.arrow = FALSE, disable.repel = FALSE){
+                      dotshape = 18, disable.text = FALSE, add.arrow = FALSE, disable.repel = FALSE, half.life = 0){
   source("~/projects/tissue-specificity/scripts/functions/PlotFunctions.R")
   if (missing(period)){
     period <- 24
@@ -452,6 +452,16 @@ GetEigens <- function(s.complex, period, comp = 1, xlab = "Amp", ylab = "Phase",
   # rotate eigensamp by +phase ref
   eigensamp <- eigensamp * rotate.factor
   # END: rotate to phase of largest magnitude in sample of eigengene
+  
+  if (half.life > 0){
+    # if half.life > 0, then adjust eigensamp by rotation corresponding to half-life of mRNA species
+    gamma.mrna <- half.life / log(2)
+    k.mrna <- 1 / gamma.mrna
+    delay.rads <- atan(omega / k.mrna)  # rads
+    # subtract delay from eigensamp
+    rotate.factor <- complex(modulus = 1, argument = delay.rads)
+    eigensamp <- eigensamp * Conj(rotate.factor)
+  }
   
   # BEGIN: adjust so largest magnitude in sample of eigengene = 1
   # amp.factor: increases half amplitude to full amplitude. Makes life interpretable.
