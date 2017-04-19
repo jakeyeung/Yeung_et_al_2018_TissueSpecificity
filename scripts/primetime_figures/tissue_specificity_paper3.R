@@ -1360,14 +1360,32 @@ N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;ROR
 # N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;RORA" | pair == "ONECUT1.2;RORA" | pair == "HNF4A_NR2F1.2;RORA") & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
 # N.mat.freqs.sub <- subset(N.mat.freqs,  & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
 
-
 # get hits by gene names
 N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2))
 # N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop" | HNF4A_NR2F1.2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2, HNF4A_NR2F1.2))
 N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop", select = c(gene, peak, model))
 
+
 genes.coop <- as.character(N.mat.all.sub$gene)
 genes.clockliver <- as.character(subset(N.mat.all, model == "rhyth")$gene)
+
+# Count top single hits for all motifs
+N.mat.long <- melt(N.mat.all, id.vars = c("gene", "peak", "model"), variable.name = "motif")
+N.mat.sum <- N.mat.long %>%
+  group_by(model, motif) %>%
+  summarise(n.genes.with.motif = length(which(value == "atop"))) %>%
+  filter(model == "rhyth") %>%
+  arrange(desc(n.genes.with.motif))  # ROR is most enriched motif!
+N.mat.sum <- OrderDecreasing(N.mat.sum, "motif", "n.genes.with.motif")
+
+# same result with RORA if we just do cutoff with N.long?? 
+sc.cutoff <- 0.5
+N.sitecounts <- subset(N.long, gene %in% genes.clockliver) %>%
+  group_by(motif2) %>%
+  filter(sitecount > sc.cutoff) %>%
+  summarise(n.gene = length(gene)) %>%
+  arrange(desc(n.gene))
+
 
 # are they special? amplitudes?
 fits.bytiss.livWT <- subset(fits.bytiss, tissue == "Liver_SV129" & gene %in% genes.clockliver)
@@ -1378,23 +1396,34 @@ fits.bytiss.livWT <- OrderDecreasing(fits.bytiss.livWT, jfactor = "is.hit", jval
 #   group_by(is.hit) %>%
 
 fits.bytiss.livWT$model <- fits.bytiss.livWT$is.hit 
+weight.hash <- hash(as.character(subset(fits.long.filt, model == "Liver_SV129")$gene), subset(fits.long.filt, model == "Liver_SV129")$weight)
+fits.bytiss.livWT$weight <- sapply(as.character(fits.bytiss.livWT$gene), function(g) weight.hash[[g]])
+
+weight.cutoff <- 0.8
+fits.bytiss.livWT$above.weight <- sapply(fits.bytiss.livWT$weight, function(w) ifelse(w >= weight.cutoff, TRUE, FALSE))
 
 
 elf.target.genes <- as.character(subset(N.mat.all, ELF1.2.4 == "atop" & model == "rhyth")$gene)
 
 
 pdf(file.path(plot.dir, "99.clock_driven_liverRORAonly.pdf"))
+  ggplot(subset(N.mat.sum, n.genes.with.motif > 65), aes(x = motif, y = n.genes.with.motif)) + geom_bar(stat = "identity")
+
   ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
   ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
   ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
   ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
   
   ggplot(fits.bytiss.livWT, aes(x = is.hit, y = 2 * amp)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Log2 Fold Change")
+  ggplot(fits.bytiss.livWT, aes(x = above.weight, y = 2 * amp)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Log2 Fold Change")
   ggplot(fits.bytiss.livWT, aes(x = is.hit, y = phase)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Phase")
   
   library(plotrix)
-  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == FALSE)$phase)
-  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == TRUE)$phase)
+  circular_phase24H_histogram(subset(fits.bytiss.livWT)$phase, jtitle = "All Genes")
+  circular_phase24H_histogram(subset(fits.bytiss.livWT, above.weight == TRUE)$phase, jtitle = paste("Phase of Genes Above Weight", weight.cutoff))
+  circular_phase24H_histogram(subset(fits.bytiss.livWT, above.weight == FALSE)$phase, jtitle = paste("Phase of Genes Below Weight", weight.cutoff))
+  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == TRUE)$phase, jtitle = paste("Has TF*Clock Motif"))
+  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == FALSE)$phase, jtitle = paste("Does not have TF*Clock Motif"))
   PlotPolarHistogram(subset(fits.bytiss.livWT, model == TRUE), countstring = "Count", phase.cname = "phase")
   PlotPolarHistogram(subset(fits.bytiss.livWT, model == FALSE), countstring = "Count", phase.cname = "phase")
 dev.off()
