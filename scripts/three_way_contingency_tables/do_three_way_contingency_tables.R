@@ -23,6 +23,7 @@ jcutoff.low <- as.numeric(args[3])
 distfilt <- 40000
 jcutoff <- 3  # arbitrary
 jcutoff.low <- 0  # arbitrary
+weight.cutoff <- 0.8  # makes cleaner??
 # jcutoff <- 2  # arbitrary
 # jcutoff <- 3  # arbitrary
 cleanup <- FALSE
@@ -39,7 +40,7 @@ saveplot <- FALSE
 saverobj <- FALSE
 outdir <- "plots/penalized_lda/liver_kidney_wtko"
 dir.create(outdir)
-outf <- paste0(outdir, "2D.posterior.multigene.distfilt.liverWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".pdf")
+# outf <- paste0(outdir, "2D.posterior.multigene.distfilt.liverWTKO.", distfilt, ".cutoff.", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".pdf")
 amp.min <- 0
 
 # jmodels <- c("Kidney_SV129")
@@ -51,11 +52,11 @@ if (jmodels == "Kidney_SV129"){
   rhyth.tiss <- c("Liver")
   flat.tiss <- c("Kidney")
 }
-if (saverobj){
-  outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.model.", jmodels[[1]], ".distfilt.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".Robj")
-  if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
-}
-
+# if (saverobj){
+#   outfile.robj <- paste0("Robjs/liver_kidney_atger_nestle/penalized_lda_mats.posterior.model.", jmodels[[1]], ".distfilt.", distfilt, ".", paste(rhyth.tiss, sep = "_"), ".cutoff", jcutoff, ".cutofflow", jcutoff.low, ".method.", jmethod, ".Robj")
+#   if (file.exists(outfile.robj)) stop(paste0(outfile.robj, " exists. Exiting"))
+# }
+# 
 library(MASS)
 library(dplyr)
 library(reshape2)
@@ -100,6 +101,7 @@ if (!exists("fits.best")){
   fits.best.orig <- fits.long.filt
   fits.best <- fits.long.filt; rm(fits.long.filt)
   fits.best <- subset(fits.best, method == jmethod)
+  fits.best <- subset(fits.best, weight >= weight.cutoff)
 } 
 if (!exists("dat.long")){
   load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
@@ -237,7 +239,7 @@ N.merged <- N.merged %>%
 
 # take liver peaks and flat peaks
 # K <- 200  # take top 1000 top guys
-Ks <- c(200, 300)
+Ks <- c(300, 400)
 mclapply(Ks, function(K){
   
   top.bot <- c("atop", "zbottom")
@@ -276,7 +278,7 @@ mclapply(Ks, function(K){
     group_by(pair) %>%
     do(RunPoissonModel(.))
   
-  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
+  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".weight.", weight.cutoff, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
 }, mc.cores = 2)
 
 # tf <- "RORA"
