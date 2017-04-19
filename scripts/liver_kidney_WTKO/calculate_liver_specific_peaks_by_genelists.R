@@ -12,6 +12,7 @@ args <- commandArgs(trailingOnly=TRUE)
 jmod <- args[1]  # Liver_SV129
 jtiss <- args[2]  # Liver
 n.trials <- as.numeric(args[3])
+weight.cutoff <- as.numeric(args[4])
 # jmod <- "Liver_SV129,Liver_BmalKO"
 # jmod <- "Liver_SV129"
 
@@ -21,6 +22,10 @@ print(paste("Tissue", jtiss))
 print(paste("Module", jmod))
 # n.trials <- 1000
 if (is.na(n.trials)) stop("Trials not numeric")
+if (is.na(weight.cutoff)){
+  weight.cutoff <- 0
+  print("Weight cutoff not inputted, defaulting to 0")
+} 
 
 start <- Sys.time()
 setwd("/home/yeung/projects/tissue-specificity")
@@ -113,6 +118,10 @@ load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v
 load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
 fits.long.filt <- subset(fits.long.filt, method == "g=1001")
 
+if (weight.cutoff > 0){
+  fits.long.filt <- subset(fits.long.filt, weight >= weight.cutoff)
+}
+
 # Get liv genes -----------------------------------------------------------
 
 jgenes.all <- as.character(fits.long.filt$gene)
@@ -178,7 +187,7 @@ print(head(df.out.lst.rand))
 
 df.out.lst.merged <- rbind(as.data.frame(df.out.lst), as.data.frame(df.out.lst.rand))
 robjdir <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks"
-outf <- file.path(robjdir, paste0("n.tiss.spec.df.out.lst.rand.", n.trials, ".tissue.", jtiss, ".module.", jmod, ".random.flat.", random.is.flat, ".Robj"))
+outf <- file.path(robjdir, paste0("n.tiss.spec.df.out.lst.rand.", n.trials, ".tissue.", jtiss, ".module.", jmod, ".random.flat.", random.is.flat, ".BICweightCutoff.", weight.cutoff, ".Robj"))
 # save(df.out.lst.merged, file = "Robjs/n.liv.spec.df.out.lst.rand.Robj")
 save(df.out.lst.merged, file = outf)
 print(Sys.time() - start)
