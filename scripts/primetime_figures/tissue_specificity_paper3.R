@@ -37,12 +37,25 @@ source("scripts/functions/NcondsAnalysisFunctions.R")
 source("scripts/functions/ModelStrToModel.R")
 source("scripts/functions/ProteomicsFunctions.R")
 source("scripts/functions/CosSineFunctions.R")
+source("scripts/functions/HalfLifeFunctions.R")
 
 dotsize <- 6
 zscore.min <- 1.25
 omega <- 2 * pi / 24
 n <- 4  # amplitude scaling 
+mrna.hl <- 2.65  # shift TF activity by half-life
+hr.shift <- 3d
 # Functions ---------------------------------------------------------------
+
+GetAmpPhaseFromActivities <- function(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT"){
+  act.l.complex <- ProjectWithZscore(act.l, omega, n = 4)
+  s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
+  vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
+  s.df <- data.frame(gene = names(vec.complex), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = jtiss, geno = jgeno)
+  # shift by half-life
+  s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
+  return(s.df)
+}
 
 ggplotColours <- function(n = 6, h = c(0, 360) + 15){
   # http://stackoverflow.com/questions/8197559/emulate-ggplot2-default-color-palette
@@ -149,52 +162,63 @@ dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
 # load proteomics
 
-mrna.hl <- 3  # shift TF activity by half-life
 
 prot.long <- LoadProteomicsData()
 
-s.act <- SvdOnComplex(subset(act.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
+# s.act <- SvdOnComplex(subset(act.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
 
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.hogenesch"
 outmain <- file.path(outbase, paste0("promoters.tissuewide.filteramp.0.15.mat"))
 indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
-act.l <- LoadActivitiesLong(indir, shorten.motif.name = TRUE)
-act.l.complex <- ProjectWithZscore(act.l, omega, n = n)
-s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
-vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
-s.df <- data.frame(gene = names(s.l.eigs$eigensamp), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = "Liver", geno = "WT")
-# shift by half-life
-s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
 
-act.l <- subset(act.l, experiment == "rnaseq" & tissue == "Liver")
+
+
+# act.l.complex <- ProjectWithZscore(act.l, omega, n = n)
+# s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
+# vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
+# s.df <- data.frame(gene = names(s.l.eigs$eigensamp), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = "Liver", geno = "WT")
+# # shift by half-life
+# s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
+
+# act.l <- subset(act.l, experiment == "rnaseq" & tissue == "Liver")
 # act.l <- subset(act.l, experiment == "array" & tissue == "Liver")
-act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
-act.l$time <- act.l$time - 24
-act.l$geno <- "WT"
-prot.long.wt <- subset(prot.long, geno == "WT")
-dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
-
-jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Hlf", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
-jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", "NFIL3", NA, NA, NA, NA)
-print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
-pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.mrnahl.", mrna.hl, ".pdf")))
-for (i in seq(length(jgenes))){
-  jgene <- jgenes[i]
-  jmotif <- jmotifs[i]
-  print(paste(jgene, jmotif))
-  print(PlotProteomics(subset(prot.long, gene == jgene), jtitle = jgene))
-  if (!is.na(jmotif)){
-    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
-    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
-    if (nrow(subset(s.df, gene == jmotif)) > 0){
-      print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
+for (jexp in c("rnaseq", "array")){
+  act.l <- LoadActivitiesLong(indir, shorten.motif.name = TRUE)
+  s.df <- GetAmpPhaseFromActivities(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT")
+  act.l <- subset(act.l, experiment == jexp & tissue == "Liver")
+  act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
+  act.l$time <- act.l$time - 24
+  act.l$geno <- "WT"
+  
+  act.s.shift <- act.l
+  act.s.shift$time <- act.l$time - hr.shift
+  act.s.shift$time <- sapply(act.s.shift$time, function(x) ifelse(x < 0, x + 48, x))
+  
+  prot.long.wt <- subset(prot.long, geno == "WT")
+  dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
+  
+  jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Hlf", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
+  jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", "NFIL3", NA, NA, NA, NA)
+  print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
+  pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.mrnahl.", mrna.hl, "experiment", jexp, ".pdf")))
+  for (i in seq(length(jgenes))){
+    jgene <- jgenes[i]
+    jmotif <- jmotifs[i]
+    print(paste(jgene, jmotif))
+    print(PlotProteomics(subset(prot.long, gene == jgene), jtitle = jgene))
+    if (!is.na(jmotif)){
+      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
+      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
+      if (nrow(subset(s.df, gene == jmotif)) > 0){
+        print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
+      }
+    } else {
+      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
+      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
     }
-  } else {
-    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
-    print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
   }
+  dev.off()
 }
-dev.off()
 
 
 # Plot examples -----------------------------------------------------------
@@ -758,7 +782,7 @@ print(eigens.act.fancy$v.plot)
 print(eigens.act.fancy$u.plot)
 
 # binary colors
-for (hl in seq(0, 6)){
+for (hl in c(mrna.hl, seq(0, 6))){
   eigens.act.fancy <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
                                 eigenval = FALSE,
                                 constant.amp = 5, 
@@ -1037,12 +1061,14 @@ for (jmod in jmods){
   act.s <- LoadActivitiesLongKidneyLiver(maraoutdir, shorten.motif.name = TRUE)
   act.s.complex <- ProjectWithZscore(act.s, omega, n)
   sig.motifs <- unique(as.character(subset(act.s.complex, zscore > zscore.min)$gene))
+  if (jmod == "Liver_SV129"){
+    sig.motifs <- c(sig.motifs, "RORA")
+  }
   s.act <- SvdOnComplex(subset(act.s.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
   
   
   jmod.label <- gsub(pattern = ",", replacement = "-", jmod)
-  pdf(file.path(plot.dir, paste0(plot.i, ".clock_independent_", jmod.label, "_regulators.pdf")))
-  
+  pdf(file.path(plot.dir, paste0(plot.i, ".clock_independent_", jmod.label, "_regulators.mrnahl.", mrna.hl, ".pdf")))
 
   # increment plot.i after the for loop
   
@@ -1075,11 +1101,22 @@ for (jmod in jmods){
   # show mean exprs across tissues
   print(PlotMeanExprsOfModel(dat.mean.wtko, genes = genes.mod, jmodel = jmod, sorted = TRUE, avg.method = "mean"))
   
+  # also plot TF activity adjusted by half-life
+  s.ampphase <- GetAmpPhaseFromActivities(act.s, mrna.hl, jtiss = jtiss, jgeno = "SV129")
+  
+  # just shift by 3 hours
+  act.s.shift <- act.s
+  act.s.shift$time <- act.s$time - hr.shift
+  act.s.shift$time <- sapply(act.s.shift$time, function(x) ifelse(x < 0, x + 48, x))
+  
   # Print genes that match model
   jmotifs <- names(head(eigens.act$eigensamp[order(abs(eigens.act$eigensamp), decreasing = TRUE)], n = 20))
   for (jmotif in jmotifs){
     genes.all <- unlist(sapply(jmotif, GetGenesFromMotifs, tfs))
     genes.that.fit <- as.character(subset(fits.long.filt, gene %in% genes.all & model %in% jmod & method == jmeth)$gene)
+    if (jmotif == "RORA"){
+      genes.that.fit <- c(genes.that.fit, "Nr1d1")
+    }
     if (length(genes.that.fit) > 0){
       for (gene.hit in genes.that.fit){
         if (jmod %in% c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_BmalKO")){
@@ -1092,6 +1129,8 @@ for (jmod in jmods){
         print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == gene.hit), jtitle = gene.hit))
         print(PlotActivitiesWithSE(subset(act.s, gene == jmotif), jtitle = jmotif) + theme_bw())
         print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko, s.ampphase, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = "both", dotsize = 2, themesize = 14) + theme(strip.text = element_blank()))
       }
     }
@@ -1308,10 +1347,62 @@ eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constan
 
 
 ## Do motif cooperativity using contingency
-K <- 300
-prefix <- "Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K."
-inf <- paste0(prefix, K, ".Robj")
-load(inf, v=T)
+# K <- 300
+# prefix <- "Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K."
+# inf <- paste0(prefix, K, ".Robj")
+# load(inf, v=T)
+
+inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
+load(inf, v=T)  # load also Nmat and Nmatfreqs
+
+# interesting hits
+N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;RORA" | pair == "ONECUT1.2;RORA") & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
+# N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;RORA" | pair == "ONECUT1.2;RORA" | pair == "HNF4A_NR2F1.2;RORA") & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
+# N.mat.freqs.sub <- subset(N.mat.freqs,  & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
+
+
+# get hits by gene names
+N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2))
+# N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop" | HNF4A_NR2F1.2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2, HNF4A_NR2F1.2))
+N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop", select = c(gene, peak, model))
+
+genes.coop <- as.character(N.mat.all.sub$gene)
+genes.clockliver <- as.character(subset(N.mat.all, model == "rhyth")$gene)
+
+# are they special? amplitudes?
+fits.bytiss.livWT <- subset(fits.bytiss, tissue == "Liver_SV129" & gene %in% genes.clockliver)
+fits.bytiss.livWT$is.hit <- sapply(as.character(fits.bytiss.livWT$gene), function(g) ifelse(g %in% genes.coop, TRUE, FALSE))
+fits.bytiss.livWT <- OrderDecreasing(fits.bytiss.livWT, jfactor = "is.hit", jval = "is.hit")
+
+# fits.bytiss.livWT.sum <- fits.bytiss.livWT %>%
+#   group_by(is.hit) %>%
+
+fits.bytiss.livWT$model <- fits.bytiss.livWT$is.hit 
+
+
+elf.target.genes <- as.character(subset(N.mat.all, ELF1.2.4 == "atop" & model == "rhyth")$gene)
+
+
+pdf(file.path(plot.dir, "99.clock_driven_liverRORAonly.pdf"))
+  ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
+  ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
+  ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
+  ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
+  
+  ggplot(fits.bytiss.livWT, aes(x = is.hit, y = 2 * amp)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Log2 Fold Change")
+  ggplot(fits.bytiss.livWT, aes(x = is.hit, y = phase)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Phase")
+  
+  library(plotrix)
+  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == FALSE)$phase)
+  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == TRUE)$phase)
+  PlotPolarHistogram(subset(fits.bytiss.livWT, model == TRUE), countstring = "Count", phase.cname = "phase")
+  PlotPolarHistogram(subset(fits.bytiss.livWT, model == FALSE), countstring = "Count", phase.cname = "phase")
+dev.off()
+
+# fits.bytiss.livWT.count <- 
+# 
+# PlotPolarHistogram(fits.bytiss.livWT, countstring = )
+
 
 jmotifs <- c("FOXA2", "ONECUT1.2", "CUX2")
 grepstr <- paste(jmotifs, collapse = "|")
