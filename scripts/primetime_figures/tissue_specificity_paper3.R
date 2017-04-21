@@ -44,17 +44,19 @@ zscore.min <- 1.25
 omega <- 2 * pi / 24
 n <- 4  # amplitude scaling 
 mrna.hl <- 2.65  # shift TF activity by half-life
-hr.shift <- 3d
+hr.shift <- 3
 # Functions ---------------------------------------------------------------
 
 GetAmpPhaseFromActivities <- function(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT"){
   act.l.complex <- ProjectWithZscore(act.l, omega, n = 4)
-  s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
-  vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
-  s.df <- data.frame(gene = names(vec.complex), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = jtiss, geno = jgeno)
-  # shift by half-life
-  s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
-  return(s.df)
+  act.l.complex$phase <- AdjustPhase(act.l.complex$phase, half.life = mrna.hl, fw.bw = "bw")
+  return(act.l.complex)
+  # s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
+  # vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
+  # s.df <- data.frame(gene = names(vec.complex), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = jtiss, geno = jgeno)
+  # # shift by half-life
+  # s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
+  # return(s.df)
 }
 
 ggplotColours <- function(n = 6, h = c(0, 360) + 15){
@@ -211,6 +213,7 @@ for (jexp in c("rnaseq", "array")){
       print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
       if (nrow(subset(s.df, gene == jmotif)) > 0){
         print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE, single.day = TRUE) + theme(strip.text = element_blank()))
       }
     } else {
       print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
@@ -1061,9 +1064,10 @@ for (jmod in jmods){
   act.s <- LoadActivitiesLongKidneyLiver(maraoutdir, shorten.motif.name = TRUE)
   act.s.complex <- ProjectWithZscore(act.s, omega, n)
   sig.motifs <- unique(as.character(subset(act.s.complex, zscore > zscore.min)$gene))
-  if (jmod == "Liver_SV129"){
-    sig.motifs <- c(sig.motifs, "RORA")
-  }
+  # add RORA optionally
+  # if (jmod == "Liver_SV129"){
+  #   sig.motifs <- c(sig.motifs, "RORA")
+  # }
   s.act <- SvdOnComplex(subset(act.s.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
   
   
@@ -1078,6 +1082,7 @@ for (jmod in jmods){
   
   eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18, label.gene = c("ELF1.2.4"))
   eigens.act.fancy.LivWTKO <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
+                                  eigenval = FALSE,
                                   constant.amp = 5, 
                                   label.n = Inf, jtitle = "", 
                                   peak.to.trough = TRUE, 
@@ -1130,7 +1135,9 @@ for (jmod in jmods){
         print(PlotActivitiesWithSE(subset(act.s, gene == jmotif), jtitle = jmotif) + theme_bw())
         print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, single.day = TRUE) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, s.ampphase, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko, s.ampphase, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, act.in.sine.cos = TRUE, single.day = TRUE) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = "both", dotsize = 2, themesize = 14) + theme(strip.text = element_blank()))
       }
     }
@@ -1213,11 +1220,13 @@ plot.i <- plot.i + 1
 
 # show enrichment of DHS peaks
 wtmodulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.1000.tissue.Liver.module.Liver_SV129random.flat.TRUE.Robj"
+# wtmodulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.1000.tissue.Liver.module.Liver_SV129.random.flat.TRUE.BICweightCutoff.0.8.Robj"
 load(wtmodulef, v=T)
 df.out.lst.merged.liverWT <- df.out.lst.merged
 df.out.lst.merged.liverWT$gene.type[1:3] <- c("Liver_SV129", "Flat_SV129", "Flat.filt_SV129")
 
 wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.1000.tissue.Liver.module.Liver_SV129,Liver_BmalKOrandom.flat.TRUE.Robj"
+# wtko.modulef <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks/n.tiss.spec.df.out.lst.rand.1000.tissue.Liver.module.Liver_SV129,Liver_BmalKO.random.flat.TRUE.BICweightCutoff.0.8.Robj"
 load(wtko.modulef, v=T)
 df.out.lst.merged.liverWTKO <- df.out.lst.merged
 df.out.lst.merged.liverWTKO$gene.type[1:3] <- c("Liver_SV129.Liver_BmalKO", "Flat_SV129BmalKO", "Flat.filt_SV129BmalKO")
@@ -1351,82 +1360,104 @@ eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constan
 # prefix <- "Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K."
 # inf <- paste0(prefix, K, ".Robj")
 # load(inf, v=T)
-
+K <- 300
+weight.cutoff <- 0.8
 inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
+# inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.", K, ".weight.", weight.cutoff, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
 load(inf, v=T)  # load also Nmat and Nmatfreqs
 
-# interesting hits
-N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;RORA" | pair == "ONECUT1.2;RORA") & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
-# N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;RORA" | pair == "ONECUT1.2;RORA" | pair == "HNF4A_NR2F1.2;RORA") & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
-# N.mat.freqs.sub <- subset(N.mat.freqs,  & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
+# Commenting notes: all of these plots now moved to downstream.three_way_contingency.WeightCutoff.R
 
-# get hits by gene names
-N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2))
-# N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop" | HNF4A_NR2F1.2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2, HNF4A_NR2F1.2))
-N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop", select = c(gene, peak, model))
-
-
-genes.coop <- as.character(N.mat.all.sub$gene)
-genes.clockliver <- as.character(subset(N.mat.all, model == "rhyth")$gene)
-
-# Count top single hits for all motifs
-N.mat.long <- melt(N.mat.all, id.vars = c("gene", "peak", "model"), variable.name = "motif")
-N.mat.sum <- N.mat.long %>%
-  group_by(model, motif) %>%
-  summarise(n.genes.with.motif = length(which(value == "atop"))) %>%
-  filter(model == "rhyth") %>%
-  arrange(desc(n.genes.with.motif))  # ROR is most enriched motif!
-N.mat.sum <- OrderDecreasing(N.mat.sum, "motif", "n.genes.with.motif")
-
-# same result with RORA if we just do cutoff with N.long?? 
-sc.cutoff <- 0.5
-N.sitecounts <- subset(N.long, gene %in% genes.clockliver) %>%
-  group_by(motif2) %>%
-  filter(sitecount > sc.cutoff) %>%
-  summarise(n.gene = length(gene)) %>%
-  arrange(desc(n.gene))
-
-
-# are they special? amplitudes?
-fits.bytiss.livWT <- subset(fits.bytiss, tissue == "Liver_SV129" & gene %in% genes.clockliver)
-fits.bytiss.livWT$is.hit <- sapply(as.character(fits.bytiss.livWT$gene), function(g) ifelse(g %in% genes.coop, TRUE, FALSE))
-fits.bytiss.livWT <- OrderDecreasing(fits.bytiss.livWT, jfactor = "is.hit", jval = "is.hit")
-
-# fits.bytiss.livWT.sum <- fits.bytiss.livWT %>%
-#   group_by(is.hit) %>%
-
-fits.bytiss.livWT$model <- fits.bytiss.livWT$is.hit 
-weight.hash <- hash(as.character(subset(fits.long.filt, model == "Liver_SV129")$gene), subset(fits.long.filt, model == "Liver_SV129")$weight)
-fits.bytiss.livWT$weight <- sapply(as.character(fits.bytiss.livWT$gene), function(g) weight.hash[[g]])
-
-weight.cutoff <- 0.8
-fits.bytiss.livWT$above.weight <- sapply(fits.bytiss.livWT$weight, function(w) ifelse(w >= weight.cutoff, TRUE, FALSE))
-
-
-elf.target.genes <- as.character(subset(N.mat.all, ELF1.2.4 == "atop" & model == "rhyth")$gene)
-
-
-pdf(file.path(plot.dir, "99.clock_driven_liverRORAonly.pdf"))
-  ggplot(subset(N.mat.sum, n.genes.with.motif > 65), aes(x = motif, y = n.genes.with.motif)) + geom_bar(stat = "identity")
-
-  ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
-  ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
-  ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
-  ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
-  
-  ggplot(fits.bytiss.livWT, aes(x = is.hit, y = 2 * amp)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Log2 Fold Change")
-  ggplot(fits.bytiss.livWT, aes(x = above.weight, y = 2 * amp)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Log2 Fold Change")
-  ggplot(fits.bytiss.livWT, aes(x = is.hit, y = phase)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Phase")
-  
-  library(plotrix)
-  circular_phase24H_histogram(subset(fits.bytiss.livWT)$phase, jtitle = "All Genes")
-  circular_phase24H_histogram(subset(fits.bytiss.livWT, above.weight == TRUE)$phase, jtitle = paste("Phase of Genes Above Weight", weight.cutoff))
-  circular_phase24H_histogram(subset(fits.bytiss.livWT, above.weight == FALSE)$phase, jtitle = paste("Phase of Genes Below Weight", weight.cutoff))
-  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == TRUE)$phase, jtitle = paste("Has TF*Clock Motif"))
-  circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == FALSE)$phase, jtitle = paste("Does not have TF*Clock Motif"))
-  PlotPolarHistogram(subset(fits.bytiss.livWT, model == TRUE), countstring = "Count", phase.cname = "phase")
-  PlotPolarHistogram(subset(fits.bytiss.livWT, model == FALSE), countstring = "Count", phase.cname = "phase")
-dev.off()
+# # interesting hits
+# N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;RORA" | pair == "ONECUT1.2;RORA") & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
+# # N.mat.freqs.sub <- subset(N.mat.freqs, (pair == "FOXA2;RORA" | pair == "CUX2;RORA" | pair == "ONECUT1.2;RORA" | pair == "HNF4A_NR2F1.2;RORA") & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
+# # N.mat.freqs.sub <- subset(N.mat.freqs,  & motif1 == "atop" & motif2 == "atop" & model == "rhyth")
+# 
+# # get hits by gene names
+# N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2))
+# N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop" | AHR_ARNT_ARNT2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2, AHR_ARNT_ARNT2))
+# # N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop" & (ONECUT1.2 == "atop" | CUX2 == "atop" | FOXA2 == "atop" | HNF4A_NR2F1.2 == "atop"), select = c(gene, peak, model, RORA, ONECUT1.2, CUX2, FOXA2, HNF4A_NR2F1.2))
+# # N.mat.all.sub <- subset(N.mat.all, model == "rhyth" & RORA == "atop", select = c(gene, peak, model))
+# 
+# # find most hits of RORA
+# N.mat.all.sub2 <- subset(N.mat.all, model == "rhyth" & RORA == "atop")
+# N.mat.all.RORhits <- melt(N.mat.all.sub2, id.vars = c("gene", "peak", "model", "RORA"), variable.name = "motif") %>%
+#   group_by(motif) %>%
+#   filter(value == "atop") %>%
+#   summarise(n.hits = length(peak)) %>%
+#   arrange(desc(n.hits))
+# 
+# genes.coop <- as.character(N.mat.all.sub$gene)
+# genes.clockliver <- as.character(subset(N.mat.all, model == "rhyth")$gene)
+# 
+# # # Top pair ALWAYS ROR?
+# # motifs.all <- colnames(subset(N.mat.all, select = c(-gene, -peak, -model)))
+# # top.pairs <- data.frame(motif = motifs.all)
+# # top.pairs$top.partner <- sapply(top.pairs$motif, function(p){
+# #   fits.sub <- fits[grepl(p, fits$pair), ] %>% arrange(pval)
+# #   return(fits.sub$pair[[1]])
+# # })
+# 
+# # Count top single hits for all motifs
+# N.mat.long <- melt(N.mat.all, id.vars = c("gene", "peak", "model"), variable.name = "motif")
+# N.mat.sum <- N.mat.long %>%
+#   group_by(model, motif) %>%
+#   filter(value == "atop") %>%
+#   filter(!duplicated(gene)) %>% 
+#   summarise(n.genes.with.motif = length(which(value == "atop"))) %>%
+#   filter(model == "rhyth") %>%
+#   arrange(desc(n.genes.with.motif))  # ROR is most enriched motif!
+# N.mat.sum <- OrderDecreasing(N.mat.sum, "motif", "n.genes.with.motif")
+# 
+# # same result with RORA if we just do cutoff with N.long?? 
+# sc.cutoff <- 0.5
+# N.sitecounts <- subset(N.long, gene %in% genes.clockliver) %>%
+#   group_by(motif2) %>%
+#   filter(sitecount > sc.cutoff) %>%
+#   summarise(n.gene = length(gene)) %>%
+#   arrange(desc(n.gene))
+# 
+# 
+# # are they special? amplitudes?
+# fits.bytiss.livWT <- subset(fits.bytiss, tissue == "Liver_SV129" & gene %in% genes.clockliver)
+# fits.bytiss.livWT$is.hit <- sapply(as.character(fits.bytiss.livWT$gene), function(g) ifelse(g %in% genes.coop, TRUE, FALSE))
+# fits.bytiss.livWT <- OrderDecreasing(fits.bytiss.livWT, jfactor = "is.hit", jval = "is.hit")
+# 
+# # fits.bytiss.livWT.sum <- fits.bytiss.livWT %>%
+# #   group_by(is.hit) %>%
+# 
+# fits.bytiss.livWT$model <- fits.bytiss.livWT$is.hit 
+# weight.hash <- hash(as.character(subset(fits.long.filt, model == "Liver_SV129")$gene), subset(fits.long.filt, model == "Liver_SV129")$weight)
+# fits.bytiss.livWT$weight <- sapply(as.character(fits.bytiss.livWT$gene), function(g) weight.hash[[g]])
+# 
+# weight.cutoff <- 0.8
+# fits.bytiss.livWT$above.weight <- sapply(fits.bytiss.livWT$weight, function(w) ifelse(w >= weight.cutoff, TRUE, FALSE))
+# 
+# 
+# elf.target.genes <- as.character(subset(N.mat.all, ELF1.2.4 == "atop" & model == "rhyth")$gene)
+# 
+# 
+# pdf(file.path(plot.dir, paste0("99.clock_driven_liver.K.", K, ".weight.", weight.cutoff, ".pdf")))
+#   ggplot(N.mat.sum[1:15, ], aes(x = motif, y = n.genes.with.motif)) + geom_bar(stat = "identity")
+# 
+#   ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
+#   ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_density(position = "dodge", alpha = 0.5)
+#   ggplot(fits.bytiss.livWT, aes(x = amp, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
+#   ggplot(fits.bytiss.livWT, aes(x = phase, fill = is.hit)) + geom_histogram(alpha = 0.5) + facet_wrap(~is.hit)
+#   
+#   ggplot(fits.bytiss.livWT, aes(x = is.hit, y = 2 * amp)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Log2 Fold Change") + ggtitle("Amplitude")
+#   ggplot(fits.bytiss.livWT, aes(x = above.weight, y = 2 * amp)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Log2 Fold Change") + ggtitle("Above Weight")
+#   ggplot(fits.bytiss.livWT, aes(x = is.hit, y = phase)) + geom_violin() + xlab("Has TF*Clock Motifs") + ylab("Phase") + ggtitle("Phase")
+#   
+#   library(plotrix)
+#   circular_phase24H_histogram(subset(fits.bytiss.livWT)$phase, jtitle = "All Genes")
+#   circular_phase24H_histogram(subset(fits.bytiss.livWT, above.weight == TRUE)$phase, jtitle = paste("Phase of Genes Above Weight", weight.cutoff))
+#   circular_phase24H_histogram(subset(fits.bytiss.livWT, above.weight == FALSE)$phase, jtitle = paste("Phase of Genes Below Weight", weight.cutoff))
+#   circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == TRUE)$phase, jtitle = paste("Has TF*Clock Motif"))
+#   circular_phase24H_histogram(subset(fits.bytiss.livWT, is.hit == FALSE)$phase, jtitle = paste("Does not have TF*Clock Motif"))
+#   PlotPolarHistogram(subset(fits.bytiss.livWT, model == TRUE), countstring = "Count", phase.cname = "phase")
+#   PlotPolarHistogram(subset(fits.bytiss.livWT, model == FALSE), countstring = "Count", phase.cname = "phase")
+# dev.off()
 
 # fits.bytiss.livWT.count <- 
 # 

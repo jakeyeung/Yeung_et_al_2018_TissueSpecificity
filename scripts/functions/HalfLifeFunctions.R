@@ -14,5 +14,13 @@ AdjustPhase <- function(phase.in, half.life, rads = FALSE, omega = 2 * pi / 24, 
   } else {
     phase.adj <- phase.in + delay
   }
+  # set between 0 and 24
+  # shift.fac <- 24 * floor(phase.adj / 24)
+  # phase.adj <- phase.adj - shift.fac
+  # if (phase.adj < 0){
+  #   phase.adj <- phase.adj + 24
+  # } else if (phase.adj >= 24){
+  #   phase.adj <- phase.adj - 24
+  # }
   return(phase.adj)
 }

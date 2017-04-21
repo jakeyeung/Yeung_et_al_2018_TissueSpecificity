@@ -1,3 +1,10 @@
+GetSinusoid <- function(act.sub, x, w){
+  phase <- unique(act.sub$phase)
+  geno.act <- unique(act.sub$geno)
+  tissue.act <- unique(act.sub$tissue)
+  return(data.frame(time = x, exprs = cos(w * x - w * phase), tissue = tissue.act, geno = geno.act))
+}
+
 LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_proteins_L_H_log2_all_WT_KO_24h_12h_statistics.OneGenePerLine.txt", 
                                as.long = TRUE){
   require(reshape2)
@@ -106,8 +113,17 @@ ScaleSignal <- function(dat, cname, jcenter = NA, jscale = NA){
 }
 
 
-PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, n.facetrows = 1, wt.prot = "Cry", line.for.protein=FALSE, act.in.sine.cos=FALSE){
+PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, 
+                                    n.facetrows = 1, wt.prot = "Cry", line.for.protein=FALSE, act.in.sine.cos=FALSE, single.day=FALSE){
   # plotting protein optional: can use this to plot just dat and act if prot.long is missing and gene.prot is ""
+  if (!"geno" %in% colnames(act.long)){
+    act.long$geno = tryCatch({
+      sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[2]])
+    }, error = function(e) {
+      "WT"
+    })
+    # sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[2]])
+  }
   act.long$tissue <- sapply(as.character(act.long$tissue), function(tissgeno) strsplit(tissgeno, "_")[[1]][[1]])
   if (jtiss == "Liver"){
     dat.sub <- subset(dat.long, gene == gene.dat & tissue == "Liver")
@@ -139,11 +155,17 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     # Generate based on amplitude and phase
     x <- seq(0, 48)
     w <- 2 * pi / 24
-    phase <- unique(act.sub$phase)
-    geno.act <- unique(act.sub$geno)
-    tissue.act <- unique(act.sub$tissue)
-    act.sub <- data.frame(time = x, exprs = cos(w * x - w * phase), tissue = tissue.act, geno = geno.act)
+    act.sub <- act.sub %>%
+      group_by(geno, tissue) %>%
+      do(GetSinusoid(., x, w))
+    # print(data.frame(dat.sub))
+    # phase <- unique(act.sub$phase)
+    # geno.act <- unique(act.sub$geno)
+    # tissue.act <- unique(act.sub$tissue)
+    # act.sub <- data.frame(time = x, exprs = cos(w * x - w * phase), tissue = tissue.act, geno = geno.act)
   }
+  
+
   
   # scale data, merge together, then plot in one figure
   dat.sub$signal <- ScaleSignal(dat.sub, "exprs")
@@ -219,6 +241,16 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   }
   merged.dat$type <- factor(merged.dat$type, levels = factor.levels)
   
+  if (single.day){
+    # 0 to 23, everything else gets shifted by 24 hours
+    merged.dat.sub <- subset(merged.dat, time >= 24) %>%
+      mutate(time = time - 24 * floor(time / 24))
+    merged.dat <- bind_rows(merged.dat.sub, subset(merged.dat, time < 24)) %>%
+      group_by(geno.std, type, tissue, time) %>%
+      summarise(sem = sd(signal),
+                signal = mean(signal))
+  }
+  
   jtitle <- paste(unique(c(gene.dat, gene.prot, gene.act)), collapse = " ")
   if (jtiss != "both"){
     m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, size = type))
@@ -243,6 +275,13 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     theme(legend.position = "bottom", aspect.ratio = 1) +
     ggtitle(jtitle) + 
     scale_x_continuous(breaks = c(0, 12, 24, 36, 48))
+  if (single.day){
+    if (act.in.sine.cos){
+      m <- m + geom_errorbar(data = subset(merged.dat, type != "TF_Activity"), aes(ymin=signal-sem, ymax=signal+sem), linetype = "solid", size=0.5, width=0.5, position=position_dodge(0.05))
+    } else {
+      m <- m + geom_errorbar(data = merged.dat, aes(ymin=signal-sem, ymax=signal+sem), linetype = "solid", size=0.5, width=0.5, position=position_dodge(0.05))
+    }
+  }
   return(m)
 }
 
