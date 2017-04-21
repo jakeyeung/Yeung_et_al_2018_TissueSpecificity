@@ -3,7 +3,7 @@
 
 rm(list=ls())
 
-jmc.cores <- 10
+jmc.cores <- 1
 
 # jtiss <- "Heart"
 args <- commandArgs(trailingOnly=TRUE)
@@ -13,6 +13,12 @@ jmod <- args[1]  # Liver_SV129
 jtiss <- args[2]  # Liver
 n.trials <- as.numeric(args[3])
 weight.cutoff <- as.numeric(args[4])
+
+jmod <- "Liver_SV129"
+jtiss <- "Liver"
+n.trials <- 1
+weight.cutoff <- 0.8
+
 # jmod <- "Liver_SV129,Liver_BmalKO"
 # jmod <- "Liver_SV129"
 
@@ -146,53 +152,17 @@ jgenes.flat.filt <- unique(as.character(jgenes.flat.filt$gene))
 # jgenes.flat.filt <- jgenes.flat.filt[1:20]
 
 gene.lists <- list("jgenes"=jgenes, "jgenes.flat"=jgenes.flat, "jgenes.flat.filt"=jgenes.flat.filt)
-if (jmc.cores == 1){
-  df.out.lst <- lapply(gene.lists, function(gene.list){
-    df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, jcutoff.low, distfilt, jtiss, jtiss = jtiss)
-  })
-} else {
-  df.out.lst <- mclapply(gene.lists, function(gene.list){
-    df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, jcutoff.low, distfilt, jtiss, jtiss = jtiss)
-  }, mc.cores = jmc.cores)
-}
-df.out.lst <- do.call(rbind, df.out.lst)
-df.out.lst$gene.type <- names(gene.lists)
 
-print(df.out.lst)
+gene.list <- gene.lists[[1]]  # Liver_SV129
+df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, jcutoff.low, distfilt, jtiss, jtiss = jtiss, return.full.dat = TRUE)
 
-# Add random genes --------------------------------------------------------
-
-# set.seed(0)
-
-gene.lists.rand <- list()
-for (i in seq(n.trials)){
-  if (random.is.flat){
-    jgenes.rand <- sample(jgenes.flat.filt, length(jgenes))
-  } else {
-    jgenes.rand <- sample(jgenes.all, length(jgenes))
-  }
-  # jgenes.rand <- sample(jgenes.flat.filt, length(jgenes))
-  gene.lists.rand[[i]] <- jgenes.rand
-}
-if (jmc.cores == 1){
-  df.out.lst.rand <- lapply(gene.lists.rand, function(gene.list){
-    df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, jcutoff.low, distfilt, "Random", jtiss = jtiss)
-  })
-} else {
-  df.out.lst.rand <- mclapply(gene.lists.rand, function(gene.list){
-    df.out <- GetTissueSpecStats(S.long, gene.list, jcutoff, jcutoff.low, distfilt, "Random", jtiss = jtiss)
-  }, mc.cores = jmc.cores)
-}
-df.out.lst.rand <- do.call(rbind, df.out.lst.rand)
-print(head(df.out.lst.rand))
-
-
-# Calculate z-score -------------------------------------------------------
-
-df.out.lst.merged <- rbind(as.data.frame(df.out.lst), as.data.frame(df.out.lst.rand))
-robjdir <- "/home/yeung/projects/tissue-specificity/Robjs/liver_kidney_atger_nestle/tissue_specific_peaks"
-outf <- file.path(robjdir, paste0("n.tiss.spec.df.out.lst.rand.", n.trials, ".tissue.", jtiss, ".module.", jmod, ".random.flat.", random.is.flat, ".BICweightCutoff.", weight.cutoff, ".Robj"))
-# save(df.out.lst.merged, file = "Robjs/n.liv.spec.df.out.lst.rand.Robj")
-save(df.out.lst.merged, file = outf)
-print(Sys.time() - start)
+n.tiss.hash <- hash(as.character(df.out$gene), df.out$n.tiss.spec)
+# Look at full dat, are tissues with tiss spec larger in amplitude?
+load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
+fits.bytiss <- subset(fits.bytiss, gene %in% as.character(df.out$gene))
+fits.bytiss$n.tiss.spec <- sapply(as.character(fits.bytiss$gene), function(g) n.tiss.hash[[g]])
+fits.bytiss$has.tiss.spec <- sapply(fits.bytiss$n.tiss.spec, function(N) ifelse(N >= 1, TRUE, FALSE))
+ggplot(fits.bytiss, aes(x = as.factor(n.tiss.spec), y = amp)) + geom_violin()
+ggplot(fits.bytiss, aes(x = has.tiss.spec, y = amp)) + geom_violin()
+ggplot(fits.bytiss, aes(x = has.tiss.spec, y = amp)) + geom_boxplot()
 

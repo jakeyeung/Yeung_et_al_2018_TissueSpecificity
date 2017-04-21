@@ -4,17 +4,11 @@
 
 rm(list=ls())
 
-nb.levels <- 3  # liver-rhyth, nonliver, liver-nonrhyth
-# nb.levels <- 2  # liver-rhyth, liver-nonrhyth
+# nb.levels <- 3  # liver-rhyth, nonliver, liver-nonrhyth
+nb.levels <- 2  # liver-rhyth, liver-nonrhyth
 
-RunPoissonModel.JI <- function(dat){
+RunPoissonModel <- function(dat){
   mod1 <- glm(freq ~ model + motif1 + motif2 + motif1 * motif2, data=dat, family=poisson())
-  chisq.pval <- 1 - pchisq(mod1$deviance, mod1$df.residual)
-  return(data.frame(deviance = mod1$deviance, pval = chisq.pval))
-}
-
-RunPoissonModel.CI <- function(dat){
-  mod1 <- glm(freq ~ model + motif1 + motif2 + model * motif1 + model * motif2, data=dat, family=poisson())
   chisq.pval <- 1 - pchisq(mod1$deviance, mod1$df.residual)
   return(data.frame(deviance = mod1$deviance, pval = chisq.pval))
 }
@@ -29,8 +23,9 @@ jcutoff.low <- as.numeric(args[3])
 distfilt <- 40000
 jcutoff <- 3  # arbitrary
 jcutoff.low <- 0  # arbitrary
-# weight.cutoff <- 0.8  # makes cleaner??
-weight.cutoff <- 0
+weight.cutoff <- 0.8  # makes cleaner??
+K <- 300
+
 # jcutoff <- 2  # arbitrary
 # jcutoff <- 3  # arbitrary
 cleanup <- FALSE
@@ -39,17 +34,6 @@ jmethod <- "g=1001"
 # jmethod <- "BIC"
 
 merge.peaks <- FALSE
-
-null.model <- "JI"  # JI or CI
-
-if (null.model == "JI"){
-  RunPoissonModel <- RunPoissonModel.JI
-} else if (null.model == "CI"){
-  RunPoissonModel <- RunPoissonModel.CI
-}
-
-print(paste("Null model:", null.model))
-print(RunPoissonModel)
 
 if (is.na(distfilt)) stop("Distfilt must be numeric")
 
@@ -229,8 +213,6 @@ subset(S.sub, peak == jpeak & tissue %in% c("Liver", "Kidney"))
 # Do 3-way contingency tables ---------------------------------------------
 
 
-
-
 rhyth.peaks <- as.character(unique(S.sub.liverpeaks$peak))
 flat.peaks <- as.character(unique(S.sub.flat.liverpeaks$peak))
 kidney.peaks <- as.character(unique(S.sub.nonliverpeaks$peak))
@@ -250,7 +232,8 @@ N.sub.flat.sub$model <- "flat"
 if (nb.levels == 3){
   N.merged <- rbind(N.sub.liver, N.sub.nonliver, N.sub.flat.sub)
 } else if (nb.levels == 2){
-  N.merged <- rbind(N.sub.liver, N.sub.flat.sub)
+  # N.merged <- rbind(N.sub.liver, N.sub.flat.sub)
+  N.merged <- rbind(N.sub.liver, N.sub.nonliver)
 }
 # N.merged <- rbind(subset(N.sub, peak %in% peaks.all), subset(N.sub.flat, peak %in% peaks.all))
 
@@ -271,49 +254,47 @@ N.merged <- N.merged %>%
 
 # take liver peaks and flat peaks
 # K <- 200  # take top 1000 top guys
-Ks <- c(200, 300)
-mclapply(Ks, function(K){
-  
-  top.bot <- c("atop", "zbottom")
-  N.merged$in.list <- sapply(N.merged$motif.rank, function(m) ifelse(m < K, "atop", "zbottom"))
-  
-  start <- Sys.time()
-  
-  source("scripts/functions/GetTFs.R")
-  N.merged$motif <- sapply(as.character(N.merged$motif), function(m) RemoveP2AndCommaBracesDashes(m))
-  
-  motif.pairs <- combn(as.character(unique(N.merged$motif)), m = 2, simplify = FALSE)
-  
-  # calculate atop, zbottom 2 by 2 by N tables. Where N is number of models. 
-  N.mat.all <- dcast(N.merged, formula = gene + peak + model ~ motif, value.var = "in.list", fill = top.bot[2])
-  
-  start <- Sys.time()
-  N.mat.freqs <- lapply(motif.pairs, function(motif.pair){
-    motif.pair.str <- paste(motif.pair, collapse = ";")
-    N.mat.freq <- N.mat.all %>%
-      group_by_(.dots = c("model", motif.pair)) %>%
-      summarise(freq = length(gene)) %>%
-      mutate(pair = motif.pair.str)
-    # expect 8 rows: atop/zbottom, zbottom/atop, atop/atop/ zbottom/zbottom for rhyth and flat
-    # expect 12 rows if nb.levels = 3  (4 per level)
-    if (nrow(N.mat.freq) == 4 * nb.levels){
-      return(N.mat.freq)
-    } else {
-      warning("N.mat.freq must be 8 or 12 rows!")
-      return(data.frame())
-    }
-  })
-  print(Sys.time() - start)
-  
-  N.mat.freqs <- rbindlist(N.mat.freqs)
-  colnames(N.mat.freqs) <- c("model", "motif1", "motif2", "freq", "pair")
-  
-  fits <- N.mat.freqs %>%
-    group_by(pair) %>%
-    do(RunPoissonModel(.))
-  
-  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".weight.", weight.cutoff, ".MergePeaks.", merge.peaks, ".nullmodel.", null.model, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
-}, mc.cores = 2)
+
+top.bot <- c("atop", "zbottom")
+N.merged$in.list <- sapply(N.merged$motif.rank, function(m) ifelse(m < K, "atop", "zbottom"))
+
+start <- Sys.time()
+
+source("scripts/functions/GetTFs.R")
+N.merged$motif <- sapply(as.character(N.merged$motif), function(m) RemoveP2AndCommaBracesDashes(m))
+
+motif.pairs <- combn(as.character(unique(N.merged$motif)), m = 2, simplify = FALSE)
+
+# calculate atop, zbottom 2 by 2 by N tables. Where N is number of models. 
+N.mat.all <- dcast(N.merged, formula = gene + peak + model ~ motif, value.var = "in.list", fill = top.bot[2])
+
+start <- Sys.time()
+N.mat.freqs <- lapply(motif.pairs, function(motif.pair){
+  motif.pair.str <- paste(motif.pair, collapse = ";")
+  N.mat.freq <- N.mat.all %>%
+    group_by_(.dots = c("model", motif.pair)) %>%
+    summarise(freq = length(gene)) %>%
+    mutate(pair = motif.pair.str)
+  # expect 8 rows: atop/zbottom, zbottom/atop, atop/atop/ zbottom/zbottom for rhyth and flat
+  # expect 12 rows if nb.levels = 3  (4 per level)
+  if (nrow(N.mat.freq) == 4 * nb.levels){
+    return(N.mat.freq)
+  } else {
+    warning("N.mat.freq must be 8 or 12 rows!")
+    return(data.frame())
+  }
+})
+print(Sys.time() - start)
+
+N.mat.freqs <- rbindlist(N.mat.freqs)
+colnames(N.mat.freqs) <- c("model", "motif1", "motif2", "freq", "pair")
+
+fits <- N.mat.freqs %>%
+  group_by(pair) %>%
+  do(RunPoissonModel(.))
+
+save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".weight.", weight.cutoff, ".MergePeaks.", merge.peaks, ".withNmatallNmatfreqs.RemoveZeroCounts.LiverPeaksvsBoth.Robj"))
+
 
 # tf <- "RORA"
 # tf <- "DBP"
