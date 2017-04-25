@@ -4,10 +4,6 @@
 
 rm(list=ls())
 
-# Ks <- c(200, 300)
-Ks <- c(300)
-jmc.cores <- length(Ks)
-
 nb.levels <- 3  # liver-rhyth, nonliver, liver-nonrhyth
 # nb.levels <- 2  # liver-rhyth, liver-nonrhyth
 
@@ -46,7 +42,7 @@ merge.peaks <- FALSE
 
 null.model <- "JI"  # JI or CI
 
-flat.livamp.cutoff <- 0.05  # gene must be VERY flat!
+merge.Onecut.Cux <- TRUE  # they're similar motifs, average the counts to get a single
 
 if (null.model == "JI"){
   RunPoissonModel <- RunPoissonModel.JI
@@ -145,26 +141,17 @@ if (!exists("N.long.filt")){
 }
 # get fit from f24
 
-load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
-fits.bytiss <- subset(fits.bytiss, tissue %in% "Liver_SV129" & gene != "")
-liver.amp <- hash(as.character(fits.bytiss$gene), fits.bytiss$amp)
-liver.phase <- hash(as.character(fits.bytiss$gene), fits.bytiss$phase)
+# load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
+# fits.bytiss <- subset(fits.bytiss, tissue %in% jmodels & gene != "")
+# liver.amp <- hash(as.character(fits.bytiss$gene), fits.bytiss$amp)
+# liver.phase <- hash(as.character(fits.bytiss$gene), fits.bytiss$phase)
 
-print("Assigning livamp to fitsbet")
-fits.best$livamp <- sapply(as.character(fits.best$gene), function(g){
-  jamp <- liver.amp[[g]]
-  if (is.null(jamp)){
-    jamp <- NA
-  }
-  return(jamp)  
-})
-print(head(fits.best))
 
 # Get genes and peaks -----------------------------------------------------
 
 
 jgenes <- as.character(subset(fits.best, model %in% jmodels)$gene)
-jgenes.flat <- as.character(subset(fits.best, model == "" & livamp <= flat.livamp.cutoff)$gene)
+jgenes.flat <- as.character(subset(fits.best, model == "")$gene)
 
 
 print(paste("Rhythmic genes:", length(jgenes)))
@@ -269,6 +256,7 @@ if (nb.levels == 3){
 }
 # N.merged <- rbind(subset(N.sub, peak %in% peaks.all), subset(N.sub.flat, peak %in% peaks.all))
 
+
 # Optionally merge peaks, and add motifs?
 if (merge.peaks){
   N.merged <- N.merged %>%
@@ -277,15 +265,35 @@ if (merge.peaks){
     mutate(peak = gene)
 }
 
+# To merge Onecut and Cux2, rename the motifs so that they are the same
+
 N.merged <- N.merged %>%
   group_by(peak, model, motif, gene) %>%
-  summarise(sitecount = sum(sitecount)) %>%
+  summarise(sitecount = sum(sitecount))
+
+print("N before Onecut-Cux merge")
+print(head(N.merged))
+
+print("Merging onecut and cux2")
+merged.name <- "ONECUT.merged"
+N.merged$motif <- gsub("ONECUT1.2", merged.name, N.merged$motif)
+N.merged$motif <- gsub("CUX2", merged.name, N.merged$motif)
+
+N.merged <- N.merged %>%
+  group_by(peak, model, motif, gene) %>%
+  summarise(sitecount = mean(sitecount))
+
+print("N after Onecut-Cux merge")
+print(head(N.merged))
+
+N.merged <- N.merged %>%
   group_by(motif) %>%
   arrange(desc(sitecount)) %>%
   mutate(motif.rank = seq(length(sitecount)))
 
 # take liver peaks and flat peaks
 # K <- 200  # take top 1000 top guys
+Ks <- c(200, 300)
 mclapply(Ks, function(K){
   
   top.bot <- c("atop", "zbottom")
@@ -326,8 +334,8 @@ mclapply(Ks, function(K){
     group_by(pair) %>%
     do(RunPoissonModel(.))
   
-  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".weight.", weight.cutoff, ".MergePeaks.", merge.peaks, ".nullmodel.", null.model, ".flatampmax.", flat.livamp.cutoff,  ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
-}, mc.cores = jmc.cores)
+  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.levels, ".K.", K, ".weight.", weight.cutoff, ".MergePeaks.", merge.peaks, ".nullmodel.", null.model, ".MergeOnecutCux.", merge.Onecut.Cux, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
+}, mc.cores = 2)
 
 # tf <- "RORA"
 # tf <- "DBP"

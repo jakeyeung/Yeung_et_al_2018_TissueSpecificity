@@ -6,8 +6,8 @@
 rm(list=ls())
 
 library(dplyr)
+library(ggplot2)
 library(hash)
-library(ggplot)
 
 source("scripts/functions/PlotFunctions.R")
 source("scripts/functions/PlotGeneAcrossTissues.R")
@@ -43,67 +43,22 @@ RunPoissonModel.cnd2 <- function(dat){
   return(data.frame(deviance = mod1$deviance, pval = chisq.pval))
 }
 
-GetTargetGenesFromPair <- function(N.mat.all, pair, model = "rhyth", model.cname = "model"){
-  motif1 <- strsplit(pair, ";")[[1]][[1]]
-  motif2 <- strsplit(pair, ";")[[1]][[2]]
-  cnames <- c("gene", "peak", "model", motif1, motif2)
-  jsub <- N.mat.all[, cnames]
-  jsub <- dplyr::filter_(jsub, paste(paste(motif1, "==",  "'atop'"), "&", paste(motif2, "==",  "'atop'"),"&", model.cname, "==", paste0("'", model, "'")))
-  return(jsub)
-}
-
 
 # Load --------------------------------------------------------------------
 
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T); dat.wtko <- dat.long; rm(dat.long)
 
-K <- 200
-weight.cutoff <- 0.8
-# inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
-inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.", K, ".weight.", weight.cutoff, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
-
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.200.weight.0.8.MergePeaks.TRUE.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.weight.0.8.MergePeaks.FALSE.withNmatallNmatfreqs.RemoveZeroCounts.LiverPeaksvsBoth.Robj"
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.weight.0.8.MergePeaks.FALSE.withNmatallNmatfreqs.RemoveZeroCounts.LiverPeaksvsBoth.Robj"
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.weight.0.8.MergePeaks.FALSE.withNmatallNmatfreqs.RemoveZeroCounts2.Robj"
-
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.weight.0.8.MergePeaks.FALSE.nullmodel.CI.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
-
-
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.weight.0.8.MergePeaks.FALSE.nullmodel.CI.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
-
-
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.weight.0.8.MergePeaks.FALSE.withNmatallNmatfreqs.RemoveZeroCounts2.Robj"
-
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.300.weight.0.8.MergePeaks.FALSE.nullmodel.CI.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
-
-inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.300.weight.0.8.MergePeaks.FALSE.withNmatallNmatfreqs.RemoveZeroCounts2.Robj"
-
-
 K <- 300
 weight <- 0.8
-nb.models <- 3
-inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.models, ".K.", K, ".weight.", weight, ".MergePeaks.FALSE.nullmodel.JI.withNmatallNmatfreqs.RemoveZeroCounts.Robj")
+nb.models <- 2
+inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.LiverVsKidFLATMerged.Robj"
 
 load(inf, v=T)  # load also Nmat and Nmatfreqs
 N.mat.freqs.all <- N.mat.freqs
 
 if (length(unique(N.mat.freqs.all$model)) == 3){
-  # ignore Kidney
-  # N.mat.freqs <- subset(N.mat.freqs, model %in% c("flat", "rhyth"))
-  
-  # consider Kidney as flat!
-  N.mat.freqs.all$model.merge <- sapply(N.mat.freqs.all$model, function(m) ifelse(m == "rhyth", "rhyth", "flat"))
-  N.mat.freqs <- N.mat.freqs.all %>%
-    group_by(model.merge, pair, motif1, motif2) %>%
-    summarise(freq = sum(freq))
-  N.mat.freqs <- dplyr::rename(N.mat.freqs, "model" = model.merge)
+  N.mat.freqs <- subset(N.mat.freqs, model %in% c("flat", "rhyth"))
 }
-
-
-# Combine CUX2 and ONECUT1 together? --------------------------------------
-
-
 
 # Analyze -----------------------------------------------------------------
 
@@ -148,10 +103,31 @@ fits$TvB <- sapply(fits$pair, function(p) enrich.TvB[[p]])
 fits$TvB.TvB <- sapply(fits$pair, function(p) enrich.TvB.TvB[[p]])
 fits$NTop <- sapply(fits$pair, function(p) enrich.NTop[[p]])
 
+
+m.loglin <- ggplot(subset(fits, pval < 0.05 & OR.OR > 1)[1:20, ], aes(x = pair, y = -log10(pval))) + geom_bar(stat = "identity") +  
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ggtitle("Top motif pairs between\nFOXA2, ONECUT, or CUX2") + 
+  scale_fill_manual(values = barcols) + xlab("")
+print(m.loglin)
+
+m.loglin2 <- ggplot(subset(fits, pval < 0.05), aes(x = log10(OR.OR), y = -log10(pval), label = pair)) + geom_point() +  geom_text() + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ggtitle("Top motif pairs between\nFOXA2, ONECUT, or CUX2") + 
+  scale_fill_manual(values = barcols) + xlab("")
+m.loglin2 <- ggplot(subset(fits, pval < 0.05 & grepl("RORA", pair)), aes(x = log10(OR.OR), y = -log10(pval), label = pair)) + geom_point() +  geom_text() + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  ggtitle("Top motif pairs between\nFOXA2, ONECUT, or CUX2") + 
+  scale_fill_manual(values = barcols) + xlab("")
+print(m.loglin2)
+
+
+
+
 ggplot(subset(fits, grepl("RORA", fits$pair)), aes(x = log10(OR), y = -log10(pval), label = pair)) + geom_point() + geom_text() + geom_vline(xintercept = 0) 
-ggplot(subset(fits), aes(x = log10(OR), y = -log10(pval), label = pair)) + geom_point() + geom_text() + geom_vline(xintercept = 0) 
 ggplot(subset(fits, grepl("RORA", fits$pair)), aes(x = log10(OR.OR), y = -log10(pval), label = pair)) + geom_point() + geom_text() + geom_vline(xintercept = 0) 
-ggplot(subset(fits), aes(x = log10(OR.OR), y = -log10(pval), label = pair)) + geom_point() + geom_text() + geom_vline(xintercept = 0) 
 
 ggplot(subset(fits, grepl("RORA", fits$pair) & pval < 1e-4), aes(x = log10(OR.OR), y = log10(TvB.TvB), label = pair)) + geom_point() + geom_text() + geom_vline(xintercept = 0) 
 ggplot(subset(fits, grepl("RORA", fits$pair) & pval < 1e-4), aes(x = log10(OR.OR), y = NTop, label = pair)) + geom_point() + geom_text() + geom_vline(xintercept = 0) 
@@ -436,7 +412,7 @@ fits.single <- subset(N.mat.freqs.sing, model != "flat") %>%
 
 # same result with RORA if we just do cutoff with N.long?? 
 sc.cutoff <- 0.5
-N.sitecounts <- subset(N.long.filt, gene %in% genes.clockliver) %>%
+N.sitecounts <- subset(N.long, gene %in% genes.clockliver) %>%
   group_by(motif2) %>%
   filter(sitecount > sc.cutoff) %>%
   summarise(n.gene = length(gene)) %>%
@@ -460,31 +436,5 @@ fits.bytiss.livWT$above.weight <- sapply(fits.bytiss.livWT$weight, function(w) i
 
 
 elf.target.genes <- as.character(subset(N.mat.all, ELF1.2.4 == "atop" & model == "rhyth")$gene)
-
-
-
-# Downstream --------------------------------------------------------------
-
-# Hnf1a is present in both kidney liver, how do we explain
-subset(N.mat.freqs.all, pair == "RORA;HNF1A")
-
-foxa2.targs <- GetTargetGenesFromPair(N.mat.all, pair = "FOXA2;RORA")
-onecut.targs <- GetTargetGenesFromPair(N.mat.all, pair = "ONECUT1.2;RORA")
-cux.targs <- GetTargetGenesFromPair(N.mat.all, pair = "CUX2;RORA")
-hnf1a.targs <- GetTargetGenesFromPair(N.mat.all, pair = "RORA;HNF1A")
-tead.targs <- GetTargetGenesFromPair(N.mat.all, pair = "RORA;TEAD1")
-tfap.targs <- GetTargetGenesFromPair(N.mat.all, pair = "RORA;TFAP2.A.C.")
-
-livtf.targs <- bind_rows(foxa2.targs, onecut.targs, cux.targs)
-livtf.targ.genes <- as.character(unique(livtf.targs$gene))
-
-hnf1a.targ.genes <- as.character(unique(hnf1a.targs$gene))
-
-which(hnf1a.targ.genes %in% livtf.targ.genes)  # Hectd2 and Snx10 not in Liv targ genes
-
-
-subset(N.mat.all, pair == "RORA;HNF1A")
-
-# Is Tead1 and Tfap2 kidney specific rather than liver?
 
 
