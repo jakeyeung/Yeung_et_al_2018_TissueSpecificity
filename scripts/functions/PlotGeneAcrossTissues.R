@@ -41,7 +41,40 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
   return(m)
 }
 
-PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno", ncols = 2, center = FALSE, convert.linear = FALSE, jsize = 24){
+ConvertToSingleDay <- function(dat, time.cname = "time", exprs.cname = "exprs", 
+                               geno.cname = "geno", exper.cname = "experiment",
+                               tissue.cname = "tissue", gene.cname = "gene", transcript.cname = NA){
+  library(lazyeval)
+  if (any(dat$time < 0)){
+    warning("Function cannot handle negative times")
+  }
+  mutate_call = lazyeval::interp(~jtime - 24 * floor( jtime / 24 ), jtime = as.name(time.cname))
+  dat.sub <- dat %>%
+    filter_(paste(time.cname, ">=", 24)) %>%
+    mutate_(.dots = setNames(list(mutate_call), time.cname))
+  
+  sem_call = lazyeval::interp(~sd( exprs ), exprs = as.name(exprs.cname))
+  signal_call = lazyeval::interp(~mean ( exprs ), exprs = as.name(exprs.cname))
+  sem.cname <- "sem"
+ 
+  if (is.na(transcript.cname)){
+    dat.new <- bind_rows(dat.sub, subset(dat, time < 24)) %>%
+      group_by_(gene.cname, geno.cname, exper.cname, tissue.cname, time.cname) %>%
+      summarise_(.dots = setNames(list(sem_call, signal_call), c(sem.cname, exprs.cname)))
+  } else {
+    dat.new <- bind_rows(dat.sub, subset(dat, time < 24)) %>%
+      group_by_(gene.cname, geno.cname, exper.cname, tissue.cname, time.cname, transcript.cname) %>%
+      summarise_(.dots = setNames(list(sem_call, signal_call), c(sem.cname, exprs.cname)))
+  }
+  return(dat.new)
+}
+
+PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno", ncols = 2, center = FALSE, convert.linear = FALSE, jsize = 24, single.day=FALSE, pretty.geno.names=FALSE){
+  if (pretty.geno.names){
+    dat$geno <- gsub("BmalKO", "Bmal1 KO", dat$geno)
+    dat$geno <- gsub("SV129", "WT", dat$geno)
+    dat$geno <- factor(dat$geno, levels = c("WT", "Bmal1 KO"))
+  }
   if (convert.linear){
     dat$exprs <- (2 ^ dat$exprs) - 1
     jylab <- "TPM"
@@ -54,6 +87,9 @@ PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno",
       group_by(tissue, geno) %>%
       mutate(exprs = scale(exprs, center = TRUE, scale = FALSE))
   }
+  if (single.day){
+    dat <- ConvertToSingleDay(dat)
+  }
   m <- ggplot(dat, aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
     geom_point() + geom_line() + xlab(timelabel) + ylab(jylab) + 
     theme_bw(jsize) + ggtitle(jtitle) + 
@@ -64,6 +100,9 @@ PlotGeneTissuesWTKO <- function(dat, timelabel="ZT", jtitle="", split.by="geno",
     m <- m + facet_wrap(~tissue, ncol = ncols)
   } else {
     warning("Split by must be geno or tissue")
+  }
+  if (single.day){
+    m <- m + geom_errorbar(data = dat, aes(ymin=exprs-sem, ymax=exprs+sem, colour = tissue), linetype = "solid", size=0.5, width=0.5)
   }
   return(m)
 }
@@ -116,22 +155,32 @@ PlotTpmAcrossTissues <- function(dat, jtitle, log2.transform=FALSE, transcript_i
   return(m)
 }
 
-PlotTpmAcrossTissuesWTKO <- function(dat, jtitle, log2.transform=FALSE, transcript_id = "transcript_id", geno_id = "geno", tissue_id = "tissue", tstart = 0, tend = 48, jsize = 3){
+PlotTpmAcrossTissuesWTKO <- function(dat, jtitle, log2.transform=FALSE, transcript_id = "transcript_id", geno_id = "geno", tissue_id = "tissue", tstart = 0, tend = 48, jsize = 3, 
+                                     single.day=FALSE, 
+                                     pretty.geno.names=FALSE){
   library(ggplot2)
-  
   if (missing(jtitle)){
     jgene <- unique(dat$gene_name)
     jtranscript <- unique(dat$transcript_id)
     jtitle = paste(jgene, jtranscript)
   }
+  if (pretty.geno.names){
+    dat$geno <- gsub("BmalKO", "Bmal1 KO", dat$geno)
+    dat$geno <- gsub("SV129", "WT", dat$geno)
+    dat$geno <- factor(dat$geno, levels = c("WT", "Bmal1 KO"))
+  }
   if (log2.transform == FALSE){
-    m <- ggplot(dat, aes_string(x = "time", y = "tpm", group = geno_id, linetype = geno_id, colour = tissue_id, shape = transcript_id)) 
+    ystr <- "tpm"
     jylab <- "mRNA Abundance (normal scale)"
   } else {
     dat$log2tpm <- log2(dat$tpm + 0.01)
-    m <- ggplot(dat, aes_string(x = "time", y = "log2tpm", group = geno_id, linetype = geno_id, colour = tissue_id, shape = transcript_id))
+    ystr <- "log2tpm"
     jylab <- "Log2 mRNA Abundance"
   }
+  if (single.day){
+    dat <- ConvertToSingleDay(dat, transcript.cname = transcript_id, exprs.cname = ystr)
+  }
+  m <- ggplot(dat, aes_string(x = "time", y = ystr, group = geno_id, linetype = geno_id, colour = tissue_id, shape = transcript_id))
   m <- m + theme(legend.position="bottom") +
     geom_point(size = jsize) + 
     geom_line() + 
@@ -142,6 +191,12 @@ PlotTpmAcrossTissuesWTKO <- function(dat, jtitle, log2.transform=FALSE, transcri
     scale_x_continuous(limits = c(tstart, tend), breaks = seq(tstart, tend, 12)) + 
     theme(legend.position = "bottom", aspect.ratio = 1) + 
     scale_shape_manual(values=c(15, 17, seq(0, 14)))
+  if (single.day){
+    sem.str <- "sem"
+    m <- m + geom_errorbar(data = dat, aes_string(ymin=paste(ystr, sem.str, sep = "-"), 
+                                                  ymax=paste(ystr, sem.str, sep = "+"), 
+                                                  colour = tissue_id), linetype = "solid", size=0.5, width=0.5)
+  }
   return(m)
 }
 

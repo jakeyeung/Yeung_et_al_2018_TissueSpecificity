@@ -43,8 +43,11 @@ dotsize <- 6
 zscore.min <- 1.25
 omega <- 2 * pi / 24
 n <- 4  # amplitude scaling 
-mrna.hl <- 2.65  # shift TF activity by half-life
+# mrna.hl <- 2.65  # shift TF activity by half-life
+
 hr.shift <- 3
+mrna.hl <- log(2) / (omega / tan(omega * hr.shift))  # convert hour shift to half-life 
+
 # Functions ---------------------------------------------------------------
 
 GetAmpPhaseFromActivities <- function(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT"){
@@ -227,11 +230,19 @@ for (jexp in c("rnaseq", "array")){
 # Plot examples -----------------------------------------------------------
 
 jgenes <- c("Slc45a3", "Insig2", "Slc44a1", "Pik3ap1", "Jun", "Mafb", "Egr1", "Nop56", "Gck", "Lipg", "Upp2", "Loxl4", "Lpin1", "Cebpb", "Pik3r1", "Hes6",
-            "Per2", "Cry1", "Dbp", "Arntl", "Npas2", "Hic1", "Srebf1", "Per1", "Cry2", "Nr1d1", "Nr1d2", "Tef", "Hlf", "Hspa8", "Cirbp", "Sgk2", "Wee1", "Pi4k2a", "Per3")
+            "Per2", "Cry1", "Dbp", "Arntl", "Npas2", "Hic1", "Srebf1", "Per1", "Cry2", "Nr1d1", "Nr1d2", "Tef", "Hlf", "Hspa8", "Cirbp", "Sgk2", "Wee1", "Pi4k2a", "Per3",
+            "Mreg")
+
+jgenes.baits <- c("Mreg", "Slc45a3", "Slc44a1", "Pik3ap1")
 
 pdf(file.path(plot.dir, paste0("0", ".gene_exprs_examples.pdf")))
 for (g in jgenes){
-  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g, center = TRUE))
+  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g, center = TRUE, pretty.geno.names = TRUE))
+  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g, center = TRUE, single.day = TRUE, pretty.geno.names = TRUE))
+  if (g %in% jgenes.baits){
+    # liver vs kidney in same square is better
+    print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "geno", jtitle = g, center = FALSE, single.day = TRUE, pretty.geno.names = TRUE))
+  }
 }
 dev.off()
 

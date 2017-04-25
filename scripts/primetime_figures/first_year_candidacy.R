@@ -582,8 +582,8 @@ act.sum <- act.dhs.long %>%
   group_by(gene) %>%
   summarise(exprs.sum = sum(exprs))
 
-hits <- c("ONECUT1.2.p2", "NKX2.1.4.p2", "HNF4A_NR2F1.2.p2", "FOXA2.p3", "RFX1..5_RFXANK_RFXAP.p2")
-hits.rnaseq <- c("Onecut1", "Nkx2-1", "Hnf4a", "Foxa2", "Rfxank")
+hits <- c("ONECUT1.2.p2", "NKX2.1.4.p2", "HNF4A_NR2F1.2.p2", "FOXA2.p3", "RFX1..5_RFXANK_RFXAP.p2", "CUX2.p2", "HNF1A.p2", "TEAD1.p2", "TFAP2.A.C..p2")
+hits.rnaseq <- c("Onecut1", "Nkx2-1", "Hnf4a", "Foxa2", "Rfxank", "Hnf1a", "Tead1", "Tfap2a")
 
 # Load RNA-Seq from ENCODE data to plot side by side
 load("Robjs/dat.encode.Robj")

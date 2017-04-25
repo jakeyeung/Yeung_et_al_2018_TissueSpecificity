@@ -23,8 +23,8 @@ eps <- 1  # for log2 transform
 # Load --------------------------------------------------------------------
 
 do.filter <- TRUE
-dataset <- "liverWTKO"
 dataset <- "hogenesch"
+dataset <- "liverWTKO"
 
 tiss.filt <- c("Liver", "Kidney", "Cere", "BS", "Hypo")
 if (dataset == "hogenesch"){
@@ -84,8 +84,10 @@ dat.bytranscript$tissue <- factor(as.character(dat.bytranscript$tissue), levels 
 
 pdf(paste0("plots/alternative_exon_usage/gene_expression_across_transcripts.", dataset, ".pdf"))
 jtx <- c("ENSMUST00000027695", "ENSMUST00000185387")
+jtx <- c("ENSMUST00000027695", "ENSMUST00000177943")
 print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, gene == "Slc45a3" & tissue %in% c("Liver", "Kidney") & transcript %in% c("ENSMUST00000027695", "ENSMUST00000177943")), jtitle = "Slc45a3", log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = tstart, tend = tend))
 print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, gene == "Slc45a3" & tissue %in% c("Liver", "Kidney") & transcript %in% jtx), jtitle = "Slc45a3", log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = tstart, tend = tend))
+print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, gene == "Slc45a3" & tissue %in% c("Liver", "Kidney") & transcript %in% jtx), jtitle = "Slc45a3", log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = 0, tend = 24, single.day = TRUE, pretty.geno.names = TRUE))
 
 # Ddc
 jtx <- c("ENSMUST00000155690,ENSMUST00000134121,ENSMUST00000146359,ENSMUST00000109659",
@@ -128,7 +130,8 @@ for (jgene in jgenes){
   print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, gene == jgene), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = tstart, tend = tend)) 
 }
 # replot for WT only 
-print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, geno == "WT" & gene == "Slc45a3" & transcript %in% c("ENSMUST00000027695", "ENSMUST00000177943")), jtitle = "Slc45a3", log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = tstart, tend = tend))
+print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, geno == "WT" & gene == "Slc45a3" & transcript %in% c("ENSMUST00000027695", "ENSMUST00000177943")), jtitle = "Slc45a3", log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = tstart, tend = tend, single.day = FALSE))
+print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, geno == "WT" & gene == "Slc45a3" & transcript %in% c("ENSMUST00000027695", "ENSMUST00000177943")), jtitle = "Slc45a3", log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = 0, tend = 24, single.day = TRUE))
 for (jgene in jgenes){
   print(PlotTpmAcrossTissuesWTKO(subset(dat.bytranscript, gene == jgene & geno == "WT"), jtitle = jgene, log2.transform = TRUE, transcript_id = "transcript", geno_id = "geno", tissue_id = "tissue", tstart = tstart, tend = tend))
 }
