@@ -103,6 +103,11 @@ rm(list=ls())
   gene.prot <- "Nrf1"
   gene.lst[[gene.dat]] <- c(gene.dat, gene.act, gene.prot)
   
+  gene.dat <- "Elf1"
+  gene.act <- "ELF1.2.4.p2"
+  gene.prot <- "Elf1"
+  gene.lst[[gene.dat]] <- c(gene.dat, gene.act, gene.prot)
+  
   # setEPS()
   # postscript("/home/yeung/projects/tissue-specificity/plots/nuclear_proteomics_plots/mrna_activity_nuc_abund.eps")
   # postscript("/home/yeung/projects/tissue-specificity/plots/nuclear_proteomics_plots/mrna_activity_nuc_abund.ps")

@@ -7,6 +7,12 @@ library(reshape2)
 # library(PhaseHSV)
 library(ggplot2)
 
+GetAmpPhaseFromActivities <- function(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT"){
+  act.l.complex <- ProjectWithZscore(act.l, omega, n = 4)
+  act.l.complex$phase <- AdjustPhase(act.l.complex$phase, half.life = mrna.hl, fw.bw = "bw")
+  return(act.l.complex)
+}
+
 ProjectWithZscore <- function(act.long, omega, n = 4){
   act.complex <- act.long %>%
     group_by(gene, tissue) %>%

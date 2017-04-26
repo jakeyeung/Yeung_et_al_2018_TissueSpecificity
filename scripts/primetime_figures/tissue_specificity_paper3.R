@@ -54,12 +54,6 @@ GetAmpPhaseFromActivities <- function(act.l, mrna.hl, jtiss = "Liver", jgeno = "
   act.l.complex <- ProjectWithZscore(act.l, omega, n = 4)
   act.l.complex$phase <- AdjustPhase(act.l.complex$phase, half.life = mrna.hl, fw.bw = "bw")
   return(act.l.complex)
-  # s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
-  # vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
-  # s.df <- data.frame(gene = names(vec.complex), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = jtiss, geno = jgeno)
-  # # shift by half-life
-  # s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
-  # return(s.df)
 }
 
 ggplotColours <- function(n = 6, h = c(0, 360) + 15){

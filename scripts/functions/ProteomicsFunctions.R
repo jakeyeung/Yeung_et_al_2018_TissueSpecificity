@@ -243,8 +243,8 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   
   if (single.day){
     # 0 to 23, everything else gets shifted by 24 hours
-    merged.dat.sub <- subset(merged.dat, time >= 24) %>%
-      mutate(time = time - 24 * floor(time / 24))
+    merged.dat.sub <- subset(merged.dat, time >= 24)
+    merged.dat.sub$time <- merged.dat.sub$time - 24 * floor(merged.dat.sub$time / 24)
     merged.dat <- bind_rows(merged.dat.sub, subset(merged.dat, time < 24)) %>%
       group_by(geno.std, type, tissue, time) %>%
       summarise(sem = sd(signal),
