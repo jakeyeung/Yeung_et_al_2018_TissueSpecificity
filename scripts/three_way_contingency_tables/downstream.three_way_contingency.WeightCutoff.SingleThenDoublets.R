@@ -161,7 +161,7 @@ fits.bytiss.sum <- subset(fits.bytiss, gene %in% genes.liv.weightfilt) %>%
   group_by(is.hit) %>% 
   summarise(n.genes = length(gene))
 
-pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_singlets.pdf"), useDingbats = FALSE)
+pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_singlets.top.n.", top.n, ".pdf"), useDingbats = FALSE)
 print(m.single)
 ggplot(subset(fits.bytiss, gene %in% genes.liv.weightfilt), aes(x = is.hit, y = 2 * amp)) + geom_violin() + xlab("Has ROR Motifs") + ylab("Log2 Fold Change") + ggtitle("With RORE vs Liver_SV129 genes with BIC threshold") + 
   theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
@@ -173,10 +173,24 @@ ggplot(subset(fits.bytiss, gene %in% genes.liv.weightfilt), aes(x = is.hit, y = 
   annotate(geom = "text", x = 1, y = 4, label = paste("n=", fits.bytiss.sum$n.genes[[1]])) + 
   annotate(geom = "text", x = 2, y = 4, label = paste("n=", fits.bytiss.sum$n.genes[[2]]))
 
+
+# do KS-test
+x <- subset(fits.bytiss, gene %in% genes.liv.weightfilt & is.hit == TRUE)$amp
+y <- subset(fits.bytiss, gene %in% genes.liv.weightfilt & is.hit == FALSE)$amp
+ks.pval <- signif(ks.test(x, y)$p.value, digits = 2)
+
+# jcols.single <- c(scales::hue_pal()(2)[[1]], "#f2c7c4")  # red (matching if two comparisons) and gray
+jcols.single <- c("#ef1202", "#f2c7c4")  # red (matching if two comparisons) and gray
+ggplot(subset(fits.bytiss, gene %in% genes.liv.weightfilt), aes(fill = is.hit, x = 2 * amp)) + geom_density(alpha = 0.5) + xlab("Log2 Fold Change") + ggtitle("With RORE vs Liver_SV129 genes with BIC threshold") + 
+  theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
+  annotate(geom = "text", -Inf, Inf, label = paste("P-value=", ks.pval), hjust = -2, vjust = 2) + 
+  scale_fill_manual(values = jcols.single)
+  
+
 library(plotrix)
 jcex <- 2
-circular_phase24H_histogram(subset(fits.bytiss, gene %in% genes.liv.weightfilt & is.hit == TRUE)$phase, jtitle = paste(""), cex.axis = jcex, cex.lab = jcex)
-circular_phase24H_histogram(subset(fits.bytiss, gene %in% genes.liv.weightfilt & is.hit == FALSE)$phase, jtitle = paste(""), cex.axis = jcex, cex.lab = jcex)
+circular_phase24H_histogram(subset(fits.bytiss, gene %in% genes.liv.weightfilt & is.hit == TRUE)$phase, jtitle = paste(""), cex.axis = jcex, cex.lab = jcex, color_hist = jcols.single[[1]])
+circular_phase24H_histogram(subset(fits.bytiss, gene %in% genes.liv.weightfilt & is.hit == FALSE)$phase, jtitle = paste(""), cex.axis = jcex, cex.lab = jcex, color_hist = jcols.single[[2]])
 dev.off()
 
 # Plot doublets -----------------------------------------------------------
@@ -184,9 +198,9 @@ dev.off()
 inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.300.weight.0.MergePeaks.FALSE.nullmodel.JI.withNmatallNmatfreqs.RemoveZeroCounts.MergeOnecutCux.Robj"
 inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.300.weight.0.MergePeaks.FALSE.nullmodel.JI.MergeOnecutCux.TRUE.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
 inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.300.weight.0.8.MergePeaks.FALSE.withNmatallNmatfreqs.RemoveZeroCounts2.Robj"
-flatampmax <- 0.1
 flatampmax <- 0.15
 flatampmax <- 0.05
+flatampmax <- 0.1
 inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.300.weight.0.MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
 
 load(inf, v=T)
@@ -238,17 +252,20 @@ pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_p
 jmotif <- "RORE"
 fits$pair <- gsub("RORA", "RORE", fits$pair)
 
-ggplot(subset(fits, grepl("RORE", fits$pair)), aes(x = log10(OR.OR), y = -log10(pval), label = pair)) + geom_point() + geom_text(size = 3) + geom_vline(xintercept = 0) + 
+jfits <- subset(fits, grepl("RORE", fits$pair))
+jfits$label <- mapply(function(pair, pval) ifelse(-log10(pval) > 8.5, pair, NA), jfits$pair, jfits$pval)
+
+jfits.pos <- subset(jfits, log10(OR.OR) > 0)
+
+ggplot(jfits, aes(x = log10(OR.OR), y = -log10(pval), label = label)) + geom_point() + geom_text(size = 3) + geom_vline(xintercept = 0) + 
   theme_bw() + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   xlab("Log10 Odds Ratio Compared to Background")
 
-jfits <- subset(fits, grepl("RORE", fits$pair) & log10(OR.OR) > 0)
-jfits$label <- mapply(function(pair, pval) ifelse(-log10(pval) > 6.5, pair, NA), jfits$pair, jfits$pval)
-ggplot(jfits, aes(x = log10(OR.OR), y = -log10(pval), label = label)) + geom_point() + geom_text_repel(size = 6.5) + geom_vline(xintercept = 0) + 
+ggplot(jfits.pos, aes(x = log10(OR.OR), y = -log10(pval), label = label)) + geom_point() + geom_text_repel(size = 6.5) + geom_vline(xintercept = 0) + 
   theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
   xlab("Log10 Odds Ratio Compared to Background")
 
-jfits <- subset(fits, grepl("RORE", fits$pair) & log10(OR.OR) > 0)
+jfits <- subset(jfits.pos, grepl("RORE", fits$pair) & log10(OR.OR) > 0)
 jfits$label <- mapply(function(pair, pval) ifelse(-log10(pval) > 6.5, pair, NA), jfits$pair, jfits$pval)
 ggplot(jfits, aes(x = OR.OR, y = -log10(pval), label = label)) + geom_point() + geom_text_repel(size = 6.5) + geom_vline(xintercept = 1) + 
   theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
