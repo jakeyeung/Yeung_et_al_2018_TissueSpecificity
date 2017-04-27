@@ -1077,7 +1077,7 @@ for (jmod in jmods){
   
   
   jmod.label <- gsub(pattern = ",", replacement = "-", jmod)
-  pdf(file.path(plot.dir, paste0(plot.i, ".clock_independent_", jmod.label, "_regulators.mrnahl.", mrna.hl, ".pdf")))
+  pdf(file.path(plot.dir, paste0(plot.i, ".clock_independent_", jmod.label, "_regulators.hrshift.", hr.shift, ".pdf")))
 
   # increment plot.i after the for loop
   
@@ -1097,7 +1097,8 @@ for (jmod in jmods){
                                   dotshape = 18,
                                   disable.text = FALSE, 
                                   add.arrow = TRUE,
-                                  disable.repel = TRUE)
+                                  disable.repel = TRUE,
+                                  half.life = mrna.hl)
   print(eigens.act.fancy.LivWTKO$v.plot)
   print(eigens.act.fancy.LivWTKO$u.plot)
   
