@@ -262,6 +262,12 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   } else {
     m <- m + geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum"), size = 1)
   }
+  
+  if (single.day){
+    jbreaks <- seq(0, 24, 6)
+  } else {
+    jbreaks <- seq(0, 48, 12)
+  }
   m <- m + 
     # geom_line(data = subset(merged.dat, type != "Nuclear_Prot_Accum"), size = 1) +
     # geom_point(size = dotsize) + 
@@ -274,7 +280,7 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     scale_size_manual(values = jsizes, drop=FALSE) + 
     theme(legend.position = "bottom", aspect.ratio = 1) +
     ggtitle(jtitle) + 
-    scale_x_continuous(breaks = c(0, 12, 24, 36, 48))
+    scale_x_continuous(breaks = jbreaks)
   if (single.day){
     if (act.in.sine.cos){
       m <- m + geom_errorbar(data = subset(merged.dat, type != "TF_Activity"), aes(ymin=signal-sem, ymax=signal+sem), linetype = "solid", size=0.5, width=0.5, position=position_dodge(0.05))
