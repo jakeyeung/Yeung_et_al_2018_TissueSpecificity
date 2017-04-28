@@ -199,7 +199,7 @@ for (jexp in c("rnaseq", "array")){
   jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Hlf", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
   jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", "NFIL3", NA, NA, NA, NA)
   print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
-  pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.mrnahl.", mrna.hl, "experiment", jexp, ".pdf")))
+  pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.hrshift.", hr.shift, ".experiment.", jexp, ".pdf")))
   for (i in seq(length(jgenes))){
     jgene <- jgenes[i]
     jmotif <- jmotifs[i]
@@ -1085,7 +1085,20 @@ for (jmod in jmods){
   eigens <- GetEigens(s, period = 24, comp = comp, label.n = 20, eigenval = TRUE, adj.mag = TRUE, constant.amp = dotsize, peak.to.trough = TRUE, label.gene = c("Mafb", "Egr1", "Creb3", "Elf2"))
   jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
   
-  eigens.act <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, constant.amp = dotsize, label.n = 20, jtitle = "", peak.to.trough = TRUE, dot.col = "black", dotsize = 2, dotshape = 18, label.gene = c("ELF1.2.4"))
+  eigens.act <- GetEigens(s.act,
+                          eigenval = FALSE,
+                          period = 24, 
+                          comp = comp, 
+                          adj.mag = TRUE, 
+                          constant.amp = dotsize, 
+                          label.n = 20, 
+                          jtitle = "", 
+                          peak.to.trough = TRUE, 
+                          dot.col = "black", 
+                          dotsize = 2, 
+                          dotshape = 18, 
+                          label.gene = c("ELF1.2.4"),
+                          half.life = mrna.hl)
   eigens.act.fancy.LivWTKO <- GetEigens(s.act, period = 24, comp = comp, adj.mag = TRUE, 
                                   eigenval = FALSE,
                                   constant.amp = 5, 
