@@ -92,7 +92,7 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                        "d"=c("Elovl3", "Insig2", "Adh4", "Hsd3b7", "Lrp5", "Sdr42e1", "Cyp8b1",
                              "Gck", "Pklr", "Ppp1r3b", "Colgalt2", 
                              "Upp2", "Rgs16", "Abcg5", "Por", "Lipg", "Tff3", "Fkbp4", "Nrg4",
-                             "Slc45a3", "Pik3ap1", "Mreg", "Slc44a1", "Slc4a4")),
+                             "Slc45a3", "Pik3ap1", "Mreg", "Slc44a1", "Slc4a4", "Cpeb4", "Elf1")),
                   list("a"=c("Kidney_SV129"),
                        # "b"=c("GO:0071804", "GO:0090317"),
                        # "b"=c("GO:0098656", "GO:0006814"),
@@ -119,7 +119,7 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
 jtiss.onto <- jtiss.lst[[3]]
 
 plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
-pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".keepGOterms.neginsulin.pdf")))
+pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".keepGOterms.neginsulin.LiverWTAddGenes.pdf")))
   mclapply(jtiss.lst, function(jtiss.onto){
     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
     source("scripts/functions/AnalyzeGeneEnrichment.R")
