@@ -5,11 +5,18 @@
 rm(list=ls())
 
 # Ks <- c(200, 300)
-Ks <- c(300)
+# # Ks <- c(100, 150, 200, 250, 350, 400, 450, 500, 550, 600)
+# Ks <- c(300)
+Ks <- seq(100, 600, by = 50)
 jmc.cores <- length(Ks)
 
-nb.levels <- 3  # liver-rhyth, nonliver, liver-nonrhyth
-# nb.levels <- 2  # liver-rhyth, liver-nonrhyth
+# Parameters to tune
+# nb.levels <- 3  # liver-rhyth, nonliver, liver-nonrhyth
+nb.levels <- 2  # liver-rhyth, liver-nonrhyth
+weight.cutoff <- 0.8  # makes cleaner??
+# weight.cutoff <- 0  # more genes?
+null.model <- "JI"  # JI or CI
+flat.livamp.cutoff <- Inf  # gene must be VERY flat!
 
 RunPoissonModel.JI <- function(dat){
   mod1 <- glm(freq ~ model + motif1 + motif2 + motif1 * motif2, data=dat, family=poisson())
@@ -33,8 +40,7 @@ jcutoff.low <- as.numeric(args[3])
 distfilt <- 40000
 jcutoff <- 3  # arbitrary
 jcutoff.low <- 0  # arbitrary
-# weight.cutoff <- 0.8  # makes cleaner??
-weight.cutoff <- 0
+# weight.cutoff <- 0
 # jcutoff <- 2  # arbitrary
 # jcutoff <- 3  # arbitrary
 cleanup <- FALSE
@@ -44,9 +50,6 @@ jmethod <- "g=1001"
 
 merge.peaks <- FALSE
 
-null.model <- "JI"  # JI or CI
-
-flat.livamp.cutoff <- 0.05  # gene must be VERY flat!
 
 if (null.model == "JI"){
   RunPoissonModel <- RunPoissonModel.JI
