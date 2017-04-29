@@ -59,13 +59,25 @@ if (do.center){
 # write to output
 E.dir <- file.path("/home/yeung/data/tissue_specificity/gene_exprs_for_mara", paste0("centered.", do.center))
 dir.create(E.dir, recursive = TRUE, showWarnings = FALSE)
-E.out <- file.path(E.dir, paste0("Liver_SV129_module_Liver_Spec_DHSs.centered.", do.center, ".mat"))
 
-if (!file.exists(E.out)){
-  write.table(dat.mat, E.out, append = FALSE, quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
-} else {
-  print("File exists, skipping writing of gene expression matrix")
+# write Sample by Sample
+tissues <- c("Liver", "Kidney")
+genos <- c("SV129", "BmalKO")
+sampnames.all <- colnames(dat.mat)  # include Gene.ID in your grep
+
+for (tiss in tissues){
+  for (geno in genos){
+    cond <- paste(tiss, geno, sep = "_")
+    sampnames.i <- grepl(paste0("Gene.ID|", tiss, "_[0-9]*_", geno), sampnames.all)
+    E.out <- file.path(E.dir, paste0(cond, ".centered.", do.center, ".mat"))
+    if (!file.exists(E.out)){
+      write.table(dat.mat[, sampnames.i], E.out, append = FALSE, quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+    } else {
+      print("File exists, skipping writing of gene expression matrix")
+    }
+  }
 }
+
 
 # Get sitecounts ----------------------------------------------------------
 
@@ -106,13 +118,24 @@ if (!file.exists(N.out)){
 
 # Run MARA ----------------------------------------------------------------
 
+# marascript <- "/home/yeung/projects/tissue-specificity/scripts/three_way_contingency_tables/run_run_filter_mara_pipeline.promoters.bygenelist.sh"
+# requires E.dir (contains .Mat of exprs), N.mat (sitecounts, filtered), outmain (needs to be unique new folder)
 marascript <- "/home/yeung/projects/sleep_deprivation/scripts/shellscripts/run_mara_sleep_deprivation.sh"
-outmain <- paste0("/home/yeung/data/tissue_specificity/mara_results/mara_outputs", suffix)
+jmain <- "/home/yeung/data/tissue_specificity/mara_results"
+dir.create(jmain)
+outmain <- paste0(jmain, "/mara_outputs", suffix)
 dir.create(outmain, showWarnings = FALSE)
 outdir <- file.path(outmain, paste0("center.", do.center, suffix))
 # do not create outdir, because MARA will not run on an already-created directory 
 cmd <- paste("bash", marascript, N.out, outdir, E.dir)
-
 system(cmd)
+
+# consolidate
+combinescript <- "/home/yeung/projects/ridge-regression/run_scripts/combine_activities_and_plot.one_dir.sh"
+outdir.mara <- file.path(outdir, "centered.TRUE")
+
+cmd2 <- paste("bash", combinescript, outdir.mara)
+system(cmd2)
+
 
 

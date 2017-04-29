@@ -1,20 +1,28 @@
-LoadActivitiesLong <- function(indir, act.file="activities.all", se.file="standarderrors.all", shorten.motif.name=FALSE){
+LoadActivitiesLong <- function(indir, act.file="activities.all", se.file="standarderrors.all", shorten.motif.name=FALSE, make.cnames = FALSE){
   source("~/projects/tissue-specificity/scripts/functions/ActivitiesMergedFunctions.R")
   source("~/projects/tissue-specificity/scripts/functions/GetTissueTimes.R")
   source("~/projects/tissue-specificity/scripts/functions/RemoveP2Name.R")
   merged.act <- read.table(file.path(indir, act.file))
   merged.se <- read.table(file.path(indir, se.file))
-  
-  # Rename colnames ---------------------------------------------------------
-  
-  colnames(merged.act) <- GetMergedColnames(colnames(merged.act))
-  colnames(merged.se) <- GetMergedColnames(colnames(merged.se))
-  
-  # Create long -------------------------------------------------------------
-  
-  tissues <- GetTissues.merged(colnames(merged.act))
-  times <- GetTimes.merged(colnames(merged.act))
-  experiments <- GetExperiments.merged(colnames(merged.act))
+ 
+  if (make.cnames){
+    # Rename colnames ---------------------------------------------------------
+    
+    colnames(merged.act) <- GetMergedColnames(colnames(merged.act))
+    colnames(merged.se) <- GetMergedColnames(colnames(merged.se))
+    
+    # Create long -------------------------------------------------------------
+    
+    tissues <- GetTissues.merged(colnames(merged.act))
+    times <- GetTimes.merged(colnames(merged.act))
+    experiments <- GetExperiments.merged(colnames(merged.act))
+  } else {
+    # put cnames in tissues and worry about it later
+    tissues <- colnames(merged.act)
+    times <- NA
+    experiments <- NA
+  }
+
   
   if (shorten.motif.name){
     rownames(merged.act) <- sapply(rownames(merged.act), RemoveP2Name)
