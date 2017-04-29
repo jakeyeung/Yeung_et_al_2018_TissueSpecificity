@@ -17,6 +17,7 @@ source("scripts/functions/CosSineFunctions.R")
 source("scripts/functions/HalfLifeFunctions.R")
 source("scripts/functions/SvdFunctions.R")
 source("scripts/functions/GetTFs.R")
+source("scripts/functions/PlotGeneAcrossTissues.R")
 
 
 # Load liver DHS ----------------------------------------------------------
@@ -24,29 +25,28 @@ source("scripts/functions/GetTFs.R")
 jweight <- 0.8  # take all liver DHSs to all genes in Liver_SV129
 jweight <- 0  # take all liver DHSs to all genes in Liver_SV129
 
-flatampmax <- 0.1
-
+do.center <- TRUE
 promoters.only <- FALSE
 all.genes <- FALSE
-suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes)
+use.sql <- TRUE
+jmod <- "Liver_SV129,Liver_BmalKO"
+jmod <- "Liver_SV129"
+jmodstr <- gsub(",", "-", jmod)
+jcutoff <- 3
+jcutoff.low <- 0
+jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
+# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql)
+# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmod)
+# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
-inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.200.weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
-load(inf, v=T)
+suffix <- paste0(".weight.", jweight, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
+
+
+E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr)
 
 jmeth <- "g=1001"
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.annotated.Robj", v=T)
 fits.long.filt <- subset(fits.long.filt, method == jmeth)
-
-liver.genes.all <- as.character(subset(fits.long.filt, model == "Liver_SV129")$gene)
-
-if (all.genes){
-  liver.genes <- liver.genes.all
-} else {
-  liver.peaks <- unique(as.character(subset(N.mat.all, model %in% "rhyth")$peak))
-  liver.genes <- unique(as.character(subset(N.mat.all, model %in% "rhyth")$gene))
-  print(paste("N peaks:, ", length(liver.peaks)))
-  print(paste("N genes:, ", length(liver.genes)))
-}
 
 
 # Get gene expression over time and genotypes -----------------------------
@@ -56,7 +56,12 @@ dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 
 # Load MARA output --------------------------------------------------------
 
-maraoutdir <- paste0("/home/yeung/data/tissue_specificity/mara_results/mara_outputs", suffix, "/center.TRUE", suffix, "/centered.TRUE")
+# maraoutdir <- paste0("/home/yeung/data/tissue_specificity/mara_results/mara_outputs", suffix, "/center.TRUE", suffix, "/centered.TRUE")
+jmain <- "/home/yeung/data/tissue_specificity/mara_results"
+outmain <- paste0(jmain, "/mara_outputs", suffix)
+outdir <- file.path(outmain, paste0("center.", do.center, suffix))
+maraoutdir <- file.path(outdir, E.subdir)
+
 act.s <- LoadActivitiesLong(indir = maraoutdir, shorten.motif.name = TRUE, make.cnames = FALSE)
 act.s$sampname <- act.s$tissue
 act.s$tissue <- as.character(sapply(as.character(act.s$sampname), function(s) strsplit(s, "_")[[1]][[1]]))
@@ -107,11 +112,7 @@ eigens.act.fancy.LivWTKO <- GetEigens(s.act, period = 24, comp = comp, adj.mag =
                                       disable.repel = TRUE,
                                       half.life = mrna.hl)
 
-print(eigens.act$v.plot)
-print(eigens.act$u.plot)
 
-print(eigens.act.fancy.LivWTKO$v.plot)
-print(eigens.act.fancy.LivWTKO$u.plot)
 
 # also plot TF activity adjusted by half-life
 s.ampphase <- GetAmpPhaseFromActivities(act.s, mrna.hl, jtiss = jtiss, jgeno = "SV129")
@@ -120,26 +121,44 @@ act.s.shift <- act.s
 act.s.shift$time <- act.s$time - hr.shift
 act.s.shift$time <- sapply(act.s.shift$time, function(x) ifelse(x < 0, x + 48, x))
 
+jmotif <- "CEBPA.B_DDIT3"
+jmotif <- "ESR1"
 jmotif <- "RORA"
+jmotif <- "DBP"
 print(PlotActivitiesWithSE(subset(act.s.shift, gene == jmotif), jtitle = jmotif) + theme_bw())
 
 
-source("scripts/functions/PlotGeneAcrossTissues.R")
+
 load("Robjs/liver_kidney_atger_nestle/fits.bytiss.bugfixed.Robj", v=T)
 
-liv.rhyth <- as.character(subset(fits.bytiss, tissue == "Liver_SV129" & amp > 0.25 & pval < 1e-3)$gene)
+liv.rhyth <- as.character(subset(fits.bytiss, tissue == "Liver_SV129" & amp > 0.1 & pval < 1e-3)$gene)
 tfs <- GetTFs(get.mat.only = TRUE)
 
 # Print genes that match model
 jmotifs <- names(head(eigens.act$eigensamp[order(abs(eigens.act$eigensamp), decreasing = TRUE)], n = 20))
 
+
+# Plot things
+
+
+pdf(paste0("/home/yeung/projects/tissue-specificity/plots/mara_liver_kidney_modules_on_liverDHS/plots", suffix, ".pdf"))
+
+print(eigens.act$v.plot)
+print(eigens.act$u.plot)
+
+print(eigens.act.fancy.LivWTKO$v.plot)
+print(eigens.act.fancy.LivWTKO$u.plot)
+
 for (jmotif in jmotifs){
+  
+  print(PlotActivitiesWithSE(subset(act.s.shift, gene == jmotif), jtitle = jmotif) + theme_bw())
+  
   genes.all <- unlist(sapply(jmotif, GetGenesFromMotifs, tfs))
   genes.that.fit <- genes.all[which(genes.all %in% liv.rhyth)]
   if (jmotif == "RORA"){
     genes.that.fit <- c(genes.that.fit, "Nr1d1")
   }
-  print(paste("Rhyth genes:", genes.that.fit))
+  print(paste(jmotif, ": Rhyth genes:", genes.that.fit))
   if (length(genes.that.fit) > 0){
     for (gene.hit in genes.that.fit){
       # if (jmod %in% c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_BmalKO")){
@@ -150,7 +169,6 @@ for (jmotif in jmotifs){
       #   jprot.long <- NA
       # }
       print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == gene.hit), jtitle = gene.hit))
-      print(PlotActivitiesWithSE(subset(act.s.shift, gene == jmotif), jtitle = jmotif) + theme_bw())
       # print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
       # print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
       # print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, single.day = TRUE) + theme(strip.text = element_blank()))
@@ -160,6 +178,7 @@ for (jmotif in jmotifs){
     }
   }
 }
+dev.off()
 
 # 
 # # Old ---------------------------------------------------------------------
