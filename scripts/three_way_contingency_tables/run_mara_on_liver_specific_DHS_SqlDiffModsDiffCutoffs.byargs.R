@@ -89,7 +89,7 @@ jmeth <- "g=1001"
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.annotated.Robj", v=T)
 fits.long.filt <- subset(fits.long.filt, method == jmeth)
 
-liver.genes.all <- as.character(subset(fits.long.filt, model == jmod)$gene)
+liver.genes.all <- as.character(subset(fits.long.filt, model == jmod & weight >= jweight)$gene)
 
 if (all.genes){
   liver.genes <- liver.genes.all
