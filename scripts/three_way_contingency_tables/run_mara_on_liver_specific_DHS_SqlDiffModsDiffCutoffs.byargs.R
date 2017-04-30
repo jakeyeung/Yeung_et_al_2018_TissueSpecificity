@@ -76,6 +76,14 @@ jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 # suffix <- paste0(".weight.", jweight, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
+# determine Rhyth tiss, Flat tiss programmatically
+tiss <- c("Liver", "Kidney")
+rhyth.tiss <- strsplit(strsplit(jmod, ",")[[1]][[1]], split = "_")[[1]][[1]]
+if (!rhyth.tiss %in% tiss){
+  stop(paste(jmod, rhyth.tiss, "must be Liver or Kidney"))
+}
+flat.tiss <- tiss[!tiss %in% rhyth.tiss]
+print(paste("Tissues:", rhyth.tiss, flat.tiss))
 
 jmeth <- "g=1001"
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.annotated.Robj", v=T)
@@ -88,7 +96,7 @@ if (all.genes){
 } else {
   if (!exists("S.long")) load("Robjs/S.long.multigene.filt.50000.Robj", v=T)
   S.sub.livpeaks <- GetTissSpecPeaks(S.long = S.long, jgenes = liver.genes.all, distfilt = distfilt, 
-                                     jcutoff = jcutoff, jcutoff.low = jcutoff.low, rhyth.tiss = "Liver", flat.tiss = "Kidney")
+                                     jcutoff = jcutoff, jcutoff.low = jcutoff.low, rhyth.tiss = rhyth.tiss, flat.tiss = flat.tiss)
   liver.peaks <- unique(as.character(S.sub.livpeaks$peak))
   liver.genes <- unique(as.character(S.sub.livpeaks$gene))
   print(paste("N peaks:, ", length(liver.peaks)))
