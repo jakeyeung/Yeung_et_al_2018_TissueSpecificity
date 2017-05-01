@@ -110,9 +110,9 @@ if (all.genes){
 # Print out liver peaks for analysis later --------------------------------
 
 peaksgenes <- data.frame(peak = as.character(S.sub.livpeaks$peak),
-                         gene = as.character(S.sub.livpeaks$gene))
+                         gene = as.character(S.sub.livpeaks$gene), stringsAsFactors = FALSE)
 peaksdir <- "/home/yeung/data/tissue_specificity"
-save(peaksgenes, file = file.path(peaksdir, paste0("liver.spec.peaks", suffix)))
+save(peaksgenes, file = file.path(peaksdir, paste0("liver.spec.peaks", suffix, ".Robj")))
 
 # Get gene expression over time and genotypes -----------------------------
 
