@@ -11,7 +11,7 @@ jcutoff="2"
 # jmod="Liver_SV129"
 # jcutofflow="0"
 
-jweight=0
+jweight=0.8
 # for jmod in "Kidney_SV129" "Kidney_SV129;Kidney_BmalKO"; do
 for jmod in "Liver_SV129" "Liver_SV129,Liver_BmalKO"; do
 	for cl in 0 0.5 1.5 2; do

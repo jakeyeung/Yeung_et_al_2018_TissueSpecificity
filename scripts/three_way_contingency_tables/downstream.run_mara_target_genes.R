@@ -41,7 +41,8 @@ jtiss.nogeno <- strsplit(strsplit(jmod, ",")[[1]], "_")[[1]][[1]]
 suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr)
 E.subdir <- GetESubDir(do.center, jmodstr, jweight)
 
-maindir <- "/home/yeung/projects/tissue-specificity/Robjs/dhs_peaks"
+# maindir <- "/home/yeung/projects/tissue-specificity/Robjs/dhs_peaks"
+maindir <- "/home/yeung/data/tissue_specificity/tissuepeaksgenes"
 prefix <- "liver.spec.peaks"
 
 inf1 <- file.path(maindir, paste0(prefix, suffix, ".Robj"))
