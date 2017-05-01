@@ -184,14 +184,14 @@ make_circ_coord = function(t,x,ttot=24)
   h=rep(x,rep(4,length(x)))*rep(c(0,1,1,0),length(t))
   list(angles=a,heights=h)
 }
-circular_phase24H_histogram = function(x,color_hist = rgb(0.6,0,0.2), cex.axis=0.5, cex.lab=0.5, lwd=0.5, jtitle = "")
+circular_phase24H_histogram = function(x,color_hist = rgb(0.6,0,0.2), cex.axis=0.5, cex.lab=0.5, lwd=0.5, jtitle = "", cex.main = 1)
 {
   # from Jingkui
   library(plotrix)
   library(circular)
   
   #color_DHS = rgb(0.6,0,0.2)
-  par(lwd=lwd,cex.axis=cex.axis, cex.main=0.1,cex.lab=cex.lab)
+  par(lwd=lwd,cex.axis=cex.axis, cex.main=cex.main, cex.lab=cex.lab)
   #par(mfrow=c(1,1),mar=c(4.5,4.5,1,.5)+.1,las=1)
   br=0:24
   h=hist(x, br=br,plot=FALSE)
