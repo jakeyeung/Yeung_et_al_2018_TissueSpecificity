@@ -1,4 +1,4 @@
-GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE, dash_to_underscore = FALSE){
+GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE, dash_to_underscore = FALSE, shorten.motif.name = FALSE){
   # Vector containing gene names (may be comma separated), get gene list
   # 
   # Args:
@@ -32,6 +32,10 @@ GetTFs <- function(split.commas = TRUE, get.motifs = FALSE, get.mat.only = FALSE
   tf.mat["RORA.p2", ] <- paste("Rora", "Rorc", "Nr1d1", "Nr1d2", sep = ",")
   tf.mat["DBP.p2", ] <- paste("Dbp", "Nfil3", "Tef", "Hlf", sep = ",")
   
+  if (shorten.motif.name){
+    rownames(tf.mat) <- sapply(rownames(tf.mat), RemoveP2Name)
+  }
+  
   if (get.mat.only){
     return(tf.mat)
   }
@@ -57,6 +61,7 @@ GetGenesFromMotifs <- function(jmotif, tfs){
   genes <- strsplit(tfs[jmotif, ], ",")[[1]]
   if (all(is.na(genes))){
     # try grep
+    print(paste("No genes matched for", jmotif, "trying to grep"))
     jgrep <- strsplit(jmotif, "\\.")[[1]][[1]]
     genes <- strsplit(tfs[grepl(jgrep, rownames(tfs)), ], ",")[[1]]
   }
