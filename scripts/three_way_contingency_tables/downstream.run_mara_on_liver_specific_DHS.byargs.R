@@ -112,16 +112,10 @@ prot.long <- subset(prot.long, geno == "WT" & tissue == "Liver")
 
 # maraoutdir <- paste0("/home/yeung/data/tissue_specificity/mara_results/mara_outputs", suffix, "/center.TRUE", suffix, "/centered.TRUE")
 
-
 act.s <- LoadActivitiesLong(indir = maraoutdir, shorten.motif.name = TRUE, make.cnames = FALSE)
-act.s$sampname <- act.s$tissue
-act.s$tissue <- as.character(sapply(as.character(act.s$sampname), function(s) strsplit(s, "_")[[1]][[1]]))
-act.s$time <- as.numeric(sapply(as.character(act.s$sampname), function(s) strsplit(s, "_")[[1]][[2]]))
-act.s$geno <- as.character(sapply(as.character(act.s$sampname), function(s) strsplit(s, "_")[[1]][c(-1, -2)]))
-act.s$tissue <- paste(act.s$tissue, act.s$geno, sep = "_")
-act.s$tissue <- factor(act.s$tissue, levels = c("Liver_SV129", "Liver_BmalKO", "Kidney_SV129", "Kidney_BmalKO"))
-act.s$experiment <- "rnaseq"
-act.s$sampname <- NULL
+
+
+act.s <- MakeCnamesLivKidWTKO(act.s)
 
 fourier.scale <- 4
 zscore.min <- 1.25
