@@ -115,6 +115,22 @@ N.sum$mean <- sapply(N.sum$gene, function(g) means[[g]])
 top.n <- 50
 
 
+# Any mean exprs bias between kidney and liver? ---------------------------
+
+dat.mean <- dat.wtko %>%
+  group_by(tissue, geno, gene) %>%
+  summarise(exprs = mean(exprs)) %>%
+  mutate(tissgeno = paste(tissue, geno, sep = "_"))
+
+ggplot(subset(dat.mean, gene %in% liver.genes), aes(y = exprs, x = tissgeno)) + geom_boxplot()
+
+dat.delta <- subset(dat.mean, geno == "SV129") %>%
+  group_by(geno, gene) %>%
+  summarise(exprs.delta = exprs[1] - exprs[2])  # liver - kidney
+
+ggplot(subset(dat.delta, gene %in% liver.genes), aes(x = exprs.delta)) + geom_histogram(bins = 40) + theme_bw()
+
+
 # Load MARA results -------------------------------------------------------
 
 jmain <- "/home/yeung/data/tissue_specificity/mara_results"
