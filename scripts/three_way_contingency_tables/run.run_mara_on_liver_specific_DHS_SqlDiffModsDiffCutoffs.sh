@@ -14,7 +14,7 @@ jcutoff="2"
 jweight=0
 # for jmod in "Kidney_SV129" "Kidney_SV129;Kidney_BmalKO"; do
 for jmod in "Liver_SV129" "Liver_SV129,Liver_BmalKO"; do
-	for cl in 0; do
+	for cl in 0 0.5 1.5 2; do
 		echo $cl
 		Rscript $rscript $jweight $distfilt $jmod $jcutoff $cl
 		ret=$?; [[ $ret -ne 0  ]] && echo "ERROR: script failed" && exit 1

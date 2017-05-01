@@ -14,6 +14,7 @@ library(dplyr)
 
 source("scripts/functions/ListFunctions.R")
 source("scripts/functions/HardcodedConstants.R")
+source("scripts/functions/LiverKidneyFunctions.R")
 source("/home/yeung/projects/sleep_deprivation/scripts/functions/DatabaseFunctions.R")
 
 GetTissSpecPeaks <- function(S.long, jgenes, distfilt, jcutoff, jcutoff.low, rhyth.tiss, flat.tiss){
@@ -111,12 +112,14 @@ if (all.genes){
 
 peaksgenes <- data.frame(peak = as.character(S.sub.livpeaks$peak),
                          gene = as.character(S.sub.livpeaks$gene), stringsAsFactors = FALSE)
-peaksdir <- "/home/yeung/data/tissue_specificity"
+peaksdir <- "/home/yeung/data/tissue_specificity/tissuepeaksgenes"
+dir.create(peaksdir)
 save(peaksgenes, file = file.path(peaksdir, paste0("liver.spec.peaks", suffix, ".Robj")))
 
 # Get gene expression over time and genotypes -----------------------------
 
 load("Robjs/liver_kidney_atger_nestle/dat.long.liverkidneyWTKO.bugfixed.Robj", v=T); dat.wtko <- dat.long; rm(dat.long)
+dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 
 # use "all" genes because filtering comes at sitecounts
 dat.wtko <- subset(dat.wtko, gene %in% liver.genes.all)

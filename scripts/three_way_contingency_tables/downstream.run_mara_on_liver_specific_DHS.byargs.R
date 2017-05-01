@@ -12,6 +12,7 @@ library(reshape2)
 library(dplyr)
 
 
+source("scripts/functions/HardcodedConstants.R")
 source("scripts/functions/LiverKidneyFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
 source("scripts/functions/PlotActivitiesFunctions.R")
@@ -113,8 +114,6 @@ prot.long <- subset(prot.long, geno == "WT" & tissue == "Liver")
 # maraoutdir <- paste0("/home/yeung/data/tissue_specificity/mara_results/mara_outputs", suffix, "/center.TRUE", suffix, "/centered.TRUE")
 
 act.s <- LoadActivitiesLong(indir = maraoutdir, shorten.motif.name = TRUE, make.cnames = FALSE)
-
-
 act.s <- MakeCnamesLivKidWTKO(act.s)
 
 fourier.scale <- 4
