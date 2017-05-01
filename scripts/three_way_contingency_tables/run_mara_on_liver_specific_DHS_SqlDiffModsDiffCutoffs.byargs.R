@@ -13,6 +13,7 @@ library(reshape2)
 library(dplyr)
 
 source("scripts/functions/ListFunctions.R")
+source("scripts/functions/HardcodedConstants.R")
 source("/home/yeung/projects/sleep_deprivation/scripts/functions/DatabaseFunctions.R")
 
 GetTissSpecPeaks <- function(S.long, jgenes, distfilt, jcutoff, jcutoff.low, rhyth.tiss, flat.tiss){
@@ -74,7 +75,9 @@ jcutoff.low <- check.type(args[[5]], checkfn = as.numeric)
 jmodstr <- gsub(",", "-", jmod)
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 # suffix <- paste0(".weight.", jweight, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
-suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
+
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr)
+# suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
 # determine Rhyth tiss, Flat tiss programmatically
 tiss <- c("Liver", "Kidney")
@@ -103,6 +106,13 @@ if (all.genes){
   print(paste("N genes:, ", length(liver.genes)))
 }
 
+
+# Print out liver peaks for analysis later --------------------------------
+
+peaksgenes <- data.frame(peak = as.character(S.sub.livpeaks$peak),
+                         gene = as.character(S.sub.livpeaks$gene))
+peaksdir <- "/home/yeung/data/tissue_specificity"
+save(peaksgenes, file = file.path(peaksdir, paste0("liver.spec.peaks", suffix)))
 
 # Get gene expression over time and genotypes -----------------------------
 
@@ -173,7 +183,8 @@ if (!promoters.only){
 
 
 # write E
-E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr)
+# E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr, ".weightcutoff.", jweight)
+E.subdir <- GetESubDir(do.center, jmodstr, jweight)
 E.dir <- file.path("/home/yeung/data/tissue_specificity/gene_exprs_for_mara", E.subdir)
 dir.create(E.dir, recursive = TRUE, showWarnings = FALSE)
 

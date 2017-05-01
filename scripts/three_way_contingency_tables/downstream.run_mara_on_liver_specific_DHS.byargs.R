@@ -73,9 +73,12 @@ jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 # suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
 # suffix <- paste0(".weight.", jweight, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
-suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
+# suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr)
 
-E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr)
+# E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr)
+# E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr, ".weightcutoff.", jweight)
+E.subdir <- GetESubDir(do.center, jmodstr, jweight)
 
 
 jmain <- "/home/yeung/data/tissue_specificity/mara_results"
