@@ -13,8 +13,8 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/three_way_contingency
 distfilt=40000
 jcutoff="1.75"
 jcutoff="2"
-cl="0.5"
-jweight=0
+cl="1"
+jweight=0.78
 inclproms="TRUE"
 
 # jmod="Liver_SV129"

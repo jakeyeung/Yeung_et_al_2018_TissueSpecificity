@@ -177,7 +177,7 @@ print(PlotActivitiesWithSE(subset(act.s.shift, gene == jmotif), jtitle = jmotif)
 
 jtiss <- strsplit(jmod, ",")[[1]][[1]]
 print(jtiss)
-liv.rhyth <- as.character(subset(fits.bytiss, tissue == jtiss & amp > 0.1 & pval < 1e-2)$gene)
+liv.rhyth <- as.character(subset(fits.bytiss, tissue == jtiss & amp > 0.2 & pval < 0.05)$gene)
 if (length(liv.rhyth) == 0){
   warning("No rhythmic genes!")
 }
