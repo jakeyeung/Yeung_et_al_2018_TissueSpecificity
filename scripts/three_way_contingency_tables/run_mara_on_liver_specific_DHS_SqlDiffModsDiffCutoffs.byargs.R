@@ -51,7 +51,7 @@ check.type <- function(arg, checkfn){
 # # Hard coded constants
 # jweight <- 0  # take all liver DHSs to all genes in Liver_SV129
 # distfilt <- 40000
-# promoters.only <- FALSE
+# include.promoters <- FALSE
 # all.genes <- FALSE
 # use.sql <- TRUE
 # jmod <- "Liver_SV129"
@@ -65,19 +65,19 @@ args <- commandArgs(trailingOnly = TRUE)
 print(args)
 jweight <- check.type(args[[1]], checkfn = as.numeric)
 distfilt <- check.type(args[[2]], checkfn = as.numeric)
-# promoters.only <- check.type(args[[3]], checkfn = as.logical)
-promoters.only <- FALSE
 all.genes <- FALSE
 use.sql <- TRUE
 jmod <- check.type(args[[3]], checkfn = as.character)
 jcutoff <- check.type(args[[4]], checkfn = as.numeric)
 jcutoff.low <- check.type(args[[5]], checkfn = as.numeric)
+include.promoters <- check.type(args[[6]], checkfn = as.logical)
+# include.promoters <- FALSE
 
 jmodstr <- gsub(",", "-", jmod)
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
-# suffix <- paste0(".weight.", jweight, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
+# suffix <- paste0(".weight.", jweight, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
-suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr)
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters)
 # suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
 # determine Rhyth tiss, Flat tiss programmatically
@@ -136,50 +136,65 @@ if (do.center){
 
 # Get sitecounts ----------------------------------------------------------
 
-if (!promoters.only){
-  if (!use.sql){
-    load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.bugfixed.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
-    
-    # N.long.filt <- subset(N.long.filt, gene %in% liver.genes & dist <= distfilt)
-    N.long.filt <- subset(N.long.filt, gene %in% liver.genes & peak %in% liver.peaks & dist <= distfilt)
-    
-    print(length(unique(as.character(N.long.filt$gene))))
-    print(length(unique(as.character(N.long.filt$peak))))
-  } else {
-    inf <- "/home/shared/sql_dbs/closestbed_multiple_genes.genomewide.merged.motifindexed.sqlite3"
-    motevo.tbl <- LoadDatabase(inf)
-    
-    print("Getting genes from database")
-    start <- Sys.time()
-    N.sub.lst <- expandingList()
-    for (jgene in liver.genes){
-      N.long.filt.query <- filter(motevo.tbl, gene == jgene)  # peaks are not indexed, so dont take them
-      N.sub.tmp <- collect(N.long.filt.query, n = Inf)
-      N.sub.lst$add(N.sub.tmp)
-    }
-    N.long.filt <- N.sub.lst$as.list()
-    N.long.filt <- bind_rows(N.long.filt)
-    
-    rm(N.sub.tmp, N.sub.lst)  # worth it? 
-    
-    # filter peaks after querying database
-    N.long.filt <- subset(N.long.filt, peak %in% liver.peaks & dist <= distfilt)
-    print(paste("Collected", length(unique(as.character(N.long.filt$gene))), "genes and ", length(unique(as.character(N.long.filt$peak))), "peaks"))
-    print(str(N.long.filt))
-    print(Sys.time() - start)
+if (!use.sql){
+  load("Robjs/liver_kidney_atger_nestle/N.long.all_genes.3wtmodules.bugfixed.Robj", v=T); N.long.filt <- N.long.livertwflat; rm(N.long.livertwflat)
+  
+  # N.long.filt <- subset(N.long.filt, gene %in% liver.genes & dist <= distfilt)
+  N.long.filt <- subset(N.long.filt, gene %in% liver.genes & peak %in% liver.peaks & dist <= distfilt)
+  
+  print(length(unique(as.character(N.long.filt$gene))))
+  print(length(unique(as.character(N.long.filt$peak))))
+} else {
+  inf <- "/home/shared/sql_dbs/closestbed_multiple_genes.genomewide.merged.motifindexed.sqlite3"
+  motevo.tbl <- LoadDatabase(inf)
+  
+  print("Getting genes from database")
+  start <- Sys.time()
+  N.sub.lst <- expandingList()
+  for (jgene in liver.genes){
+    N.long.filt.query <- filter(motevo.tbl, gene == jgene)  # peaks are not indexed, so dont take them
+    N.sub.tmp <- collect(N.long.filt.query, n = Inf)
+    N.sub.lst$add(N.sub.tmp)
   }
+  N.long.filt <- N.sub.lst$as.list()
+  N.long.filt <- bind_rows(N.long.filt)
+  
+  rm(N.sub.tmp, N.sub.lst)  # worth it? 
+  
+  # filter peaks after querying database
+  N.long.filt <- subset(N.long.filt, peak %in% liver.peaks & dist <= distfilt)
+  print(paste("Collected", length(unique(as.character(N.long.filt$gene))), "genes and ", length(unique(as.character(N.long.filt$peak))), "peaks"))
+  print(str(N.long.filt))
+  print(Sys.time() - start)
+  N.long.filt$motif <- make.names(N.long.filt$motif)
+}
+
+if (include.promoters){
+  
+  # add promoter counts
+  Npath <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids"
+  N <- read.table(Npath, header=TRUE)
+  N.prom.long <- melt(N, id.vars = "Gene.ID", variable.name = "motif", value.name = "sitecount")
+  N.prom.long <- dplyr::rename(N.prom.long, "gene" = Gene.ID)
+  N.prom.long$chromo <- NA
+  N.prom.long$start <- NA
+  N.prom.long$end <- NA
+  N.prom.long$dist <- 0
+  N.prom.long$peak <- "promoter"
+ 
+  N.sum <- bind_rows(N.prom.long, N.long.filt) %>%
+    group_by(gene, motif) %>%
+    summarise(sitecount = sum(sitecount))
+  
+} else {
   
   N.sum <- N.long.filt %>%
     group_by(gene, motif) %>%
     summarise(sitecount = sum(sitecount))
   
-  N.mat <- dcast(N.sum, formula = "gene ~ motif", value.var = "sitecount", fill = 0)
-  N.mat <- dplyr::rename(N.mat, "Gene.ID" = gene)
-} else {
-  Npath <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids"
-  N <- read.table(Npath, header=TRUE)
-  N.mat <- subset(N, Gene.ID %in% liver.genes)
 }
+N.mat <- dcast(N.sum, formula = "gene ~ motif", value.var = "sitecount", fill = 0)
+N.mat <- dplyr::rename(N.mat, "Gene.ID" = gene)
 
 
 # Write E and N to output -------------------------------------------------

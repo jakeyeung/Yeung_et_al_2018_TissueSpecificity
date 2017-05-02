@@ -43,7 +43,7 @@ check.type <- function(arg, checkfn){
 # jweight <- 0.8  # take all liver DHSs to all genes in Liver_SV129
 # jweight <- 0  # take all liver DHSs to all genes in Liver_SV129
 # do.center <- TRUE
-# promoters.only <- FALSE
+# include.promoters <- FALSE
 # all.genes <- FALSE
 # use.sql <- TRUE
 # jmod <- "Liver_SV129,Liver_BmalKO"
@@ -58,24 +58,24 @@ args <- commandArgs(trailingOnly = TRUE)
 print(args)
 jweight <- check.type(args[[1]], checkfn = as.numeric)
 distfilt <- check.type(args[[2]], checkfn = as.numeric)
-# promoters.only <- check.type(args[[3]], checkfn = as.logical)
-promoters.only <- FALSE
 all.genes <- FALSE
 use.sql <- TRUE
 jmod <- check.type(args[[3]], checkfn = as.character)
 jcutoff <- check.type(args[[4]], checkfn = as.numeric)
 jcutoff.low <- check.type(args[[5]], checkfn = as.numeric)
+include.promoters <- check.type(args[[6]], checkfn = as.logical)
+# include.promoters <- TRUE
 
 jmodstr <- gsub(",", "-", jmod)
 jtiss.nogeno <- strsplit(strsplit(jmod, ",")[[1]], "_")[[1]][[1]]
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
-# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql)
-# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmod)
-# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
+# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql)
+# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmod)
+# suffix <- paste0(".weight.", jweight, ".flatampmax.", flatampmax, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
-# suffix <- paste0(".weight.", jweight, ".promoters.", promoters.only, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
+# suffix <- paste0(".weight.", jweight, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 # suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
-suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr)
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters)
 
 # E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr)
 # E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr, ".weightcutoff.", jweight)
