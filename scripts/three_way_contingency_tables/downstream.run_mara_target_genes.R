@@ -29,21 +29,27 @@ do.center <- TRUE
 distfilt <- 40000
 jweight <- 0
 use.sql <- TRUE
-jmod <- "Liver_SV129"
-jcutoff <- 2
+# jmod <- "LiverSV129"
+jmod <- "Liver_SV129,Liver_BmalKO"
+jcutoff <- 3
 jcutoff.low <- 0
+incl.promoters <- TRUE
 
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 jmodstr <- gsub(",", "-", jmod)
 jtissgeno <- strsplit(jmod, ",")[[1]][[1]]
 jtiss.nogeno <- strsplit(strsplit(jmod, ",")[[1]], "_")[[1]][[1]]
 
-suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr)
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, incl.promoters)
 E.subdir <- GetESubDir(do.center, jmodstr, jweight)
 
 # maindir <- "/home/yeung/projects/tissue-specificity/Robjs/dhs_peaks"
 maindir <- "/home/yeung/data/tissue_specificity/tissuepeaksgenes"
 prefix <- "liver.spec.peaks"
+
+jmotif <- "AR"
+jmotif <- "FOXO1.3.4"
+jmotif <- "DBP"
 
 inf1 <- file.path(maindir, paste0(prefix, suffix, ".Robj"))
 
@@ -193,7 +199,6 @@ plotmain <- "/home/yeung/projects/tissue-specificity/plots/mara_liver_kidney_mod
 plotf <- file.path(plotmain, paste0("target_gene_analysis", suffix, ".", jmotif, ".targetgenes.pdf"))
 pdf(plotf)
 
-jmotif <- "AR"
 jzscore <- motif.zscore[[jmotif]]
 jmotif.title <- paste(jmotif, "Zscore:", jzscore, sep = " ")
 print(PlotActivitiesWithSE(subset(act.s.shift, gene == jmotif), jtitle = jmotif.title) + theme_bw() + theme(aspect.ratio = 1))
@@ -233,40 +238,40 @@ for (g in target.genes){
 dev.off()
 
 
-plotmain <- "/home/yeung/projects/tissue-specificity/plots/mara_liver_kidney_modules_on_liverDHS"
-plotf <- file.path(plotmain, paste0("target_gene_analysis", suffix, ".pdf"))
-pdf(plotf, useDingbats = TRUE)
-
-print(eigens.act$u)
-print(eigens.act$v)
-
-for (jmotif in sig.motifs){
-  jzscore <- motif.zscore[[jmotif]]
-  jmotif.title <- paste(jmotif, "Zscore:", jzscore, sep = " ")
-  print(PlotActivitiesWithSE(subset(act.s.shift, gene == jmotif), jtitle = jmotif.title) + theme_bw() + theme(aspect.ratio = 1))
-  
-  genes.all <- unlist(sapply(jmotif, GetGenesFromMotifs, tfs))
-  genes.that.fit <- genes.all  # take all
-  
-  for (gene.hit in genes.that.fit){
-    if (jmod %in% c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_BmalKO")){
-      gene.prot <- gene.hit
-      jprot.long <- prot.long
-    } else {
-      gene.prot <- ""
-      jprot.long <- NA
-    }
-    print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == gene.hit), jtitle = gene.hit))
-    print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss.nogeno, dotsize = 3, themesize = 22, single.day = TRUE) + theme(strip.text = element_blank()))
-  }
-  Nsub <- subset(N.sum, motif == jmotif) %>% 
-    arrange(desc(sitecount))
-  print(ggplot(Nsub, aes(x = log2(sitecount))) + geom_histogram(bins = 20) + ggtitle(paste("Sitecounts of", jmotif.title)) + theme_bw())
-  target.genes <- Nsub$gene[1:top.n]
-  print(ggplot(subset(Nsub, gene %in% target.genes), aes(x = mean)) + geom_histogram(bins = 25) + ggtitle(paste("Means Motif:", jmotif.title)) + theme_bw())
-  circular_phase24H_histogram(subset(Nsub, gene %in% target.genes)$phase, jtitle = paste("Phase Motif", jmotif.title), cex.axis = jcex, cex.lab = jcex, color_hist = "red")
-}
-dev.off()
+# plotmain <- "/home/yeung/projects/tissue-specificity/plots/mara_liver_kidney_modules_on_liverDHS"
+# plotf <- file.path(plotmain, paste0("target_gene_analysis", suffix, ".pdf"))
+# pdf(plotf, useDingbats = TRUE)
+# 
+# print(eigens.act$u)
+# print(eigens.act$v)
+# 
+# for (jmotif in sig.motifs){
+#   jzscore <- motif.zscore[[jmotif]]
+#   jmotif.title <- paste(jmotif, "Zscore:", jzscore, sep = " ")
+#   print(PlotActivitiesWithSE(subset(act.s.shift, gene == jmotif), jtitle = jmotif.title) + theme_bw() + theme(aspect.ratio = 1))
+#   
+#   genes.all <- unlist(sapply(jmotif, GetGenesFromMotifs, tfs))
+#   genes.that.fit <- genes.all  # take all
+#   
+#   for (gene.hit in genes.that.fit){
+#     if (jmod %in% c("Liver_SV129,Liver_BmalKO", "Liver_SV129", "Liver_BmalKO")){
+#       gene.prot <- gene.hit
+#       jprot.long <- prot.long
+#     } else {
+#       gene.prot <- ""
+#       jprot.long <- NA
+#     }
+#     print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == gene.hit), jtitle = gene.hit))
+#     print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss.nogeno, dotsize = 3, themesize = 22, single.day = TRUE) + theme(strip.text = element_blank()))
+#   }
+#   Nsub <- subset(N.sum, motif == jmotif) %>% 
+#     arrange(desc(sitecount))
+#   print(ggplot(Nsub, aes(x = log2(sitecount))) + geom_histogram(bins = 20) + ggtitle(paste("Sitecounts of", jmotif.title)) + theme_bw())
+#   target.genes <- Nsub$gene[1:top.n]
+#   print(ggplot(subset(Nsub, gene %in% target.genes), aes(x = mean)) + geom_histogram(bins = 25) + ggtitle(paste("Means Motif:", jmotif.title)) + theme_bw())
+#   circular_phase24H_histogram(subset(Nsub, gene %in% target.genes)$phase, jtitle = paste("Phase Motif", jmotif.title), cex.axis = jcex, cex.lab = jcex, color_hist = "red")
+# }
+# dev.off()
 
 
 # 
