@@ -4,6 +4,8 @@
 
 rm(list=ls())
 
+setwd("~/projects/tissue-specificity")
+
 library(dplyr)
 library(ggplot2)
 library("Rgraphviz")
@@ -23,6 +25,7 @@ source("scripts/functions/HashFunctions.R")
 source("scripts/functions/PhaseColorFunctions.R")
 
 manual.terms <- TRUE
+manual.terms <- FALSE 
 
 # Load rhythmic GO terms --------------------------------------------------
 
@@ -31,6 +34,8 @@ jmod <- "Liver_SV129"
 jmod <- "Kidney_SV129"
 indir <- "/home/yeung/projects/tissue-specificity/Robjs/GO_analysis"
 jmod <- "Liver_SV129,Liver_BmalKO"
+jmod <- "Kidney_SV129,Kidney_BmalKO"
+
 fname <- paste0("model", jmod, ".all.Robj")
 inf <- file.path(file.path(indir, fname))
 

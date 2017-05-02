@@ -55,7 +55,7 @@ fits.long.filt$n.rhyth <- sapply(fits.long.filt$model, GetNrhythFromModel)
 # Remove kidney outliers (optional)
 if (remove.kidney.outliers){
   # Kidney_SV129 genes contain some weird outliers, remove them
-  outliers <- c("Cox8b", "Ucp1", "Cidea", "Flg", "Nr4a2")
+  outliers <- c("Cox8b", "Ucp1", "Cidea", "Flg", "Nr4a2", "Gm14327")
   fits.long.filt <- subset(fits.long.filt, !gene %in% outliers)
   dat.wtko <- subset(dat.wtko, !gene %in% outliers)
 }
@@ -114,12 +114,18 @@ jtiss.lst <- list(list("a"=c("Liver_SV129,Liver_BmalKO"),
                        "d"=c("Akr1b7", "Gpam",
                              "Dhcr24", "Mvk",
                              "Ar", "Egfr", "Gstp1", "Traf6",
-                             "Onecut1", "Uso1", "Rsg1", "Sec24d", "Gm9493", "Iars")))
+                             "Onecut1", "Uso1", "Rsg1", "Sec24d", "Gm9493", "Iars")),
+                  list("a"=c("Kidney_SV129,Kidney_BmalKO"),
+                       "b"=c("GO:0030178", "GO:0055080", "GO:0015804"),
+                       "c"=2.5,
+                       "d"=c("Slc6a19", "Slc16a14", "Glul", "Sgk1", "Kcnt1",
+                             "Hpd", "Kdm4b", "Tmem252", "Tgfbr3l", "Bcat1", "Zfp93",
+                             "Dleu7", "Nccrp1", "Ier3", "Nccrp1", "Uchl1", "Akr1c13", "Gm20594")))
 
 jtiss.onto <- jtiss.lst[[3]]
 
 plotdir <- "/home/yeung/projects/tissue-specificity/plots/liver_kidney_modules_with_GO"
-pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".keepGOterms.neginsulin.LiverWTAddGenes.pdf")))
+pdf(file.path(plotdir, paste0("liv_kid_with_GO.phasewindow.rm_outliers.fixkidney.", remove.kidney.outliers, ".keepGOterms.neginsulin.LiverWTAddGenes.AddKidWTKO.pdf")))
   mclapply(jtiss.lst, function(jtiss.onto){
     # jtiss.onto <- jtiss.lst[[1]]  # c(jmodels, ontology), remove last element to get jmodels, last element is ontology
     source("scripts/functions/AnalyzeGeneEnrichment.R")
