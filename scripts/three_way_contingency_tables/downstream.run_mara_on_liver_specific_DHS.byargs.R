@@ -64,6 +64,12 @@ jmod <- check.type(args[[3]], checkfn = as.character)
 jcutoff <- check.type(args[[4]], checkfn = as.numeric)
 jcutoff.low <- check.type(args[[5]], checkfn = as.numeric)
 include.promoters <- check.type(args[[6]], checkfn = as.logical)
+if (include.promoters){
+  distfilt.min <- 1000  # if using include.promoters, need to exclude peaks that are too close to promoter of genes.
+} else {
+  distfilt.min <- 0
+}
+
 # include.promoters <- TRUE
 
 jmodstr <- gsub(",", "-", jmod)
@@ -75,7 +81,7 @@ jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 
 # suffix <- paste0(".weight.", jweight, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 # suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
-suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters)
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters, mindist = distfilt.min)
 
 # E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr)
 # E.subdir <- paste0("centered.", do.center, ".mod.", jmodstr, ".weightcutoff.", jweight)

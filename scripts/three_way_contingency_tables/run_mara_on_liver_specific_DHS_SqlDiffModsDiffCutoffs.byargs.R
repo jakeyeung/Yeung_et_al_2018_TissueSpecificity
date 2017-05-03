@@ -71,13 +71,18 @@ jmod <- check.type(args[[3]], checkfn = as.character)
 jcutoff <- check.type(args[[4]], checkfn = as.numeric)
 jcutoff.low <- check.type(args[[5]], checkfn = as.numeric)
 include.promoters <- check.type(args[[6]], checkfn = as.logical)
+if (include.promoters){
+  distfilt.min <- 1000  # if using include.promoters, need to exclude peaks that are too close to promoter of genes.
+} else {
+  distfilt.min <- 0
+}
 # include.promoters <- FALSE
 
 jmodstr <- gsub(",", "-", jmod)
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 # suffix <- paste0(".weight.", jweight, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
-suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters)
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters, mindist = distfilt.min)
 # suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
 # determine Rhyth tiss, Flat tiss programmatically
@@ -170,7 +175,6 @@ if (!use.sql){
 }
 
 if (include.promoters){
-  
   # add promoter counts
   Npath <- "/home/yeung/projects/tissue-specificity/data/sitecounts/motevo/sitecount_matrix_geneids"
   N <- read.table(Npath, header=TRUE)
@@ -182,7 +186,7 @@ if (include.promoters){
   N.prom.long$dist <- 0
   N.prom.long$peak <- "promoter"
  
-  N.sum <- bind_rows(N.prom.long, N.long.filt) %>%
+  N.sum <- bind_rows(N.prom.long, subset(N.long.filt, dist >= distfilt.min)) %>%
     group_by(gene, motif) %>%
     summarise(sitecount = sum(sitecount))
   

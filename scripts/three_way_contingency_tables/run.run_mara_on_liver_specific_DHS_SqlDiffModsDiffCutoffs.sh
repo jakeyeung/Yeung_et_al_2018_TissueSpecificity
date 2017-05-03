@@ -11,10 +11,10 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/three_way_contingency
 [[ ! -e $runscript ]] && echo "$runscript not found, exiting" && exit 1
 
 distfilt=40000
-jcutoff="1.75"
 jcutoff="2"
-cl="1"
-jweight=0.78
+jcutoff="1.8"
+cl="0"
+jweight=0
 inclproms="TRUE"
 
 # jmod="Liver_SV129"
