@@ -27,8 +27,9 @@ jmod=$3
 jcutoff=$4
 jcutofflow=$5
 inclproms=$6
+dopairs=$7
 
-Rscript $rscript $jweight $distfilt $jmod $jcutoff $jcutofflow $inclproms
+Rscript $rscript $jweight $distfilt $jmod $jcutoff $jcutofflow $inclproms $dopairs
 ret=$?; [[ $ret -ne 0  ]] && echo "ERROR: script failed" && exit 1
-Rscript $sumscript $jweight $distfilt $jmod $jcutoff $jcutofflow $inclproms
+Rscript $sumscript $jweight $distfilt $jmod $jcutoff $jcutofflow $inclproms $dopairs
 ret=$?; [[ $ret -ne 0  ]] && echo "ERROR: script failed" && exit 1

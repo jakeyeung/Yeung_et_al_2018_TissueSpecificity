@@ -49,42 +49,41 @@ check.type <- function(arg, checkfn){
 # Load liver DHS ----------------------------------------------------------
 
 # # Hard coded constants
-# jweight <- 0  # take all liver DHSs to all genes in Liver_SV129
-# distfilt <- 40000
-# include.promoters <- FALSE
-# all.genes <- FALSE
-# use.sql <- TRUE
-# jmod <- "Liver_SV129"
-# # jmod <- "Liver_SV129,Liver_BmalKO"
-# jmodstr <- gsub(",", "-", jmod)
-# jcutoff <- 3
-# jcutoff.low <- 0
-# do.pairs <- TRUE
-
-# Take from command line
-args <- commandArgs(trailingOnly = TRUE)
-print(args)
-jweight <- check.type(args[[1]], checkfn = as.numeric)
-distfilt <- check.type(args[[2]], checkfn = as.numeric)
+jweight <- 0  # take all liver DHSs to all genes in Liver_SV129
+distfilt <- 40000
+include.promoters <- FALSE
 all.genes <- FALSE
 use.sql <- TRUE
-jmod <- check.type(args[[3]], checkfn = as.character)
-jcutoff <- check.type(args[[4]], checkfn = as.numeric)
-jcutoff.low <- check.type(args[[5]], checkfn = as.numeric)
-include.promoters <- check.type(args[[6]], checkfn = as.logical)
-do.pairs <- check.type(args[[7]], checkfn = as.logical)
-if (include.promoters){
-  distfilt.min <- 1000  # if using include.promoters, need to exclude peaks that are too close to promoter of genes.
-} else {
-  distfilt.min <- 0
-}
-# include.promoters <- FALSE
+jmod <- "Liver_SV129"
+# jmod <- "Liver_SV129,Liver_BmalKO"
+jmodstr <- gsub(",", "-", jmod)
+jcutoff <- 3
+jcutoff.low <- 0
+do.pairs <- TRUE
+
+# # Take from command line
+# args <- commandArgs(trailingOnly = TRUE)
+# print(args)
+# jweight <- check.type(args[[1]], checkfn = as.numeric)
+# distfilt <- check.type(args[[2]], checkfn = as.numeric)
+# all.genes <- FALSE
+# use.sql <- TRUE
+# jmod <- check.type(args[[3]], checkfn = as.character)
+# jcutoff <- check.type(args[[4]], checkfn = as.numeric)
+# jcutoff.low <- check.type(args[[5]], checkfn = as.numeric)
+# include.promoters <- check.type(args[[6]], checkfn = as.logical)
+# if (include.promoters){
+#   distfilt.min <- 1000  # if using include.promoters, need to exclude peaks that are too close to promoter of genes.
+# } else {
+#   distfilt.min <- 0
+# }
+# # include.promoters <- FALSE
 
 jmodstr <- gsub(",", "-", jmod)
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 # suffix <- paste0(".weight.", jweight, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
-suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters, mindist = distfilt.min, do.pairs = do.pairs)
+suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = include.promoters, mindist = distfilt.min)
 # suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
 # determine Rhyth tiss, Flat tiss programmatically
@@ -176,28 +175,26 @@ if (!use.sql){
   N.long.filt$motif <- make.names(N.long.filt$motif)
   
   if (do.pairs){
-    source("scripts/functions/LdaFunctions.R")
+    
     rhyth.motifs <- c("RORA.p2", "NFIL3.p2", "AR.p2", "bHLH_family.p2", "HSF1.2.p2", "SRF.p3", "NR3C1.p2")
     tissue.motifs <- c("ONECUT1.2.p2", "CUX2.p2", "FOXA2.p3")
-    jsub <- subset(N.long.filt, motif %in% c(rhyth.motifs, tissue.motifs))
-    jmat <- dcast(jsub, formula = "gene + dist + peak ~ motif", fill = 0, value.var = "sitecount", fun.aggregate = sum)
-    jmat.meta <- subset(jmat, select = c(gene, dist, peak))
-    jmat.exprs <- subset(jmat, select = -c(gene, dist, peak))
-    jmat.rhyth <- jmat[, rhyth.motifs]
-    jmat.tiss <- jmat[, tissue.motifs]
-    # do an "OR" by summing
-    # jmat.tiss <- data.frame(apply(jmat.tiss, 1, sum)); colnames(jmat.tiss) <- "LiverMotif.p2"
-    jmat.cross <- CrossProductTwoSets(jmat.rhyth, jmat.tiss)
-    # filter out 0s
-    rows.keep <- apply(jmat.cross, 1, max) > 0
-    jmat.crossmeta <- cbind(jmat.meta[rows.keep, ], jmat.cross[rows.keep, ])
-    jmat.crossmeta$chromo <- "cross"
-    jmat.crossmeta$start <- "cross"
-    jmat.crossmeta$end <- "cross"
-    jmat.crossmeta[jmat.crossmeta == 0] <- NA
-    jmat.long <- melt(jmat.crossmeta, id.vars = c("chromo", "start", "end", "gene", "dist", "peak"), variable.name = "motif", value.name = "sitecount", na.rm = TRUE)
-    N.long.filt <- rbind(N.long.filt, jmat.long)
-    # N.long.filt <- rbind(subset(N.long.filt, !motif %in% c(rhyth.motifs, tissue.motifs)), jmat.long)
+    
+    jsub.rhyth <- subset(N.long.filt, motif %in% rhyth.motifs)
+    jmat.rhyth <- dcast(jsub.rhyth, formula = "gene + peak + dist ~ motif", value.var = "sitecount", fill = 0, fun.aggregate = sum)
+    
+    jsub.tiss <- subset(N.long.filt, motif %in% tissue.motifs)
+    jmat.tiss <- dcast(jsub.tiss, formula = "gene + peak + dist ~ motif", value.var = "sitecount", fill = 0, fun.aggregate = sum)
+    
+    jmat.cross <- CrossProductTwoSets(subset(jmat.rhyth, select = -c(gene, peak, dist)), subset(jmat.tiss, select = -c(gene, peak, dist)))
+    jmat.cross <- cbind(subset(jmat.rhyth, select = c(gene, peak, dist)), jmat.cross)
+    
+    N.long.cross <- melt(jmat.cross, id.vars = c("gene", "peak", "dist"), variable.name = "motif", value.name = "sitecount")
+    N.long.cross$chromo <- NA
+    N.long.cross$start <- NA
+    N.long.cross$end <- NA
+    
+    N.long.filt <- bind_rows(N.long.filt, N.long.cross)
+    
   }
 }
 
@@ -227,20 +224,18 @@ if (include.promoters){
 N.mat <- dcast(N.sum, formula = "gene ~ motif", value.var = "sitecount", fill = 0)
 N.mat <- dplyr::rename(N.mat, "Gene.ID" = gene)
 
+
 # Add pairs to N  ---------------------------------------------------------
 
-# if (do.pairs){
-#   source("/home/yeung/projects/tissue-specificity/scripts/functions/LdaFunctions.R")
-#   rhyth.motifs <- c("RORA.p2", "NFIL3.p2", "AR.p2", "bHLH_family.p2", "HSF1.2.p2", "SRF.p3", "NR3C1.p2")
-#   tissue.motifs <- c("ONECUT1.2.p2", "CUX2.p2", "FOXA2.p3")
-#   N.rhyth <- N.mat[, rhyth.motifs]
-#   N.tiss <- N.mat[, tissue.motifs]
-#   # do OR 
-#   N.tiss <- data.frame(apply(N.tiss, 1, sum)); colnames(N.tiss) <- "LiverMotif.p2"
-#   
-#   N.rhythtiss <- CrossProductTwoSets(N.rhyth, N.tiss)
-#   N.mat <- cbind(N.mat, N.rhythtiss)
-# }
+if (do.pairs){
+  source("/home/yeung/projects/tissue-specificity/scripts/functions/LdaFunctions.R")
+  rhyth.motifs <- c("RORA.p2", "NFIL3.p2", "AR.p2", "bHLH_family.p2", "HSF1.2.p2", "SRF.p3", "NR3C1.p2")
+  tissue.motifs <- c("ONECUT1.2.p2", "CUX2.p2", "FOXA2.p3")
+  N.rhyth <- N.mat[, rhyth.motifs]
+  N.tiss <- N.mat[, tissue.motifs]
+  N.rhythtiss <- CrossProductTwoSets(N.rhyth, N.tiss)
+  N.mat <- cbind(N.mat, N.rhythtiss)
+}
 
 
 # Write E and N to output -------------------------------------------------

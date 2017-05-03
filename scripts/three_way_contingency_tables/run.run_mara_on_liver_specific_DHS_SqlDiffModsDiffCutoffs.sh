@@ -12,16 +12,17 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/three_way_contingency
 
 distfilt=40000
 jcutoff="2"
-jcutoff="1.8"
+jcutoff="3"
 cl="0"
 jweight=0
-inclproms="TRUE"
+inclproms="FALSE"
+dopairs="FALSE"
 
 # jmod="Liver_SV129"
 # jcutofflow="0"
 
 for jmod in "Liver_SV129" "Liver_SV129,Liver_BmalKO" "Kidney_SV129" "Kidney_SV129,Kidney_BmalKO"; do
-	bash $runscript $jweight $distfilt $jmod $jcutoff $cl $inclproms&
+	bash $runscript $jweight $distfilt $jmod $jcutoff $cl $inclproms $dopairs&
 	# echo $cl
 	# Rscript $rscript $jweight $distfilt $jmod $jcutoff $cl $inclproms
 	# ret=$?; [[ $ret -ne 0  ]] && echo "ERROR: script failed" && exit 1
