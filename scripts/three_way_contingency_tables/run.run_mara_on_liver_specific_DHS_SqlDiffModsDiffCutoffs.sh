@@ -12,8 +12,8 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/three_way_contingency
 
 distfilt=40000
 jcutoff="2"
-jcutoff="3"
-cl="0"
+jcutoff="1.5"
+cl="0.5"
 jweight=0
 inclproms="FALSE"
 dopairs="FALSE"

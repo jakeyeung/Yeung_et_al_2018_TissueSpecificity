@@ -180,10 +180,10 @@ if (!use.sql){
     tissue.motifs <- c("ONECUT1.2.p2", "CUX2.p2", "FOXA2.p3")
     
     jsub.rhyth <- subset(N.long.filt, motif %in% rhyth.motifs)
-    jmat.rhyth <- dcast(jsub.rhyth, formula = "gene + peak + dist ~ motif", value.var = "sitecount", fill = 0, fun.aggregate = sum)
+    jmat.rhyth <- dcast(jsub.rhyth, formula = "gene + peak + dist ~ motif", value.var = "sitecount", fill = 0, fun.aggregate = sum, drop = FALSE)
     
     jsub.tiss <- subset(N.long.filt, motif %in% tissue.motifs)
-    jmat.tiss <- dcast(jsub.tiss, formula = "gene + peak + dist ~ motif", value.var = "sitecount", fill = 0, fun.aggregate = sum)
+    jmat.tiss <- dcast(jsub.tiss, formula = "gene + peak + dist ~ motif", value.var = "sitecount", fill = 0, fun.aggregate = sum, drop = FALSE)
     
     jmat.cross <- CrossProductTwoSets(subset(jmat.rhyth, select = -c(gene, peak, dist)), subset(jmat.tiss, select = -c(gene, peak, dist)))
     jmat.cross <- cbind(subset(jmat.rhyth, select = c(gene, peak, dist)), jmat.cross)
