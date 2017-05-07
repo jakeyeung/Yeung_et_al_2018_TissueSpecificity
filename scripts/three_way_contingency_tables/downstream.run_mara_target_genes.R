@@ -29,11 +29,11 @@ do.center <- TRUE
 distfilt <- 40000
 jweight <- 0
 use.sql <- TRUE
-# jmod <- "LiverSV129"
 jmod <- "Liver_SV129,Liver_BmalKO"
-jcutoff <- 3
+jmod <- "Liver_SV129"
+jcutoff <- 1.5
 jcutoff.low <- 0
-incl.promoters <- TRUE
+incl.promoters <- FALSE
 
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 jmodstr <- gsub(",", "-", jmod)
@@ -50,6 +50,7 @@ prefix <- "liver.spec.peaks"
 jmotif <- "AR"
 jmotif <- "FOXO1.3.4"
 jmotif <- "DBP"
+jmotif <- "bHLH_family"
 
 inf1 <- file.path(maindir, paste0(prefix, suffix, ".Robj"))
 
@@ -222,7 +223,7 @@ Nsub <- subset(N.sum, motif == jmotif) %>%
 print(ggplot(Nsub, aes(x = log2(sitecount))) + geom_histogram(bins = 20) + ggtitle(paste("Sitecounts of", jmotif.title)) + theme_bw())
 target.genes <- Nsub$gene[1:top.n]
 
-sink(file = file.path(plotmain, paste0(jmotif, ".target_genes.txt")))
+sink(file = file.path(plotmain, paste0(jmotif, suffix, ".target_genes.txt")))
 for (g in target.genes){
   cat(g); cat("\t"); cat(phases[[g]]); cat("\n")
 }
