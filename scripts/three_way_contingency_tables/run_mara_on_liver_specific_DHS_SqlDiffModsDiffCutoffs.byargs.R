@@ -80,7 +80,12 @@ if (include.promoters){
 }
 # include.promoters <- FALSE
 
-jmodstr <- gsub(",", "-", jmod)
+if (jmod != "flat"){
+  jmodstr <- gsub(",", "-", jmod)
+} else {
+  jmod <- ""
+  jmodstr <- "flat"
+}
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 # suffix <- paste0(".weight.", jweight, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
@@ -89,11 +94,16 @@ suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = in
 
 # determine Rhyth tiss, Flat tiss programmatically
 tiss <- c("Liver", "Kidney")
-rhyth.tiss <- strsplit(strsplit(jmod, ",")[[1]][[1]], split = "_")[[1]][[1]]
-if (!rhyth.tiss %in% tiss){
-  stop(paste(jmod, rhyth.tiss, "must be Liver or Kidney"))
+if (jmodstr != "flat"){
+  rhyth.tiss <- strsplit(strsplit(jmod, ",")[[1]][[1]], split = "_")[[1]][[1]]
+  if (!rhyth.tiss %in% tiss){
+    stop(paste(jmod, rhyth.tiss, "must be Liver or Kidney"))
+  }
+  flat.tiss <- tiss[!tiss %in% rhyth.tiss]
+} else {
+  rhyth.tiss <- "Liver"
+  flat.tiss <- "Kidney"
 }
-flat.tiss <- tiss[!tiss %in% rhyth.tiss]
 print(paste("Tissues:", rhyth.tiss, flat.tiss))
 
 jmeth <- "g=1001"
@@ -122,6 +132,7 @@ peaksgenes <- data.frame(peak = as.character(S.sub.livpeaks$peak),
 peaksdir <- "/home/yeung/data/tissue_specificity/tissuepeaksgenes"
 dir.create(peaksdir)
 save(peaksgenes, file = file.path(peaksdir, paste0("liver.spec.peaks", suffix, ".Robj")))
+
 
 # Get gene expression over time and genotypes -----------------------------
 
@@ -227,6 +238,10 @@ if (include.promoters){
 N.mat <- dcast(N.sum, formula = "gene ~ motif", value.var = "sitecount", fill = 0)
 N.mat <- dplyr::rename(N.mat, "Gene.ID" = gene)
 
+if (jmodstr == "flat"){
+  stop("Stopping because for flat genes I only want to wake up the database")
+}
+
 # Add pairs to N  ---------------------------------------------------------
 
 # if (do.pairs){
@@ -294,15 +309,17 @@ outmain <- paste0(jmain, "/mara_outputs", suffix)
 dir.create(outmain, showWarnings = FALSE)
 outdir <- file.path(outmain, paste0("center.", do.center, suffix))
 # do not create outdir, because MARA will not run on an already-created directory 
-cmd <- paste("bash", marascript, N.out, outdir, E.dir)
-system(cmd)
 
-# consolidate
-combinescript <- "/home/yeung/projects/ridge-regression/run_scripts/combine_activities_and_plot.one_dir.sh"
-outdir.mara <- file.path(outdir, E.subdir)
-
-cmd2 <- paste("bash", combinescript, outdir.mara)
-system(cmd2)
-
+if(!dir.exists(outdir)){
+  cmd <- paste("bash", marascript, N.out, outdir, E.dir)
+  system(cmd)
+  
+  # consolidate
+  combinescript <- "/home/yeung/projects/ridge-regression/run_scripts/combine_activities_and_plot.one_dir.sh"
+  outdir.mara <- file.path(outdir, E.subdir)
+  
+  cmd2 <- paste("bash", combinescript, outdir.mara)
+  system(cmd2)
+}
 
 print(Sys.time() - start.global)

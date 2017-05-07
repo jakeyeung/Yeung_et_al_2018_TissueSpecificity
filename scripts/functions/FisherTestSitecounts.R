@@ -75,7 +75,7 @@ SubsetAndFishers <- function(dat, jmodel, cutoffs){
   return(N.ftest.sum)
 }
 
-RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models = NA, cutoffs, show.plot = TRUE, by.rank = FALSE, jtitle = ""){
+RunFisherOnPromoters <- function(N.promoter, foreground.models, background.models = NA, cutoffs, show.plot = TRUE, by.rank = FALSE, jtitle = "", return.full.df=FALSE){
   jtiss <- foreground.models
   if (is.na(background.models)){
     # if NA, use all genes in N.promoter as your universe
@@ -109,6 +109,9 @@ RunFisherOnPromoters <- function(N.promoter, foreground.models, background.model
       do(FisherTestSitecounts(., cutoff, by.rank = by.rank))
     N.ftest$cutoff <- cutoff
     N.ftest.all <- rbind(N.ftest.all, as.data.frame(N.ftest))
+  }
+  if (return.full.df){
+    return(N.ftest.all)
   }
   N.ftest.sum <- N.ftest.all %>%
     group_by(motif) %>%

@@ -12,8 +12,8 @@ runscript="/home/yeung/projects/tissue-specificity/scripts/three_way_contingency
 
 distfilt=40000
 jcutoff="2"
-jcutoff="1.5"
-cl="0.1"
+jcutoff="2.5"
+cl="0"
 jweight=0
 inclproms="FALSE"
 dopairs="FALSE"
@@ -21,7 +21,8 @@ dopairs="FALSE"
 # jmod="Liver_SV129"
 # jcutofflow="0"
 
-for jmod in "Liver_SV129" "Liver_SV129,Liver_BmalKO" "Kidney_SV129" "Kidney_SV129,Kidney_BmalKO"; do
+for jmod in "Liver_SV129" "Liver_SV129,Liver_BmalKO" "Kidney_SV129" "Kidney_SV129,Kidney_BmalKO" "flat"; do
+# for jmod in "flat"; do
 	bash $runscript $jweight $distfilt $jmod $jcutoff $cl $inclproms $dopairs&
 	# echo $cl
 	# Rscript $rscript $jweight $distfilt $jmod $jcutoff $cl $inclproms
