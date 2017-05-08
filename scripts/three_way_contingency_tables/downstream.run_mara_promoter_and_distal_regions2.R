@@ -7,6 +7,8 @@ rm(list=ls())
 library(ggplot2)
 library(dplyr)
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 source("scripts/functions/LiverKidneyFunctions.R")
 source("scripts/functions/LoadActivitiesLong.R")
 source("scripts/functions/SvdFunctions.R")
