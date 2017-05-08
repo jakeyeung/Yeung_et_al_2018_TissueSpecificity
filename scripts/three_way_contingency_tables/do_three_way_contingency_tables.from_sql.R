@@ -23,7 +23,8 @@ weight.cutoff <- as.numeric(args[[2]])
 
 # weight.cutoff <- 0  # more genes?
 null.model <- "JI"  # JI or CI
-flat.livamp.cutoff <- Inf  # gene must be VERY flat!
+# flat.livamp.cutoff <- Inf  # gene must be VERY flat!
+flat.livamp.cutoff <- 0.1  # gene must be VERY flat!
 
 RunPoissonModel.JI <- function(dat){
   mod1 <- glm(freq ~ model + motif1 + motif2 + motif1 * motif2, data=dat, family=poisson())
@@ -40,10 +41,10 @@ RunPoissonModel.CI <- function(dat){
 library(data.table)
 setwd("/home/yeung/projects/tissue-specificity")
 
-args <- commandArgs(trailingOnly=TRUE)
-distfilt <- as.numeric(args[1])
-jcutoff <- as.numeric(args[2])
-jcutoff.low <- as.numeric(args[3])
+# args <- commandArgs(trailingOnly=TRUE)
+# distfilt <- as.numeric(args[1])
+# jcutoff <- as.numeric(args[2])
+# jcutoff.low <- as.numeric(args[3])
 distfilt <- 40000
 jcutoff <- 3  # arbitrary
 jcutoff.low <- 0  # arbitrary
@@ -164,6 +165,7 @@ if (!exists("N.long.filt")){
   }
   N.long.filt <- N.sub.lst$as.list()
   N.long.filt <- bind_rows(N.long.filt)
+  print(Sys.time() - start)
   
 }
 # get fit from f24
@@ -349,7 +351,7 @@ mclapply(Ks, function(K){
     group_by(pair) %>%
     do(RunPoissonModel(.))
   
-  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.fastabugfixed.UseSql.nmodels.", nb.levels, ".K.", K, ".weight.", weight.cutoff, ".MergePeaks.", merge.peaks, ".nullmodel.", null.model, ".flatampmax.", flat.livamp.cutoff,  ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
+  save(fits, N.mat.all, N.mat.freqs, file = paste0("Robjs/three_way_cooccurence/three.way.cooccurrence.fastabugfixed2.UseSql.nmodels.", nb.levels, ".K.", K, ".weight.", weight.cutoff, ".MergePeaks.", merge.peaks, ".nullmodel.", null.model, ".flatampmax.", flat.livamp.cutoff,  ".withNmatallNmatfreqs.RemoveZeroCounts.Robj"))
 }, mc.cores = jmc.cores)
 
 # tf <- "RORA"

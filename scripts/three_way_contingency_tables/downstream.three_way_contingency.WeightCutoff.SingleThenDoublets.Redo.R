@@ -69,7 +69,8 @@ K <- 300
 nb.models <- 2
 
 # inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.", nb.models, ".K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.withNmatallNmatfreqs.RemoveZeroCounts.Robj")
-inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
+# inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
+inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.fastabugfixed.UseSql.nmodels.2.K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
 
 # inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.2.K.300.weight.0.8.MergePeaks.FALSE.nullmodel.CI.withNmatallNmatfreqs.RemoveZeroCounts.Robj"
 
@@ -164,7 +165,7 @@ fits.bytiss.sum <- subset(fits.bytiss, gene %in% genes.liv.weightfilt) %>%
   group_by(is.hit) %>% 
   summarise(n.genes = length(gene))
 
-pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_singlets.top.n.", top.n, ".K.", K, ".weight.", jweight, ".flatampmax.", flatampmax, ".pdf"), useDingbats = FALSE)
+pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_FastaNBugfix_singlets.top.n.", top.n, ".K.", K, ".weight.", jweight, ".flatampmax.", flatampmax, ".pdf"), useDingbats = FALSE)
 print(m.single)
 ggplot(subset(fits.bytiss, gene %in% genes.liv.weightfilt), aes(x = is.hit, y = 2 * amp)) + geom_violin() + xlab("Has ROR Motifs") + ylab("Log2 Fold Change") + ggtitle("With RORE vs Liver_SV129 genes with BIC threshold") + 
   theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
@@ -203,9 +204,11 @@ dev.off()
 # inf <- "/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.300.weight.0.8.MergePeaks.FALSE.withNmatallNmatfreqs.RemoveZeroCounts2.Robj"
 # inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.", K, ".weight.0.MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
 # inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.", K, ".weight.0.MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
-inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
+# inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
+# inf <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.bugfixed.nmodels.3.K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
+inf3 <- paste0("/home/yeung/projects/tissue-specificity/Robjs/three_way_cooccurence/three.way.cooccurrence.fastabugfixed.UseSql.nmodels.3.K.", K, ".weight.", jweight, ".MergePeaks.FALSE.nullmodel.JI.flatampmax.", flatampmax, ".withNmatallNmatfreqs.RemoveZeroCounts.Robj")
 
-load(inf, v=T)
+load(inf3, v=T)
 N.mat.freqs.all <- N.mat.freqs
 
 # consider Kidney as background
@@ -250,13 +253,15 @@ fits$NTop <- sapply(fits$pair, function(p) enrich.NTop[[p]])
 
 # pdf("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_doublets.pdf", useDingbats = FALSE)
 # pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_doublets.flatampmax.", flatampmax, ".pdf"), useDingbats = FALSE)
-pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_doublets.flatampmax.", flatampmax, ".K.", K, ".pdf"), useDingbats = FALSE)
+pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_FastaNBugfix_doublets.flatampmax.", flatampmax, ".K.", K, ".weight.", jweight, ".pdf"), useDingbats = FALSE)
 
 jmotif <- "RORE"
 fits$pair <- gsub("RORA", "RORE", fits$pair)
 
 jfits <- subset(fits, grepl("RORE", fits$pair))
-jfits$label <- mapply(function(pair, pval) ifelse(-log10(pval) > 8.5, pair, NA), jfits$pair, jfits$pval)
+
+pval.cutoff <- floor(min(-log10(subset(jfits, pair %in% c("ONECUT1.2;RORE", "CUX2;RORE", "FOXA2;RORE"))$pval)))
+jfits$label <- mapply(function(pair, pval) ifelse(-log10(pval) > pval.cutoff, pair, NA), jfits$pair, jfits$pval)
 
 jfits.pos <- subset(jfits, log10(OR.OR) > 0)
 
@@ -268,11 +273,11 @@ ggplot(jfits.pos, aes(x = log10(OR.OR), y = -log10(pval), label = label)) + geom
   theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
   xlab("Log10 Odds Ratio Compared to Background")
 
-jfits <- subset(jfits.pos, grepl("RORE", fits$pair) & log10(OR.OR) > 0)
-jfits$label <- mapply(function(pair, pval) ifelse(-log10(pval) > 6.5, pair, NA), jfits$pair, jfits$pval)
-ggplot(jfits, aes(x = OR.OR, y = -log10(pval), label = label)) + geom_point() + geom_text_repel(size = 6.5) + geom_vline(xintercept = 1) + 
-  theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
-  xlab("Odds Ratio Compared to Background")
+# jfits.OR <- subset(jfits.pos, grepl("RORE", fits$pair) & log10(OR.OR) > 0)
+# jfits.OR$label <- mapply(function(pair, pval) ifelse(-log10(pval) > 6.5, pair, NA), jfits.OR$pair, jfits.OR$pval)
+# ggplot(jfits.OR, aes(x = OR.OR, y = -log10(pval), label = label)) + geom_point() + geom_text_repel(size = 6.5) + geom_vline(xintercept = 1) + 
+#   theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
+#   xlab("Odds Ratio Compared to Background")
 dev.off()
 
 
@@ -310,7 +315,7 @@ df.out.lst.meanvar$gene.type <- factor(c("Clock-Driven", "System-Driven", "Nonrh
 jcols <- c(scales::hue_pal()(2)[[1]], "gray")  # red (matching if two comparisons) and gray
 
 # pdf("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_fraction_liver_dhs_plots_colored.pdf", useDingbats = FALSE)
-pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_liver_dhs_plots_colored.flatampmax.pdf"), useDingbats = FALSE)
+pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/figure_5_FastaNBugfix_liver_dhs_plots_colored.flatampmax.pdf"), useDingbats = FALSE)
 barwidth <- 0.8
 limits <- aes(ymax = mean.frac + sd.frac, ymin=mean.frac - sd.frac)
 m.bar <- ggplot(df.out.lst.meanvar, aes(x = gene.type, y = mean.frac, fill = model, linetype = geno)) + geom_bar(stat = "identity", width = barwidth, size = 1, colour = "black") + 
@@ -377,7 +382,7 @@ foxa2.rora.hits <- GetTargetGenesFromPair(N.mat.all, pair = "FOXA2;RORA")
 fits.livlung <- subset(fits.best, gene %in% ror.hits & grepl("Lung", model))
 
 # pdf("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/foxa2_ror_hits_all_tissues.pdf", useDingbats = FALSE)
-pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/foxa2_rra-hits_all_tissues.flatampmax.", flatampmax, ".pdf"), useDingbats = FALSE)
+pdf(paste0("/home/yeung/projects/tissue-specificity/plots/liver_dhs_enrichment_plots/foxa2_rra-hits_all_tissues.flatampmax.", flatampmax, ".weight.", jweight, ".pdf"), useDingbats = FALSE)
 for (g in as.character(foxa2.rora.hits$gene)){
   print(g)
   if (nrow(subset(dat.long, gene == g)) == 0){
