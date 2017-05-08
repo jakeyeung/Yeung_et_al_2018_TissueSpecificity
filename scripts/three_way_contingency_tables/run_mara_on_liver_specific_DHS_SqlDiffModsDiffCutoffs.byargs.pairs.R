@@ -61,6 +61,13 @@ jcutoff <- 3
 jcutoff.low <- 0
 do.pairs <- TRUE
 
+if (jmod == "flat"){
+  jmodstr <- "flat"
+  jmod <- ""
+} else {
+  jmodstr <- gsub(",", "-", jmod)
+}
+
 # # Take from command line
 # args <- commandArgs(trailingOnly = TRUE)
 # print(args)
@@ -79,7 +86,6 @@ do.pairs <- TRUE
 # }
 # # include.promoters <- FALSE
 
-jmodstr <- gsub(",", "-", jmod)
 jcutoffstr <- paste(jcutoff, jcutoff.low, sep = ".")
 # suffix <- paste0(".weight.", jweight, ".promoters.", include.promoters, ".all_genes.", all.genes, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
@@ -87,13 +93,20 @@ suffix <- GetSuffix(jweight, use.sql, jmodstr, jcutoffstr, include.promoter = in
 # suffix <- paste0(".weight.", jweight, ".sql.", use.sql, ".mod.", jmodstr, ".dhscutoff.", jcutoffstr)
 
 # determine Rhyth tiss, Flat tiss programmatically
+print(jmodstr)
+print(jmod)
 tiss <- c("Liver", "Kidney")
-rhyth.tiss <- strsplit(strsplit(jmod, ",")[[1]][[1]], split = "_")[[1]][[1]]
-if (!rhyth.tiss %in% tiss){
-  stop(paste(jmod, rhyth.tiss, "must be Liver or Kidney"))
+if (jmodstr != "flat"){
+  rhyth.tiss <- strsplit(strsplit(jmod, ",")[[1]][[1]], split = "_")[[1]][[1]]
+  if (!rhyth.tiss %in% tiss){
+    stop(paste(jmod, rhyth.tiss, "must be Liver or Kidney"))
+  }
+  flat.tiss <- tiss[!tiss %in% rhyth.tiss]
+  print(paste("Tissues:", rhyth.tiss, flat.tiss))
+} else {
+  rhyth.tiss <- "Liver"
+  flat.tiss <- "Kidney"
 }
-flat.tiss <- tiss[!tiss %in% rhyth.tiss]
-print(paste("Tissues:", rhyth.tiss, flat.tiss))
 
 jmeth <- "g=1001"
 load("Robjs/liver_kidney_atger_nestle/fits.long.multimethod.filtbest.staggeredtimepts.bugfixed.annotated.Robj", v=T)
