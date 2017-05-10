@@ -56,13 +56,13 @@ GetTissSpecPeaks <- function(S.long, jgenes, distfilt, jcutoff, jcutoff.low, rhy
 do.center <- TRUE
 
 distfilt <- 40000
-jweight <- 0
+jweight <- 0.8
 use.sql <- TRUE
 jmod <- "Liver_SV129,Liver_BmalKO"
 jmod <- "Liver_SV129"
-args <- commandArgs(trailingOnly = TRUE)
-jcutoff <- as.numeric(args[[1]])
-# jcutoff <- 3
+# args <- commandArgs(trailingOnly = TRUE)
+# jcutoff <- as.numeric(args[[1]])
+jcutoff <- 3.0
 jcutoff.low <- 0
 incl.promoters <- FALSE
 
@@ -287,7 +287,7 @@ col.hash <- sapply(fits.bytiss$motif.hits, function(m){
 
 fits.bytiss$label <- mapply(function(m, g) ifelse(m %in% c(tissclock.str, "Clock"), g, NA), fits.bytiss$motif.hits, as.character(fits.bytiss$gene))
 
-plot.complex.nocol <- PlotComplex2(complex(modulus = fits.bytiss$amp, argument = fits.bytiss$phase * 2 * pi / 24),
+plot.complex.nocol <- PlotComplex2(complex(modulus = fits.bytiss$amp * 2, argument = fits.bytiss$phase * 2 * pi / 24),
                                    ampscale = 1,
                                    labels = fits.bytiss$label,
                                    omega = 2 * pi / 24,

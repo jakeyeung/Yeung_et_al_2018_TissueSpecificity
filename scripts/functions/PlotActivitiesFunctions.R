@@ -45,7 +45,7 @@ PlotActivitiesWithSE <- function(dat, jtitle, showSE = TRUE, jxlab = "ZT", jsize
   return(m)
 }
 
-PlotActivitiesWithSE.wtko <- function(dat, jtitle, showSE = TRUE, jxlab = "ZT", jsize = 20, jylab = "Activity", split.by="tissue", ncols = 2){
+PlotActivitiesWithSE.wtko <- function(dat, jtitle, showSE = TRUE, jxlab = "ZT", jsize = 20, jylab = "Activity", split.by="tissue", ncols = 2, single.day=FALSE){
   nexpers <- length(unique(as.character(dat$experiment)))
   jgene <- unique(dat$gene)
   if (missing(jtitle)){
@@ -63,6 +63,11 @@ PlotActivitiesWithSE.wtko <- function(dat, jtitle, showSE = TRUE, jxlab = "ZT", 
   #   # theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   #   theme(aspect.ratio=1, strip.text = element_blank())
   
+  if (single.day){
+    source("/home/yeung/projects/tissue-specificity/scripts/functions/PlotGeneAcrossTissues.R")
+    dat <- ConvertToSingleDay(dat, use.se = TRUE)
+  }
+  
   m <- ggplot(dat, aes(x = time, colour = tissue, linetype = geno, y = exprs)) + 
     geom_point() + geom_line() + xlab(jxlab) + ylab(jylab) + 
     theme_bw(jsize) + ggtitle(jtitle) + 
@@ -79,7 +84,9 @@ PlotActivitiesWithSE.wtko <- function(dat, jtitle, showSE = TRUE, jxlab = "ZT", 
   }
  
   if (jxlab == "ZT"){
-    m <- m + scale_x_continuous(limits = c(0, 48), breaks = seq(0, 48, 12))
+    jxmin <- 0
+    jxmax <- ceiling(max(dat$time) / 24) * 24  # round to nearest 24
+    m <- m + scale_x_continuous(limits = c(jxmin, jxmax), breaks = seq(jxmin, jxmax, 12))
   } else if (jxlab == "CT"){
     m <- m + scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))
   } else {

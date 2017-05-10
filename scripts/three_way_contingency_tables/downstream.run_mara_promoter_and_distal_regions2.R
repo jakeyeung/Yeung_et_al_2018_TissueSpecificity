@@ -121,11 +121,11 @@ if (jmod == "Liver_SV129"){
 tfs <- GetTFs(get.mat.only = TRUE, shorten.motif.name = TRUE)
 rownames(tfs) <- make.names(rownames(tfs))
 
-pdf(paste0("/home/yeung/projects/tissue-specificity/plots/mara_liver_kidney_modules_on_liverDHS.summary/mod.", jmodstr, ".promoter_distal_hits.pdf"), useDingbats = FALSE)
+pdf(paste0("/home/yeung/projects/tissue-specificity/plots/mara_liver_kidney_modules_on_liverDHS.summary/mod.", jmodstr, ".cutoff.", cutstr, ".promoter_distal_hits.singleday.pdf"), useDingbats = FALSE)
 for (h in hits){
   for (jshowSE in c(TRUE, FALSE)){
-    m.p <- PlotActivitiesWithSE.wtko(subset(act.s.shift, gene == h), showSE = jshowSE) + ggtitle(paste(h, "PromoterOnly"))  + theme(aspect.ratio = 1, strip.text = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-    m.d <- PlotActivitiesWithSE.wtko(subset(act.s.shift.distal, gene == h), showSE = jshowSE) + ggtitle(paste(h, "Distal", cutstr)) + theme(aspect.ratio = 1, strip.text = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    m.p <- PlotActivitiesWithSE.wtko(subset(act.s.shift, gene == h), showSE = jshowSE, single.day=TRUE) + ggtitle(paste(h, "PromoterOnly"))  + theme(aspect.ratio = 1, strip.text = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    m.d <- PlotActivitiesWithSE.wtko(subset(act.s.shift.distal, gene == h), showSE = jshowSE, single.day=TRUE) + ggtitle(paste(h, "Distal", cutstr)) + theme(aspect.ratio = 1, strip.text = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
     print(m.p)
     print(m.d)
     multiplot(m.p + theme_bw(10) + theme(aspect.ratio = 1, strip.text = element_blank()), m.d + theme_bw(10) + theme(aspect.ratio = 1, strip.text = element_blank()), cols = 1)
@@ -134,7 +134,7 @@ for (h in hits){
   # PlotActivitiesWithSE.wtko(subset(act.s.shift, gene == "RORA"), showSE = FALSE) + theme(aspect.ratio = 1, strip.text = element_text())
   genes.all <- unlist(sapply(h, GetGenesFromMotifs, tfs))
   for (g in genes.all){
-    print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), jtitle = g))
+    print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), jtitle = g, single.day = TRUE))
   }
 }
 dev.off()

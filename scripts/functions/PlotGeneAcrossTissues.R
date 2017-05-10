@@ -43,7 +43,7 @@ PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pret
 
 ConvertToSingleDay <- function(dat, time.cname = "time", exprs.cname = "exprs", 
                                geno.cname = "geno", exper.cname = "experiment",
-                               tissue.cname = "tissue", gene.cname = "gene", transcript.cname = NA){
+                               tissue.cname = "tissue", gene.cname = "gene", transcript.cname = NA, use.se=FALSE){
   library(lazyeval)
   if (any(dat$time < 0)){
     warning("Function cannot handle negative times")
@@ -53,9 +53,15 @@ ConvertToSingleDay <- function(dat, time.cname = "time", exprs.cname = "exprs",
     filter_(paste(time.cname, ">=", 24)) %>%
     mutate_(.dots = setNames(list(mutate_call), time.cname))
   
-  sem_call = lazyeval::interp(~sd( exprs ), exprs = as.name(exprs.cname))
+  if (!use.se){
+    sem.cname <- "sem"
+    sem_call = lazyeval::interp(~sd( exprs ), exprs = as.name(exprs.cname))
+  } else {
+    se.cname <- "se"
+    sem.cname <- "se"
+    sem_call = lazyeval::interp(~mean( se ), exprs = as.name(se.cname))
+  }
   signal_call = lazyeval::interp(~mean ( exprs ), exprs = as.name(exprs.cname))
-  sem.cname <- "sem"
  
   if (is.na(transcript.cname)){
     dat.new <- bind_rows(dat.sub, subset(dat, time < 24)) %>%
