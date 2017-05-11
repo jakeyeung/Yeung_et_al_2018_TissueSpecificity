@@ -1,4 +1,4 @@
-LoadActivitiesLong <- function(indir, act.file="activities.all", se.file="standarderrors.all", shorten.motif.name=FALSE, make.cnames = FALSE){
+LoadActivitiesLong <- function(indir, act.file="activities.all", se.file="standarderrors.all", shorten.motif.name=FALSE, make.cnames = TRUE){
   source("~/projects/tissue-specificity/scripts/functions/ActivitiesMergedFunctions.R")
   source("~/projects/tissue-specificity/scripts/functions/GetTissueTimes.R")
   source("~/projects/tissue-specificity/scripts/functions/RemoveP2Name.R")

@@ -62,8 +62,16 @@ ggplotColours <- function(n = 6, h = c(0, 360) + 15){
   hcl(h = (seq(h[1], h[2], length = n)), c = 100, l = 65)
 }
 
-RunPldaSystemsClock <- function(motifs, genes, clock.sys.gene.hash, N.long, jlambda = 0.035){
+RunPldaSystemsClock <- function(motifs, genes, clock.sys.gene.hash, N.long, jlambda = 0.035, take.max=FALSE){
   N.sub <- subset(N.long, motif2 %in% motifs & gene %in% genes)
+  if (take.max){
+    N.sub <- N.sub %>%
+      group_by(motif, motif2, gene) %>%
+      summarise(sitecount = max(sitecount))  # don't double count
+    if (nrow(N.sub) == 1){
+      warning("dplyr output has one row. Reload dplyr package")
+    }
+  }
   N.sub$clksys <- sapply(as.character(N.sub$gene), function(g) clock.sys.gene.hash[[g]])
   
   M.full <- dcast(N.sub, formula = gene + clksys ~ motif2, value.var = "sitecount", fun.aggregate = sum)
@@ -91,7 +99,7 @@ RunPldaSystemsClock <- function(motifs, genes, clock.sys.gene.hash, N.long, jlam
   
   labels <- names(plda.out$x)
   labels.cut <- mapply(function(jlab, jsize){
-    if (jsize <= 0){
+    if (jsize <= 0 & jlab != "SRF"){
       return("")
     } else {
       return(jlab)
@@ -102,11 +110,19 @@ RunPldaSystemsClock <- function(motifs, genes, clock.sys.gene.hash, N.long, jlam
                          motif = labels.cut,
                          motif.orig = labels,
                          vec.length = vec.length,
-                         vec.length.cut = jsize.pairs.cut) %>% 
-    mutate(discrim.floor = ifelse(discrim > 0, "Systemic", "Clock")) %>%
+                         vec.length.cut = jsize.pairs.cut)
+  dat.plot$discrim.floor <- sapply(dat.plot$discrim, function(d){
+    if (d > 0){
+      return("Systemic")
+    } else if (d < 0){
+      return("Clock")
+    } else {
+      return(NA)
+    }
+  })
+  dat.plot <- dat.plot %>%
     arrange(discrim) %>%
     mutate(Index = seq(length(discrim)))
-  
   dat.labs <- subset(dat.plot, vec.length.cut > 0)
   
   gene.plot <- data.frame(proj = plda.out$xproj, 
@@ -624,6 +640,10 @@ fits.sum <- fits.sub %>%
   summarise(count = length(gene)) %>%
   arrange(desc(count))
 
+if (nrow(fits.sum) == 1){
+  stop("Something wrong with dplyr package, fits.sum should have more than 1 row")
+}
+
 # OPTIONALLY filter only a set of models?
 # tw.rhyth.models <- c("Liver_SV129,Kidney_SV129;Liver_BmalKO,Kidney_BmalKO", "Liver_SV129", "Liver_")
 
@@ -652,12 +672,15 @@ clock.sys.gene.hash <- hash(as.character(fits.sub$gene), fits.sub$clksys)
 
 # Penalized LDA between clock and system driven ----------------------------
 
+gene.outliers <- "Dyrk2"
+gene.outliers <- c()
 load("Robjs/N.long.promoters_500.Robj", v=T)
 motifs.tmp <- as.character(unique(N.long$motif))
 motifs.hash <- hash(motifs.tmp, sapply(motifs.tmp, RemoveP2Name))
 
 N.long$motif2 <- sapply(as.character(N.long$motif), function(m) motifs.hash[[m]])
 genes <- as.character(fits.sub$gene)
+genes <- genes[which(!genes %in% gene.outliers)]
 clksys <- as.character(fits.sub$clksys)
 
 n.clock <- length(which(clksys == "clock"))
@@ -693,7 +716,7 @@ motifs.lst[[2]] <- c("HIC1", "RORA", "SRF", "NR3C1", "bHLH_family", "NFIL3", "HS
 motifs.lst[[3]] <- sig.motifs  # set as third, we reference this later
 
 dat.plot.lst <- lapply(motifs.lst, function(motifs){
-  dat.gene.plots <- RunPldaSystemsClock(motifs, genes, clock.sys.gene.hash, N.long, jlambda = 0.035)
+  dat.gene.plots <- RunPldaSystemsClock(motifs, genes, clock.sys.gene.hash, N.long, jlambda = 0.035, take.max = TRUE)
   dat.plot <- dat.gene.plots$dat.plot
   gene.plot <- dat.gene.plots$gene.plot
   
