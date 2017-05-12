@@ -1,3 +1,21 @@
+GetTissSpecPeaks <- function(S.long, jgenes, distfilt, jcutoff, jcutoff.low, rhyth.tiss, flat.tiss){
+  # get tiss spec peaks
+  S.sub <- subset(S.long, gene %in% jgenes & dist < distfilt)
+  jpeaks <- as.character(unique(S.sub)$peak)  # 192726 peaks for Liver genes within 50 kb away
+  print(paste("number of peaks surrounding genes", length(jpeaks)))
+  
+  # take peaks with Liver signal greater than cutoff
+  jtiss <- levels(S.sub$tissue)
+  tiss.i <- which(jtiss %in% rhyth.tiss)
+  others.i <- which(jtiss %in% flat.tiss)
+  
+  S.sub.tisspeaks <- S.sub %>%
+    group_by(peak, gene) %>%  # tissue order as "Cere", "Heart", "Kidney", "Liver", "Lung", "Mus"
+    filter(min(zscore[tiss.i]) > jcutoff & max(zscore[others.i]) < jcutoff.low)
+  
+  return(S.sub.tisspeaks)
+}
+
 FilterReadcounts <- function(dhs.dat, dhs.reps, good.samples, cutoff){
   dhs.clean <- data.frame(chr = dhs.dat$chr,
                           start = dhs.dat$start,
