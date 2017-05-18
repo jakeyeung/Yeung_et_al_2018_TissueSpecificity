@@ -198,7 +198,7 @@ indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
 # act.l <- subset(act.l, experiment == "rnaseq" & tissue == "Liver")
 # act.l <- subset(act.l, experiment == "array" & tissue == "Liver")
 for (jexp in c("rnaseq", "array")){
-  act.l <- LoadActivitiesLong(indir, make.cnames = FALSE)
+  act.l <- LoadActivitiesLong(indir, make.cnames = TRUE)
   s.df <- GetAmpPhaseFromActivities(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT")
   act.l <- subset(act.l, experiment == jexp & tissue == "Liver")
   act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
@@ -761,6 +761,49 @@ dat.plot.lst <- lapply(motifs.lst, function(motifs){
 
 dat.plot <- dat.plot.lst[[3]]  # get dat.plot for all motifs
 
+# Replot tissue-wide, colored by clock or systems
+
+col.hash.gene <- hash()
+for (g in genes.tw){
+  col.hash.gene[[g]] <- ifelse(clock.sys.gene.hash[[g]] == "clock", "red", "blue")
+}
+s.tw <- SvdOnComplex(subset(dat.complex, gene %in% genes.tw), value.var = "exprs.transformed")
+
+eigens.tw <- GetEigens(s.tw, period = 24, comp = comp, adj.mag = TRUE, 
+                              eigenval = TRUE,
+                              constant.amp = 5, 
+                              label.n = Inf, jtitle = "", 
+                              peak.to.trough = TRUE, 
+                              dot.col = col.hash.gene, 
+                              dotsize = 6, 
+                              dotshape = 18,
+                              disable.text = TRUE, 
+                              add.arrow = TRUE,
+                              disable.repel = TRUE,
+                              half.life = 0)
+
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+print(eigens.tw$u.plot)
+print(eigens.tw$v.plot)
+multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
+
+eigens.tw <- GetEigens(s.tw, period = 24, comp = comp, adj.mag = TRUE, 
+                       eigenval = TRUE,
+                       constant.amp = 5, 
+                       label.n = Inf, jtitle = "", 
+                       peak.to.trough = TRUE, 
+                       dot.col = col.hash.gene, 
+                       dotsize = 3, 
+                       dotshape = 18,
+                       disable.text = TRUE, 
+                       add.arrow = TRUE,
+                       disable.repel = TRUE,
+                       half.life = 0)
+
+jlayout <- matrix(c(1, 2), 1, 2, byrow = TRUE)
+print(eigens.tw$u.plot)
+print(eigens.tw$v.plot)
+multiplot(eigens.tw$u.plot, eigens.tw$v.plot, layout = jlayout)
 
 
 # END: PLDA 
