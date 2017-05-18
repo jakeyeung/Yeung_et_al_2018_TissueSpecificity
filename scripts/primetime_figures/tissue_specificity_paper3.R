@@ -198,7 +198,7 @@ indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
 # act.l <- subset(act.l, experiment == "rnaseq" & tissue == "Liver")
 # act.l <- subset(act.l, experiment == "array" & tissue == "Liver")
 for (jexp in c("rnaseq", "array")){
-  act.l <- LoadActivitiesLong(indir, shorten.motif.name = TRUE)
+  act.l <- LoadActivitiesLong(indir, make.cnames = FALSE)
   s.df <- GetAmpPhaseFromActivities(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT")
   act.l <- subset(act.l, experiment == jexp & tissue == "Liver")
   act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
