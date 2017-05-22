@@ -199,10 +199,10 @@ jmotifs <- names(head(eigens.act$eigensamp[order(abs(eigens.act$eigensamp), decr
 
 pdf(paste0("/home/yeung/projects/tissue-specificity/plots/mara_liver_kidney_modules_on_liverDHS/plots", suffix, ".pdf"))
 
-# print(eigens.act$v.plot)
+print(eigens.act$v.plot)
 print(eigens.act$u.plot)
 
-# print(eigens.act.fancy.LivWTKO$v.plot)
+print(eigens.act.fancy.LivWTKO$v.plot)
 print(eigens.act.fancy.LivWTKO$u.plot)
 
 
