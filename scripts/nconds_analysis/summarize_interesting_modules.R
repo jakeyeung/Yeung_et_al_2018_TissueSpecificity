@@ -163,7 +163,8 @@ for (jmod in top.models){
   print(eigens$v.plot + ylab("ZT") + xlab("Tissue Weights"))
   eigens.arrow2 <- GetEigens(s, period = 24, comp = comp, adj.mag = TRUE, 
                              constant.amp = 5, 
-                             label.n = 5, jtitle = "", 
+                             label.n = 15, jtitle = "", 
+                             label.gene = c("Ube2u", "Leap2"),
                              peak.to.trough = TRUE, 
                              dotsize = 1, 
                              dotshape = 18,
