@@ -5,6 +5,8 @@
 
 rm(list=ls())
 
+setwd("/home/yeung/projects/tissue-specificity")
+
 library(dplyr)
 library(hash)
 library(ggplot2)
@@ -64,7 +66,8 @@ dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 jweight <- 0.8
 nb.models <- 3
 
-flatampmax <- 0.1
+# flatampmax <- 0.1
+flatampmax <- Inf
 K <- 300
 nb.models <- 2
 
@@ -260,7 +263,8 @@ fits$pair <- gsub("RORA", "RORE", fits$pair)
 
 jfits <- subset(fits, grepl("RORE", fits$pair))
 
-pval.cutoff <- floor(min(-log10(subset(jfits, pair %in% c("ONECUT1.2;RORE", "CUX2;RORE", "FOXA2;RORE"))$pval)))
+# pval.cutoff <- floor(min(-log10(subset(jfits, pair %in% c("ONECUT1.2;RORE", "CUX2;RORE", "FOXA2;RORE"))$pval)))
+pval.cutoff <- 5  # manual cutoff
 jfits$label <- mapply(function(pair, pval) ifelse(-log10(pval) > pval.cutoff, pair, NA), jfits$pair, jfits$pval)
 
 jfits.pos <- subset(jfits, log10(OR.OR) > 0)
@@ -270,6 +274,10 @@ ggplot(jfits, aes(x = log10(OR.OR), y = -log10(pval), label = label)) + geom_poi
   xlab("Log10 Odds Ratio Compared to Background")
 
 ggplot(jfits.pos, aes(x = log10(OR.OR), y = -log10(pval), label = label)) + geom_point() + geom_text_repel(size = 6.5) + geom_vline(xintercept = 0) + 
+  theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
+  xlab("Log10 Odds Ratio Compared to Background")
+
+ggplot(jfits.pos, aes(x = log10(OR.OR), y = -log10(pval), label = pair)) + geom_point() + geom_text_repel(size = 6.5) + geom_vline(xintercept = 0) + 
   theme_bw(24) + theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())  + 
   xlab("Log10 Odds Ratio Compared to Background")
 
@@ -439,6 +447,12 @@ jsub$is.fg <- sapply(as.character(jsub$gene), function(g) foxa2rora.hash[[g]])
 ggplot(jsub, aes(x = amp, fill = is.fg)) + geom_density(alpha = 0.5) + ggtitle("FOXA2;RORA")
 
 
+
+# What about bHLH? --------------------------------------------------------
+
+subset(N.mat.all, bHLH_family == "atop" & CUX2 == "atop" & model == "rhyth", select = c(gene, peak, model))
+
+subset(N.mat.all, bHLH_family == "atop" & FOXA2 == "atop" & model == "rhyth", select = c(gene, peak, model))
 
 # fits.bytiss$fg <- sapply(as.character(fits.bytiss$gene), function(g) ifelse(g %in% foxa2.rora.hits$gene, TRUE, FALSE))
 # fits.bytiss$bg <- sapply(as.character(fits.bytiss$gene), function(g) ifelse(g %in% foxa2.rora.bg$gene, TRUE, FALSE))
