@@ -7,24 +7,33 @@ AcosBsinToAmpPhase <- function(acos, bsin, T.period = 24){
   return(amp, phase.time)
 }
 
-FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE){
+FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE, get.se=FALSE){
   # Fit rhythmic model to long dat. Expect dat to be per tissue per gene.
   # use lapply and ddply to vectorize this code.
   # dat needs columns: tissue time experiment exprs
     
   # Get parameters from complex model: used later
-  GetParamsRhythModel <- function(myfit, n.experiments){
+  GetParamsRhythModel <- function(myfit, n.experiments, get.se=FALSE){
     model.params <- coef(myfit)
     if (n.experiments > 1){
-      return(list(intercept.array = model.params[1],
-                  intercept.rnaseq = model.params[2],
-                  a = model.params[3],
-                  b = model.params[4]))
+      params.lst <- list(intercept.array = model.params[1],
+                         intercept.rnaseq = model.params[2],
+                         a = model.params[3],
+                         b = model.params[4])
     } else {
-      return(list(intercept = model.params[1],
-                  a = model.params[2],
-                  b = model.params[3]))
+      params.lst <- list(intercept = model.params[1],
+                         a = model.params[2],
+                         b = model.params[3])
     }
+    if (get.se){
+      se.lst <- summary(myfit)$coefficients[, "Std. Error"]
+      # a is cos, b is sin
+      cos.cname.i <- grep("^cos", x = names(se.lst))
+      sin.cname.i <- grep("^sin", x = names(se.lst))
+      params.lst$a.se <- se.lst[[cos.cname.i]]
+      params.lst$b.se <- se.lst[[sin.cname.i]]
+    }
+    return(params.lst)
   }
   
   #   tissue <- unique(dat$tissue)
@@ -41,10 +50,15 @@ FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE){
   }
   compare.fit <- anova(flat.fit, rhyth.fit)
   pval <- compare.fit["Pr(>F)"][[1]][2]
-  model.params <- GetParamsRhythModel(rhyth.fit, n.experiments)  # y = experimentarray + experimentrnaseq + a cos(wt) + b sin(wt)
+  model.params <- GetParamsRhythModel(rhyth.fit, n.experiments, get.se)  # y = experimentarray + experimentrnaseq + a cos(wt) + b sin(wt)
   amp <- sqrt(model.params$a ^ 2 + model.params$b ^ 2)
   phase.rad <- atan2(model.params$b, model.params$a)
   phase.time <- (phase.rad / w) %% T.period
+  if (get.se){
+    source("/home/yeung/projects/tissue-specificity/scripts/functions/CosSineFunctions.R")
+    amp.se <- GetAmp.se(a = model.params$a, b = model.params$b, sig.a = model.params$a.se, sig.b = model.params$b.se, n = 2)  # peak to trough
+    phase.se <- GetPhi.se(a = model.params$a, b = model.params$b, sig.a = model.params$a.se, sig.b = model.params$b.se, omega = 2 * pi / T.period)
+  }
   if (get.residuals){
     # only care about residuals: do this if you want to see how the fit varies by changing period.
     ssq.residuals <- anova(rhyth.fit)["Residuals", "Sum Sq"]
@@ -83,10 +97,16 @@ FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE){
                             int = model.params$intercept)
     }
   }
+  if (get.se){
+    dat.out$cos.se = model.params$a.se
+    dat.out$sin.se = model.params$b.se
+    dat.out$amp.se = amp.se
+    dat.out$phase.se = phase.se
+  }
   return(dat.out)
 }
 
-FitRhythmicDatLong <- function(dat.long, jget.residuals=FALSE){
+FitRhythmicDatLong <- function(dat.long, jget.residuals=FALSE, get.se=FALSE){
   library(parallel)
   dat.long.by_genetiss <- group_by(dat.long, gene, tissue)
   dat.long.by_genetiss.split <- split(dat.long.by_genetiss, dat.long.by_genetiss$tissue)
@@ -95,7 +115,7 @@ FitRhythmicDatLong <- function(dat.long, jget.residuals=FALSE){
   dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
     rhyth <- jdf %>%
       group_by(gene) %>%
-      do(FitRhythmic(dat = ., get.residuals = jget.residuals))
+      do(FitRhythmic(dat = ., get.residuals = jget.residuals, get.se=get.se))
   }, mc.cores = 12)
   dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
   print(Sys.time() - start)
