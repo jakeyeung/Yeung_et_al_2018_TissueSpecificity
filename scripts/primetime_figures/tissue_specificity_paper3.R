@@ -199,6 +199,7 @@ indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
 # act.l <- subset(act.l, experiment == "array" & tissue == "Liver")
 for (jexp in c("rnaseq", "array")){
   act.l <- LoadActivitiesLong(indir, make.cnames = TRUE)
+  act.l$gene <- sapply(as.character(act.l$gene), function(g) RemoveP2Name(g))
   s.df <- GetAmpPhaseFromActivities(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT")
   act.l <- subset(act.l, experiment == jexp & tissue == "Liver")
   act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
@@ -227,6 +228,7 @@ for (jexp in c("rnaseq", "array")){
       if (nrow(subset(s.df, gene == jmotif)) > 0){
         print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE, single.day = TRUE) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE, single.day = TRUE, by.color = TRUE) + theme(strip.text = element_blank()))
       }
     } else {
       print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
@@ -1221,6 +1223,8 @@ for (jmod in jmods){
         print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, single.day = TRUE) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, single.day = TRUE, by.color = TRUE) + theme(strip.text = element_blank()))
+        print(PlotmRNAActivityProtein(dat.wtko, act.s.shift, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, single.day = TRUE, by.color = TRUE, line.for.protein = TRUE) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, s.ampphase, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, s.ampphase, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = jtiss, dotsize = 3, themesize = 22, act.in.sine.cos = TRUE, single.day = TRUE) + theme(strip.text = element_blank()))
         print(PlotmRNAActivityProtein(dat.wtko, act.s, gene.dat = gene.hit, prot.long = jprot.long, gene.act = jmotif, gene.prot = gene.prot, jtiss = "both", dotsize = 2, themesize = 14) + theme(strip.text = element_blank()))

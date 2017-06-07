@@ -114,7 +114,7 @@ ScaleSignal <- function(dat, cname, jcenter = NA, jscale = NA){
 
 
 PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gene.act, gene.prot, jtiss = "Liver", dotsize = 3, themesize=24, 
-                                    n.facetrows = 1, wt.prot = "Cry", line.for.protein=FALSE, act.in.sine.cos=FALSE, single.day=FALSE){
+                                    n.facetrows = 1, wt.prot = "Cry", line.for.protein=FALSE, act.in.sine.cos=FALSE, single.day=FALSE, by.color=FALSE){
   # plotting protein optional: can use this to plot just dat and act if prot.long is missing and gene.prot is ""
   if (!"geno" %in% colnames(act.long)){
     act.long$geno = tryCatch({
@@ -219,6 +219,13 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     # jshapes <- c(17, 4, 15)
     jshapes <- c(32, 17, 32)
     jsizes <- c(3, 5, 5)
+    if (!by.color){
+      jcols <- rep("black", 3)
+    } else {
+      # colorblind
+      jcols <- c("#999999", "#E69F00", "#56B4E9")
+      ltypes <- rep("solid", length(ltypes))
+    }
   } else {
     # can rbind a null dataframe no problem
     prot.sub2 <- data.frame(NULL)
@@ -229,6 +236,13 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     # jshapes <- c(1, 17)
     jshapes <- c(32, 32)
     jsizes <- c(2, 5)
+    if (!by.color){
+      jcols <- rep("black", 2)
+    } else {
+      # colorblind
+      jcols <- c("#999999", "#56B4E9")
+      ltypes <- rep("solid", length(ltypes))
+    }
   }
   merged.dat <- rbind(dat.sub2,
                       act.sub2,
@@ -253,7 +267,8 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
   
   jtitle <- paste(unique(c(gene.dat, gene.prot, gene.act)), collapse = " ")
   if (jtiss != "both"){
-    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, size = type))
+    m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, colour = type, shape = type, group = type, size = type))
+    # m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, size = type))
   } else {
     m <- ggplot(merged.dat, aes(x = time, y = signal, linetype = type, shape = type, group = type, colour = tissue, size = type))
   }
@@ -278,6 +293,7 @@ PlotmRNAActivityProtein <- function(dat.long, act.long, prot.long, gene.dat, gen
     scale_linetype_manual(values = ltypes, drop=FALSE) +
     scale_shape_manual(values = jshapes, drop=FALSE) +
     scale_size_manual(values = jsizes, drop=FALSE) + 
+    scale_colour_manual(values = jcols, drop=FALSE) + 
     theme(legend.position = "bottom", aspect.ratio = 1) +
     ggtitle(jtitle) + 
     scale_x_continuous(breaks = jbreaks)
