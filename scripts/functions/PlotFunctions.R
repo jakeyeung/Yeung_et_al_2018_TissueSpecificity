@@ -851,12 +851,16 @@ PlotComplex2 <- function(vec.complex, labels, omega = 2 * pi / 24,
     theme_bw(jsize) + 
     geom_vline(xintercept = seq(0, amp.max, length.out = 2), colour = axis.line.col, size = 0.2, linetype = "dashed") +
     geom_hline(yintercept = seq(6, 24, by = 6), colour = axis.line.col, size = 0.2, linetype = "solid") +
-    theme(panel.grid.major = element_line(size = 0.5, colour = "grey"), panel.grid.minor = element_blank(), 
-          panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom",
+    theme(panel.grid.minor = element_blank(), 
+          # panel.grid.major = element_line(size = 0.5, colour = "grey"), 
+          panel.background = element_blank(), 
+          # axis.line = element_line(colour = "black"),
+          legend.position="bottom",
           panel.border = element_blank(),
           legend.key = element_blank(),
           axis.ticks = element_blank(),
-          panel.grid  = element_blank())
+          panel.grid  = element_blank(),
+          line = element_blank())
   
   if (!disable.text){
     # add text
