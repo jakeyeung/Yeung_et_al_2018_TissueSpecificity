@@ -15,7 +15,8 @@
 library(topGO)
 library(org.Mm.eg.db)
 
-source("scripts/functions/DataHandlingFunctions.R")
+# source("scripts/functions/DataHandlingFunctions.R")
+source("/home/yeung/projects/tissue-specificity/scripts/functions/DataHandlingFunctions.R")  # use across different projects
 
 MergeGOTerms <- function(enrichment, go.terms, new.go.term){
   # After running GetGOEnrichment, merge some GO terms that may be "similar"
@@ -48,7 +49,14 @@ GetGOEnrichment <- function(genes.bg, genes.fg, fdr.cutoff, show.top.n = 8, onto
   source(file.path(wd, "scripts/functions/AnalyzeGeneEnrichment.R"))
   enrichment <- AnalyzeGeneEnrichment(genes.bg, genes.fg, FDR.cutoff = fdr.cutoff, which.ontology = ontology, return.GOdata = TRUE, filter.GO.terms = filter.GO.terms)
   enrichment$minuslogpval <- -log10(as.numeric(enrichment$classicFisher))
-  enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
+  
+  enrichment <- tryCatch({
+    enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
+  }, error = function(e) {
+    enrichment <- enrichment
+  })
+  
+  # enrichment <- OrderDecreasing(enrichment, jfactor = "Term", jval = "minuslogpval")
   show.top.n.min <- min(nrow(enrichment), show.top.n)
   if (show.top.n.min == 0) return(NULL)
   enrichment <- enrichment[1:show.top.n.min, ]   # prevent taking more than you have enrichment
@@ -201,6 +209,13 @@ CreateSym2Entrez <- function(){
   return(sym2entrez)
 }
 
+CreateEntrez2Sym <- function(){
+  entrez2sym <- as.list(org.Mm.egSYMBOL)
+  entrez2sym <- entrez2sym[!is.na(entrez2sym)]
+  return(entrez2sym)
+}
+
+
 CreateEntrez2GO <- function(){
   entrez2GO.obj <- org.Mm.egGO
   mapped.genes <- mappedkeys(entrez2GO.obj)
@@ -212,6 +227,33 @@ CreateEntrez2GO <- function(){
   return(entrez2GO)
 }
 
+CreateGO2AllEntrez <- function(){
+  go2entrez <- as.list(org.Mm.egGO2ALLEGS)
+  go2entrez <- go2entrez[!is.na(go2entrez)]
+  return(go2entrez)
+}
+
+CreateGO2Entrez <- function(){
+  go2entrez <- as.list(org.Mm.egGO2EG)
+  go2entrez <- go2entrez[!is.na(go2entrez)]
+  return(go2entrez)
+}
+
+ConvertGO2Entrez <- function(go.list, go2entrez){
+  gene.list.entrez <- sapply(go.list, function(g){
+    entrez <- go2entrez[[g]]
+    if (!is.null(entrez)){
+      return(entrez)
+    }
+  }, simplify = TRUE)
+  names(gene.list.entrez) <- go.list
+  # print(head(gene.list.entrez))
+  gene.list.entrez <- gene.list.entrez[!sapply(gene.list.entrez, is.null)]
+  # print(head(gene.list.entrez))
+  return(unlist(gene.list.entrez, use.names=TRUE))
+
+}
+
 ConvertSym2Entrez <- function(gene.list, sym2entrez){
   
   # convert to entrez, auto filtering here
@@ -221,8 +263,25 @@ ConvertSym2Entrez <- function(gene.list, sym2entrez){
       return(entrez)
     }
   }, simplify = TRUE)
+  names(gene.list.entrez) <- gene.list
+  # print(head(gene.list.entrez))
   gene.list.entrez <- gene.list.entrez[!sapply(gene.list.entrez, is.null)]
-  return(unlist(gene.list.entrez))
+  # print(head(gene.list.entrez))
+  return(unlist(gene.list.entrez, use.names=TRUE))
+}
+
+ConvertEntrez2Sym <- function(gene.list, entrez2sym){
+  gene.list.sym <- sapply(gene.list, function(g){
+    sym <- entrez2sym[[g]]
+    if (!is.null(sym)){
+      return(sym)
+    }
+  }, simplify = TRUE)
+  names(gene.list.sym) <- gene.list
+  # print(head(gene.list.entrez))
+  gene.list.sym <- gene.list.sym[!sapply(gene.list.sym, is.null)]
+  # print(head(gene.list.entrez))
+  return(unlist(gene.list.sym, use.names=TRUE))
 }
 
 AnalyzeGeneEnrichment <- function(genes.bg, genes.hit, 
