@@ -27,7 +27,7 @@ PlotComponents2 <- function(pca.p.sum.long, jstart, jend){
   
   m <- ggplot(pca.p.sum.long.sub, aes(x = pc.num, y = eigenvals.frac, fill = Component)) + geom_bar(stat = "identity") +
     scale_x_continuous(breaks=seq(jstart, jend, break.i)) +
-    xlab("Principal component") + ylab("Fraction of total sqr eigenvals") +
+    xlab("Principal component") + ylab("Fraction of total variance") +
     scale_fill_manual(name = "Fourier component", drop=TRUE, limits = levels(pca.p.sum.long$component), values=cbPalette) +
     theme_bw(24) + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 

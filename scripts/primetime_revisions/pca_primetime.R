@@ -62,9 +62,17 @@ PlotGeneLoadings <- function(x, jpc1, jpc2, top.n){
   m <- ggplot(jdf, aes(x = pcx, y = pcy, label = gene)) + 
     geom_point(alpha = 0.1) + 
     xlab(jpc1) + ylab(jpc2) + 
-    geom_text_repel() + 
+    geom_text_repel(size = 7) + 
     theme_bw() + 
-    theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    geom_hline(yintercept = 0) + 
+    geom_vline(xintercept = 0) + 
+    theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          axis.title.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank())
   return(m)
 }
 
@@ -82,8 +90,20 @@ PlotGeneLoadings.1d <- function(x, jpc1, top.n){
 }
 
 
-PlotSampleLoadings <- function(pca.long, jpc, draw.global.mean = FALSE, draw.tissue.mean = FALSE){
+PlotSampleLoadings <- function(pca.long, jpc, draw.global.mean = FALSE, draw.tissue.mean = FALSE, tissue.order = "auto"){
   jsub <- subset(pca.long, pc == jpc)
+  
+  if (tissue.order == "auto"){
+    jsub.mean <- jsub %>%
+      group_by(tissue) %>%
+      summarise(loading = mean(loading)) %>%
+      arrange(desc(loading))
+    tissue.order <- as.character(jsub.mean$tissue)
+  }
+  if (!is.null(tissue.order)){
+    jsub$tissue <- factor(as.character(jsub$tissue), levels = tissue.order)
+  }
+  
   m <- ggplot(jsub, aes(x = time, y = loading)) + 
     geom_point() + geom_line() + facet_wrap(~tissue) + 
     theme_bw() + 
@@ -99,6 +119,8 @@ PlotSampleLoadings <- function(pca.long, jpc, draw.global.mean = FALSE, draw.tis
       summarise(jmean = mean(loading))
     m <- m + geom_hline(data = jsub.means, mapping = aes(yintercept = jmean), linetype = "dotted")
   }
+  m <- m + xlab("Time (CT)") + ylab("Loadings [A.U.]") + 
+    scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12))
   return(m)
 }
 
@@ -109,7 +131,10 @@ PlotLoadingsOneTissue <- function(pca.long, jtiss, pcs){
     theme_bw() + 
     ggtitle(paste0(jtiss, " loadings")) + 
     theme(aspect.ratio=1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
-    facet_wrap(~pc)
+    facet_wrap(~pc) + 
+    xlab("Time (CT)") + ylab("Loadings [A.U.]") + 
+    scale_x_continuous(limits = c(18, 64), breaks = seq(24, 64, 12)) + 
+    geom_hline(yintercept = 0, linetype = "dotted")
   return(m)
 }
 
@@ -213,16 +238,16 @@ source("/home/yeung/projects/tissue-specificity/scripts/functions/ListFunctions.
 plst <- expandingList()
 # tissue variance
 jpc1 <- "PC1"; jpc2 <- "PC2"
-plst$add(PlotSampleLoadings(pca.long, jpc1, draw.global.mean = TRUE))
-plst$add(PlotSampleLoadings(pca.long, jpc2, draw.global.mean = TRUE))
+plst$add(PlotSampleLoadings(pca.long, jpc1, draw.global.mean = TRUE, tissue.order = "auto"))
+plst$add(PlotSampleLoadings(pca.long, jpc2, draw.global.mean = TRUE, tissue.order = "auto"))
 plst$add(PlotGeneLoadings(dat_pca$rotation, jpc1, jpc2, top.n))
 plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Gabra1" & experiment == "array"), make.pretty = TRUE))
 plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Cox8b" & experiment == "array"), make.pretty = TRUE))
 
 # temporal variance
 jpc1 <- "PC13"; jpc2 <- "PC17"
-plst$add(PlotSampleLoadings(pca.long, jpc1, draw.tissue.mean = TRUE))
-plst$add(PlotSampleLoadings(pca.long, jpc2, draw.tissue.mean = TRUE))
+plst$add(PlotSampleLoadings(pca.long, jpc1, draw.tissue.mean = TRUE, tissue.order = "auto"))
+plst$add(PlotSampleLoadings(pca.long, jpc2, draw.tissue.mean = TRUE, tissue.order = "auto"))
 plst$add(PlotGeneLoadings(dat_pca$rotation, jpc1, jpc2, top.n))
 plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Arntl" & experiment == "array"), make.pretty = TRUE))
 plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Serpina1c" & experiment == "array"), make.pretty = TRUE))
