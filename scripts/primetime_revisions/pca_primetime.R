@@ -10,6 +10,8 @@ remove.wfat <- TRUE
 library(ggplot2)
 library(hash)
 library(dplyr)
+library(ggrepel)
+library(reshape2)
 
 # Define my functions -----------------------------------------------------
 
@@ -241,8 +243,13 @@ jpc1 <- "PC1"; jpc2 <- "PC2"
 plst$add(PlotSampleLoadings(pca.long, jpc1, draw.global.mean = TRUE, tissue.order = "auto"))
 plst$add(PlotSampleLoadings(pca.long, jpc2, draw.global.mean = TRUE, tissue.order = "auto"))
 plst$add(PlotGeneLoadings(dat_pca$rotation, jpc1, jpc2, top.n))
-plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Gabra1" & experiment == "array"), make.pretty = TRUE))
-plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Cox8b" & experiment == "array"), make.pretty = TRUE))
+plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Gabra1" & experiment == "array"), make.pretty = TRUE, sort.by.mean = TRUE) + scale_x_continuous(breaks = seq(24, 64, 12)))
+plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Slc6a1" & experiment == "array"), make.pretty = TRUE, sort.by.mean = TRUE) + scale_x_continuous(breaks = seq(24, 64, 12)))
+plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Gabrg2" & experiment == "array"), make.pretty = TRUE, sort.by.mean = TRUE) + scale_x_continuous(breaks = seq(24, 64, 12)))
+plst$add(PlotGeneAcrossTissues(subset(dat.long, gene == "Cox8b" & experiment == "array"), make.pretty = TRUE, sort.by.mean = TRUE) + scale_x_continuous(breaks = seq(24, 64, 12)))
+
+# Show tissue and temporal expression of brain-specific gene
+
 
 # temporal variance
 jpc1 <- "PC13"; jpc2 <- "PC17"
@@ -259,11 +266,34 @@ plst$add(PlotLoadingsOneTissue(pca.long, jtiss, pcs))
 jtiss <- "Kidney"
 plst$add(PlotLoadingsOneTissue(pca.long, jtiss, pcs))
 
+
+# statistical test of PCs 1 to PC20
+pcs.num <- seq(1, 25) 
+pcs <- paste("PC", pcs.num, sep = "")
+jtiss <- "Liver"
+pca.sub <- subset(pca.long, tissue == jtiss & pc %in% pcs)
+pca.sub$gene <- pca.sub$pc
+pca.sub$exprs <- pca.sub$loading
+pca.sub$experiment <- "pca"
+
+pca.rhyth <- pca.sub %>%
+  group_by(pc) %>%
+  do(FitRhythmic(., get.se=TRUE)) %>%
+  mutate(pc.num = as.numeric(gsub("PC", "", pc))) %>%
+  arrange(pc.num)
+
+m <- ggplot(pca.rhyth, aes(x = pc.num, y = -log10(pval))) + 
+  geom_bar(stat = "identity") + theme_bw() + 
+  theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+  scale_x_continuous(breaks = pcs.num) + 
+  xlab("PC") + ylab("-log10(P-value)") + 
+  geom_hline(yintercept = 5, linetype = "dotted")
+
 plst <- plst$as.list()
 pdf(file.path(outdir, paste0(plot.i, ".PCA_loadings_gene_and_samps.pdf")), useDingbats=FALSE)
   lapply(plst, print)
+  print(m)
 dev.off()
-
 
 # Analyze whether each PC is rhythmic or not ------------------------------
 

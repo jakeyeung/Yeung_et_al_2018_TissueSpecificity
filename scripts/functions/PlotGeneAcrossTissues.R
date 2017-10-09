@@ -1,7 +1,14 @@
 # PlotGeneAcrossTissues.R
 
-PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pretty = FALSE, jxlab="CT", do.facet.wrap=TRUE, by.linetype=FALSE){
+PlotGeneAcrossTissues <- function(dat, jtitle, convert.linear = FALSE, make.pretty = FALSE, jxlab="CT", do.facet.wrap=TRUE, by.linetype=FALSE, sort.by.mean = FALSE){
   library(ggplot2)
+  if (sort.by.mean){
+    dat.mean <- dat %>%
+      group_by(tissue) %>%
+      summarise(exprs = mean(exprs)) %>%
+      arrange(desc(exprs))
+    dat$tissue <- factor(as.character(dat$tissue), levels = dat.mean$tissue)
+  }
   if (missing(jtitle)){
     jtitle = unique(dat$gene)
   }
