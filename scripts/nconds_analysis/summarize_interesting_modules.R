@@ -7,6 +7,7 @@ rm(list=ls())
 library(dplyr)
 library(reshape2)
 library(gplots)
+library(RColorBrewer)
 
 source("scripts/functions/PlotGeneAcrossTissues.R")
 source("scripts/functions/PlotFunctions.R")
@@ -136,8 +137,8 @@ lapply(fits.lst, function(fits){
                              disable.text = FALSE, 
                              add.arrow = TRUE,
                              disable.repel = TRUE)
-  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Log2 Fold Change") + ggtitle(""))
-  print(eigens.arrow2$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Log2 Fold Change"))
+  print(eigens.arrow2$v.plot + ylab("ZT") + xlab("Tissue Weights"))
 })
 dev.off()
 
@@ -171,8 +172,8 @@ for (jmod in top.models){
                              disable.text = FALSE, 
                              add.arrow = TRUE,
                              disable.repel = TRUE)
-  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Log2 Fold Change") + ggtitle(""))
-  print(eigens.arrow2$v.plot + ylab("ZT") + xlab("Tissue Weights") + ggtitle(""))
+  print(eigens.arrow2$u.plot + ylab("ZT") + xlab("Log2 Fold Change"))
+  print(eigens.arrow2$v.plot + ylab("ZT") + xlab("Tissue Weights"))
   
 }
 dev.off()
