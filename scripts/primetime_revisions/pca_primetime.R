@@ -28,6 +28,7 @@ source(file.path(funcs.dir, "LoadAndHandleData.R"))
 source(file.path(funcs.dir, "FitRhythmic.R"))
 source(file.path(funcs.dir, "PlotGeneAcrossTissues.R"))
 source(file.path(funcs.dir, "LoadArray.R"))
+source(file.path(funcs.dir, "PlotFunctions.R"))
 
 BinVector <- function(x, ...){
   # bin vector into discrete bins i
@@ -142,7 +143,7 @@ PlotLoadingsOneTissue <- function(pca.long, jtiss, pcs){
 
 # Set constants -----------------------------------------------------------
 
-outdir <- "/home/yeung/projects/tissue-specificity/plots/primetime_plots_full_paper_revised"
+outdir <- "/home/yeung/projects/tissue-specificity/plots/primetime_plots_full_paper_revised.test"
 dir.create(outdir)
 
 # Figure 1A Present high level variation BETWEEN TISSUES and WITHIN TISSUES (time) ------------------
@@ -214,8 +215,13 @@ legend("bottomright", as.character(unique(tisslab)), title = "Tissue", pch = jpc
 # Plot PC13 vs PC17
 library(PhaseHSV)
 jtiss <- "Liver"
-jpc1 <- "PC13"
-jpc2 <- "PC17"
+
+# jpcs <- c("PC13", "PC17")
+jpcs <- c("PC15", "PC16")
+
+jpc1 <- jpcs[[1]]
+jpc2 <- jpcs[[2]]
+
 x <- subset(pca.long, pc == jpc1 & tissue == jtiss)$loading
 y <- subset(pca.long, pc == jpc2 & tissue == jtiss)$loading
 time <- as.numeric(subset(pca.long, pc == jpc1 & tissue == jtiss)$time)
@@ -282,17 +288,51 @@ pca.rhyth <- pca.sub %>%
   mutate(pc.num = as.numeric(gsub("PC", "", pc))) %>%
   arrange(pc.num)
 
-m <- ggplot(pca.rhyth, aes(x = pc.num, y = -log10(pval))) + 
+# fit f24 on liver loadings
+m.f24 <- ggplot(pca.rhyth, aes(x = pc.num, y = -log10(pval))) + 
   geom_bar(stat = "identity") + theme_bw() + 
   theme(aspect.ratio = 1, panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
   scale_x_continuous(breaks = pcs.num) + 
   xlab("PC") + ylab("-log10(P-value)") + 
   geom_hline(yintercept = 5, linetype = "dotted")
 
+# summarize with amplitude and phase of loadings
+x.complex <- complex(real = pca.rhyth$cos.part, imaginary = pca.rhyth$sin.part)
+jlabs <- pca.rhyth$pc
+m.complex <- PlotComplex2(vec.complex = x.complex, labels = jlabs, omega = 2 * pi / 24, title = "Liver Loadings", xlab = "Amplitude", ylab = "Phase [CT]", ampscale = 2, add.arrow = TRUE, disable.repel = TRUE)
+
+# scale??
+DoAnova <- function(jsub, jvar = "time"){
+  # jvar: "time" or "tissue"
+  fit.complex <- lm(as.formula(paste0("loading ~ ", jvar)), data = jsub)
+  fit.simple <- lm(loading ~ 1, data = jsub)
+  fit.compare <- anova(fit.simple, fit.complex)
+  # get p-value
+  pval <- fit.compare[["Pr(>F)"]][[2]][[1]]
+  return(pval)
+}
+
+jtf <- FALSE
+pca.anova <- pca.long %>%
+  group_by(pc, tissue) %>%
+  mutate(loading = scale(loading, center = jtf, scale = jtf),
+         # time = time %% 24,
+         time = as.character(time)) %>%
+  group_by(pc) %>%
+  do(pval.time = DoAnova(., jvar = "time"),
+     pval.tiss = DoAnova(., jvar = "tissue")) %>%
+  mutate(pval.time = unlist(pval.time), 
+         pval.tiss = unlist(pval.tiss))
+
+m.anova <- ggplot(subset(pca.anova, pc %in% paste("PC", seq(1, 30), sep = "")), aes(x = -log10(pval.time), y = -log10(pval.tiss), label = pc)) + 
+  geom_point() + geom_text_repel() + theme_bw() 
+
 plst <- plst$as.list()
 pdf(file.path(outdir, paste0(plot.i, ".PCA_loadings_gene_and_samps.pdf")), useDingbats=FALSE)
   lapply(plst, print)
-  print(m)
+  print(m.f24)
+  print(m.complex)
+  print(m.anova)
 dev.off()
 
 # Analyze whether each PC is rhythmic or not ------------------------------
