@@ -11,7 +11,7 @@
 # NOTE: if you run functions here in parallel (mclapply) you need to source these scripts INSIDE the loop:
 # https://support.bioconductor.org/p/38541/
 
-
+library(DBI)  # dbGetQuery() not found when loading topGO
 library(topGO)
 library(org.Mm.eg.db)
 

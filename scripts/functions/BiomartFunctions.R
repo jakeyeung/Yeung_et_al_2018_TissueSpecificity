@@ -2,6 +2,11 @@
 library(methods)
 library(IRanges)
 
+GetMouseMart <- function(jbiomart = "ENSEMBL_MART_ENSEMBL", jdataset="mmusculus_gene_ensembl", host=host){
+  
+  return(useMart(biomart = jbiomart, dataset = jdataset, host=host))
+}
+
 CapitalizeFirstLetter <- function(gene){
   # CRY1 -> Cry1
   return(paste(toupper(substr(gene, 1, 1)), tolower(substr(gene, 2, nchar(gene))), sep = ""))
@@ -22,7 +27,7 @@ Gene2StartEnd <- function(gene.list, return.original=TRUE, mm9=TRUE) {
     gene.attr <- "external_gene_name"
     gene.filtr <- gene.attr
   }
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host=jhost)
+  mart.obj <- GetMouseMart(host=jhost)
     gos <- getBM(gene.list,
                  attributes=c(gene.attr, "start_position", "end_position"),
                  filters=c(gene.filtr),
@@ -105,7 +110,7 @@ Vectorize(AnnotateFromHash <- function(x, hash.tbl){
 Transcript2Gene <- function(gene.list, return.original=TRUE) {
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list, attributes=c("ensembl_transcript_id", "external_gene_name"),
                filters=c("ensembl_transcript_id"),
                mart=mart.obj)
@@ -121,7 +126,7 @@ Transcript2Gene <- function(gene.list, return.original=TRUE) {
 Transcript2Strand <- function(gene.list, return.original=TRUE) {
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list, attributes=c("ensembl_transcript_id", "strand"),
                filters=c("ensembl_transcript_id"),
                mart=mart.obj)
@@ -137,7 +142,7 @@ Transcript2Strand <- function(gene.list, return.original=TRUE) {
 Gene2Strand <- function(gene.list, return.original=TRUE) {
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list, attributes=c("external_gene_name", "strand"),
                filters=c("external_gene_name"),
                mart=mart.obj)
@@ -155,7 +160,7 @@ Gene2Strand <- function(gene.list, return.original=TRUE) {
 EnsemblGene2Gene <- function(gene.list, return.original=TRUE) {
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list,attributes=c("ensembl_gene_id", "external_gene_name"),
                filters=c("ensembl_gene_id"),
                mart=mart.obj)
@@ -171,7 +176,7 @@ EnsemblGene2Gene <- function(gene.list, return.original=TRUE) {
 Gene2Ensembl <- function(gene.list, return.original=TRUE) {
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list,attributes=c("external_gene_name", "ensembl_gene_id"),
                filters=c("external_gene_name"),
                mart=mart.obj)
@@ -187,7 +192,7 @@ Gene2Ensembl <- function(gene.list, return.original=TRUE) {
 Attribute2Gene <- function(gene.list, jattribute, return.original=TRUE) {
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list,attributes=c(jattribute, "external_gene_name"),
                filters=c("ensembl_gene_id"),
                mart=mart.obj)
@@ -210,7 +215,7 @@ AppendGeneID <- function(dat){
 AnnotatePseudogenes <- function(gene.list, return.original=TRUE){
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list,attributes=c("external_gene_name", "gene_biotype"),
                filters=c("external_gene_name"),
                mart=mart.obj)
@@ -226,7 +231,7 @@ AnnotatePseudogenes <- function(gene.list, return.original=TRUE){
 AnnotateTranscriptLength <- function(gene.list, return.original=TRUE, min.length=1000){
   library("biomaRt")
   # https://support.bioconductor.org/p/74322/  need to use host and biomart
-  mart.obj <- useMart(biomart = 'ENSEMBL_MART_ENSEMBL', dataset = 'mmusculus_gene_ensembl', host="www.ensembl.org")
+  mart.obj <- GetMouseMart(host="www.ensembl.org")
   gos <- getBM(gene.list,attributes=c("external_gene_name", "transcript_length"),
                filters=c("external_gene_name"),
                mart=mart.obj)
