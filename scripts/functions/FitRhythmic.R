@@ -106,19 +106,23 @@ FitRhythmic <- function(dat, T.period = 24, get.residuals=FALSE, get.se=FALSE){
   return(dat.out)
 }
 
-FitRhythmicDatLong <- function(dat.long, jget.residuals=FALSE, get.se=FALSE){
+FitRhythmicDatLong <- function(dat.long, jget.residuals=FALSE, get.se=FALSE, quiet=FALSE){
   library(parallel)
   dat.long.by_genetiss <- group_by(dat.long, gene, tissue)
   dat.long.by_genetiss.split <- split(dat.long.by_genetiss, dat.long.by_genetiss$tissue)
-  print("Finding rhythmic genes (~3 minutes)")
-  start <- Sys.time()
+  if (!quiet){
+    print("Finding rhythmic genes (~3 minutes)")
+    start <- Sys.time()
+  }
   dat.fitrhyth.split <- mclapply(dat.long.by_genetiss.split, function(jdf){
     rhyth <- jdf %>%
       group_by(gene) %>%
       do(FitRhythmic(dat = ., get.residuals = jget.residuals, get.se=get.se))
   }, mc.cores = 12)
   dat.fitrhyth <- do.call(rbind, dat.fitrhyth.split)
-  print(Sys.time() - start)
+  if (!quiet){
+    print(Sys.time() - start)
+  }
   return(dat.fitrhyth)
 }
 
