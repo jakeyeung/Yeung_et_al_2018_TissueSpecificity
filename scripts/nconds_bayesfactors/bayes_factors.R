@@ -10,7 +10,7 @@ source("scripts/functions/ListFunctions.R")
 source("scripts/functions/MemoryManagement.R")
 source("scripts/functions/EnvironmentsFunctions.R")
 
-load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
+# load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 load("Robjs/dat.long.fixed_rik_genes.Robj", v=T)
 
 
