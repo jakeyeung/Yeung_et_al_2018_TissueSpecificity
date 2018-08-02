@@ -26,6 +26,7 @@ mergePDF <- function(output="merged.pdf", sourcefiles=c("source1.pdf","source2.p
 
 #  Reference: http://www.biostars.org/post/show/6132/batch-viewing-of-ucsc-browser-graphic/
 screenshotUCSC <- function(url, trackfile, chr, start, end, filename, euro.mirror=FALSE) {
+  start <- as.integer(start); end <- as.integer(end)
   oldpen <- options("scipen")
   options(scipen=100)
   temp <- readLines(paste(url, "&hgt.customText=", trackfile, "&position=",chr,":",start,"-",end, sep=""))
@@ -37,6 +38,8 @@ screenshotUCSC <- function(url, trackfile, chr, start, end, filename, euro.mirro
   }
   # cat(pdfurl,"\n");
   options(scipen=oldpen)
+  print(paste("Extract info from: ", paste(url, "&hgt.customText=", trackfile, "&position=",chr,":",start,"-",end, sep="")))
+  print(paste("Downloading from url: ", pdfurl))
   download.file(pdfurl, filename, mode="wb", quiet=TRUE)
 }
 
