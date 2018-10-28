@@ -5,7 +5,7 @@ GetSinusoid <- function(act.sub, x, w){
   return(data.frame(time = x, exprs = cos(w * x - w * phase), tissue = tissue.act, geno = geno.act))
 }
 
-LoadProteomicsData <- function(inf = "/home/shared/nuclear_proteomics/nuclear_proteins_L_H_log2_all_WT_KO_24h_12h_statistics.OneGenePerLine.txt", 
+LoadProteomicsData <- function(inf = "/data/shared/OMICS/RNA-Seq/YeungGR2018/ProcessedData/nuclear_proteins_L_H_log2_all_WT_KO_24h_12h_statistics.OneGenePerLine.txt", 
                                as.long = TRUE){
   require(reshape2)
   require(dplyr)
