@@ -176,88 +176,12 @@ dat.wtko <- StaggeredTimepointsLivKid(dat.wtko)
 dat.wtko.collapsed <- CollapseTissueGeno(dat.wtko)
 
 # load proteomics
-
-
 prot.long <- LoadProteomicsData()
 
-# s.act <- SvdOnComplex(subset(act.complex, gene %in% sig.motifs), value.var = "exprs.transformed")
 
 outbase <- "/home/yeung/projects/tissue-specificity/results/MARA.hogenesch"
 outmain <- file.path(outbase, paste0("promoters.tissuewide.filteramp.0.15.mat"))
 indir <- file.path(outmain, "expressed_genes_deseq_int.centeredTRUE")
-
-
-
-# act.l.complex <- ProjectWithZscore(act.l, omega, n = n)
-# s.l <- SvdOnComplex(act.l.complex, value.var = "exprs.transformed")
-# vec.complex <- GetEigens(s.l, period = 24, comp = 1, eigenval = FALSE)$eigensamp
-# s.df <- data.frame(gene = names(s.l.eigs$eigensamp), amp = Mod(vec.complex) * 2, phase = ConvertArgToPhase(Arg(vec.complex), omega = omega), tissue = "Liver", geno = "WT")
-# # shift by half-life
-# s.df$phase <- AdjustPhase(s.df$phase, half.life = mrna.hl, fw.bw = "bw")
-
-# act.l <- subset(act.l, experiment == "rnaseq" & tissue == "Liver")
-# act.l <- subset(act.l, experiment == "array" & tissue == "Liver")
-for (jexp in c("rnaseq", "array")){
-  act.l <- LoadActivitiesLong(indir, make.cnames = TRUE)
-  act.l$gene <- sapply(as.character(act.l$gene), function(g) RemoveP2Name(g))
-  s.df <- GetAmpPhaseFromActivities(act.l, mrna.hl, jtiss = "Liver", jgeno = "WT")
-  act.l <- subset(act.l, experiment == jexp & tissue == "Liver")
-  act.l$time[which(act.l$time %in% c(18, 20, 22))] <- act.l$time[which(act.l$time %in% c(18, 20, 22))] + 48
-  act.l$time <- act.l$time - 24
-  act.l$geno <- "WT"
-  
-  act.s.shift <- act.l
-  act.s.shift$time <- act.l$time - hr.shift
-  act.s.shift$time <- sapply(act.s.shift$time, function(x) ifelse(x < 0, x + 48, x))
-  
-  prot.long.wt <- subset(prot.long, geno == "WT")
-  dat.wtko.wt <- subset(dat.wtko, geno == "SV129")
-  
-  jgenes <- c("Arntl", "Dbp", "Nr3c1", "Hsf1", "Nr1d1", "Nr1d2", "Rora", "Rorc", "Hic1", "Nrf1", "Irf2", "Mafb", "Egr1", "Tef", "Nfil3", "Hlf", "Mcm2", "Mcm3", "Mcm4", "Mcm5")
-  jmotifs <- c("bHLH_family", "NFIL3", "NR3C1", "HSF1.2", "RORA", "RORA", "RORA", "RORA", "HIC1", "NRF1", "IRF1.2.7", "MAFB", "EGR1", "NFIL3", "NFIL3", "NFIL3", NA, NA, NA, NA)
-  print("Plotting mRNA, Nuclear Proteomics, and Motif Activity")
-  pdf(file.path(plot.dir, paste0("00", ".proteomics_examples.hrshift.", hr.shift, ".experiment.", jexp, ".pdf")))
-  for (i in seq(length(jgenes))){
-    jgene <- jgenes[i]
-    jmotif <- jmotifs[i]
-    print(paste(jgene, jmotif))
-    print(PlotProteomics(subset(prot.long, gene == jgene), jtitle = jgene))
-    if (!is.na(jmotif)){
-      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
-      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
-      if (nrow(subset(s.df, gene == jmotif)) > 0){
-        print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE) + theme(strip.text = element_blank()))
-        print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE, single.day = TRUE) + theme(strip.text = element_blank()))
-        print(PlotmRNAActivityProtein(dat.wtko.wt, s.df, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE, act.in.sine.cos = TRUE, single.day = TRUE, by.color = TRUE) + theme(strip.text = element_blank()))
-      }
-    } else {
-      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = FALSE) + theme(strip.text = element_blank()))
-      print(PlotmRNAActivityProtein(dat.wtko.wt, act.l, gene.dat = jgene, prot.long = prot.long.wt, gene.prot = jgene, gene.act = jmotif, jtiss = "Liver", dotsize = 3, themesize = 22, line.for.protein = TRUE) + theme(strip.text = element_blank()))
-    }
-  }
-  dev.off()
-}
-
-
-# Plot examples -----------------------------------------------------------
-
-jgenes <- c("Slc45a3", "Insig2", "Slc44a1", "Pik3ap1", "Jun", "Mafb", "Egr1", "Nop56", "Gck", "Lipg", "Upp2", "Loxl4", "Lpin1", "Cebpb", "Pik3r1", "Hes6",
-            "Per2", "Cry1", "Dbp", "Arntl", "Npas2", "Hic1", "Srebf1", "Per1", "Cry2", "Nr1d1", "Nr1d2", "Tef", "Hlf", "Hspa8", "Cirbp", "Sgk2", "Wee1", "Pi4k2a", "Per3",
-            "Mreg")
-
-jgenes.baits <- c("Mreg", "Slc45a3", "Slc44a1", "Pik3ap1")
-
-pdf(file.path(plot.dir, paste0("0", ".gene_exprs_examples.pdf")))
-for (g in jgenes){
-  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g, center = TRUE, pretty.geno.names = TRUE))
-  print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "tissue", jtitle = g, center = TRUE, single.day = TRUE, pretty.geno.names = TRUE))
-  if (g %in% jgenes.baits){
-    # liver vs kidney in same square is better
-    print(PlotGeneTissuesWTKO(subset(dat.wtko, gene == g), split.by = "geno", jtitle = g, center = FALSE, single.day = TRUE, pretty.geno.names = TRUE))
-  }
-}
-dev.off()
-
 
 # Tissue-wide modules: hogenesch -----------------------------------------------------
 
