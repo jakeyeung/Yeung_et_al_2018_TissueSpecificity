@@ -1,3 +1,5 @@
+# For official R package to run models and generate figures, please see: [https://github.com/jakeyeung/TissueCiradianAnalysis](https://github.com/jakeyeung/TissueCiradianAnalysis)
+
 # Yeung_et_al_2018_TissueSpecificity
 
 These are scripts I used for all downstream analyses in [Yeung, Mermet, et al 2018](https://genome.cshlp.org/content/28/2/182.full). 
